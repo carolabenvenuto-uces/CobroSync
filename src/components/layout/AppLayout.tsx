@@ -37,7 +37,7 @@ export function AppLayout() {
         </main>
 
         <footer className="border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
-          Demo con datos ficticios · CobroSync by CAROLA · desarrollado por CaroIA Studio
+          Demo con datos de ejemplo (montos, fechas y números inventados) · CobroSync by CAROLA · desarrollado por CaroIA Studio
         </footer>
       </div>
     </div>

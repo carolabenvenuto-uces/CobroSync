@@ -6,7 +6,7 @@ La demo está verticalizada en **concesionarias y talleres que facturan reparaci
 
 🚀 **Demo publicada:** [carolabenvenuto-uces.github.io/CobroSync](https://carolabenvenuto-uces.github.io/CobroSync/)
 
-> ⚠️ **Todos los datos de este repositorio son ficticios.** Compañías, sucursales, patentes, siniestros y montos los genera el script [`scripts/generar-datos-demo.mjs`](scripts/generar-datos-demo.mjs). Nunca se suben datos reales: ver [docs/decisiones/002-datos-ficticios.md](docs/decisiones/002-datos-ficticios.md).
+> ⚠️ **Datos de ejemplo.** Las sucursales y las compañías de seguro son reales; fechas, montos, números de comprobante, siniestros y patentes son inventados por [`scripts/generar-datos-demo.mjs`](scripts/generar-datos-demo.mjs), con proporciones tomadas de estadísticas de la planilla de control. Nunca se suben filas reales: ver [docs/decisiones/002-datos-ficticios.md](docs/decisiones/002-datos-ficticios.md).
 
 Desarrollado por **CaroIA Studio**.
 

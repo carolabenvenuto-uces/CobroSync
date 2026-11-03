@@ -40,6 +40,9 @@ function crearAleatorio(semilla) {
 const azar = crearAleatorio(SEMILLA)
 const entre = (min, max) => Math.floor(azar() * (max - min + 1)) + min
 const elegir = (lista) => lista[Math.floor(azar() * lista.length)]
+const expo = (media) => -Math.log(1 - azar()) * media
+/** Normal estándar (Box-Muller), para montos con distribución log-normal */
+const normal = () => Math.sqrt(-2 * Math.log(1 - azar())) * Math.cos(2 * Math.PI * azar())
 const elegirPonderado = (lista) => {
   let r = azar() * lista.reduce((s, x) => s + x.peso, 0)
   for (const x of lista) {
@@ -58,33 +61,57 @@ const esDiaHabil = (iso) => {
   return d !== 0 && d !== 6
 }
 
-// ── Catálogos ficticios ──────────────────────────────────────────────────────
-// Plazo de pago desde la presentación: 30 días en general, 7 en algunas compañías.
+// ── Catálogos ───────────────────────────────────────────────────────────────
+// Compañías y sucursales son las reales; sus PESOS, demoras y plazos salen de las
+// estadísticas de la planilla de control (no de sus filas).
+// Plazo de pago desde la presentación: 30 días, salvo Federación Patronal (7).
 const ASEGURADORAS = [
-  { id: 'ceibo', nombre: 'Ceibo Seguros', plazoPagoDias: 30, peso: 20 },
-  { id: 'quebracho', nombre: 'Quebracho Seguros', plazoPagoDias: 30, peso: 16 },
-  { id: 'lapacho', nombre: 'Lapacho Cía. de Seguros', plazoPagoDias: 7, peso: 12 },
-  { id: 'ombu', nombre: 'Ombú Seguros', plazoPagoDias: 30, peso: 10 },
-  { id: 'jacaranda', nombre: 'Jacarandá Seguros', plazoPagoDias: 30, peso: 9 },
-  { id: 'algarrobo', nombre: 'Algarrobo Seguros', plazoPagoDias: 7, peso: 8 },
-  { id: 'calden', nombre: 'Caldén Seguros', plazoPagoDias: 30, peso: 7 },
-  { id: 'tipa', nombre: 'Tipa Aseguradora', plazoPagoDias: 30, peso: 6 },
-  { id: 'nandubay', nombre: 'Ñandubay Seguros', plazoPagoDias: 7, peso: 5 },
-  { id: 'palo-santo', nombre: 'Palo Santo Seguros', plazoPagoDias: 30, peso: 4 },
+  { id: 'fed-patronal', nombre: 'Federación Patronal', plazoPagoDias: 7, peso: 2761, siniestro: '999-9-999999' },
+  { id: 'allianz', nombre: 'Allianz', plazoPagoDias: 30, peso: 972, siniestro: '99999999999' },
+  { id: 'san-cristobal', nombre: 'San Cristóbal', plazoPagoDias: 30, peso: 858, siniestro: '99999999999' },
+  { id: 'sancor', nombre: 'Sancor', plazoPagoDias: 30, peso: 836, siniestro: '9999999999' },
+  { id: 'zurich', nombre: 'Zurich', plazoPagoDias: 30, peso: 636, siniestro: '99999999' },
+  { id: 'la-segunda', nombre: 'La Segunda', plazoPagoDias: 30, peso: 616, siniestro: '9999999' },
+  { id: 'rivadavia', nombre: 'Rivadavia', plazoPagoDias: 30, peso: 570, siniestro: '99 99 999999' },
+  { id: 'la-caja', nombre: 'La Caja', plazoPagoDias: 30, peso: 266, siniestro: '9999-9999999' },
+  { id: 'rda', nombre: 'RDA', plazoPagoDias: 30, peso: 205, siniestro: 'AA 999999' },
+  { id: 'nacion', nombre: 'Nación Seguros', plazoPagoDias: 30, peso: 149, siniestro: '999999' },
+  { id: 'mapfre', nombre: 'Mapfre', plazoPagoDias: 30, peso: 145, siniestro: '99999999999' },
+  { id: 'smg', nombre: 'SMG', plazoPagoDias: 30, peso: 134, siniestro: '99999999' },
+  { id: 'iutrace', nombre: 'Iutrace', plazoPagoDias: 30, peso: 110, siniestro: '99999999999' },
+  { id: 'mercantil-andina', nombre: 'Mercantil Andina', plazoPagoDias: 30, peso: 104, siniestro: '999999999999' },
+  { id: 'galicia', nombre: 'Galicia Seguros', plazoPagoDias: 30, peso: 50, siniestro: '999999999999' },
+  { id: 'segurcoop', nombre: 'Segurcoop', plazoPagoDias: 30, peso: 42, siniestro: '999999' },
+  { id: 'meridional', nombre: 'Meridional', plazoPagoDias: 30, peso: 39, siniestro: '9999-99999999999' },
+  { id: 'barbuss', nombre: 'Barbuss', plazoPagoDias: 30, peso: 32, siniestro: '999999' },
+  { id: 'holando', nombre: 'Holando Sudamericana', plazoPagoDias: 30, peso: 32, siniestro: '99999999' },
+  { id: 'chubb', nombre: 'Chubb', plazoPagoDias: 30, peso: 24, siniestro: '99999999' },
+  { id: 'victoria', nombre: 'Victoria', plazoPagoDias: 30, peso: 11, siniestro: '99999999' },
+  { id: 'parana', nombre: 'Paraná Seguros', plazoPagoDias: 30, peso: 11, siniestro: '99999999' },
 ]
 
-// `atraso`: probabilidad de que la sucursal se demore con el escaneo.
-// `errores`: probabilidad de subir un documento ilegible, sin firma o de menos.
+// Demoras medidas en la planilla (días entre la factura y la subida al Drive):
+// `demora`: media de los que llegan a tiempo · `atraso`: % que pasa los 7 días
+// `presentacion`: días promedio entre la subida y la presentación.
 const SUCURSALES = [
-  { nombre: 'Sucursal Centro', puntoVenta: 21, gerente: 'R. Medina', personas: ['Lucía P.', 'Tomás R.', 'Ana G.'], peso: 26, atraso: 0.1, errores: 0.05 },
-  { nombre: 'Sucursal Norte', puntoVenta: 35, gerente: 'S. Ferreyra', personas: ['Martín L.', 'Paula S.'], peso: 20, atraso: 0.35, errores: 0.1 },
-  { nombre: 'Sucursal Sur', puntoVenta: 37, gerente: 'G. Ibáñez', personas: ['Diego C.', 'Valeria M.', 'Hernán B.'], peso: 16, atraso: 0.15, errores: 0.06 },
-  { nombre: 'Sucursal Oeste', puntoVenta: 19, gerente: 'M. Quiroga', personas: ['Julián A.'], peso: 14, atraso: 0.45, errores: 0.12 },
-  { nombre: 'Sucursal Este', puntoVenta: 42, gerente: 'L. Benítez', personas: ['Carla D.', 'Nicolás F.'], peso: 13, atraso: 0.12, errores: 0.04 },
-  { nombre: 'Sucursal Ribera', puntoVenta: 48, gerente: 'F. Acosta', personas: ['Sofía V.', 'Pablo E.', 'Inés K.', 'Bruno T.'], peso: 11, atraso: 0.2, errores: 0.08 },
-]
+  { nombre: 'Alvarez Thomas', pvs: [{ pv: 21, peso: 3389 }, { pv: 30, peso: 189 }], peso: 3578, demora: 1.8, atraso: 0.1, presentacion: 3.1, errores: 0.05 },
+  { nombre: 'Triunvirato', pvs: [{ pv: 19, peso: 3291 }, { pv: 29, peso: 65 }], peso: 3356, demora: 1.6, atraso: 0.04, presentacion: 1.8, errores: 0.04 },
+  { nombre: 'Vicente Lopez', pvs: [{ pv: 23, peso: 719 }, { pv: 43, peso: 203 }, { pv: 31, peso: 61 }, { pv: 44, peso: 18 }], peso: 1001, demora: 1.3, atraso: 0.05, presentacion: 1.5, errores: 0.04 },
+  { nombre: 'Rocamora', pvs: [{ pv: 35, peso: 485 }, { pv: 37, peso: 65 }], peso: 551, demora: 1.6, atraso: 0.09, presentacion: 2, errores: 0.05 },
+  { nombre: 'San Miguel', pvs: [{ pv: 50, peso: 16 }, { pv: 49, peso: 92 }], peso: 108, demora: 0.2, atraso: 0.01, presentacion: 3.4, errores: 0.03 },
+  { nombre: 'Warnes', pvs: [{ pv: 16, peso: 39 }, { pv: 14, peso: 6 }], peso: 45, demora: 2, atraso: 0.18, presentacion: 6.6, errores: 0.08 },
+].map((s) => ({
+  ...s,
+  // Personas genéricas: en la demo no se usan nombres reales de empleados
+  gerente: `Gerente de ${s.nombre}`,
+  personas: [`Facturación ${s.nombre} 1`, `Facturación ${s.nombre} 2`],
+}))
 
-const AUDITORIA = ['Carola B.', 'Laura M.']
+// Facturas por mes y peso de cada día del mes (de la planilla: pico a fin de mes)
+const FACTURAS_POR_MES = { 1: 647, 2: 480, 3: 756, 4: 862, 5: 941, 6: 1079, 7: 924, 8: 903, 9: 1064, 10: 977 }
+const PESO_DIA = [24, 45, 58, 64, 80, 135, 164, 137, 202, 190, 247, 179, 339, 360, 243, 335, 210, 195, 212, 254, 306, 271, 283, 286, 286, 412, 458, 499, 886, 863, 416]
+
+const AUDITORIA = ['Carola B.', 'Melina']
 
 const MOTIVOS_COMPROMISO = [
   'El vehículo sigue en el taller',
@@ -106,29 +133,35 @@ const RESPUESTAS_SUCURSAL = [
 ]
 
 const LETRAS = 'ABCDEFGHJKLMNPRSTUVWXYZ'
-const patente = () => `${elegir(LETRAS)}${elegir(LETRAS)} ${entre(100, 999)} ${elegir(LETRAS)}${elegir(LETRAS)}`
+const letra = () => elegir(LETRAS)
+// Patentes con formato real: AA999AA (nuevas) o AAA999 (viejas), con valores al azar
+const patente = () =>
+  azar() < 0.8 ? `${letra()}${letra()}${entre(100, 999)}${letra()}${letra()}` : `${letra()}${letra()}${letra()}${entre(100, 999)}`
+// Siniestro con el formato de cada compañía (9 = dígito, A = letra) y números al azar
+const siniestroCon = (formato) => formato.replace(/9/g, () => String(entre(0, 9))).replace(/A/g, letra)
 const TIPOS_DOC = ['factura', 'orden_reparacion', 'remito', 'conformidad']
 const NOMBRE_DOC = { factura: 'factura', orden_reparacion: 'orden de reparación', remito: 'remito', conformidad: 'conformidad' }
 
 // ── Generación de comprobantes ───────────────────────────────────────────────
 const comprobantes = []
-const numeradores = Object.fromEntries(SUCURSALES.map((s) => [s.puntoVenta, entre(4000, 9000)]))
-let ref = 6_900_000
-const nuevoNumero = (pv) => ++numeradores[pv]
+// Los números de comprobante y las referencias se asignan al final, en orden de fecha
 
 function crearFactura(fecha) {
   const sucursal = elegirPonderado(SUCURSALES)
   const aseguradora = elegirPonderado(ASEGURADORAS)
   const persona = elegir(sucursal.personas)
+  const puntoVenta = elegirPonderado(sucursal.pvs).pv
   const edad = diffDias(fecha, FECHA_CORTE)
   const eventos = []
-  ref += entre(1, 9)
+  const siniestro = siniestroCon(aseguradora.siniestro)
+  const nombreArchivo = (tipo) => `${tipo}_${siniestro.replace(/\W/g, '')}.pdf`
 
-  const total = Math.round((azar() < 0.12 ? entre(4_000_000, 15_000_000) : entre(300_000, 4_000_000)) * 100) / 100
+  // Montos log-normales con la misma forma que la planilla (mediana cercana a $1 millón)
+  const total = Math.round(Math.min(25_000_000, Math.max(60_000, 950_000 * Math.exp(1.05 * normal()))) * 100) / 100
 
-  // 1) Cuándo sube la sucursal los documentos
+  // 1) Cuándo sube la sucursal los documentos (la mayoría el mismo día o a los pocos días)
   const seAtrasa = azar() < sucursal.atraso
-  const demora = seAtrasa ? entre(8, 40) : entre(0, 5)
+  const demora = seAtrasa ? entre(8, 40) : Math.min(7, Math.floor(expo(sucursal.demora)))
   let fechaDrive = sumarDias(fecha, demora)
   if (fechaDrive > FECHA_CORTE) fechaDrive = null
 
@@ -141,10 +174,10 @@ function crearFactura(fecha) {
     const factor = edad > 90 ? 0.01 : edad > 45 ? 0.08 : edad > 21 ? 0.5 : 1
     documentos = TIPOS_DOC.map((tipo) => {
       if (tipo === 'factura' || azar() >= sucursal.errores * factor) {
-        return { tipo, estado: 'ok', archivo: `${tipo}-${ref}.pdf` }
+        return { tipo, estado: 'ok', archivo: nombreArchivo(tipo) }
       }
       const estado = elegir(tipo === 'remito' ? ['faltante', 'ilegible'] : ['faltante', 'ilegible', 'sin_firma'])
-      return estado === 'faltante' ? { tipo, estado } : { tipo, estado, archivo: `${tipo}-${ref}.pdf` }
+      return estado === 'faltante' ? { tipo, estado } : { tipo, estado, archivo: nombreArchivo(tipo) }
     })
     eventos.push({
       fecha: fechaDrive,
@@ -171,7 +204,7 @@ function crearFactura(fecha) {
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
   let fechaPresentacion = null
   if (completo && fechaDrive) {
-    let p = sumarDias(fechaDrive, entre(0, 3))
+    let p = sumarDias(fechaDrive, Math.floor(expo(sucursal.presentacion)))
     let rechazadoSinResolver = false
     // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
     if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.18 : 0.08)) {
@@ -211,7 +244,10 @@ function crearFactura(fecha) {
   const vencimiento = fechaPresentacion ? sumarDias(fechaPresentacion, aseguradora.plazoPagoDias) : null
   let fechaCobro = null
   if (vencimiento) {
-    const c = sumarDias(vencimiento, entre(-3, 15))
+    // Muchas compañías pagan antes del vencimiento (así se ve en la planilla)
+    const r = azar()
+    const desvio = r < 0.1 ? entre(-28, -15) : r < 0.5 ? entre(-14, -3) : r < 0.9 ? entre(-2, 3) : entre(4, 20)
+    const c = sumarDias(vencimiento, Math.max(-diffDias(fechaPresentacion, vencimiento) + 1, desvio))
     if (c <= FECHA_CORTE && azar() < 0.97) fechaCobro = c
   }
 
@@ -254,14 +290,14 @@ function crearFactura(fecha) {
 
   return {
     id: `fc-${comprobantes.length + 1}`,
-    ref: String(ref),
+    ref: '0',
     tipo: 'FC',
     fecha,
     sucursal: sucursal.nombre,
-    puntoVenta: sucursal.puntoVenta,
-    numero: nuevoNumero(sucursal.puntoVenta),
+    puntoVenta,
+    numero: 0,
     aseguradoraId: aseguradora.id,
-    siniestro: String(entre(1_000_000, 9_999_999)),
+    siniestro,
     patente: patente(),
     total,
     fechaDrive,
@@ -280,64 +316,92 @@ function crearFactura(fecha) {
   }
 }
 
-for (let fecha = FECHA_INICIO; fecha <= FECHA_CORTE; fecha = sumarDias(fecha, 1)) {
-  if (!esDiaHabil(fecha)) continue
-  // A fin de mes se factura mucho más
-  const dia = Number(fecha.slice(8, 10))
-  const cantidad = dia >= 25 ? entre(4, 9) : entre(1, 3)
-
+// Fechas de factura: cantidad por mes y peso de cada día como en la planilla (sin domingos)
+const fechasDeFactura = []
+for (const [mes, cantidad] of Object.entries(FACTURAS_POR_MES)) {
+  const diasDelMes = new Date(Date.UTC(2026, Number(mes), 0)).getUTCDate()
+  const dias = PESO_DIA.slice(0, diasDelMes).map((peso, i) => ({ dia: i + 1, peso }))
   for (let i = 0; i < cantidad; i++) {
-    const factura = crearFactura(fecha)
-    comprobantes.push(factura)
-    const edad = diffDias(fecha, FECHA_CORTE)
+    let fecha
+    do {
+      fecha = `2026-${String(mes).padStart(2, '0')}-${String(elegirPonderado(dias).dia).padStart(2, '0')}`
+    } while (new Date(Date.parse(fecha)).getUTCDay() === 0 || fecha === '2026-01-01' || fecha > FECHA_CORTE)
+    fechasDeFactura.push(fecha)
+  }
+}
+fechasDeFactura.sort()
 
-    // ~5 % se anula con una nota de crédito por el mismo importe
-    if (factura.estado !== 'cobrada' && edad > 5 && azar() < 0.05) {
-      const informada = azar() < 0.55
-      const fechaNc = sumarDias(fecha, entre(1, Math.min(10, edad)))
-      factura.estado = 'anulada'
-      factura.fechaPresentacion = null
-      factura.vencimiento = null
-      factura.compromiso = null
-      factura.eventos = factura.eventos.filter((e) => e.tipo !== 'aviso')
-      factura.observaciones = elegir([
-        'Factura emitida a la compañía equivocada',
-        'Error en el importe: se refactura',
-        'Factura vencida, se refactura con fecha actual',
-      ])
-      const nc = {
-        id: `nc-${comprobantes.length + 1}`,
-        ref: String((ref += 1)),
-        tipo: 'NC',
-        fecha: fechaNc,
-        sucursal: factura.sucursal,
-        puntoVenta: factura.puntoVenta,
-        numero: nuevoNumero(factura.puntoVenta),
-        aseguradoraId: factura.aseguradoraId,
-        siniestro: factura.siniestro,
-        patente: factura.patente,
-        total: -factura.total,
-        fechaDrive: null,
-        subidoPor: null,
-        fechaPresentacion: null,
-        vencimiento: null,
-        fechaCobro: null,
-        estado: 'nota_credito',
-        ncReferencia: factura.id,
-        // Las viejas ya las revisó auditoría; las recientes pueden estar sin informar
-        ncInformada: informada || diffDias(fechaNc, FECHA_CORTE) > 90,
-        compromiso: null,
-        observaciones: factura.observaciones,
-        documentos: [],
-        eventos: informada
-          ? [{ fecha: fechaNc, autor: factura._persona, area: 'sucursal', tipo: 'nota_credito', texto: `Informó la NC: ${factura.observaciones.toLowerCase()}` }]
-          : [],
-      }
-      comprobantes.push(nc)
+for (const fecha of fechasDeFactura) {
+  const factura = crearFactura(fecha)
+  comprobantes.push(factura)
+  const edad = diffDias(fecha, FECHA_CORTE)
+
+  // ~3 % se anula con una nota de crédito por el mismo importe (como en la planilla)
+  if (edad > 5 && azar() < 0.03) {
+    const informada = azar() < 0.55
+    const fechaNc = sumarDias(fecha, entre(1, Math.min(10, edad)))
+    factura.estado = 'anulada'
+    factura.fechaPresentacion = null
+    factura.vencimiento = null
+    factura.fechaCobro = null
+    factura.compromiso = null
+    factura.eventos = factura.eventos.filter((e) => e.tipo !== 'aviso')
+    factura.observaciones = elegir([
+      'Factura emitida a la compañía equivocada',
+      'Error en el importe: se refactura',
+      'Factura vencida, se refactura con fecha actual',
+    ])
+    const nc = {
+      id: `nc-${comprobantes.length + 1}`,
+      ref: '0',
+      tipo: 'NC',
+      fecha: fechaNc,
+      sucursal: factura.sucursal,
+      puntoVenta: factura.puntoVenta,
+      numero: 0,
+      aseguradoraId: factura.aseguradoraId,
+      siniestro: factura.siniestro,
+      patente: factura.patente,
+      total: -factura.total,
+      fechaDrive: null,
+      subidoPor: null,
+      fechaPresentacion: null,
+      vencimiento: null,
+      fechaCobro: null,
+      estado: 'nota_credito',
+      ncReferencia: factura.id,
+      // Las viejas ya las revisó auditoría; las recientes pueden estar sin informar
+      ncInformada: informada || diffDias(fechaNc, FECHA_CORTE) > 90,
+      compromiso: null,
+      observaciones: factura.observaciones,
+      documentos: [],
+      eventos: informada
+        ? [{ fecha: fechaNc, autor: factura._persona, area: 'sucursal', tipo: 'nota_credito', texto: `Informó la NC: ${factura.observaciones.toLowerCase()}` }]
+        : [],
     }
+    comprobantes.push(nc)
   }
 }
 for (const c of comprobantes) delete c._persona
+
+// Numeración correlativa por punto de venta y referencias crecientes, en orden de fecha
+comprobantes.sort((a, b) => a.fecha.localeCompare(b.fecha))
+const numeradores = {}
+let ref = 6_960_000
+for (const c of comprobantes) {
+  numeradores[c.puntoVenta] ??= entre(3000, 9000)
+  c.numero = ++numeradores[c.puntoVenta]
+  ref += entre(1, 3)
+  c.ref = String(ref)
+}
+
+// Para que el archivo no pese de más: lo viejo y ya cobrado guarda solo lo relevante
+for (const c of comprobantes) {
+  if (c.estado === 'cobrada' && diffDias(c.fecha, FECHA_CORTE) > 60) {
+    c.eventos = c.eventos.filter((e) => e.tipo === 'rechazo' || e.tipo === 'mensaje')
+    c.documentos = c.documentos.map(({ tipo, estado }) => ({ tipo, estado }))
+  }
+}
 
 // ── Cobros previstos ─────────────────────────────────────────────────────────
 const cobrosPrevistos = []
@@ -376,7 +440,7 @@ const aseguradoras = ASEGURADORAS.map(({ id, nombre, plazoPagoDias }) => ({
 }))
 const meta = {
   fechaCorte: FECHA_CORTE,
-  sucursales: SUCURSALES.map(({ nombre, puntoVenta, gerente, personas }) => ({ nombre, puntoVenta, gerente, personas })),
+  sucursales: SUCURSALES.map(({ nombre, pvs, gerente, personas }) => ({ nombre, puntoVenta: pvs[0].pv, gerente, personas })),
 }
 
 const carpeta = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'datos-demo')

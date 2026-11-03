@@ -52,7 +52,15 @@ function notificacionesIniciales(d: DatosApp): Notificacion[] {
       }
     }
   }
-  return lista.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 80)
+  // Hasta 40 por destinatario, las más nuevas primero
+  const porDestinatario = new Map<string, number>()
+  return lista
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .filter((n) => {
+      const cant = (porDestinatario.get(n.para) ?? 0) + 1
+      porDestinatario.set(n.para, cant)
+      return cant <= 40
+    })
 }
 
 let contador = 0

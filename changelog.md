@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0] - 2026-11-03
+
+### Cambiado
+- **Una vista distinta por rol.** Gerencia entra a un Resumen simple (más Ranking, Saldos, Impacto y "Buscar una factura", solo para consultar). Auditoría entra a **Avisos**, con todo el detalle. Cada sucursal entra a **Mis facturas**, una pantalla guiada: qué subir, qué corregir y qué está en revisión.
+- **Avisos** reemplaza a Alertas: tarjetas grandes por sector (Sucursales, Auditoría, Compañías) que abren la tabla correspondiente ya filtrada.
+- **Resumen** reúne el informe del mes, el del año y los cobros esperados por semana (antes en "Cobros previstos"). Se sacaron los datos repetidos del Inicio.
+- **Todas las tablas:** filtros sobre el nombre de cada columna, encabezado fijo al bajar, orden ascendente o descendente tocando el título, lupa para buscar una factura y exportar lo filtrado.
+- **Montos con centavos** en todas las tablas.
+- **Pendientes de sucursales:** las tarjetas filtran la tabla (se arregló "Compromisos vencidos"); "Todos los niveles" pasó a llamarse "Estado".
+- **Control diario:** "En Drive" pasó a "Subida" (fecha en que se subió a la plataforma); siniestro y patente en columnas separadas; columna "Aviso de NC"; se sacó "Subir escaneo".
+- **Observaciones** editables desde el legajo (Auditoría).
+- **Ranking:** se puede elegir cualquier mes del año.
+- **Impacto:** aviso de que la estimación está en revisión con Contabilidad; lo retenido es real y el costo de la demora, estimado.
+- **Saldos:** filtros en las columnas y sin el "paga a X días".
+
+### Agregado
+- **Notificaciones** (campana) para Sucursal y Auditoría con los movimientos del otro lado.
+- **Compañías:** razón social, CUIT, plazo de pago y correos. En la demo los correos son inventados; los reales se ven al cargar la pestaña CP o Info. Compañías (solo en el navegador).
+- **Cargar Excel del ERP** (vista previa): lee la exportación de facturas en CSV y agrega las nuevas en Doc. pendiente. No se guarda.
+
+### Quitado
+- Pantallas Alertas, Cobros previstos y el Inicio anterior.
+
 ## [0.5.1] - 2026-11-03
 
 ### Cambiado

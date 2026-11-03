@@ -84,6 +84,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const reclamo = estadoReclamo(c, hoy)
 
   const [mensaje, setMensaje] = useState('')
+  const [observaciones, setObservaciones] = useState(c.observaciones)
   const [formulario, setFormulario] = useState<'ninguno' | 'demora' | 'rechazo' | 'reclamo'>('ninguno')
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
   const [motivo, setMotivo] = useState<string>(MOTIVOS_OBSERVACION[0])
@@ -169,7 +170,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   const recorrido = [
     { etiqueta: 'Factura', fecha: c.fecha, desde: null },
-    { etiqueta: 'Subida de documentos (Drive)', fecha: c.fechaDrive, desde: c.fecha },
+    { etiqueta: 'Subida de la documentación', fecha: c.fechaDrive, desde: c.fecha },
     { etiqueta: 'Presentación', fecha: c.fechaPresentacion, desde: c.fecha },
     { etiqueta: 'Vencimiento', fecha: c.vencimiento, desde: null },
     { etiqueta: 'Cobro', fecha: c.fechaCobro, desde: c.fecha },
@@ -523,11 +524,34 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
             </ol>
           </section>
 
-          {c.observaciones && (
+          {/* Observaciones: como la columna de la planilla; Auditoría las edita */}
+          {rol === 'auditoria' ? (
             <section>
               <h3 className="mb-1 font-bold">Observaciones</h3>
-              <p className="text-slate-600">{c.observaciones}</p>
+              <textarea
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                rows={2}
+                placeholder="Nota interna de Auditoría sobre esta factura"
+                className={`${claseSelect} w-full`}
+              />
+              {observaciones !== c.observaciones && (
+                <button
+                  type="button"
+                  onClick={() => actualizarComprobante(c.id, { observaciones })}
+                  className="mt-2 rounded-lg bg-marca px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-oscuro"
+                >
+                  Guardar observación
+                </button>
+              )}
             </section>
+          ) : (
+            c.observaciones && (
+              <section>
+                <h3 className="mb-1 font-bold">Observaciones</h3>
+                <p className="text-slate-600">{c.observaciones}</p>
+              </section>
+            )
           )}
         </div>
       </aside>

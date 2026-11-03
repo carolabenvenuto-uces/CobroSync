@@ -1,88 +1,161 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, FileSpreadsheet, ScanLine, Search } from 'lucide-react'
-import { FiltroMes, FiltroSucursal } from '../components/Filtros'
-import { LegajoPanel } from '../components/LegajoPanel'
-import { AYUDA_ETAPA, BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../components/ui/Badges'
-import { BotonExportar, Card, EncabezadoPagina } from '../components/ui/Card'
-import { claseSelect } from '../components/ui/Estados'
+import { FileSpreadsheet, Info, X } from 'lucide-react'
+import { FiltroSucursal } from '../components/Filtros'
+import { BadgeEtapa, nombreEtapa, quienEtapa } from '../components/ui/Badges'
+import { EncabezadoPagina } from '../components/ui/Card'
+import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
-import type { Etapa } from '../domain/tipos'
-import { diffDias, enMes } from '../lib/fechas'
+import type { Comprobante } from '../domain/tipos'
+import { diffDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
+import { importarErp } from '../services/erp'
+import { leerArchivo } from '../services/planilla'
 
-const POR_PAGINA = 25
-type FiltroEtapa = Etapa | 'todas'
+/** "2026-10 · Octubre": así el filtro de mes queda ordenado. */
+const mesDeFecha = (iso: string) => `${iso.slice(0, 7)} · ${MESES[Number(iso.slice(5, 7)) - 1]}`
+
+function avisoNc(c: Comprobante): string {
+  if (c.tipo !== 'NC') return ''
+  return c.ncInformada ? 'Informada' : 'Sin aviso'
+}
 
 /**
- * Control diario: la misma información y el mismo orden de columnas que la hoja
- * "Diario" de la planilla, con el estado calculado y el legajo a un clic.
+ * Control diario: la hoja "Diario" de la planilla, con el estado calculado y el legajo a un clic.
+ * Para Gerencia es "Buscar una factura": la misma tabla, solo para consultar.
  */
 export default function ControlDiario() {
-  const { datos, anio, mes, hoy } = useApp()
+  const { datos, hoy, rol, abrirLegajo, agregarComprobante } = useApp()
   const comprobantes = useComprobantes()
-  const { aseguradoras } = datos!
-  const [params, setParams] = useSearchParams()
-
-  // Los filtros de etapa y período viven en la URL: así los links del Inicio llegan ya filtrados.
-  const etapa = (params.get('etapa') ?? 'todas') as FiltroEtapa
-  const periodo = params.get('periodo') === 'anio' ? 'anio' : 'mes'
-  const [busqueda, setBusqueda] = useState('')
-  const [compania, setCompania] = useState('todas')
-  const [pagina, setPagina] = useState(1)
-  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
-
-  function cambiarParam(clave: string, valor: string) {
-    const nuevos = new URLSearchParams(params)
-    nuevos.set(clave, valor)
-    setParams(nuevos, { replace: true })
-    setPagina(1)
-  }
+  const { aseguradoras, meta } = datos!
+  const [params] = useSearchParams()
+  const soloConsulta = rol === 'gerencia'
+  const entradaErp = useRef<HTMLInputElement>(null)
+  const [mensajeErp, setMensajeErp] = useState<{ texto: string; error?: boolean } | null>(null)
 
   const nombreCompania = useMemo(
     () => Object.fromEntries(aseguradoras.map((a) => [a.id, a.nombre])) as Record<string, string>,
     [aseguradoras],
   )
 
-  const filas = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase()
-    return comprobantes
-      .map((c) => ({ c, semaforo: calcularSemaforo(c, hoy) }))
-      .filter(({ c, semaforo: s }) => {
-        if (periodo === 'mes' && !enMes(c.fecha, anio, mes)) return false
-        if (etapa !== 'todas' && s.etapa !== etapa) return false
-        if (compania !== 'todas' && c.aseguradoraId !== compania) return false
-        if (texto) {
-          const campos = [c.ref, formatoComprobante(c), c.patente, c.siniestro, c.observaciones].join(' ').toLowerCase()
-          if (!campos.includes(texto)) return false
-        }
-        return true
+  const filas = useMemo(() => comprobantes.map((c) => ({ c, s: calcularSemaforo(c, hoy) })), [comprobantes, hoy])
+  type Fila = (typeof filas)[number]
+
+  // Si no viene ningún filtro desde un aviso, arranca mostrando el mes en curso
+  const filtrosIniciales = [...params.keys()].length > 0 ? Object.fromEntries(params.entries()) : { mes: mesDeFecha(hoy) }
+
+  async function cargarErp(archivo: File | undefined) {
+    if (!archivo) return
+    try {
+      const texto = await leerArchivo(archivo)
+      const r = importarErp(texto, datos!.comprobantes, aseguradoras, meta.sucursales, hoy)
+      r.nuevas.forEach(agregarComprobante)
+      setMensajeErp({
+        texto: `Se agregaron ${r.nuevas.length} facturas nuevas en "Doc. pendiente". ${r.repetidas} ya estaban cargadas y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.`,
       })
-      .sort((a, b) => b.c.fecha.localeCompare(a.c.fecha) || b.c.numero - a.c.numero)
-  }, [comprobantes, periodo, anio, mes, etapa, compania, busqueda, hoy])
+    } catch (e) {
+      setMensajeErp({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
+    }
+    if (entradaErp.current) entradaErp.current.value = ''
+  }
 
-  const totalFiltrado = filas.reduce((s, f) => s + f.c.total, 0)
-  const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA))
-  const paginaActual = Math.min(pagina, totalPaginas)
-  const visibles = filas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
-  const seleccionado = comprobantes.find((c) => c.id === seleccionadoId) ?? null
-  const conteo = (e: Etapa) => filas.filter((f) => f.semaforo.etapa === e).length
+  const diasHasta = (desde: string, hasta: string | null) =>
+    hasta ? <span className="ml-1 text-xs text-slate-400">{diffDias(desde, hasta)} d</span> : null
 
-  function exportar() {
+  const columnas: Columna<Fila>[] = [
+    {
+      clave: 'mes',
+      titulo: 'Fecha',
+      orden: (x) => x.c.fecha,
+      filtro: (x) => mesDeFecha(x.c.fecha),
+      celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span>,
+    },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
+    { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
+    {
+      clave: 'comprobante',
+      titulo: 'Comprobante',
+      filtro: (x) => (x.c.tipo === 'NC' ? 'Nota de crédito' : 'Factura'),
+      celda: (x) => <span className="whitespace-nowrap font-medium">{formatoComprobante(x.c)}</span>,
+    },
+    {
+      clave: 'compania',
+      titulo: 'Compañía',
+      filtro: (x) => nombreCompania[x.c.aseguradoraId] ?? x.c.aseguradoraId,
+      celda: (x) => <span className="whitespace-nowrap">{nombreCompania[x.c.aseguradoraId]}</span>,
+    },
+    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.siniestro}</span> },
+    { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
+    {
+      clave: 'total',
+      titulo: 'Total',
+      derecha: true,
+      orden: (x) => x.c.total,
+      celda: (x) => <span className={`whitespace-nowrap font-semibold tabular-nums ${x.c.total < 0 ? 'text-sem-rojo' : ''}`}>{formatoPesos(x.c.total)}</span>,
+    },
+    {
+      clave: 'subida',
+      titulo: 'Subida',
+      orden: (x) => x.c.fechaDrive,
+      celda: (x) => (
+        <span className="whitespace-nowrap">
+          {formatoFecha(x.c.fechaDrive)}
+          {diasHasta(x.c.fecha, x.c.fechaDrive)}
+        </span>
+      ),
+    },
+    {
+      clave: 'presentacion',
+      titulo: 'Presentación',
+      orden: (x) => x.c.fechaPresentacion,
+      celda: (x) => (
+        <span className="whitespace-nowrap">
+          {formatoFecha(x.c.fechaPresentacion)}
+          {diasHasta(x.c.fecha, x.c.fechaPresentacion)}
+        </span>
+      ),
+    },
+    { clave: 'vto', titulo: 'Vto.', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
+    { clave: 'cobro', titulo: 'Cobro', orden: (x) => x.c.fechaCobro, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fechaCobro)}</span> },
+    {
+      clave: 'estado',
+      titulo: 'Estado',
+      filtro: (x) => nombreEtapa(x.s.etapa),
+      celda: (x) => (
+        <div title={x.s.detalle.join(' · ')}>
+          <BadgeEtapa etapa={x.s.etapa} />
+          {x.c.reclamos.length > 0 && <div className="mt-0.5 text-[11px] text-slate-500">{x.c.reclamos.length} reclamo(s)</div>}
+        </div>
+      ),
+    },
+    {
+      clave: 'nc',
+      titulo: 'Aviso de NC',
+      filtro: (x) => avisoNc(x.c),
+      celda: (x) =>
+        x.c.tipo === 'NC' ? (
+          <span className={`whitespace-nowrap text-xs ${x.c.ncInformada ? 'text-slate-600' : 'font-semibold text-sem-rojo'}`}>{avisoNc(x.c)}</span>
+        ) : null,
+    },
+    { clave: 'obs', titulo: 'Observaciones', celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
+  ]
+
+  function exportar(lista: Fila[]) {
     descargarExcel(
-      `control-diario-${periodo === 'mes' ? `${anio}-${mes}` : anio}`,
-      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro/Patente', 'Total', 'En Drive', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Reclamos', 'Último reclamo', 'Observaciones'],
-      filas.map(({ c, semaforo: s }) => [
+      `control-diario-${hoy}`,
+      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Subida', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Aviso de NC', 'Reclamos', 'Último reclamo', 'Observaciones'],
+      lista.map(({ c, s }) => [
         fechaExcel(c.fecha),
         c.ref,
         c.sucursal,
         `${c.tipo} E`,
         `${c.puntoVenta} - ${String(c.numero).padStart(8, '0')}`,
         nombreCompania[c.aseguradoraId],
-        [c.siniestro, c.patente].filter(Boolean).join(' · '),
+        c.siniestro || null,
+        c.patente || null,
         c.total,
         fechaExcel(c.fechaDrive),
         c.fechaDrive ? diffDias(c.fecha, c.fechaDrive) : null,
@@ -92,6 +165,7 @@ export default function ControlDiario() {
         fechaExcel(c.fechaCobro),
         nombreEtapa(s.etapa),
         quienEtapa(s.etapa),
+        avisoNc(c) || null,
         c.reclamos.length || null,
         fechaExcel(ultimoReclamo(c)),
         c.observaciones || null,
@@ -99,177 +173,74 @@ export default function ControlDiario() {
     )
   }
 
-  const botonEtapa2 =
-    'inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-400'
-
   return (
     <>
       <EncabezadoPagina
-        titulo="Control diario"
-        subtitulo={periodo === 'mes' ? `Facturas y NC de ${MESES[mes - 1].toLowerCase()} ${anio}` : `Todas las facturas y NC de ${anio}`}
+        titulo={soloConsulta ? 'Buscar una factura' : 'Control diario'}
+        subtitulo={
+          soloConsulta
+            ? 'Escribí el número, el siniestro o la patente y tocá la fila para ver en qué está'
+            : 'Todas las facturas y notas de crédito, como la hoja "Diario" de la planilla'
+        }
         acciones={
           <>
-            <button type="button" disabled className={botonEtapa2} title="Disponible en la etapa 2">
-              <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
-            </button>
-            <button type="button" disabled className={botonEtapa2} title="Disponible en la etapa 2">
-              <ScanLine className="h-4 w-4" /> Subir escaneo
-            </button>
-            <BotonExportar onClick={exportar} />
+            <FiltroSucursal />
+            {!soloConsulta && (
+              <>
+                <input ref={entradaErp} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
+                <button
+                  type="button"
+                  onClick={() => entradaErp.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche hover:bg-fondo"
+                  title="Elegí la exportación de facturas del ERP guardada como CSV"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
+                </button>
+              </>
+            )}
           </>
         }
       />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="relative min-w-56 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => {
-                setBusqueda(e.target.value)
-                setPagina(1)
-              }}
-              placeholder="Buscar por ref., número, siniestro, patente u observación"
-              className={`${claseSelect} w-full pl-9`}
-            />
-          </label>
-          <FiltroSucursal />
-          <select className={claseSelect} value={periodo} onChange={(e) => cambiarParam('periodo', e.target.value)}>
-            <option value="mes">Un mes</option>
-            <option value="anio">Todo el año</option>
-          </select>
-          {periodo === 'mes' && <FiltroMes />}
-          <select className={claseSelect} value={etapa} onChange={(e) => cambiarParam('etapa', e.target.value)}>
-            <option value="todas">Todos los estados</option>
-            {(['doc_pendiente', 'doc_atrasada', 'doc_observada', 'pres_pendiente', 'al_dia', 'vencida', 'cobrado', 'no_aplica'] as Etapa[]).map(
-              (e) => (
-                <option key={e} value={e}>
-                  {nombreEtapa(e)} · {AYUDA_ETAPA[e].toLowerCase()}
-                </option>
-              ),
+      {mensajeErp && (
+        <div
+          className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${
+            mensajeErp.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-marca/20 bg-marca/5 text-blue-900'
+          }`}
+        >
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex-1">
+            {mensajeErp.texto}
+            {!mensajeErp.error && (
+              <div className="mt-1 text-xs">
+                Es una vista previa: <strong>no se guarda</strong> y se pierde al recargar la página. Guardarlo queda para la etapa 2 (Google).
+              </div>
             )}
-          </select>
-          <select
-            className={claseSelect}
-            value={compania}
-            onChange={(e) => {
-              setCompania(e.target.value)
-              setPagina(1)
-            }}
-          >
-            <option value="todas">Todas las compañías</option>
-            {aseguradoras.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-          <span className="font-semibold text-noche">
-            {filas.length.toLocaleString('es-AR')} comprobantes · {formatoPesos(totalFiltrado)}
-          </span>
-          {ETAPAS_ACTIVAS.map((e) => (
-            <span key={e}>
-              {nombreEtapa(e)}: <strong>{conteo(e)}</strong>
-            </span>
-          ))}
-          <span>
-            Cobrado: <strong>{conteo('cobrado')}</strong>
-          </span>
-        </div>
-      </Card>
-
-      <Card className="mt-4 overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-fondo uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-3 py-3 font-semibold">Fecha</th>
-                <th className="px-2 py-3 font-semibold">Ref.</th>
-                <th className="px-2 py-3 font-semibold">Sucursal</th>
-                <th className="px-2 py-3 font-semibold">Comprobante</th>
-                <th className="px-2 py-3 font-semibold">Compañía</th>
-                <th className="px-2 py-3 font-semibold">Siniestro / patente</th>
-                <th className="px-2 py-3 text-right font-semibold">Total</th>
-                <th className="px-2 py-3 font-semibold">En Drive</th>
-                <th className="px-2 py-3 font-semibold">Presentación</th>
-                <th className="px-2 py-3 font-semibold">Vto.</th>
-                <th className="px-2 py-3 font-semibold">Cobro</th>
-                <th className="px-2 py-3 font-semibold">Estado</th>
-                <th className="px-3 py-3 font-semibold">Observaciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {visibles.map(({ c, semaforo: s }) => (
-                <tr key={c.id} onClick={() => setSeleccionadoId(c.id)} className="cursor-pointer hover:bg-marca/5" title={s.detalle.join(' · ')}>
-                  <td className="px-3 py-2 whitespace-nowrap">{formatoFecha(c.fecha)}</td>
-                  <td className="px-2 py-2 text-slate-500">{c.ref}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">{c.sucursal}</td>
-                  <td className="px-2 py-2 whitespace-nowrap font-medium">{formatoComprobante(c)}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">{nombreCompania[c.aseguradoraId]}</td>
-                  <td className="px-2 py-2 whitespace-nowrap text-slate-600">{[c.siniestro, c.patente].filter(Boolean).join(' · ')}</td>
-                  <td className={`px-2 py-2 text-right whitespace-nowrap font-semibold tabular-nums ${c.total < 0 ? 'text-sem-rojo' : ''}`}>
-                    {formatoPesos(c.total)}
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    {formatoFecha(c.fechaDrive)}
-                    {c.fechaDrive && <span className="ml-1 text-xs text-slate-400">{diffDias(c.fecha, c.fechaDrive)} d</span>}
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    {formatoFecha(c.fechaPresentacion)}
-                    {c.fechaPresentacion && <span className="ml-1 text-xs text-slate-400">{diffDias(c.fecha, c.fechaPresentacion)} d</span>}
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">{formatoFecha(c.vencimiento)}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">{formatoFecha(c.fechaCobro)}</td>
-                  <td className="px-2 py-2">
-                    <BadgeEtapa etapa={s.etapa} />
-                    {c.reclamos.length > 0 && <div className="mt-0.5 text-[11px] text-slate-500">{c.reclamos.length} reclamo(s)</div>}
-                  </td>
-                  <td className="max-w-56 truncate px-3 py-2 text-xs text-slate-600">{c.observaciones}</td>
-                </tr>
-              ))}
-              {visibles.length === 0 && (
-                <tr>
-                  <td colSpan={13} className="px-4 py-10 text-center text-slate-500">
-                    No hay comprobantes con estos filtros.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm">
-          <span className="text-slate-500">
-            Página {paginaActual} de {totalPaginas}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setPagina(paginaActual - 1)}
-              disabled={paginaActual === 1}
-              className="rounded-lg border border-slate-200 p-1.5 disabled:opacity-40"
-              aria-label="Página anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagina(paginaActual + 1)}
-              disabled={paginaActual === totalPaginas}
-              className="rounded-lg border border-slate-200 p-1.5 disabled:opacity-40"
-              aria-label="Página siguiente"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
+          <button type="button" onClick={() => setMensajeErp(null)} aria-label="Cerrar" className="text-slate-500 hover:text-noche">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      </Card>
+      )}
 
-      {seleccionado && <LegajoPanel comprobante={seleccionado} onCerrar={() => setSeleccionadoId(null)} />}
+      <Tabla
+        key={params.toString()}
+        filas={filas}
+        columnas={columnas}
+        clave={(x) => x.c.id}
+        onFila={(x) => abrirLegajo(x.c.id)}
+        buscar={(x) => [x.c.ref, formatoComprobante(x.c), x.c.siniestro, x.c.patente, x.c.observaciones].join(' ')}
+        textoBusqueda="Buscar por ref., número de factura, siniestro, patente u observación"
+        filtrosIniciales={filtrosIniciales}
+        ordenInicial={{ clave: 'mes', dir: 'desc' }}
+        exportar={exportar}
+        resumen={(l) => (
+          <>
+            <strong>{l.length.toLocaleString('es-AR')}</strong> comprobantes · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong>
+          </>
+        )}
+        vacio="No hay comprobantes con estos filtros."
+      />
     </>
   )
 }

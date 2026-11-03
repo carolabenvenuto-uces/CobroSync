@@ -3,10 +3,11 @@ import type { Comprobante } from '../domain/tipos'
 const pesos = new Intl.NumberFormat('es-AR', {
   style: 'currency',
   currency: 'ARS',
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 })
 
-/** $ 1.234.567 */
+/** $ 1.234.567,89 — siempre con centavos, porque hacen a la diferencia en los totales */
 export function formatoPesos(valor: number): string {
   return pesos.format(valor)
 }
@@ -14,7 +15,7 @@ export function formatoPesos(valor: number): string {
 /** $ 9,2 M — para tarjetas y ejes de gráficos (con espacios que no cortan línea) */
 export function formatoPesosCorto(valor: number): string {
   const absoluto = Math.abs(valor)
-  if (absoluto < 1_000_000) return formatoPesos(valor)
+  if (absoluto < 1_000_000) return `$\u00a0${Math.round(valor).toLocaleString('es-AR')}`
   const millones = (absoluto / 1_000_000).toLocaleString('es-AR', { maximumFractionDigits: 1 })
   return `${valor < 0 ? '-' : ''}$\u00a0${millones}\u00a0M`
 }

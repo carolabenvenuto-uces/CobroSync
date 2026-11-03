@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { FiltroSucursal } from '../components/Filtros'
-import { LegajoPanel } from '../components/LegajoPanel'
-import { BotonExportar, Card, EncabezadoPagina, Indicador } from '../components/ui/Card'
-import { claseSelect } from '../components/ui/Estados'
+import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
   estadoReclamo,
@@ -13,6 +12,7 @@ import {
   ultimoReclamo,
   type EstadoReclamo,
 } from '../domain/reclamos'
+import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -28,37 +28,56 @@ const ESTILO: Record<EstadoReclamo, string> = {
  * cuándo fue el último reclamo y cuáles hay que escalar a gerencia.
  */
 export default function Reclamos() {
-  const { datos, hoy } = useApp()
+  const { datos, hoy, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
-  const compania = params.get('compania') ?? 'todas'
-  const [filtro, setFiltro] = useState<EstadoReclamo | 'todas'>('todas')
-  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
   const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
+  type Fila = { c: Comprobante; estado: EstadoReclamo; dias: number }
   const vencidas = useMemo(
     () =>
       comprobantes
         .map((c) => ({ c, estado: estadoReclamo(c, hoy) }))
-        .filter((x): x is { c: (typeof comprobantes)[number]; estado: EstadoReclamo } => x.estado !== null)
-        .filter((x) => compania === 'todas' || x.c.aseguradoraId === compania)
-        .sort((a, b) => (a.c.vencimiento ?? '').localeCompare(b.c.vencimiento ?? '')),
-    [comprobantes, hoy, compania],
+        .filter((x): x is { c: Comprobante; estado: EstadoReclamo } => x.estado !== null)
+        .map((x): Fila => ({ ...x, dias: diffDias(x.c.vencimiento as string, hoy) })),
+    [comprobantes, hoy],
   )
-  const visibles = vencidas.filter((x) => filtro === 'todas' || x.estado === filtro)
   const resumen = (e: EstadoReclamo) => {
     const lista = vencidas.filter((x) => x.estado === e)
     return { cantidad: lista.length, total: lista.reduce((s, x) => s + x.c.total, 0) }
   }
   const total = vencidas.reduce((s, x) => s + x.c.total, 0)
-  const seleccionado = comprobantes.find((c) => c.id === seleccionadoId) ?? null
 
-  function exportar() {
+  // Desde Saldos llega ?compania=<id>; el filtro de la columna usa el nombre
+  const filtrosIniciales = Object.fromEntries(
+    [...params.entries()].map(([k, v]) => (k === 'compania' ? [k, nombreCompania(v)] : [k, v])),
+  )
+  const estadoActivo = params.get('estado')
+
+  const columnas: Columna<Fila>[] = [
+    { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
+    { clave: 'comprobante', titulo: 'Comprobante', celda: (x) => <span className="whitespace-nowrap font-medium">{formatoComprobante(x.c)}</span> },
+    { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
+    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.siniestro}</span> },
+    { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap tabular-nums">{formatoPesos(x.c.total)}</span> },
+    { clave: 'vto', titulo: 'Vencimiento', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
+    { clave: 'dias', titulo: 'Días vencida', derecha: true, orden: (x) => x.dias, celda: (x) => <span className="font-semibold tabular-nums text-red-800">{x.dias}</span> },
+    { clave: 'reclamos', titulo: 'Reclamos', derecha: true, orden: (x) => x.c.reclamos.length, celda: (x) => <span className="tabular-nums">{x.c.reclamos.length || '—'}</span> },
+    { clave: 'ultimo', titulo: 'Último reclamo', orden: (x) => ultimoReclamo(x.c), celda: (x) => <span className="whitespace-nowrap">{formatoFecha(ultimoReclamo(x.c))}</span> },
+    {
+      clave: 'estado',
+      titulo: 'Estado',
+      filtro: (x) => NOMBRE_ESTADO_RECLAMO[x.estado],
+      celda: (x) => <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${ESTILO[x.estado]}`}>{NOMBRE_ESTADO_RECLAMO[x.estado]}</span>,
+    },
+  ]
+
+  function exportar(lista: Fila[]) {
     descargarExcel(
       `vencidas-y-reclamos-${hoy}`,
       ['Compañía', 'Comprobante', 'Sucursal', 'Siniestro', 'Total', 'Presentación', 'Vencimiento', 'Días vencida', 'Reclamos', 'Último reclamo', 'Estado'],
-      visibles.map(({ c, estado }) => [
+      lista.map(({ c, estado, dias }) => [
         nombreCompania(c.aseguradoraId),
         formatoComprobante(c),
         c.sucursal,
@@ -66,7 +85,7 @@ export default function Reclamos() {
         c.total,
         fechaExcel(c.fechaPresentacion),
         fechaExcel(c.vencimiento),
-        diffDias(c.vencimiento as string, hoy),
+        dias,
         c.reclamos.length,
         fechaExcel(ultimoReclamo(c)),
         NOMBRE_ESTADO_RECLAMO[estado],
@@ -79,93 +98,51 @@ export default function Reclamos() {
       <EncabezadoPagina
         titulo="Vencidas y reclamos"
         subtitulo={`Facturas presentadas, vencidas y sin cobrar al ${formatoFecha(hoy)}`}
-        acciones={
-          <>
-            <FiltroSucursal />
-            <select
-              className={claseSelect}
-              value={compania}
-              onChange={(e) => setParams(e.target.value === 'todas' ? {} : { compania: e.target.value }, { replace: true })}
-            >
-              <option value="todas">Todas las compañías</option>
-              {aseguradoras.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
-            <BotonExportar onClick={exportar} />
-          </>
-        }
+        acciones={<FiltroSucursal />}
       />
 
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Se escala a gerencia cuando la compañía no respondió a {RECLAMOS_PARA_ESCALAR} reclamos. Cada reclamo se registra en la
-          factura con fecha, medio y nota.
+          factura con fecha, medio y nota: tocá la fila para registrarlo.
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <button type="button" className="text-left" onClick={() => setFiltro('todas')}>
+      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <button type="button" className={`rounded-xl text-left ${!estadoActivo ? 'ring-2 ring-marca' : ''}`} onClick={() => setParams({}, { replace: true })}>
           <Indicador titulo="Vencido total" valor={formatoPesos(total)} ayuda={`${vencidas.length} facturas`} tono="rojo" />
         </button>
         {(['sin_reclamar', 'reclamada', 'escalar'] as EstadoReclamo[]).map((e) => (
-          <button key={e} type="button" className={`rounded-xl text-left ${filtro === e ? 'ring-2 ring-marca' : ''}`} onClick={() => setFiltro(e)}>
+          <button
+            key={e}
+            type="button"
+            className={`rounded-xl text-left ${estadoActivo === NOMBRE_ESTADO_RECLAMO[e] ? 'ring-2 ring-marca' : ''}`}
+            onClick={() => setParams({ estado: NOMBRE_ESTADO_RECLAMO[e] }, { replace: true })}
+          >
             <Indicador titulo={NOMBRE_ESTADO_RECLAMO[e]} valor={formatoPesos(resumen(e).total)} ayuda={`${resumen(e).cantidad} facturas`} />
           </button>
         ))}
       </div>
 
-      <Card className="mt-4 overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-fondo text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Compañía</th>
-                <th className="px-3 py-3 font-semibold">Comprobante</th>
-                <th className="px-3 py-3 font-semibold">Sucursal</th>
-                <th className="px-3 py-3 text-right font-semibold">Total</th>
-                <th className="px-3 py-3 font-semibold">Vencimiento</th>
-                <th className="px-3 py-3 text-right font-semibold">Días vencida</th>
-                <th className="px-3 py-3 text-right font-semibold">Reclamos</th>
-                <th className="px-3 py-3 font-semibold">Último reclamo</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visibles.map(({ c, estado }) => (
-                <tr key={c.id} onClick={() => setSeleccionadoId(c.id)} className="cursor-pointer hover:bg-marca/5">
-                  <td className="px-4 py-2.5 whitespace-nowrap">{nombreCompania(c.aseguradoraId)}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap font-medium">{formatoComprobante(c)}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{c.sucursal}</td>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums">{formatoPesos(c.total)}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(c.vencimiento)}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-red-800">{diffDias(c.vencimiento as string, hoy)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{c.reclamos.length || '—'}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(ultimoReclamo(c))}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${ESTILO[estado]}`}>
-                      {NOMBRE_ESTADO_RECLAMO[estado]}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {visibles.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
-                    No hay facturas vencidas con estos filtros.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      <p className="mt-3 text-xs text-slate-500">Tocá una factura para registrar un reclamo o ver su historial.</p>
-
-      {seleccionado && <LegajoPanel comprobante={seleccionado} onCerrar={() => setSeleccionadoId(null)} />}
+      <Tabla
+        key={params.toString()}
+        filas={vencidas}
+        columnas={columnas}
+        clave={(x) => x.c.id}
+        onFila={(x) => abrirLegajo(x.c.id)}
+        buscar={(x) => [formatoComprobante(x.c), x.c.siniestro, x.c.patente, x.c.ref].join(' ')}
+        textoBusqueda="Buscar por número de factura, siniestro o patente"
+        filtrosIniciales={filtrosIniciales}
+        ordenInicial={{ clave: 'dias', dir: 'desc' }}
+        exportar={exportar}
+        resumen={(l) => (
+          <>
+            <strong>{l.length.toLocaleString('es-AR')}</strong> facturas · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong>
+          </>
+        )}
+        vacio="No hay facturas vencidas con estos filtros."
+      />
     </>
   )
 }

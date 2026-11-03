@@ -465,15 +465,50 @@ for (const c of comprobantes) {
 }
 
 // ── Escritura ────────────────────────────────────────────────────────────────
+// Razón social, CUIT y plazo son datos públicos (pestaña "CP" de la planilla).
+// Los correos son inventados: los reales se ven solo al cargar la planilla propia.
+const DATOS_FISCALES = {
+  'fed-patronal': ['FEDERACION PATRONAL SEGUROS SAU', '33707366589'],
+  allianz: ['ALLIANZ ARGENTINA COMPAÑIA DE SEGUROS', '30500037217'],
+  'san-cristobal': ['SAN CRISTOBAL S.M.S.G.', '34500045339'],
+  sancor: ['SANCOR COOPERATIVA DE SEGUROS LIMITADA', '30500049460'],
+  zurich: ['ZURICH ARGENTINA COMPAÑIA DE SEG', '30500049770'],
+  'la-segunda': ['LA SEGUNDA COOP. LTDA.DE SEGUROS GENERALES', '30500017704'],
+  rivadavia: ['SEGUROS BERNARDINO RIVADAVIA COOP.LTDA', '30500050310'],
+  'la-caja': ['CAJA DE SEGUROS', '30663205621'],
+  rda: ['RDA RENTING S A', '30712257357'],
+  nacion: ['NACION SEGUROS S.A.', '30678561165'],
+  mapfre: ['MAPFRE ARGENTINA SEGUROS S.A.', '30500007539'],
+  smg: ['S.M.G. COMPAÑIA ARGENTINA DE SEGUROS S.A.', '30500031960'],
+  iutrace: ['IUTRACE S.A.S.', '30717437558'],
+  'mercantil-andina': ['COMPAÑIA DE SEGUROS LA MERCANTIL ANDINA S.A.', '30500036911'],
+  galicia: ['SEGUROS GALICIA S. A.', '30500000127'],
+  segurcoop: ['SEGURCOOP COOPERATIVA DE SEGUROS LIMITADA', '30500057277'],
+  meridional: ['LA MERIDIONAL CIA. ARGENTINA DE SEGUROS SA', '30500051163'],
+  barbuss: ['BARBUSS RISK SEGUROS ARGENTINA S.A.', '30500017011'],
+  holando: ['LA HOLANDO SUDAMERICANA CIA DE SEGS. S.A.', '33500038069'],
+  chubb: ['CHUBB SEGUROS ARGENTINA S.A.', '30500016260'],
+  victoria: ['COMPAÑIA DE SEGUROS VICTORIA S.A.', '30500032266'],
+  parana: ['PARANA SOCIEDAD ANONIMA DE SEGUROS', '30500057102'],
+}
 const aseguradoras = ASEGURADORAS.map(({ id, nombre, plazoPagoDias }) => ({
   id,
   nombre,
+  razonSocial: DATOS_FISCALES[id]?.[0] ?? nombre.toUpperCase(),
+  cuit: DATOS_FISCALES[id]?.[1] ?? '',
   email: `facturacion@${id}-seguros.example`,
+  emailReclamos: `cobranzas@${id}-seguros.example`,
   plazoPagoDias,
 }))
 const meta = {
   fechaCorte: FECHA_CORTE,
-  sucursales: SUCURSALES.map(({ nombre, pvs, gerente, personas }) => ({ nombre, puntoVenta: pvs[0].pv, gerente, personas })),
+  sucursales: SUCURSALES.map(({ nombre, pvs, gerente, personas }) => ({
+    nombre,
+    puntoVenta: pvs[0].pv,
+    puntosVenta: pvs.map((p) => p.pv),
+    gerente,
+    personas,
+  })),
 }
 
 const carpeta = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'datos-demo')

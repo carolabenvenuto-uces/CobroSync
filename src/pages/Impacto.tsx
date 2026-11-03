@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Clock, HandCoins, Hourglass, TrendingDown } from 'lucide-react'
+import { Clock, HandCoins, Hourglass, Info, TrendingDown } from 'lucide-react'
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { FiltroSucursal } from '../components/Filtros'
@@ -70,6 +70,15 @@ export default function Impacto() {
         }
       />
 
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-sem-amarillo/40 bg-sem-amarillo/10 px-4 py-3 text-sm text-amber-900">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>
+          <strong>En revisión con Contabilidad.</strong> La plata <strong>retenida</strong> es real: son facturas emitidas que todavía
+          esperan documentación. El <strong>costo de la demora</strong> es una estimación con la tasa de abajo, hasta que Contabilidad
+          defina cuál usar.
+        </span>
+      </div>
+
       <Card className="mb-4">
         <div className="flex flex-wrap items-end gap-4">
           <label className="text-xs font-semibold text-slate-500">
@@ -103,14 +112,14 @@ export default function Impacto() {
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Indicador
-          titulo="Retenido hoy"
+          titulo="Retenido hoy (real)"
           valor={formatoPesos(impacto.retenidoHoy)}
           tono="rojo"
           ayuda={`${impacto.legajosRetenidos} facturas esperando a las sucursales`}
           icono={<HandCoins className="h-4 w-4" />}
         />
         <Indicador
-          titulo={`Costo de la demora ${anio}`}
+          titulo={`Costo de la demora ${anio} (estimado)`}
           valor={formatoPesos(impacto.costoDelAnio)}
           tono="rojo"
           ayuda="Costo financiero estimado"

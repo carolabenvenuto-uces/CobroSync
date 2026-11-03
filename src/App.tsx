@@ -3,15 +3,16 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { INICIO_ROL, useApp } from './context/AppContext'
 import type { Rol } from './domain/tipos'
-import Alertas from './pages/Alertas'
-import CobrosPrevistos from './pages/CobrosPrevistos'
+import Avisos from './pages/Avisos'
+import Companias from './pages/Companias'
 import ControlDiario from './pages/ControlDiario'
-import Dashboard from './pages/Dashboard'
 import Impacto from './pages/Impacto'
 import Landing from './pages/Landing'
+import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
 import RankingSucursales from './pages/RankingSucursales'
 import Reclamos from './pages/Reclamos'
+import Resumen from './pages/Resumen'
 import Saldos from './pages/Saldos'
 import UsarPlanilla from './pages/UsarPlanilla'
 
@@ -23,6 +24,15 @@ function SoloPara({ roles, children }: { roles: Rol[]; children: ReactNode }) {
 
 const OFICINA: Rol[] = ['auditoria', 'gerencia']
 const oficina = (pagina: ReactNode) => <SoloPara roles={OFICINA}>{pagina}</SoloPara>
+const auditoria = (pagina: ReactNode) => <SoloPara roles={['auditoria']}>{pagina}</SoloPara>
+
+/** Cada rol entra a su propia pantalla de inicio. */
+function Inicio() {
+  const { rol } = useApp()
+  if (rol === 'gerencia') return <Resumen />
+  if (rol === 'sucursal') return <MisFacturas />
+  return <Avisos />
+}
 
 export default function App() {
   return (
@@ -31,16 +41,16 @@ export default function App() {
       <Route path="/" element={<Navigate to="/app" replace />} />
       <Route path="/presentacion" element={<Landing />} />
       <Route path="/app" element={<AppLayout />}>
-        <Route index element={oficina(<Dashboard />)} />
-        <Route path="pendientes" element={<Pendientes />} />
-        <Route path="alertas" element={oficina(<Alertas />)} />
-        <Route path="control-diario" element={<ControlDiario />} />
-        <Route path="reclamos" element={oficina(<Reclamos />)} />
+        <Route index element={<Inicio />} />
+        <Route path="resumen" element={oficina(<Resumen />)} />
+        <Route path="pendientes" element={auditoria(<Pendientes />)} />
+        <Route path="reclamos" element={auditoria(<Reclamos />)} />
+        <Route path="control-diario" element={oficina(<ControlDiario />)} />
         <Route path="sucursales" element={oficina(<RankingSucursales />)} />
         <Route path="impacto" element={oficina(<Impacto />)} />
         <Route path="saldos" element={oficina(<Saldos />)} />
-        <Route path="cobros-previstos" element={oficina(<CobrosPrevistos />)} />
-        <Route path="planilla" element={oficina(<UsarPlanilla />)} />
+        <Route path="companias" element={auditoria(<Companias />)} />
+        <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

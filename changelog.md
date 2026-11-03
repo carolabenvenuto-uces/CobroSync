@@ -7,6 +7,7 @@
 - El volumen por mes, el pico de fin de mes, el peso de cada compañía, las demoras de cada sucursal y la distribución de montos salen de estadísticas de la planilla. Fechas, montos, números y siniestros son inventados, con el formato real de cada compañía.
 - Formato de comprobante como en la planilla: `FC E 35-00004570`.
 - Personas genéricas por sucursal ("Facturación Rocamora 1", "Gerente de Rocamora").
+- Facturas sin presentar calibradas con la planilla (filas en lila): unas 360 a la fecha, la mayoría del último mes y algunas de hace meses que nunca se subieron, sobre todo de Alvarez Thomas.
 
 ## [0.2.0] - 2026-11-03
 

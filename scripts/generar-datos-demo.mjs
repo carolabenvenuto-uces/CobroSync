@@ -91,15 +91,20 @@ const ASEGURADORAS = [
 ]
 
 // Demoras medidas en la planilla (días entre la factura y la subida al Drive):
-// `demora`: media de los que llegan a tiempo · `atraso`: % que pasa los 7 días
+// `demora`: media de los que llegan a tiempo · `atraso`: probabilidad de pasar los 7 días
+// `cola`: cuánto se estira un atraso (días promedio extra).
+// `olvido`: probabilidad de que la factura quede sin subir hasta hoy. Reproduce las
+//   facturas sin presentar de la planilla (filas en lila): la mayoría del último mes,
+//   pero también algunas de hace meses, casi todas de Alvarez Thomas.
 // `presentacion`: días promedio entre la subida y la presentación.
+// `errores`: probabilidad de que un documento subido esté ilegible o sin firma.
 const SUCURSALES = [
-  { nombre: 'Alvarez Thomas', pvs: [{ pv: 21, peso: 3389 }, { pv: 30, peso: 189 }], peso: 3578, demora: 1.8, atraso: 0.1, presentacion: 3.1, errores: 0.05 },
-  { nombre: 'Triunvirato', pvs: [{ pv: 19, peso: 3291 }, { pv: 29, peso: 65 }], peso: 3356, demora: 1.6, atraso: 0.04, presentacion: 1.8, errores: 0.04 },
-  { nombre: 'Vicente Lopez', pvs: [{ pv: 23, peso: 719 }, { pv: 43, peso: 203 }, { pv: 31, peso: 61 }, { pv: 44, peso: 18 }], peso: 1001, demora: 1.3, atraso: 0.05, presentacion: 1.5, errores: 0.04 },
-  { nombre: 'Rocamora', pvs: [{ pv: 35, peso: 485 }, { pv: 37, peso: 65 }], peso: 551, demora: 1.6, atraso: 0.09, presentacion: 2, errores: 0.05 },
-  { nombre: 'San Miguel', pvs: [{ pv: 50, peso: 16 }, { pv: 49, peso: 92 }], peso: 108, demora: 0.2, atraso: 0.01, presentacion: 3.4, errores: 0.03 },
-  { nombre: 'Warnes', pvs: [{ pv: 16, peso: 39 }, { pv: 14, peso: 6 }], peso: 45, demora: 2, atraso: 0.18, presentacion: 6.6, errores: 0.08 },
+  { nombre: 'Alvarez Thomas', pvs: [{ pv: 21, peso: 3389 }, { pv: 30, peso: 189 }], peso: 3578, demora: 1.8, atraso: 0.1, cola: 8, olvido: 0.012, presentacion: 3.1, errores: 0.012 },
+  { nombre: 'Triunvirato', pvs: [{ pv: 19, peso: 3291 }, { pv: 29, peso: 65 }], peso: 3356, demora: 1.6, atraso: 0.04, cola: 6, olvido: 0.002, presentacion: 1.8, errores: 0.008 },
+  { nombre: 'Vicente Lopez', pvs: [{ pv: 23, peso: 719 }, { pv: 43, peso: 203 }, { pv: 31, peso: 61 }, { pv: 44, peso: 18 }], peso: 1001, demora: 1.3, atraso: 0.05, cola: 6, olvido: 0.002, presentacion: 1.5, errores: 0.008 },
+  { nombre: 'Rocamora', pvs: [{ pv: 35, peso: 485 }, { pv: 37, peso: 65 }], peso: 551, demora: 1.6, atraso: 0.09, cola: 6, olvido: 0.002, presentacion: 2, errores: 0.01 },
+  { nombre: 'San Miguel', pvs: [{ pv: 50, peso: 16 }, { pv: 49, peso: 92 }], peso: 108, demora: 0.2, atraso: 0, cola: 3, olvido: 0, presentacion: 3.4, errores: 0.005 },
+  { nombre: 'Warnes', pvs: [{ pv: 16, peso: 39 }, { pv: 14, peso: 6 }], peso: 45, demora: 2, atraso: 0.18, cola: 8, olvido: 0.01, presentacion: 6.6, errores: 0.02 },
 ].map((s) => ({
   ...s,
   // Personas genéricas: en la demo no se usan nombres reales de empleados
@@ -161,7 +166,14 @@ function crearFactura(fecha) {
 
   // 1) Cuándo sube la sucursal los documentos (la mayoría el mismo día o a los pocos días)
   const seAtrasa = azar() < sucursal.atraso
-  const demora = seAtrasa ? entre(8, 40) : Math.min(7, Math.floor(expo(sucursal.demora)))
+  // A fin de mes se factura mucho y el escaneo se demora más
+  const finDeMes = Number(fecha.slice(8, 10)) >= 25
+  const olvidada = azar() < sucursal.olvido
+  const demora = olvidada
+    ? 9999
+    : seAtrasa
+    ? 8 + Math.floor(expo(sucursal.cola))
+    : Math.min(7, Math.floor(expo(sucursal.demora * (finDeMes ? 1.5 : 1))))
   let fechaDrive = sumarDias(fecha, demora)
   if (fechaDrive > FECHA_CORTE) fechaDrive = null
 
@@ -204,7 +216,8 @@ function crearFactura(fecha) {
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
   let fechaPresentacion = null
   if (completo && fechaDrive) {
-    let p = sumarDias(fechaDrive, Math.floor(expo(sucursal.presentacion)))
+    // Auditoría presenta rápido una vez que el legajo está completo (en la planilla, casi nada queda "P. Pend.")
+    let p = sumarDias(fechaDrive, Math.floor(expo(0.7)))
     let rechazadoSinResolver = false
     // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
     if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.18 : 0.08)) {

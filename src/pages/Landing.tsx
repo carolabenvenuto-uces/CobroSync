@@ -63,7 +63,7 @@ function VistaPreviaDashboard() {
           DEMO · DATOS FICTICIOS
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 p-5 xl:grid-cols-4">
         {[
           { t: 'Facturado', v: formatoPesosCorto(totales.facturado), c: 'text-noche' },
           { t: 'Cobrado', v: formatoPesosCorto(totales.cobrado), c: 'text-esmeralda' },
@@ -72,7 +72,7 @@ function VistaPreviaDashboard() {
         ].map((k) => (
           <div key={k.t} className="rounded-xl border border-slate-100 bg-fondo p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{k.t}</div>
-            <div className={`mt-1 text-lg font-extrabold ${k.c}`}>{k.v}</div>
+            <div className={`mt-1 whitespace-nowrap text-base font-extrabold sm:text-lg ${k.c}`}>{k.v}</div>
           </div>
         ))}
       </div>

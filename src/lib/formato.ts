@@ -11,12 +11,12 @@ export function formatoPesos(valor: number): string {
   return pesos.format(valor)
 }
 
-/** $ 9,2 M — para tarjetas y ejes de gráficos */
+/** $ 9,2 M — para tarjetas y ejes de gráficos (con espacios que no cortan línea) */
 export function formatoPesosCorto(valor: number): string {
   const absoluto = Math.abs(valor)
   if (absoluto < 1_000_000) return formatoPesos(valor)
   const millones = (absoluto / 1_000_000).toLocaleString('es-AR', { maximumFractionDigits: 1 })
-  return `${valor < 0 ? '-' : ''}$ ${millones} M`
+  return `${valor < 0 ? '-' : ''}$\u00a0${millones}\u00a0M`
 }
 
 /** "2026-10-31" → "31/10/26" */

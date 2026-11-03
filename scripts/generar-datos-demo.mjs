@@ -175,7 +175,7 @@ for (let fecha = FECHA_INICIO; fecha <= FECHA_CORTE; fecha = sumarDias(fecha, 1)
       fechaCobro,
       estado,
       ncReferencia: null,
-      observaciones: completo ? '' : elegir(OBSERVACIONES_ROJO),
+      observaciones: completo ? '' : fechaDrive ? elegir(OBSERVACIONES_ROJO) : 'Se reclamó el legajo a la sucursal',
       documentos,
     }
     comprobantes.push(comprobante)

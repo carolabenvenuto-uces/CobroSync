@@ -43,7 +43,7 @@ export function Indicador({
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</div>
         {icono && <div className="text-slate-400">{icono}</div>}
       </div>
-      <div className={`mt-2 text-2xl font-extrabold tracking-tight ${TONO_VALOR[tono]}`}>{valor}</div>
+      <div className={`mt-2 whitespace-nowrap text-2xl font-extrabold tracking-tight ${TONO_VALOR[tono]}`}>{valor}</div>
       {ayuda && <div className="mt-1 text-xs text-slate-500">{ayuda}</div>}
     </Card>
   )

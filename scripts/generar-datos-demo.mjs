@@ -84,7 +84,7 @@ const SUCURSALES = [
   { nombre: 'Sucursal Ribera', puntoVenta: 48, gerente: 'F. Acosta', personas: ['Sofía V.', 'Pablo E.', 'Inés K.', 'Bruno T.'], peso: 11, atraso: 0.2, errores: 0.08 },
 ]
 
-const AUDITORIA = ['Carola B.', 'Melina A.']
+const AUDITORIA = ['Carola B.', 'Laura M.']
 
 const MOTIVOS_COMPROMISO = [
   'El vehículo sigue en el taller',

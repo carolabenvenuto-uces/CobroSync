@@ -1,0 +1,27 @@
+# Dependencias y compilados
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Entorno y editores
+.env
+.env.*
+!.env.example
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log
+
+# ─────────────────────────────────────────────────────────────
+# DATOS REALES: nunca se suben al repositorio.
+# Este repo es público. Planillas, exportaciones del ERP y escaneos
+# de la concesionaria quedan fuera, aunque se guarden por error en esta carpeta.
+# Los datos de demo se generan con `npm run datos:demo` (son ficticios).
+# ─────────────────────────────────────────────────────────────
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.ods
+*.pdf
+datos-reales/

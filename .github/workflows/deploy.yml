@@ -1,0 +1,63 @@
+# Compila, testea y publica CobroSync en GitHub Pages.
+#
+# - En cada Pull Request: instala, corre los tests y compila (sin publicar).
+#   Si algo falla, el PR muestra una ❌ antes de mergear.
+# - En cada push a main: además publica el sitio en GitHub Pages.
+#
+# Todo corre en servidores de GitHub: no hace falta instalar nada en la compu.
+
+name: Build y deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Correr los tests
+        run: npm test
+
+      - name: Compilar (TypeScript + Vite)
+        run: npm run build
+
+      - name: Guardar el sitio compilado
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    # Solo se publica lo que llega a main, nunca un PR.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

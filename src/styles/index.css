@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens de la marca CobroSync by CAROLA.
+ * Con Tailwind v4, cada variable --color-X genera clases como bg-X, text-X, border-X.
+ * Si mañana cambia un color de la marca, se cambia solo acá.
+ */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --color-noche: #0f172a; /* azul noche: sidebar y textos principales */
+  --color-noche-claro: #1e293b;
+  --color-marca: #2563eb; /* azul corporativo: acciones principales */
+  --color-marca-oscuro: #1d4ed8;
+  --color-esmeralda: #10b981; /* verde esmeralda: operación correcta */
+  --color-fondo: #f8fafc;
+
+  /* Semáforo operativo */
+  --color-sem-rojo: #ef4444;
+  --color-sem-amarillo: #f59e0b;
+  --color-sem-verde: #10b981;
+}
+
+body {
+  @apply bg-fondo text-noche antialiased;
+}

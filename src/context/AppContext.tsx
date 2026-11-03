@@ -28,7 +28,7 @@ export const INICIO_ROL: Record<Rol, string> = {
   gerencia: '/app',
 }
 
-/** Aviso para una persona: a Auditoría (para = 'auditoria') o a una sucursal (para = su nombre). */
+/** Aviso para una persona: a Auditoría (para = 'auditoria'), a Gerencia (para = 'gerencia') o a una sucursal (para = su nombre). */
 export interface Notificacion {
   id: string
   para: string
@@ -38,29 +38,46 @@ export interface Notificacion {
   leida: boolean
 }
 
-/** Las novedades de los últimos días de la demo arrancan como notificaciones sin leer. */
+/**
+ * Las novedades de los últimos días de la demo arrancan como notificaciones sin leer:
+ * 3 días para Auditoría y sucursales; 14 para Gerencia, que recibe menos avisos.
+ */
 function notificacionesIniciales(d: DatosApp): Notificacion[] {
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
     for (const e of c.eventos) {
-      if (diffDias(e.fecha, d.meta.fechaCorte) > 3) continue
-      const n = crearNotificacion(c, e)
-      if (n) lista.push(n)
+      const dias = diffDias(e.fecha, d.meta.fechaCorte)
+      for (const n of crearNotificaciones(c, e)) {
+        if (dias <= (n.para === 'gerencia' ? 14 : 3)) lista.push(n)
+      }
     }
   }
-  return lista.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 60)
+  return lista.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 80)
 }
 
 let contador = 0
-function crearNotificacion(c: Comprobante, e: Evento): Notificacion | null {
+/**
+ * Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés.
+ * A Gerencia le llegan solo los escalamientos: documentación crítica (más de 21 días)
+ * y facturas vencidas con 3 reclamos sin respuesta.
+ */
+function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   const numero = `${c.tipo} E ${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
-  const base = { id: `n-${++contador}`, fecha: e.fecha, comprobanteId: c.id, leida: false }
-  if (e.area === 'sucursal') return { ...base, para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` }
+  const base = () => ({ id: `n-${++contador}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
+  const lista: Notificacion[] = []
+  if (e.area === 'sucursal') lista.push({ ...base(), para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` })
   if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo') {
-    return { ...base, para: c.sucursal, texto: `Auditoría · ${numero}: ${e.texto}` }
+    lista.push({ ...base(), para: c.sucursal, texto: `Auditoría · ${numero}: ${e.texto}` })
   }
-  if (e.area === 'sistema') return { ...base, para: c.sucursal, texto: `${numero}: ${e.texto}` }
-  return null
+  if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, texto: `${numero}: ${e.texto}` })
+  if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
+    lista.push({ ...base(), para: 'gerencia', texto: `Documentación crítica · ${c.sucursal} · ${numero}: más de 21 días sin documentación completa` })
+  }
+  const nReclamo = e.tipo === 'reclamo' ? Number(/Reclamo (\d+)/.exec(e.texto)?.[1] ?? 0) : 0
+  if (nReclamo >= 3) {
+    lista.push({ ...base(), para: 'gerencia', texto: `Para escalar · ${numero} (${c.sucursal}): la compañía no respondió a ${nReclamo} reclamos` })
+  }
+  return lista
 }
 
 interface EstadoApp {
@@ -141,14 +158,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Una persona de sucursal solo ve su sucursal: si estaba en "Todas", elige la primera.
+  // Al volver a Auditoría o Gerencia, el filtro vuelve a "Todas".
   const setRol = useCallback(
     (nuevo: Rol) => {
       setRolInterno(nuevo)
       if (nuevo === 'sucursal' && sucursal === TODAS_LAS_SUCURSALES && datos) {
         setSucursal(datos.meta.sucursales[0].nombre)
+      } else if (nuevo !== 'sucursal' && rol === 'sucursal') {
+        setSucursal(TODAS_LAS_SUCURSALES)
       }
     },
-    [sucursal, datos],
+    [sucursal, datos, rol],
   )
 
   const sucursalActual: Sucursal | undefined = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
@@ -178,8 +198,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const evento: Evento = { fecha: hoy, autor: usuario, area, tipo, texto }
       // Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés
       const comprobante = datos?.comprobantes.find((c) => c.id === id)
-      const aviso = comprobante ? crearNotificacion(comprobante, evento) : null
-      if (aviso) setNotificaciones((lista) => [aviso, ...lista])
+      const avisos = comprobante ? crearNotificaciones(comprobante, evento) : []
+      if (avisos.length) setNotificaciones((lista) => [...avisos, ...lista])
       setDatos((actual) =>
         actual
           ? {
@@ -192,7 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [rol, hoy, usuario, datos],
   )
 
-  const destinatario = rol === 'auditoria' ? 'auditoria' : rol === 'sucursal' ? sucursal : null
+  const destinatario = rol === 'sucursal' ? sucursal : rol
   const misNotificaciones = useMemo(
     () => (destinatario ? notificaciones.filter((n) => n.para === destinatario) : []),
     [notificaciones, destinatario],

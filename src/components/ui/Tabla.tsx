@@ -108,6 +108,12 @@ export function Tabla<T>({
   const totalPaginas = Math.max(1, Math.ceil(visibles.length / porPagina))
   const actual = Math.min(pagina, totalPaginas)
   const pagina_ = visibles.slice((actual - 1) * porPagina, actual * porPagina)
+  // Si la búsqueda no encuentra nada con los filtros puestos, cuántas encuentra sin ellos
+  const fueraDeFiltros = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase()
+    if (!texto || !buscar || visibles.length > 0) return 0
+    return filas.filter((f) => buscar(f).toLowerCase().includes(texto)).length
+  }, [busqueda, buscar, visibles.length, filas])
   const hayFiltros = busqueda !== '' || Object.values(filtros).some((v) => v && v !== TODOS)
 
   function ordenar(col: Columna<T>) {
@@ -227,7 +233,24 @@ export function Tabla<T>({
             {pagina_.length === 0 && (
               <tr>
                 <td colSpan={columnas.length} className="px-4 py-10 text-center text-slate-500">
-                  {vacio}
+                  {fueraDeFiltros > 0 ? (
+                    <>
+                      No aparece con los filtros elegidos, pero hay {fueraDeFiltros} {fueraDeFiltros === 1 ? 'resultado' : 'resultados'} en
+                      otros meses o filtros.{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFiltros({})
+                          setPagina(1)
+                        }}
+                        className="font-semibold text-marca hover:underline"
+                      >
+                        Buscar en todo
+                      </button>
+                    </>
+                  ) : (
+                    vacio
+                  )}
                 </td>
               </tr>
             )}

@@ -121,7 +121,15 @@ export default function MisFacturas() {
             }}
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro"
           >
-            <FileUp className="h-4 w-4" /> {x.s.etapa === 'doc_observada' ? 'Corregir' : 'Subir documentación'}
+            <FileUp className="h-4 w-4" />
+            {x.s.etapa === 'doc_observada' ? (
+              'Corregir'
+            ) : (
+              <>
+                <span className="xl:hidden">Subir</span>
+                <span className="hidden xl:inline">Subir documentación</span>
+              </>
+            )}
           </button>
         ),
     },

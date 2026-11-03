@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { calcularTotales, proyeccionDelMes, serieSemanalDelMes, totalesDelMes } from '../src/domain/finanzas'
-import type { CobroPrevisto, Comprobante } from '../src/domain/tipos'
+import { calcularImpacto, diasDeDemoraExtra, PARAMETROS_INICIALES } from '../src/domain/impacto'
+import { esperaALaSucursal, rankingSucursales } from '../src/domain/sucursales'
+import type { CobroPrevisto, Comprobante, Sucursal } from '../src/domain/tipos'
 
 const leer = <T>(archivo: string): T =>
   JSON.parse(readFileSync(new URL(`../public/datos-demo/${archivo}`, import.meta.url), 'utf8')) as T
@@ -49,5 +51,29 @@ describe('datos de demo', () => {
   it('los correos usan el dominio ficticio .example', () => {
     const aseguradoras = leer<{ email: string }[]>('aseguradoras.json')
     for (const a of aseguradoras) expect(a.email.endsWith('.example')).toBe(true)
+  })
+})
+
+describe('impacto y ranking', () => {
+  const p = PARAMETROS_INICIALES
+  const espera = (c: Comprobante) => esperaALaSucursal(c, FECHA_CORTE)
+
+  it('si se presenta dentro del objetivo, la demora extra es cero', () => {
+    const c = comprobantes.find((x) => x.tipo === 'FC' && x.fechaPresentacion !== null)!
+    expect(diasDeDemoraExtra(c, FECHA_CORTE, 999)).toBe(0)
+  })
+
+  it('el DSO posible nunca es mayor que el actual', () => {
+    const i = calcularImpacto(comprobantes, FECHA_CORTE, 2026, p, espera)
+    expect(i.dsoPosible as number).toBeLessThanOrEqual(i.dsoActual as number)
+    expect(i.costoDelAnio).toBeGreaterThan(0)
+  })
+
+  it('lo retenido por sucursal suma lo retenido total', () => {
+    const meta = leer<{ sucursales: Sucursal[] }>('meta.json')
+    const ranking = rankingSucursales(comprobantes, meta.sucursales, FECHA_CORTE, 2026, null, p)
+    const i = calcularImpacto(comprobantes, FECHA_CORTE, 2026, p, espera)
+    expect(ranking).toHaveLength(6)
+    expect(ranking.reduce((s, r) => s + r.retenido, 0)).toBeCloseTo(i.retenidoHoy, 2)
   })
 })

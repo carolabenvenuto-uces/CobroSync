@@ -2,26 +2,27 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, FileSpreadsheet, ScanLine, Search } from 'lucide-react'
 import { LegajoPanel } from '../components/LegajoPanel'
-import { BadgeEstado, PuntoSemaforo } from '../components/ui/Badges'
-import { Card, EncabezadoPagina } from '../components/ui/Card'
+import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, NOMBRE_ESTADO, PuntoEtapa, quienEtapa } from '../components/ui/Badges'
+import { BotonExportar, Card, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
-import type { ColorSemaforo } from '../domain/tipos'
+import type { Etapa } from '../domain/tipos'
+import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { diffDias, enMes } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
 
 const POR_PAGINA = 20
-type FiltroSemaforo = ColorSemaforo | 'todos'
+type FiltroEtapa = Etapa | 'todas'
 
 export default function ControlDiario() {
-  const { datos, anio, mes } = useApp()
+  const { datos, anio, mes, hoy } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
 
-  // Los filtros viven en la URL (?semaforo=rojo&periodo=anio): así los links del dashboard funcionan.
-  const semaforo = (params.get('semaforo') ?? 'todos') as FiltroSemaforo
+  // Los filtros viven en la URL (?etapa=bloqueado&periodo=anio): así los links del dashboard funcionan.
+  const etapa = (params.get('etapa') ?? 'todas') as FiltroEtapa
   const periodo = params.get('periodo') === 'anio' ? 'anio' : 'mes'
   const [busqueda, setBusqueda] = useState('')
   const [compania, setCompania] = useState('todas')
@@ -43,10 +44,10 @@ export default function ControlDiario() {
   const filas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
     return comprobantes
-      .map((c) => ({ c, semaforo: calcularSemaforo(c) }))
+      .map((c) => ({ c, semaforo: calcularSemaforo(c, hoy) }))
       .filter(({ c, semaforo: s }) => {
         if (periodo === 'mes' && !enMes(c.fecha, anio, mes)) return false
-        if (semaforo !== 'todos' && s.color !== semaforo) return false
+        if (etapa !== 'todas' && s.etapa !== etapa) return false
         if (compania !== 'todas' && c.aseguradoraId !== compania) return false
         if (texto) {
           const campos = [c.ref, formatoComprobante(c), c.patente, c.siniestro].join(' ').toLowerCase()
@@ -55,15 +56,40 @@ export default function ControlDiario() {
         return true
       })
       .sort((a, b) => b.c.fecha.localeCompare(a.c.fecha) || b.c.numero - a.c.numero)
-  }, [comprobantes, periodo, anio, mes, semaforo, compania, busqueda])
+  }, [comprobantes, periodo, anio, mes, etapa, compania, busqueda, hoy])
 
   const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA))
   const paginaActual = Math.min(pagina, totalPaginas)
   const visibles = filas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
   const seleccionado = comprobantes.find((c) => c.id === seleccionadoId) ?? null
 
-  const conteo: Record<ColorSemaforo, number> = { rojo: 0, amarillo: 0, verde: 0, neutro: 0 }
-  for (const f of filas) conteo[f.semaforo.color] += 1
+  const conteo = (e: Etapa) => filas.filter((f) => f.semaforo.etapa === e).length
+
+  function exportar() {
+    descargarExcel(
+      `control-diario-${periodo === 'mes' ? `${anio}-${mes}` : anio}`,
+      ['Fecha', 'Ref.', 'Sucursal', 'Comprobante', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Fecha subida', 'Subido por', 'Presentación', 'Vencimiento', 'Cobro', 'Estado', 'Etapa', 'Le toca a', 'Detalle'],
+      filas.map(({ c, semaforo: s }) => [
+        fechaExcel(c.fecha),
+        c.ref,
+        c.sucursal,
+        formatoComprobante(c),
+        nombreCompania[c.aseguradoraId],
+        c.siniestro,
+        c.patente,
+        c.total,
+        fechaExcel(c.fechaDrive),
+        c.subidoPor,
+        fechaExcel(c.fechaPresentacion),
+        fechaExcel(c.vencimiento),
+        fechaExcel(c.fechaCobro),
+        NOMBRE_ESTADO[c.estado],
+        nombreEtapa(s.etapa),
+        quienEtapa(s.etapa),
+        s.detalle.join(' / '),
+      ]),
+    )
+  }
 
   const botonEtapa2 =
     'inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-400'
@@ -81,6 +107,7 @@ export default function ControlDiario() {
             <button type="button" disabled className={botonEtapa2} title="Disponible en la etapa 2">
               <ScanLine className="h-4 w-4" /> Subir escaneo
             </button>
+            <BotonExportar onClick={exportar} />
           </>
         }
       />
@@ -104,12 +131,14 @@ export default function ControlDiario() {
             <option value="mes">Mes seleccionado</option>
             <option value="anio">Todo el año</option>
           </select>
-          <select className={claseSelect} value={semaforo} onChange={(e) => cambiarParam('semaforo', e.target.value)}>
-            <option value="todos">Todos los estados</option>
-            <option value="rojo">Rojo: bloqueados</option>
-            <option value="amarillo">Amarillo: en curso</option>
-            <option value="verde">Verde: cobrados</option>
-            <option value="neutro">Anulados y NC</option>
+          <select className={claseSelect} value={etapa} onChange={(e) => cambiarParam('etapa', e.target.value)}>
+            <option value="todas">Todas las etapas</option>
+            <option value="bloqueado">Bloqueados (sucursal)</option>
+            <option value="esperando_sucursal">Esperando sucursal</option>
+            <option value="para_presentar">Para presentar (auditoría)</option>
+            <option value="esperando_pago">Esperando pago (compañía)</option>
+            <option value="cobrado">Cobrados</option>
+            <option value="no_aplica">Anulados y NC</option>
           </select>
           <select
             className={claseSelect}
@@ -129,9 +158,9 @@ export default function ControlDiario() {
         </div>
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
           <span>{filas.length} comprobantes</span>
-          {(['rojo', 'amarillo', 'verde'] as const).map((color) => (
-            <span key={color} className="flex items-center gap-1.5">
-              <PuntoSemaforo color={color} /> {conteo[color]}
+          {ETAPAS_ACTIVAS.map((e) => (
+            <span key={e} className="flex items-center gap-1.5">
+              <PuntoEtapa etapa={e} /> {nombreEtapa(e)}: {conteo(e)}
             </span>
           ))}
         </div>
@@ -142,7 +171,6 @@ export default function ControlDiario() {
           <table className="w-full text-left text-sm">
             <thead className="bg-fondo text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-semibold" aria-label="Semáforo" />
                 <th className="px-3 py-3 font-semibold">Fecha</th>
                 <th className="px-3 py-3 font-semibold">Ref.</th>
                 <th className="px-3 py-3 font-semibold">Sucursal</th>
@@ -150,10 +178,10 @@ export default function ControlDiario() {
                 <th className="px-3 py-3 font-semibold">Compañía</th>
                 <th className="px-3 py-3 font-semibold">Siniestro / patente</th>
                 <th className="px-3 py-3 text-right font-semibold">Total</th>
-                <th className="px-3 py-3 font-semibold">Drive</th>
+                <th className="px-3 py-3 font-semibold">Subida</th>
                 <th className="px-3 py-3 font-semibold">Presentación</th>
                 <th className="px-3 py-3 font-semibold">Vto.</th>
-                <th className="px-3 py-3 font-semibold">Estado</th>
+                <th className="px-3 py-3 font-semibold">Etapa</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -164,10 +192,7 @@ export default function ControlDiario() {
                   className="cursor-pointer hover:bg-marca/5"
                   title={s.detalle.join(' · ')}
                 >
-                  <td className="px-4 py-2.5">
-                    <PuntoSemaforo color={s.color} />
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(c.fecha)}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">{formatoFecha(c.fecha)}</td>
                   <td className="px-3 py-2.5 text-slate-500">{c.ref}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{c.sucursal}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap font-medium">{formatoComprobante(c)}</td>
@@ -184,19 +209,19 @@ export default function ControlDiario() {
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     {formatoFecha(c.fechaPresentacion)}
-                    {c.fechaPresentacion && c.fechaDrive && (
-                      <span className="ml-1 text-xs text-slate-400">+{diffDias(c.fechaDrive, c.fechaPresentacion)}</span>
+                    {c.fechaPresentacion && (
+                      <span className="ml-1 text-xs text-slate-400">+{diffDias(c.fecha, c.fechaPresentacion)}</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(c.vencimiento)}</td>
                   <td className="px-3 py-2.5">
-                    <BadgeEstado estado={c.estado} />
+                    <BadgeEtapa etapa={s.etapa} />
                   </td>
                 </tr>
               ))}
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
                     No hay comprobantes con estos filtros.
                   </td>
                 </tr>

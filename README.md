@@ -26,7 +26,9 @@ Cada factura a una aseguradora necesita un legajo de respaldo: factura, orden de
 | Presentación | Envío a cada compañía y seguimiento hasta el cobro |
 | Finanzas (Premium) | Saldos por compañía, vencidos, notas de crédito, DSO y proyección semanal |
 
-**Roles:** Taller (carga y corrige), Administración y cobranzas (valida y presenta), Gerencia (consulta indicadores).
+**Roles:** Sucursal (sube y corrige documentos, avisa demoras e informa notas de crédito), Auditoría (valida, presenta y registra rechazos), Gerencia (ranking de sucursales, impacto económico y saldos).
+
+**Foco actual:** ser el lugar único de comunicación entre sucursales, auditoría y gerencia sobre cada factura. Ver [docs/decisiones/003-foco-en-sucursales.md](docs/decisiones/003-foco-en-sucursales.md).
 
 ## Estado del proyecto
 
@@ -57,11 +59,11 @@ Por qué se eligió cada una: [docs/decisiones/001-tecnologia.md](docs/decisione
 ├── public/datos-demo/             # JSON ficticios que lee la app
 ├── scripts/generar-datos-demo.mjs # genera esos JSON
 ├── src/
-│   ├── domain/        # reglas del negocio (semáforo, saldos, DSO, proyección), sin pantallas
+│   ├── domain/        # reglas del negocio (semáforo, plazos de sucursal, impacto, saldos), sin pantallas
 │   ├── services/      # acceso a datos: hoy JSON, en la etapa 2 Supabase
 │   ├── context/       # estado global: datos, rol activo y filtros
 │   ├── components/    # layout (sidebar, filtros), legajo y componentes de UI
-│   ├── pages/         # Landing, Dashboard, Control diario, Saldos, Cobros previstos
+│   ├── pages/         # Inicio, Pendientes, Alertas, Control diario, Ranking, Impacto, Saldos, Cobros, Presentación
 │   └── lib/           # formato de pesos y fechas
 └── tests/             # tests de domain/
 ```

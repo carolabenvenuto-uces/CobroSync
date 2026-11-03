@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Card, EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { BotonExportar, Card, EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { descargarExcel } from '../lib/exportar'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularTotales, saldosPorAseguradora } from '../domain/finanzas'
 import { formatoFecha, formatoPesos, formatoPesosCorto } from '../lib/formato'
@@ -15,9 +16,30 @@ export default function Saldos() {
   )
   const totales = useMemo(() => calcularTotales(comprobantes, meta.fechaCorte), [comprobantes, meta.fechaCorte])
 
+  function exportar() {
+    descargarExcel(
+      `saldos-por-compania-${meta.fechaCorte}`,
+      ['Compañía', 'Plazo de pago (días)', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente', 'Vencido', 'Legajos en rojo'],
+      [
+        ...saldos.map((s) => [
+          s.aseguradora.nombre,
+          s.aseguradora.plazoPagoDias,
+          s.facturado,
+          s.notasCredito,
+          s.cobrado,
+          s.pendiente,
+          s.vencido,
+          s.legajosEnRojo,
+        ]),
+        ['Total', null, totales.facturado, totales.notasCredito, totales.cobrado, totales.pendiente, totales.vencido, null],
+      ],
+    )
+  }
+
   return (
     <>
       <EncabezadoPagina
+        acciones={<BotonExportar onClick={exportar} />}
         titulo="Saldos por compañía"
         subtitulo={`Cuenta corriente acumulada al ${formatoFecha(meta.fechaCorte)} · ${
           sucursal === 'Todas' ? 'Todas las sucursales' : sucursal

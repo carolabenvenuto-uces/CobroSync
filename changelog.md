@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1] - 2026-11-03
+
+### Corregido
+- Los montos abreviados ($ 9,2 M) ya no se cortan en dos líneas.
+- Tarjetas semanales de Cobros previstos más legibles en pantallas medianas.
+- Las observaciones de los legajos que la sucursal no subió ahora dicen que se reclamó el legajo.
+
 ## [0.1.0] - 2026-11-03
 
 ### Agregado

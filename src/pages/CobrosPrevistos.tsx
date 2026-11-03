@@ -70,20 +70,20 @@ export default function CobrosPrevistos() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {proyeccion.semanas.map((s) => (
           <Card key={s.semana} className="p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Semana {s.semana}</div>
-            <div className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500">Por vto.</span>
-                <span className="font-semibold text-marca">{formatoPesosCorto(s.porVencimiento)}</span>
+            <dl className="mt-3 space-y-2">
+              <div>
+                <dt className="text-xs text-slate-500">Por vencimiento</dt>
+                <dd className="whitespace-nowrap text-lg font-bold text-marca">{formatoPesosCorto(s.porVencimiento)}</dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500">Informado</span>
-                <span className="font-semibold text-esmeralda">{formatoPesosCorto(s.informado)}</span>
+              <div>
+                <dt className="text-xs text-slate-500">Informado</dt>
+                <dd className="whitespace-nowrap text-lg font-bold text-esmeralda">{formatoPesosCorto(s.informado)}</dd>
               </div>
-            </div>
+            </dl>
           </Card>
         ))}
       </div>
@@ -113,7 +113,7 @@ export default function CobrosPrevistos() {
                   <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(comprobante.vencimiento)}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(cp.fechaIngreso)}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap font-semibold">{formatoPesos(cp.monto)}</td>
-                  <td className="px-3 py-2.5">Semana {semanaDelMes(cp.fechaIngreso)}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">Semana {semanaDelMes(cp.fechaIngreso)}</td>
                   <td className="px-4 py-2.5">
                     {cp.estado === 'cobrado' ? (
                       <span className="rounded-md bg-sem-verde/15 px-2 py-0.5 text-xs font-semibold text-emerald-800">

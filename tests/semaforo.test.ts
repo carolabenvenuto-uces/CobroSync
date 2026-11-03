@@ -159,11 +159,16 @@ describe('facturas vencidas y reclamos', () => {
     expect(estadoReclamo(vencida(r), CORTE)).toBe('reclamada')
   })
 
-  it('con 2 reclamos y 7 días sin respuesta: se escala a gerencia', () => {
+  it('con 2 reclamos todavía no se escala, aunque lleve mucho tiempo vencida', () => {
     const r = [
-      { fecha: '2026-10-15', medio: 'mail' as const, autor: 'Carola B.', nota: '' },
-      { fecha: '2026-10-22', medio: 'portal' as const, autor: 'Carola B.', nota: '' },
+      { fecha: '2026-06-15', medio: 'mail' as const, autor: 'Carola B.', nota: '' },
+      { fecha: '2026-07-22', medio: 'portal' as const, autor: 'Carola B.', nota: '' },
     ]
+    expect(estadoReclamo(vencida(r, '2026-06-10'), CORTE)).toBe('reclamada')
+  })
+
+  it('con 3 reclamos sin respuesta se escala a gerencia', () => {
+    const r = ['2026-10-12', '2026-10-19', '2026-10-26'].map((fecha) => ({ fecha, medio: 'mail' as const, autor: 'Carola B.', nota: '' }))
     expect(estadoReclamo(vencida(r, '2026-10-10'), CORTE)).toBe('escalar')
   })
 

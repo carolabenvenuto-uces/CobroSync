@@ -7,8 +7,6 @@ import { BotonExportar, Card, EncabezadoPagina, Indicador } from '../components/
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
-  DIAS_SIN_RESPUESTA,
-  DIAS_VENCIDA_PARA_ESCALAR,
   estadoReclamo,
   NOMBRE_ESTADO_RECLAMO,
   RECLAMOS_PARA_ESCALAR,
@@ -104,8 +102,8 @@ export default function Reclamos() {
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          Se escala a gerencia cuando la factura tiene {RECLAMOS_PARA_ESCALAR} reclamos o más y pasaron {DIAS_SIN_RESPUESTA} días sin
-          respuesta desde el último, o cuando lleva más de {DIAS_VENCIDA_PARA_ESCALAR} días vencida.
+          Se escala a gerencia cuando la compañía no respondió a {RECLAMOS_PARA_ESCALAR} reclamos. Cada reclamo se registra en la
+          factura con fecha, medio y nota.
         </span>
       </div>
 

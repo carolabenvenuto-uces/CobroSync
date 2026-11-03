@@ -20,14 +20,19 @@
 - [x] Control diario y panel de legajo (acciones simuladas por rol)
 - [x] Saldos por compañía
 - [x] Cobros previstos
-- [ ] Centro de alertas (vencidos, legajos trabados, NC sin informar)
-- [ ] Vista "Taller": pendientes de su sucursal y carga por QR (simulada)
-- [ ] Revisión visual contra el diseño de Lovable y ajustes de responsive
+- [x] Centro de alertas (escaneos críticos, compromisos vencidos, rechazos, NC sin aviso, vencidos)
+- [x] Portal de sucursal: pendientes, subida por documento, compromisos con fecha, NC informadas
+- [x] Conversación por legajo (reemplaza los mails)
+- [x] Ranking de sucursales e impacto económico, exportables a Excel
+- [ ] Carga desde el celular con QR (simulada)
+- [ ] Resumen semanal por mail (simulado) para gerentes de sucursal
+- [ ] Revisión con usuarias reales del sector y ajustes
 
 ## Etapa 2: funcionalidad real básica
 
 - [ ] Base de datos en Supabase (PostgreSQL) a partir del DER
-- [ ] Login con roles y Row Level Security (cada rol ve lo suyo)
+- [ ] Login con Google restringido a las cuentas corporativas, roles y Row Level Security
+- [ ] Avisos por mail reales (plazos de escaneo y escalamiento)
 - [ ] Importar facturas desde la exportación del ERP (Excel/CSV)
 - [ ] Subir los archivos del legajo (Supabase Storage)
 - [ ] Reemplazar `src/services/datos.ts` por consultas a Supabase

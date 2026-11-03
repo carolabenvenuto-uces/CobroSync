@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { BotonExportar, Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularTotales, proyeccionDelMes } from '../domain/finanzas'
@@ -33,19 +34,43 @@ export default function CobrosPrevistos() {
     .sort((a, b) => a.cp.fechaIngreso.localeCompare(b.cp.fechaIngreso))
   const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
+  function exportar() {
+    descargarExcel(
+      `cobros-previstos-${anio}-${mes}`,
+      ['Semana', 'Por vencimiento', 'Informado por compañías'],
+      [
+        ...proyeccion.semanas.map((s) => [`Semana ${s.semana}`, s.porVencimiento, s.informado]),
+        ['Total', proyeccion.totalPorVencimiento, proyeccion.totalInformado],
+        [],
+        ['Compañía', 'Comprobante', 'Vto. factura', 'Ingreso previsto', 'Monto', 'Estado'],
+        ...delMes.map(({ cp, comprobante }) => [
+          nombreCompania(cp.aseguradoraId),
+          formatoComprobante(comprobante),
+          fechaExcel(comprobante.vencimiento),
+          fechaExcel(cp.fechaIngreso),
+          cp.monto,
+          cp.estado === 'cobrado' ? 'Cobrado' : 'Informado',
+        ]),
+      ],
+    )
+  }
+
   return (
     <>
       <EncabezadoPagina
         titulo="Cobros previstos"
         subtitulo="Vencimiento oficial de las facturas frente a la fecha de ingreso informada por cada compañía"
         acciones={
-          <select className={claseSelect} value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-            {MESES.map((nombre, i) => (
-              <option key={nombre} value={i + 1}>
-                Proyectar {nombre.toLowerCase()} {anio}
-              </option>
-            ))}
-          </select>
+          <>
+            <select className={claseSelect} value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+              {MESES.map((nombre, i) => (
+                <option key={nombre} value={i + 1}>
+                  Proyectar {nombre.toLowerCase()} {anio}
+                </option>
+              ))}
+            </select>
+            <BotonExportar onClick={exportar} />
+          </>
         }
       />
 

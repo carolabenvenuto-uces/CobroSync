@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -66,5 +67,19 @@ export function EncabezadoPagina({
       </div>
       {acciones && <div className="flex flex-wrap gap-2">{acciones}</div>}
     </div>
+  )
+}
+
+/** Botón estándar para exportar la tabla de la pantalla a Excel. */
+export function BotonExportar({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo"
+    >
+      <Download className="h-4 w-4 text-esmeralda" />
+      Exportar a Excel
+    </button>
   )
 }

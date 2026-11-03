@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0] - 2026-11-03
+
+### Agregado
+- **Pendientes de sucursales** (y "Mis pendientes" para el rol Sucursal): días de espera, nivel (en plazo, atrasado, crítico), qué falta, compromiso y a quién se avisó.
+- Regla de plazo: 7 días para subir el legajo; aviso al gerente de sucursal desde el día 8 y a la gerencia general desde el día 22.
+- En el legajo: subir cada documento a su factura, "no lo puedo subir todavía" con motivo y fecha, registrar rechazos y **conversación** entre sucursal y auditoría.
+- **Informar nota de crédito** desde la sucursal, vinculada a la factura que anula.
+- **Alertas**: escaneos críticos, compromisos vencidos, rechazos sin respuesta, NC sin aviso, legajos listos para presentar y vencidos sin cobrar.
+- **Ranking de sucursales** e **Impacto económico** (tasa y objetivo ajustables).
+- **Exportar a Excel** en Pendientes, Control diario, Ranking, Impacto, Saldos y Cobros previstos.
+
+### Cambiado
+- Etapas con colores propios: el amarillo se divide en "esperando sucursal" (amarillo), "para presentar" (azul) y "esperando pago" (violeta).
+- Roles: Sucursal, Auditoría y Gerencia. Menú en dos secciones: Operación e Informes.
+- La demo abre directo en la app; la presentación del producto pasó a `#/presentacion`.
+- Datos de demo: 6 sucursales con ritmos de escaneo distintos, plazos de pago de 30 y 7 días, picos de facturación a fin de mes, eventos y compromisos.
+
 ## [0.1.1] - 2026-11-03
 
 ### Corregido

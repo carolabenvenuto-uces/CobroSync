@@ -71,7 +71,7 @@ export function saldosPorAseguradora(
       return {
         aseguradora,
         ...calcularTotales(propios, fechaCorte),
-        legajosEnRojo: propios.filter((c) => calcularSemaforo(c).color === 'rojo').length,
+        legajosEnRojo: propios.filter((c) => calcularSemaforo(c, fechaCorte).color === 'rojo').length,
       }
     })
     .sort((a, b) => b.pendiente - a.pendiente)

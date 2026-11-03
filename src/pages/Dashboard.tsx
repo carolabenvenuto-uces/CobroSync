@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Banknote, Clock, Receipt, TrendingUp, Wallet, TriangleAlert } from 'lucide-react'
-import { BadgeSemaforo, PuntoSemaforo } from '../components/ui/Badges'
+import { BadgeEtapa, ETAPAS_ACTIVAS, PuntoEtapa, quienEtapa } from '../components/ui/Badges'
 import { Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -14,7 +14,7 @@ import {
   totalesDelMes,
 } from '../domain/finanzas'
 import { calcularSemaforo } from '../domain/semaforo'
-import type { ColorSemaforo } from '../domain/tipos'
+import type { Etapa } from '../domain/tipos'
 import { diffDias, enMes } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
 
@@ -31,15 +31,19 @@ export default function Dashboard() {
   const dso = useMemo(() => calcularDso(comprobantes, corte), [comprobantes, corte])
 
   const conSemaforo = useMemo(
-    () => comprobantes.map((c) => ({ c, semaforo: calcularSemaforo(c) })),
-    [comprobantes],
+    () => comprobantes.map((c) => ({ c, semaforo: calcularSemaforo(c, corte) })),
+    [comprobantes, corte],
   )
-  const conteo: Record<ColorSemaforo, number> = { rojo: 0, amarillo: 0, verde: 0, neutro: 0 }
-  for (const { semaforo } of conSemaforo) conteo[semaforo.color] += 1
+  const porEtapa = {} as Record<Etapa, { cantidad: number; total: number }>
+  for (const { c, semaforo } of conSemaforo) {
+    const actual = porEtapa[semaforo.etapa] ?? { cantidad: 0, total: 0 }
+    porEtapa[semaforo.etapa] = { cantidad: actual.cantidad + 1, total: actual.total + c.total }
+  }
+  const datoEtapa = (e: Etapa) => porEtapa[e] ?? { cantidad: 0, total: 0 }
 
   // Prioridades del día: legajos bloqueados, los más viejos primero
   const prioridades = conSemaforo
-    .filter((x) => x.semaforo.color === 'rojo')
+    .filter((x) => x.semaforo.etapa === 'bloqueado')
     .sort((a, b) => a.c.fecha.localeCompare(b.c.fecha))
     .slice(0, 6)
 
@@ -100,16 +104,22 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Semáforo: cada tarjeta lleva al control diario ya filtrado */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        {(['rojo', 'amarillo', 'verde'] as const).map((color) => (
+      {/* Legajos abiertos por etapa: de quién depende que avancen. Cada tarjeta lleva al listado. */}
+      <div className="mt-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {ETAPAS_ACTIVAS.map((etapa) => (
           <Link
-            key={color}
-            to={`/app/control-diario?semaforo=${color}&periodo=anio`}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-marca/40 hover:shadow"
+            key={etapa}
+            to={`/app/control-diario?etapa=${etapa}&periodo=anio`}
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-marca/40 hover:shadow"
           >
-            <BadgeSemaforo color={color} />
-            <span className="text-2xl font-extrabold">{conteo[color]}</span>
+            <div className="flex items-center justify-between gap-2">
+              <BadgeEtapa etapa={etapa} />
+              <span className="text-2xl font-extrabold">{datoEtapa(etapa).cantidad}</span>
+            </div>
+            <div className="mt-2 flex justify-between text-xs text-slate-500">
+              <span>Le toca a: {quienEtapa(etapa)}</span>
+              <span className="font-semibold text-noche">{formatoPesosCorto(datoEtapa(etapa).total)}</span>
+            </div>
           </Link>
         ))}
       </div>
@@ -188,8 +198,8 @@ export default function Dashboard() {
       <Card className="mt-4">
         <CardTitulo
           accion={
-            <Link to="/app/control-diario?semaforo=rojo&periodo=anio" className="text-xs font-semibold text-marca hover:underline">
-              Ver todos ({conteo.rojo})
+            <Link to="/app/pendientes" className="text-xs font-semibold text-marca hover:underline">
+              Ver pendientes de sucursales ({datoEtapa('bloqueado').cantidad} bloqueados)
             </Link>
           }
         >
@@ -219,7 +229,7 @@ export default function Dashboard() {
                     <td className="py-2.5 pr-4">{c.sucursal}</td>
                     <td className="py-2.5 pr-4">
                       <span className="flex items-center gap-2">
-                        <PuntoSemaforo color="rojo" />
+                        <PuntoEtapa etapa="bloqueado" />
                         {semaforo.detalle[0]}
                       </span>
                     </td>

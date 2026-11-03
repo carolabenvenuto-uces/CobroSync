@@ -19,6 +19,10 @@
   --color-sem-rojo: #ef4444;
   --color-sem-amarillo: #f59e0b;
   --color-sem-verde: #10b981;
+
+  /* Etapas del amarillo, para distinguir de quién depende el legajo */
+  --color-etapa-auditoria: #2563eb; /* para presentar: le toca a auditoría */
+  --color-etapa-compania: #7c3aed; /* esperando pago: le toca a la compañía */
 }
 
 body {

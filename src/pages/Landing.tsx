@@ -39,9 +39,9 @@ const PASOS = [
 ]
 
 const ROLES = [
-  { icono: Wrench, titulo: 'Taller', texto: 'Carga facturas y órdenes, corrige rechazos y sube documentos desde el celular con un QR.' },
-  { icono: Users, titulo: 'Administración y cobranzas', texto: 'Valida legajos, presenta, registra reclamos y controla vencimientos y notas de crédito.' },
-  { icono: Building2, titulo: 'Gerencia', texto: 'Consulta indicadores, saldos por compañía y la proyección de cobros.' },
+  { icono: Wrench, titulo: 'Sucursales', texto: 'Ven sus pendientes, suben cada documento a su factura, avisan demoras con fecha e informan notas de crédito.' },
+  { icono: Users, titulo: 'Auditoría', texto: 'Valida legajos, presenta, registra rechazos y conversa con cada sucursal dentro del legajo.' },
+  { icono: Building2, titulo: 'Gerencia', texto: 'Consulta el ranking de sucursales, el impacto económico de las demoras y los saldos.' },
 ]
 
 function VistaPreviaDashboard() {
@@ -51,7 +51,7 @@ function VistaPreviaDashboard() {
   const totales = calcularTotales(datos.comprobantes, datos.meta.fechaCorte)
   const conteo = { rojo: 0, amarillo: 0, verde: 0 }
   for (const c of datos.comprobantes) {
-    const color = calcularSemaforo(c).color
+    const color = calcularSemaforo(c, datos.meta.fechaCorte).color
     if (color !== 'neutro') conteo[color] += 1
   }
 

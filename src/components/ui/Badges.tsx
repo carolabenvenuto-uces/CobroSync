@@ -1,40 +1,79 @@
-import type { ColorSemaforo, EstadoComprobante } from '../../domain/tipos'
+import type { ColorSemaforo, EstadoComprobante, Etapa } from '../../domain/tipos'
 
-const ESTILO_SEMAFORO: Record<ColorSemaforo, { punto: string; fondo: string; texto: string }> = {
-  rojo: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10', texto: 'Bloqueado' },
-  amarillo: { punto: 'bg-sem-amarillo', fondo: 'bg-sem-amarillo/10', texto: 'En curso' },
-  verde: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/10', texto: 'Cobrado' },
-  neutro: { punto: 'bg-slate-400', fondo: 'bg-slate-100', texto: 'No aplica' },
+/**
+ * Cada etapa tiene su color, así se distingue a simple vista de quién depende el legajo:
+ *  rojo = bloqueado · amarillo = esperando a la sucursal · azul = para presentar (auditoría)
+ *  violeta = esperando el pago (compañía) · verde = cobrado · gris = no aplica
+ */
+const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string; quien: string }> = {
+  bloqueado: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Bloqueado', quien: 'Sucursal' },
+  esperando_sucursal: {
+    punto: 'bg-sem-amarillo',
+    fondo: 'bg-sem-amarillo/15 text-amber-900',
+    texto: 'Esperando sucursal',
+    quien: 'Sucursal',
+  },
+  para_presentar: {
+    punto: 'bg-etapa-auditoria',
+    fondo: 'bg-etapa-auditoria/10 text-blue-800',
+    texto: 'Para presentar',
+    quien: 'Auditoría',
+  },
+  esperando_pago: {
+    punto: 'bg-etapa-compania',
+    fondo: 'bg-etapa-compania/10 text-violet-800',
+    texto: 'Esperando pago',
+    quien: 'Compañía',
+  },
+  cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-emerald-800', texto: 'Cobrado', quien: '—' },
+  no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'No aplica', quien: '—' },
 }
 
-export const NOMBRE_SEMAFORO: Record<ColorSemaforo, string> = {
-  rojo: 'Rojo',
-  amarillo: 'Amarillo',
-  verde: 'Verde',
-  neutro: 'Neutro',
+export const ETAPAS_ACTIVAS: Etapa[] = ['bloqueado', 'esperando_sucursal', 'para_presentar', 'esperando_pago']
+
+export function nombreEtapa(etapa: Etapa): string {
+  return ESTILO_ETAPA[etapa].texto
 }
 
-export function PuntoSemaforo({ color }: { color: ColorSemaforo }) {
+export function quienEtapa(etapa: Etapa): string {
+  return ESTILO_ETAPA[etapa].quien
+}
+
+export function PuntoEtapa({ etapa }: { etapa: Etapa }) {
   return (
     <span
-      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${ESTILO_SEMAFORO[color].punto}`}
-      aria-label={`Semáforo ${NOMBRE_SEMAFORO[color]}`}
+      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${ESTILO_ETAPA[etapa].punto}`}
+      aria-label={ESTILO_ETAPA[etapa].texto}
     />
   )
 }
 
-export function BadgeSemaforo({ color }: { color: ColorSemaforo }) {
-  const estilo = ESTILO_SEMAFORO[color]
+export function BadgeEtapa({ etapa }: { etapa: Etapa }) {
+  const estilo = ESTILO_ETAPA[etapa]
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-noche ${estilo.fondo}`}>
-      <PuntoSemaforo color={color} />
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${estilo.fondo}`}
+    >
+      <PuntoEtapa etapa={etapa} />
       {estilo.texto}
     </span>
   )
 }
 
+/** Punto del semáforo clásico (rojo / amarillo / verde). */
+const PUNTO_SEMAFORO: Record<ColorSemaforo, string> = {
+  rojo: 'bg-sem-rojo',
+  amarillo: 'bg-sem-amarillo',
+  verde: 'bg-sem-verde',
+  neutro: 'bg-slate-400',
+}
+
+export function PuntoSemaforo({ color }: { color: ColorSemaforo }) {
+  return <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${PUNTO_SEMAFORO[color]}`} />
+}
+
 export const NOMBRE_ESTADO: Record<EstadoComprobante, string> = {
-  pendiente_drive: 'Pendiente Drive',
+  pendiente_drive: 'Sin legajo',
   en_gestion: 'En gestión',
   presentada: 'Presentada',
   cobrada: 'Cobrada',
@@ -42,19 +81,14 @@ export const NOMBRE_ESTADO: Record<EstadoComprobante, string> = {
   nota_credito: 'Nota de crédito',
 }
 
-const ESTILO_ESTADO: Record<EstadoComprobante, string> = {
-  pendiente_drive: 'bg-sem-rojo/10 text-red-700',
-  en_gestion: 'bg-sem-amarillo/15 text-amber-800',
-  presentada: 'bg-marca/10 text-marca-oscuro',
-  cobrada: 'bg-sem-verde/15 text-emerald-800',
-  anulada: 'bg-slate-100 text-slate-600',
-  nota_credito: 'bg-slate-100 text-slate-600',
-}
-
-export function BadgeEstado({ estado }: { estado: EstadoComprobante }) {
-  return (
-    <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${ESTILO_ESTADO[estado]}`}>
-      {NOMBRE_ESTADO[estado]}
-    </span>
-  )
+/** Chip neutro para textos cortos (niveles, avisos). */
+export function Chip({ children, tono = 'gris' }: { children: string; tono?: 'gris' | 'rojo' | 'amarillo' | 'verde' | 'azul' }) {
+  const clases = {
+    gris: 'bg-slate-100 text-slate-700',
+    rojo: 'bg-sem-rojo/10 text-red-800',
+    amarillo: 'bg-sem-amarillo/15 text-amber-900',
+    verde: 'bg-sem-verde/15 text-emerald-800',
+    azul: 'bg-marca/10 text-blue-800',
+  }[tono]
+  return <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${clases}`}>{children}</span>
 }

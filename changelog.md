@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.1] - 2026-11-03
+
+### Agregado
+- **Notificaciones para Gerencia:** solo los escalamientos (documentación crítica y facturas con 3 reclamos sin respuesta).
+
+### Corregido
+- Al pasar de la vista de Sucursal a Auditoría o Gerencia, el filtro de sucursal vuelve a "Todas".
+- En pantallas angostas, el botón de "Mis facturas" dice "Subir" para que no quede cortado.
+- "Buscar una factura" (Gerencia) busca en todos los meses y sin el filtro de sucursal de arriba (ya está en la columna).
+- Si una búsqueda no encuentra nada con los filtros puestos, la tabla avisa cuántos resultados hay en otros meses o filtros y ofrece "Buscar en todo".
+
 ## [0.6.0] - 2026-11-03
 
 ### Cambiado

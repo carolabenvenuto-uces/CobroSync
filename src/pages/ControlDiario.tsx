@@ -29,10 +29,12 @@ function avisoNc(c: Comprobante): string {
  */
 export default function ControlDiario() {
   const { datos, hoy, rol, abrirLegajo, agregarComprobante } = useApp()
-  const comprobantes = useComprobantes()
+  const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params] = useSearchParams()
   const soloConsulta = rol === 'gerencia'
+  // Gerencia filtra la sucursal desde la columna: busca siempre en todas
+  const comprobantes = soloConsulta ? datos!.comprobantes : filtradosPorSucursal
   const entradaErp = useRef<HTMLInputElement>(null)
   const [mensajeErp, setMensajeErp] = useState<{ texto: string; error?: boolean } | null>(null)
 
@@ -44,8 +46,10 @@ export default function ControlDiario() {
   const filas = useMemo(() => comprobantes.map((c) => ({ c, s: calcularSemaforo(c, hoy) })), [comprobantes, hoy])
   type Fila = (typeof filas)[number]
 
-  // Si no viene ningún filtro desde un aviso, arranca mostrando el mes en curso
-  const filtrosIniciales = [...params.keys()].length > 0 ? Object.fromEntries(params.entries()) : { mes: mesDeFecha(hoy) }
+  // Auditoría arranca en el mes en curso (si no viene un filtro desde un aviso).
+  // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
+  const filtrosIniciales =
+    [...params.keys()].length > 0 ? Object.fromEntries(params.entries()) : soloConsulta ? {} : { mes: mesDeFecha(hoy) }
 
   async function cargarErp(archivo: File | undefined) {
     if (!archivo) return
@@ -184,7 +188,7 @@ export default function ControlDiario() {
         }
         acciones={
           <>
-            <FiltroSucursal />
+            {!soloConsulta && <FiltroSucursal />}
             {!soloConsulta && (
               <>
                 <input ref={entradaErp} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />

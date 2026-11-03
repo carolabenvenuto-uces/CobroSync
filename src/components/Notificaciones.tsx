@@ -6,12 +6,12 @@ import { formatoFecha } from '../lib/formato'
 /**
  * Campana de notificaciones: a la sucursal le avisa lo que hizo Auditoría (observaciones,
  * mensajes, rechazos); a Auditoría, lo que hicieron las sucursales (subidas, respuestas,
- * demoras, notas de crédito). Al tocar una, se abre la factura.
+ * demoras, notas de crédito); a Gerencia, solo los escalamientos (documentación crítica y
+ * reclamos sin respuesta). Al tocar una, se abre la factura.
  */
 export function Campana() {
   const { rol, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
   const [abierta, setAbierta] = useState(false)
-  if (rol === 'gerencia') return null
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
 
   return (
@@ -34,7 +34,7 @@ export function Campana() {
               <div>
                 <h2 className="font-extrabold">Notificaciones</h2>
                 <p className="text-xs text-slate-500">
-                  {rol === 'sucursal' ? 'Lo que respondió o pidió Auditoría' : 'Lo que hicieron las sucursales'}
+                  {rol === 'sucursal' ? 'Lo que respondió o pidió Auditoría' : rol === 'gerencia' ? 'Escalamientos: documentación crítica y reclamos sin respuesta' : 'Lo que hicieron las sucursales'}
                 </p>
               </div>
               <button type="button" onClick={() => setAbierta(false)} className="rounded-lg p-1.5 hover:bg-slate-100" aria-label="Cerrar">

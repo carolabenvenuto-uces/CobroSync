@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { AreaEvento, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
 import { anioDe, mesDe } from '../lib/fechas'
 import { cargarDatos } from '../services/datos'
+import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
 
 export const TODAS_LAS_SUCURSALES = 'Todas'
@@ -49,6 +50,10 @@ interface EstadoApp {
   /** tasa y objetivo de días para el informe de impacto económico */
   parametros: ParametrosImpacto
   setParametros: (p: ParametrosImpacto) => void
+  /** de dónde salen los datos: la demo o la planilla que cargó el usuario (solo en memoria) */
+  fuente: { tipo: 'demo' } | { tipo: 'planilla'; archivo: string; filas: number }
+  usarPlanilla: (resultado: ResultadoImportacion, archivo: string) => void
+  usarDemo: () => void
 }
 
 const AppContext = createContext<EstadoApp | null>(null)
@@ -61,15 +66,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mes, setMes] = useState(10)
   const [anio, setAnio] = useState(2026)
   const [parametros, setParametros] = useState<ParametrosImpacto>(PARAMETROS_INICIALES)
+  const [fuente, setFuente] = useState<EstadoApp['fuente']>({ tipo: 'demo' })
 
-  useEffect(() => {
+  const cargarDemo = useCallback(() => {
     cargarDatos()
       .then((d) => {
         setDatos(d)
         setAnio(anioDe(d.meta.fechaCorte))
         setMes(mesDe(d.meta.fechaCorte))
+        setFuente({ tipo: 'demo' })
+        setSucursal(TODAS_LAS_SUCURSALES)
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+  }, [])
+
+  useEffect(() => {
+    cargarDemo()
+  }, [cargarDemo])
+
+  const usarPlanilla = useCallback((resultado: ResultadoImportacion, archivo: string) => {
+    setDatos(resultado.datos)
+    setAnio(anioDe(resultado.datos.meta.fechaCorte))
+    setMes(resultado.ultimoMes)
+    setSucursal(TODAS_LAS_SUCURSALES)
+    setFuente({ tipo: 'planilla', archivo, filas: resultado.filasLeidas })
   }, [])
 
   // Una persona de sucursal solo ve su sucursal: si estaba en "Todas", elige la primera.
@@ -134,8 +154,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registrarEvento,
       parametros,
       setParametros,
+      fuente,
+      usarPlanilla,
+      usarDemo: cargarDemo,
     }),
-    [datos, error, rol, setRol, sucursal, anio, mes, usuario, hoy, actualizarComprobante, agregarComprobante, registrarEvento, parametros],
+    [
+      datos,
+      error,
+      rol,
+      setRol,
+      sucursal,
+      anio,
+      mes,
+      usuario,
+      hoy,
+      actualizarComprobante,
+      agregarComprobante,
+      registrarEvento,
+      parametros,
+      fuente,
+      usarPlanilla,
+      cargarDemo,
+    ],
   )
 
   return <AppContext.Provider value={valor}>{children}</AppContext.Provider>

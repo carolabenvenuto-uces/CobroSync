@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0] - 2026-11-03
+
+### Agregado
+- **Usar mi planilla**: se carga la hoja Diario exportada como CSV y toda la app (pendientes, alertas, ranking, impacto, saldos, control diario) pasa a mostrar los datos reales.
+  - Se procesa solo en el navegador: el archivo no se sube ni se guarda; al recargar vuelve la demo.
+  - Traduce los estados de la planilla: Cobrado, Al día / Vencida (esperando pago), P. Pend. (para presentar), D. Pend. (pendiente de la sucursal), Anulada y NC.
+  - Aviso en la barra superior mientras se usan datos reales, con opción de volver a la demo.
+- Tests de lectura de la planilla con filas de ejemplo.
+
 ## [0.3.0] - 2026-11-03
 
 ### Cambiado

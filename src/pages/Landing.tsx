@@ -24,7 +24,7 @@ import { formatoPesosCorto } from '../lib/formato'
 
 const PROBLEMAS = [
   { icono: ScanLine, titulo: 'Escaneos borrosos', texto: 'La compañía rechaza el legajo y el cobro vuelve a empezar.' },
-  { icono: FileWarning, titulo: 'Órdenes sin firma', texto: 'Una conformidad sin firma o sello frena la presentación.' },
+  { icono: FileWarning, titulo: 'Órdenes sin firma', texto: 'Una orden sin la firma del cliente frena la presentación.' },
   { icono: EyeOff, titulo: 'Documentos que no se ven', texto: 'El Drive falla o no todos ven todo: hay que reclamar a cada sucursal.' },
   { icono: Hourglass, titulo: 'Facturas sin presentar', texto: 'Se detectan tarde y el cobro se demora entre 15 y 45 días.' },
   { icono: Receipt, titulo: 'Notas de crédito sueltas', texto: 'Anulaciones que no se informan y descuadran los saldos.' },
@@ -33,7 +33,7 @@ const PROBLEMAS = [
 
 const PASOS = [
   { icono: FileSpreadsheet, titulo: 'Ingesta desde el ERP', texto: 'Las facturas llegan desde la exportación del ERP (Excel o CSV).' },
-  { icono: FolderSearch, titulo: 'Armado del legajo', texto: 'Cada factura se asocia con su orden de reparación, remito y conformidad.' },
+  { icono: FolderSearch, titulo: 'Armado del legajo', texto: 'La sucursal sube la factura, la orden y la firma; Auditoría las revisa y las tilda.' },
   { icono: ShieldCheck, titulo: 'Validación y semáforo', texto: 'Lo que falta, está ilegible o sin firma queda en rojo y no avanza.' },
   { icono: Send, titulo: 'Presentación y cobro', texto: 'Se presenta a cada compañía y se sigue hasta que el dinero ingresa.' },
 ]

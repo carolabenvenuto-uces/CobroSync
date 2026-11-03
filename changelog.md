@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0] - 2026-11-03
+
+### Cambiado
+- **Estados con el vocabulario de la planilla:** Doc. pendiente, Doc. atrasada, Doc. observada, En revisión, Pres. pendiente, Al día, Vencida y Cobrado, cada uno con su color y a quién le toca.
+- **Documentación en tres puntos para tildar:** factura, orden de reparación o repuestos y firma del cliente. La sucursal sube (también un PDF con todo) y Auditoría aprueba o observa cada punto con un motivo; con los tres aprobados queda para presentar.
+- **Inicio detallado:** informe del mes (indica si está en curso) e informe general del año con montos completos, cobrado del mes separado en facturas del mes y de meses anteriores, tabla de facturas abiertas por estado y semanas solo hasta hoy.
+- **Ranking de sucursales** ordenado por plata retenida, con la documentación pendiente en plazo, atrasada y crítica; los promedios con pocas facturas se marcan como poco representativos.
+- **Filtros dentro de cada pantalla**, solo donde se usan. "Ver como" pasó a la barra izquierda.
+- **Control diario** con las columnas de la hoja Diario.
+- **Saldos** separados en sin presentar, al día y vencido, con el estado de los reclamos.
+
+### Agregado
+- **Vencidas y reclamos:** registro de reclamos a las compañías (fecha, medio, nota) y alerta para escalar a gerencia cuando no responden. Lectura opcional de las columnas S, T y U de la planilla.
+
 ## [0.4.0] - 2026-11-03
 
 ### Agregado

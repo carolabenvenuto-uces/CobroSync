@@ -31,9 +31,14 @@ export type EstadoComprobante =
   | 'anulada' // anulada con una nota de crédito
   | 'nota_credito' // estado propio de las NC
 
-export type TipoDocumento = 'factura' | 'orden_reparacion' | 'remito' | 'conformidad'
+/** Lo que Auditoría tiene que ver de cada factura: la factura, la orden (de reparación o de repuestos) y la firma del cliente. */
+export type TipoDocumento = 'factura' | 'orden' | 'firma'
 
-export type EstadoDocumento = 'ok' | 'faltante' | 'ilegible' | 'sin_firma'
+/**
+ * faltante → la sucursal no lo subió · en_revision → subido, Auditoría tiene que revisarlo
+ * ok → Auditoría lo aprobó (tildado) · observado → Auditoría lo rechazó, con un motivo
+ */
+export type EstadoDocumento = 'faltante' | 'en_revision' | 'ok' | 'observado'
 
 export type ColorSemaforo = 'rojo' | 'amarillo' | 'verde' | 'neutro'
 
@@ -41,16 +46,19 @@ export type ColorSemaforo = 'rojo' | 'amarillo' | 'verde' | 'neutro'
 export type Responsable = 'sucursal' | 'auditoria' | 'compania'
 
 /**
- * Etapa del legajo: lo que se muestra en pantalla.
- * Separa el "amarillo" según quién tiene que actuar, para no mezclar responsabilidades.
+ * Etapa de la factura, con el mismo vocabulario que la planilla de control
+ * (D. Pend., P. Pend., Al día, Vencida, Cobrado), un poco más detallado:
  */
 export type Etapa =
-  | 'bloqueado' // rojo: atrasado o con documentos con problemas
-  | 'esperando_sucursal' // amarillo: dentro del plazo de escaneo
-  | 'para_presentar' // azul: completo, le toca a auditoría
-  | 'esperando_pago' // violeta: presentado, le toca a la compañía
-  | 'cobrado' // verde
-  | 'no_aplica' // gris: NC y facturas anuladas
+  | 'doc_pendiente' // D. Pend. dentro de los 7 días: le toca a la sucursal
+  | 'doc_atrasada' // D. Pend. con más de 7 días: la sucursal está atrasada
+  | 'doc_observada' // Auditoría observó un documento (ilegible, sin firma…): la sucursal tiene que reemplazarlo
+  | 'en_revision' // la sucursal subió todo: Auditoría tiene que revisarlo y tildarlo
+  | 'pres_pendiente' // P. Pend.: legajo completo, le toca a Auditoría presentarlo
+  | 'al_dia' // presentada, todavía no venció: le toca a la compañía
+  | 'vencida' // presentada y vencida sin cobrar: hay que reclamar
+  | 'cobrado'
+  | 'no_aplica' // NC y facturas anuladas
 
 export interface Aseguradora {
   id: string
@@ -74,11 +82,21 @@ export interface Documento {
   estado: EstadoDocumento
   /** nombre del archivo subido, si lo hay */
   archivo?: string
+  /** por qué se observó (ilegible, sin firma, no corresponde…) */
+  motivo?: string
 }
 
 export type AreaEvento = 'sucursal' | 'auditoria' | 'gerencia' | 'sistema'
 
-export type TipoEvento = 'subida' | 'mensaje' | 'rechazo' | 'compromiso' | 'presentacion' | 'aviso' | 'nota_credito'
+export type TipoEvento =
+  | 'subida'
+  | 'mensaje'
+  | 'rechazo'
+  | 'compromiso'
+  | 'presentacion'
+  | 'aviso'
+  | 'nota_credito'
+  | 'reclamo'
 
 export interface Evento {
   fecha: string
@@ -86,6 +104,14 @@ export interface Evento {
   area: AreaEvento
   tipo: TipoEvento
   texto: string
+}
+
+/** Un reclamo a la compañía por una factura vencida. */
+export interface Reclamo {
+  fecha: string
+  medio: 'mail' | 'portal' | 'telefono'
+  autor: string
+  nota: string
 }
 
 export interface Compromiso {
@@ -121,6 +147,8 @@ export interface Comprobante {
   /** en una NC: si la sucursal avisó a auditoría (o auditoría ya la revisó) */
   ncInformada: boolean | null
   compromiso: Compromiso | null
+  /** reclamos a la compañía (facturas vencidas) */
+  reclamos: Reclamo[]
   observaciones: string
   documentos: Documento[]
   eventos: Evento[]

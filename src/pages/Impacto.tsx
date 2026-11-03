@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Clock, HandCoins, Hourglass, TrendingDown } from 'lucide-react'
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
+import { FiltroSucursal } from '../components/Filtros'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularImpacto } from '../domain/impacto'
 import { esperaALaSucursal, rankingSucursales } from '../domain/sucursales'
@@ -61,7 +62,12 @@ export default function Impacto() {
       <EncabezadoPagina
         titulo="Impacto económico"
         subtitulo={`Cuánto cuesta que los legajos lleguen tarde · ${anio} · ${sucursal === 'Todas' ? 'Todas las sucursales' : sucursal}`}
-        acciones={<BotonExportar onClick={exportar} />}
+        acciones={
+          <>
+            <FiltroSucursal />
+            <BotonExportar onClick={exportar} />
+          </>
+        }
       />
 
       <Card className="mb-4">
@@ -98,14 +104,14 @@ export default function Impacto() {
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Indicador
           titulo="Retenido hoy"
-          valor={formatoPesosCorto(impacto.retenidoHoy)}
+          valor={formatoPesos(impacto.retenidoHoy)}
           tono="rojo"
           ayuda={`${impacto.legajosRetenidos} facturas esperando a las sucursales`}
           icono={<HandCoins className="h-4 w-4" />}
         />
         <Indicador
           titulo={`Costo de la demora ${anio}`}
-          valor={formatoPesosCorto(impacto.costoDelAnio)}
+          valor={formatoPesos(impacto.costoDelAnio)}
           tono="rojo"
           ayuda="Costo financiero estimado"
           icono={<TrendingDown className="h-4 w-4" />}

@@ -1,10 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BellRing, CalendarX2, FileClock, MessageSquareWarning, Receipt, Siren } from 'lucide-react'
+import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWarning, Receipt, Siren } from 'lucide-react'
+import { FiltroSucursal } from '../components/Filtros'
 import { LegajoPanel } from '../components/LegajoPanel'
 import { Card, EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { calcularSemaforo, estaVencido } from '../domain/semaforo'
+import { estadoReclamo } from '../domain/reclamos'
+import { calcularSemaforo } from '../domain/semaforo'
 import { compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
@@ -32,8 +34,8 @@ export function calcularAlertas(comprobantes: Comprobante[], hoy: string, nombre
   return [
     {
       clave: 'criticos',
-      titulo: 'Escaneos críticos',
-      descripcion: 'Más de 21 días sin legajo completo. Se avisó a la gerencia general.',
+      titulo: 'Documentación crítica',
+      descripcion: 'Más de 21 días sin la documentación completa. Se avisó a la gerencia general.',
       quien: 'Sucursal',
       icono: <Siren className="h-5 w-5" />,
       tono: 'rojo',
@@ -80,36 +82,57 @@ export function calcularAlertas(comprobantes: Comprobante[], hoy: string, nombre
         .map((c) => ({ c, detalle: `${formatoPesos(c.total)} · ${c.sucursal}` })),
     },
     {
+      clave: 'revisar',
+      titulo: 'Documentación para revisar',
+      descripcion: 'La sucursal subió la factura, la orden y la firma: hay que revisarlas y tildarlas.',
+      quien: 'Auditoría',
+      icono: <FileCheck className="h-5 w-5" />,
+      tono: 'azul',
+      items: comprobantes
+        .filter((c) => calcularSemaforo(c, hoy).etapa === 'en_revision')
+        .map((c) => ({ c, detalle: `Subida el ${formatoFecha(c.fechaDrive)} · ${c.sucursal}` })),
+      verTodos: '/app/control-diario?etapa=en_revision&periodo=anio',
+    },
+    {
       clave: 'presentar',
-      titulo: 'Listos para presentar hace más de 2 días',
-      descripcion: 'El legajo está completo y todavía no se presentó a la compañía.',
+      titulo: 'Aprobadas sin presentar hace más de 2 días',
+      descripcion: 'La documentación está aprobada y todavía no se presentó a la compañía.',
       quien: 'Auditoría',
       icono: <FileClock className="h-5 w-5" />,
       tono: 'azul',
       items: comprobantes
-        .filter(
-          (c) =>
-            calcularSemaforo(c, hoy).etapa === 'para_presentar' &&
-            c.fechaDrive !== null &&
-            diffDias(c.fechaDrive, hoy) > 2,
-        )
-        .map((c) => ({ c, detalle: `Completo desde el ${formatoFecha(c.fechaDrive)} · ${nombreCompania(c.aseguradoraId)}` })),
-      verTodos: '/app/control-diario?etapa=para_presentar&periodo=anio',
+        .filter((c) => calcularSemaforo(c, hoy).etapa === 'pres_pendiente' && c.fechaDrive !== null && diffDias(c.fechaDrive, hoy) > 2)
+        .map((c) => ({ c, detalle: `Subida el ${formatoFecha(c.fechaDrive)} · ${nombreCompania(c.aseguradoraId)}` })),
+      verTodos: '/app/control-diario?etapa=pres_pendiente&periodo=anio',
     },
     {
-      clave: 'vencidos',
-      titulo: 'Vencidos sin cobrar',
-      descripcion: 'Presentados, con el plazo de pago cumplido: hay que reclamar a la compañía.',
-      quien: 'Compañía',
+      clave: 'sin-reclamar',
+      titulo: 'Vencidas sin reclamar',
+      descripcion: 'Presentadas y vencidas, todavía sin ningún reclamo a la compañía.',
+      quien: 'Auditoría',
       icono: <BellRing className="h-5 w-5" />,
       tono: 'violeta',
       items: comprobantes
-        .filter((c) => estaVencido(c, hoy))
+        .filter((c) => estadoReclamo(c, hoy) === 'sin_reclamar')
+        .sort((a, b) => (a.vencimiento ?? '').localeCompare(b.vencimiento ?? ''))
+        .map((c) => ({ c, detalle: `Venció el ${formatoFecha(c.vencimiento)} · ${nombreCompania(c.aseguradoraId)}` })),
+      verTodos: '/app/reclamos',
+    },
+    {
+      clave: 'escalar',
+      titulo: 'Reclamos sin respuesta: escalar',
+      descripcion: 'La compañía no paga ni responde a los reclamos: que intervenga gerencia.',
+      quien: 'Gerencia',
+      icono: <Megaphone className="h-5 w-5" />,
+      tono: 'violeta',
+      items: comprobantes
+        .filter((c) => estadoReclamo(c, hoy) === 'escalar')
         .sort((a, b) => (a.vencimiento ?? '').localeCompare(b.vencimiento ?? ''))
         .map((c) => ({
           c,
-          detalle: `Venció el ${formatoFecha(c.vencimiento)} · ${nombreCompania(c.aseguradoraId)}`,
+          detalle: `${c.reclamos.length} reclamos · venció el ${formatoFecha(c.vencimiento)} · ${nombreCompania(c.aseguradoraId)}`,
         })),
+      verTodos: '/app/reclamos',
     },
   ]
 }
@@ -141,6 +164,7 @@ export default function Alertas() {
       <EncabezadoPagina
         titulo="Alertas"
         subtitulo="Lo que necesita atención hoy, agrupado por quién tiene que actuar"
+        acciones={<FiltroSucursal />}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         {grupos.map((g) => (

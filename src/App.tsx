@@ -11,6 +11,7 @@ import Impacto from './pages/Impacto'
 import Landing from './pages/Landing'
 import Pendientes from './pages/Pendientes'
 import RankingSucursales from './pages/RankingSucursales'
+import Reclamos from './pages/Reclamos'
 import Saldos from './pages/Saldos'
 import UsarPlanilla from './pages/UsarPlanilla'
 
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="pendientes" element={<Pendientes />} />
         <Route path="alertas" element={oficina(<Alertas />)} />
         <Route path="control-diario" element={<ControlDiario />} />
+        <Route path="reclamos" element={oficina(<Reclamos />)} />
         <Route path="sucursales" element={oficina(<RankingSucursales />)} />
         <Route path="impacto" element={oficina(<Impacto />)} />
         <Route path="saldos" element={oficina(<Saldos />)} />

@@ -1,35 +1,54 @@
 import type { ColorSemaforo, EstadoComprobante, Etapa } from '../../domain/tipos'
 
 /**
- * Cada etapa tiene su color, así se distingue a simple vista de quién depende el legajo:
- *  rojo = bloqueado · amarillo = esperando a la sucursal · azul = para presentar (auditoría)
- *  violeta = esperando el pago (compañía) · verde = cobrado · gris = no aplica
+ * Cada etapa tiene su color y el nombre que se usa en la planilla de control,
+ * para que se entienda a simple vista de quién depende la factura:
+ *  rojo = documentación atrasada u observada · amarillo = doc. pendiente en plazo
+ *  azul = presentación pendiente (Auditoría) · violeta = al día (compañía)
+ *  rojo oscuro = vencida · verde = cobrado · gris = no aplica
  */
 const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string; quien: string }> = {
-  bloqueado: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Bloqueado', quien: 'Sucursal' },
-  esperando_sucursal: {
+  doc_atrasada: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Doc. atrasada', quien: 'Sucursal' },
+  doc_observada: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Doc. observada', quien: 'Sucursal' },
+  doc_pendiente: {
     punto: 'bg-sem-amarillo',
     fondo: 'bg-sem-amarillo/15 text-amber-900',
-    texto: 'Esperando sucursal',
+    texto: 'Doc. pendiente',
     quien: 'Sucursal',
   },
-  para_presentar: {
-    punto: 'bg-etapa-auditoria',
-    fondo: 'bg-etapa-auditoria/10 text-blue-800',
-    texto: 'Para presentar',
+  en_revision: {
+    punto: 'bg-sky-500',
+    fondo: 'bg-sky-500/10 text-sky-800',
+    texto: 'En revisión',
     quien: 'Auditoría',
   },
-  esperando_pago: {
-    punto: 'bg-etapa-compania',
-    fondo: 'bg-etapa-compania/10 text-violet-800',
-    texto: 'Esperando pago',
-    quien: 'Compañía',
+  pres_pendiente: {
+    punto: 'bg-etapa-auditoria',
+    fondo: 'bg-etapa-auditoria/10 text-blue-800',
+    texto: 'Pres. pendiente',
+    quien: 'Auditoría',
   },
+  al_dia: { punto: 'bg-etapa-compania', fondo: 'bg-etapa-compania/10 text-violet-800', texto: 'Al día', quien: 'Compañía' },
+  vencida: { punto: 'bg-red-800', fondo: 'bg-red-800/10 text-red-900', texto: 'Vencida', quien: 'Compañía' },
   cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-emerald-800', texto: 'Cobrado', quien: '—' },
-  no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'No aplica', quien: '—' },
+  no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'Anulada / NC', quien: '—' },
 }
 
-export const ETAPAS_ACTIVAS: Etapa[] = ['bloqueado', 'esperando_sucursal', 'para_presentar', 'esperando_pago']
+/** Qué significa cada etapa, para mostrar como ayuda. */
+export const AYUDA_ETAPA: Record<Etapa, string> = {
+  doc_pendiente: 'Falta documentación de la sucursal, dentro de los 7 días',
+  doc_atrasada: 'Falta documentación de la sucursal y pasaron más de 7 días',
+  doc_observada: 'Auditoría observó un documento: la sucursal tiene que reemplazarlo',
+  en_revision: 'La sucursal subió todo: Auditoría tiene que revisarlo y tildarlo',
+  pres_pendiente: 'Legajo completo: falta presentarlo a la compañía',
+  al_dia: 'Presentada, todavía no venció',
+  vencida: 'Presentada, vencida y sin cobrar: hay que reclamar',
+  cobrado: 'Cobrada',
+  no_aplica: 'Nota de crédito o factura anulada',
+}
+
+/** Etapas abiertas, en el orden en que avanza una factura. */
+export const ETAPAS_ACTIVAS: Etapa[] = ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision', 'pres_pendiente', 'al_dia', 'vencida']
 
 export function nombreEtapa(etapa: Etapa): string {
   return ESTILO_ETAPA[etapa].texto
@@ -53,6 +72,7 @@ export function BadgeEtapa({ etapa }: { etapa: Etapa }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${estilo.fondo}`}
+      title={AYUDA_ETAPA[etapa]}
     >
       <PuntoEtapa etapa={etapa} />
       {estilo.texto}

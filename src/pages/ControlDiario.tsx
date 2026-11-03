@@ -1,27 +1,33 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, FileSpreadsheet, ScanLine, Search } from 'lucide-react'
+import { FiltroMes, FiltroSucursal } from '../components/Filtros'
 import { LegajoPanel } from '../components/LegajoPanel'
-import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, NOMBRE_ESTADO, PuntoEtapa, quienEtapa } from '../components/ui/Badges'
+import { AYUDA_ETAPA, BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../components/ui/Badges'
 import { BotonExportar, Card, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
+import { ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
 import type { Etapa } from '../domain/tipos'
-import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { diffDias, enMes } from '../lib/fechas'
+import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
 
-const POR_PAGINA = 20
+const POR_PAGINA = 25
 type FiltroEtapa = Etapa | 'todas'
 
+/**
+ * Control diario: la misma información y el mismo orden de columnas que la hoja
+ * "Diario" de la planilla, con el estado calculado y el legajo a un clic.
+ */
 export default function ControlDiario() {
   const { datos, anio, mes, hoy } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
 
-  // Los filtros viven en la URL (?etapa=bloqueado&periodo=anio): así los links del dashboard funcionan.
+  // Los filtros de etapa y período viven en la URL: así los links del Inicio llegan ya filtrados.
   const etapa = (params.get('etapa') ?? 'todas') as FiltroEtapa
   const periodo = params.get('periodo') === 'anio' ? 'anio' : 'mes'
   const [busqueda, setBusqueda] = useState('')
@@ -50,7 +56,7 @@ export default function ControlDiario() {
         if (etapa !== 'todas' && s.etapa !== etapa) return false
         if (compania !== 'todas' && c.aseguradoraId !== compania) return false
         if (texto) {
-          const campos = [c.ref, formatoComprobante(c), c.patente, c.siniestro].join(' ').toLowerCase()
+          const campos = [c.ref, formatoComprobante(c), c.patente, c.siniestro, c.observaciones].join(' ').toLowerCase()
           if (!campos.includes(texto)) return false
         }
         return true
@@ -58,35 +64,37 @@ export default function ControlDiario() {
       .sort((a, b) => b.c.fecha.localeCompare(a.c.fecha) || b.c.numero - a.c.numero)
   }, [comprobantes, periodo, anio, mes, etapa, compania, busqueda, hoy])
 
+  const totalFiltrado = filas.reduce((s, f) => s + f.c.total, 0)
   const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA))
   const paginaActual = Math.min(pagina, totalPaginas)
   const visibles = filas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
   const seleccionado = comprobantes.find((c) => c.id === seleccionadoId) ?? null
-
   const conteo = (e: Etapa) => filas.filter((f) => f.semaforo.etapa === e).length
 
   function exportar() {
     descargarExcel(
       `control-diario-${periodo === 'mes' ? `${anio}-${mes}` : anio}`,
-      ['Fecha', 'Ref.', 'Sucursal', 'Comprobante', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Fecha subida', 'Subido por', 'Presentación', 'Vencimiento', 'Cobro', 'Estado', 'Etapa', 'Le toca a', 'Detalle'],
+      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro/Patente', 'Total', 'En Drive', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Reclamos', 'Último reclamo', 'Observaciones'],
       filas.map(({ c, semaforo: s }) => [
         fechaExcel(c.fecha),
         c.ref,
         c.sucursal,
-        formatoComprobante(c),
+        `${c.tipo} E`,
+        `${c.puntoVenta} - ${String(c.numero).padStart(8, '0')}`,
         nombreCompania[c.aseguradoraId],
-        c.siniestro,
-        c.patente,
+        [c.siniestro, c.patente].filter(Boolean).join(' · '),
         c.total,
         fechaExcel(c.fechaDrive),
-        c.subidoPor,
+        c.fechaDrive ? diffDias(c.fecha, c.fechaDrive) : null,
         fechaExcel(c.fechaPresentacion),
+        c.fechaPresentacion ? diffDias(c.fecha, c.fechaPresentacion) : null,
         fechaExcel(c.vencimiento),
         fechaExcel(c.fechaCobro),
-        NOMBRE_ESTADO[c.estado],
         nombreEtapa(s.etapa),
         quienEtapa(s.etapa),
-        s.detalle.join(' / '),
+        c.reclamos.length || null,
+        fechaExcel(ultimoReclamo(c)),
+        c.observaciones || null,
       ]),
     )
   }
@@ -97,8 +105,8 @@ export default function ControlDiario() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Control diario y legajos"
-        subtitulo={periodo === 'mes' ? `${MESES[mes - 1]} ${anio}` : `Todo ${anio}`}
+        titulo="Control diario"
+        subtitulo={periodo === 'mes' ? `Facturas y NC de ${MESES[mes - 1].toLowerCase()} ${anio}` : `Todas las facturas y NC de ${anio}`}
         acciones={
           <>
             <button type="button" disabled className={botonEtapa2} title="Disponible en la etapa 2">
@@ -123,22 +131,25 @@ export default function ControlDiario() {
                 setBusqueda(e.target.value)
                 setPagina(1)
               }}
-              placeholder="Buscar por ref., número, patente o siniestro"
+              placeholder="Buscar por ref., número, siniestro, patente u observación"
               className={`${claseSelect} w-full pl-9`}
             />
           </label>
+          <FiltroSucursal />
           <select className={claseSelect} value={periodo} onChange={(e) => cambiarParam('periodo', e.target.value)}>
-            <option value="mes">Mes seleccionado</option>
+            <option value="mes">Un mes</option>
             <option value="anio">Todo el año</option>
           </select>
+          {periodo === 'mes' && <FiltroMes />}
           <select className={claseSelect} value={etapa} onChange={(e) => cambiarParam('etapa', e.target.value)}>
-            <option value="todas">Todas las etapas</option>
-            <option value="bloqueado">Bloqueados (sucursal)</option>
-            <option value="esperando_sucursal">Esperando sucursal</option>
-            <option value="para_presentar">Para presentar (auditoría)</option>
-            <option value="esperando_pago">Esperando pago (compañía)</option>
-            <option value="cobrado">Cobrados</option>
-            <option value="no_aplica">Anulados y NC</option>
+            <option value="todas">Todos los estados</option>
+            {(['doc_pendiente', 'doc_atrasada', 'doc_observada', 'pres_pendiente', 'al_dia', 'vencida', 'cobrado', 'no_aplica'] as Etapa[]).map(
+              (e) => (
+                <option key={e} value={e}>
+                  {nombreEtapa(e)} · {AYUDA_ETAPA[e].toLowerCase()}
+                </option>
+              ),
+            )}
           </select>
           <select
             className={claseSelect}
@@ -156,72 +167,73 @@ export default function ControlDiario() {
             ))}
           </select>
         </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
-          <span>{filas.length} comprobantes</span>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+          <span className="font-semibold text-noche">
+            {filas.length.toLocaleString('es-AR')} comprobantes · {formatoPesos(totalFiltrado)}
+          </span>
           {ETAPAS_ACTIVAS.map((e) => (
-            <span key={e} className="flex items-center gap-1.5">
-              <PuntoEtapa etapa={e} /> {nombreEtapa(e)}: {conteo(e)}
+            <span key={e}>
+              {nombreEtapa(e)}: <strong>{conteo(e)}</strong>
             </span>
           ))}
+          <span>
+            Cobrado: <strong>{conteo('cobrado')}</strong>
+          </span>
         </div>
       </Card>
 
       <Card className="mt-4 overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-fondo text-xs uppercase tracking-wide text-slate-500">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-fondo uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-3 py-3 font-semibold">Fecha</th>
-                <th className="px-3 py-3 font-semibold">Ref.</th>
-                <th className="px-3 py-3 font-semibold">Sucursal</th>
-                <th className="px-3 py-3 font-semibold">Comprobante</th>
-                <th className="px-3 py-3 font-semibold">Compañía</th>
-                <th className="px-3 py-3 font-semibold">Siniestro / patente</th>
-                <th className="px-3 py-3 text-right font-semibold">Total</th>
-                <th className="px-3 py-3 font-semibold">Subida</th>
-                <th className="px-3 py-3 font-semibold">Presentación</th>
-                <th className="px-3 py-3 font-semibold">Vto.</th>
-                <th className="px-3 py-3 font-semibold">Etapa</th>
+                <th className="px-2 py-3 font-semibold">Ref.</th>
+                <th className="px-2 py-3 font-semibold">Sucursal</th>
+                <th className="px-2 py-3 font-semibold">Comprobante</th>
+                <th className="px-2 py-3 font-semibold">Compañía</th>
+                <th className="px-2 py-3 font-semibold">Siniestro / patente</th>
+                <th className="px-2 py-3 text-right font-semibold">Total</th>
+                <th className="px-2 py-3 font-semibold">En Drive</th>
+                <th className="px-2 py-3 font-semibold">Presentación</th>
+                <th className="px-2 py-3 font-semibold">Vto.</th>
+                <th className="px-2 py-3 font-semibold">Cobro</th>
+                <th className="px-2 py-3 font-semibold">Estado</th>
+                <th className="px-3 py-3 font-semibold">Observaciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {visibles.map(({ c, semaforo: s }) => (
-                <tr
-                  key={c.id}
-                  onClick={() => setSeleccionadoId(c.id)}
-                  className="cursor-pointer hover:bg-marca/5"
-                  title={s.detalle.join(' · ')}
-                >
-                  <td className="px-4 py-2.5 whitespace-nowrap">{formatoFecha(c.fecha)}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{c.ref}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{c.sucursal}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap font-medium">{formatoComprobante(c)}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{nombreCompania[c.aseguradoraId]}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
-                    {c.siniestro} · {c.patente}
-                  </td>
-                  <td className={`px-3 py-2.5 text-right whitespace-nowrap font-semibold ${c.total < 0 ? 'text-sem-rojo' : ''}`}>
+                <tr key={c.id} onClick={() => setSeleccionadoId(c.id)} className="cursor-pointer hover:bg-marca/5" title={s.detalle.join(' · ')}>
+                  <td className="px-3 py-2 whitespace-nowrap">{formatoFecha(c.fecha)}</td>
+                  <td className="px-2 py-2 text-slate-500">{c.ref}</td>
+                  <td className="px-2 py-2 whitespace-nowrap">{c.sucursal}</td>
+                  <td className="px-2 py-2 whitespace-nowrap font-medium">{formatoComprobante(c)}</td>
+                  <td className="px-2 py-2 whitespace-nowrap">{nombreCompania[c.aseguradoraId]}</td>
+                  <td className="px-2 py-2 whitespace-nowrap text-slate-600">{[c.siniestro, c.patente].filter(Boolean).join(' · ')}</td>
+                  <td className={`px-2 py-2 text-right whitespace-nowrap font-semibold tabular-nums ${c.total < 0 ? 'text-sem-rojo' : ''}`}>
                     {formatoPesos(c.total)}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-2 py-2 whitespace-nowrap">
                     {formatoFecha(c.fechaDrive)}
-                    {c.fechaDrive && <span className="ml-1 text-xs text-slate-400">+{diffDias(c.fecha, c.fechaDrive)}</span>}
+                    {c.fechaDrive && <span className="ml-1 text-xs text-slate-400">{diffDias(c.fecha, c.fechaDrive)} d</span>}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-2 py-2 whitespace-nowrap">
                     {formatoFecha(c.fechaPresentacion)}
-                    {c.fechaPresentacion && (
-                      <span className="ml-1 text-xs text-slate-400">+{diffDias(c.fecha, c.fechaPresentacion)}</span>
-                    )}
+                    {c.fechaPresentacion && <span className="ml-1 text-xs text-slate-400">{diffDias(c.fecha, c.fechaPresentacion)} d</span>}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">{formatoFecha(c.vencimiento)}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-2 whitespace-nowrap">{formatoFecha(c.vencimiento)}</td>
+                  <td className="px-2 py-2 whitespace-nowrap">{formatoFecha(c.fechaCobro)}</td>
+                  <td className="px-2 py-2">
                     <BadgeEtapa etapa={s.etapa} />
+                    {c.reclamos.length > 0 && <div className="mt-0.5 text-[11px] text-slate-500">{c.reclamos.length} reclamo(s)</div>}
                   </td>
+                  <td className="max-w-56 truncate px-3 py-2 text-xs text-slate-600">{c.observaciones}</td>
                 </tr>
               ))}
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={13} className="px-4 py-10 text-center text-slate-500">
                     No hay comprobantes con estos filtros.
                   </td>
                 </tr>

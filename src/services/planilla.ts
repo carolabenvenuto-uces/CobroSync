@@ -9,9 +9,11 @@
  *  A Fecha · B Ref. · C Sucursal · D CTE. · E Número · F Compañía · G Siniestro/Patente
  *  H Total · I Fecha Drive · J días · K Fecha presentación · L días · M Vto. · N Fecha de cobro
  *  O Estado · P NC Anula · Q NC Ref. · R Observaciones
+ *  Opcionales: S Reclamado (x / ✓ / sí) · T Cant. reclamos · U Fecha del último reclamo
  */
 import type {
   Aseguradora,
+  Reclamo,
   Comprobante,
   DatosApp,
   Documento,
@@ -36,6 +38,10 @@ const COL = {
   cobro: 13,
   estado: 14,
   observaciones: 17,
+  // Columnas nuevas propuestas para la planilla (opcionales)
+  reclamado: 18,
+  cantidadReclamos: 19,
+  ultimoReclamo: 20,
 }
 
 export interface ResultadoImportacion {
@@ -127,6 +133,17 @@ function estadoDesdePlanilla(
   return 'pendiente_drive'
 }
 
+/** Lee las columnas opcionales de reclamos (S, T, U). */
+function leerReclamos(f: string[]): Reclamo[] {
+  const marca = (f[COL.reclamado] ?? '').trim().toLowerCase()
+  const cantidad = Number((f[COL.cantidadReclamos] ?? '').replace(/\D/g, '')) || 0
+  const ultimo = fechaIso(f[COL.ultimoReclamo])
+  const reclamada = cantidad > 0 || ultimo !== null || ['x', '✓', '✔', 'si', 'sí', 'true', 'verdadero'].includes(marca)
+  if (!reclamada) return []
+  const fecha = ultimo ?? ''
+  return Array.from({ length: Math.max(1, cantidad) }, (): Reclamo => ({ fecha, medio: 'mail', autor: 'Auditoría', nota: 'Registrado en la planilla' }))
+}
+
 export function importarPlanilla(texto: string, hoy: string): ResultadoImportacion {
   const filas = parsearCsv(texto)
 
@@ -180,12 +197,12 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
     const estadoTexto = (f[COL.estado] ?? '').trim().toLowerCase()
 
     // La planilla no detalla cada documento: si se recibió en el Drive (o figura "P. Pend."),
-    // el legajo se considera completo; si no, faltan los documentos de la sucursal.
+    // se considera revisado y aprobado; si no, faltan la factura, la orden y la firma.
     const completo = drive !== null || estadoTexto.startsWith('p. pend') || presentacion !== null
     const documentos: Documento[] =
       tipo === 'NC'
         ? []
-        : DOCUMENTOS_REQUERIDOS.map((t): Documento => ({ tipo: t, estado: completo || t === 'factura' ? 'ok' : 'faltante' }))
+        : DOCUMENTOS_REQUERIDOS.map((t): Documento => ({ tipo: t, estado: completo ? 'ok' : 'faltante' }))
 
     const total = importe(f[COL.total])
     comprobantes.push({
@@ -213,6 +230,7 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
       // La planilla no registra si la sucursal avisó la NC: no se generan alertas por eso
       ncInformada: tipo === 'NC' ? true : null,
       compromiso: null,
+      reclamos: leerReclamos(f),
       observaciones: (f[COL.observaciones] ?? '').trim(),
       documentos,
       eventos: [],

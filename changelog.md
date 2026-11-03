@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-11-03
+
+### Cambiado
+- Escalamiento de reclamos: se escala a gerencia cuando la compañía no respondió a 3 reclamos, sin importar los días de vencida.
+
 ## [0.5.0] - 2026-11-03
 
 ### Cambiado

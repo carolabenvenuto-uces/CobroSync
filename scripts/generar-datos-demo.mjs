@@ -405,9 +405,10 @@ for (const c of comprobantes) {
   if (c.tipo !== 'FC' || c.estado !== 'presentada' || !c.vencimiento || c.vencimiento >= FECHA_CORTE) continue
   const diasVencida = diffDias(c.vencimiento, FECHA_CORTE)
   if (azar() < 0.3 && diasVencida < 20) continue // todavía sin reclamar
-  const cantidad = Math.min(4, 1 + Math.floor(diasVencida / entre(8, 15)))
+  // Se reclama cada 2 o 3 semanas: la mayoría lleva 1 o 2 reclamos; las más viejas, 3 o más
+  const cantidad = Math.min(4, 1 + Math.floor(diasVencida / entre(20, 40)))
   for (let i = 0; i < cantidad; i++) {
-    const fecha = sumarDias(c.vencimiento, 2 + i * entre(6, 10))
+    const fecha = sumarDias(c.vencimiento, 2 + i * entre(14, 21))
     if (fecha > FECHA_CORTE) break
     const medio = elegir(['mail', 'mail', 'portal', 'telefono'])
     const autor = elegir(AUDITORIA)

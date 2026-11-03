@@ -24,6 +24,6 @@ Al revisar la demo con la operación real surgió que:
 | Cobrado | Cobrado | — |
 
 - Documentación: la sucursal sube los tres puntos (o un PDF con todo); Auditoría **aprueba** (tilda) u **observa** cada uno con un motivo. Con los tres aprobados, la factura pasa a Pres. pendiente.
-- Reclamos: cada uno registra fecha, medio (mail, portal, teléfono) y nota. Se escala a gerencia con 2 reclamos o más y 7 días sin respuesta, o con más de 30 días vencida (`src/domain/reclamos.ts`).
+- Reclamos: cada uno registra fecha, medio (mail, portal, teléfono) y nota. Se escala a gerencia cuando la compañía no respondió a 3 reclamos, sin importar los días de vencida (`src/domain/reclamos.ts`).
 - Planilla: columnas opcionales S "Reclamado", T "Cant. reclamos" y U "Fecha último reclamo".
 - Los filtros se muestran solo en las pantallas que los usan y los montos van completos, como en la planilla.

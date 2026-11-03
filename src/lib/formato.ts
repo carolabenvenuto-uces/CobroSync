@@ -24,9 +24,9 @@ export function formatoFecha(iso: string | null): string {
   return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}` : '—'
 }
 
-/** FC 0021-00004570 */
+/** FC E 35-00004570 (mismo formato que la planilla de control) */
 export function formatoComprobante(c: Pick<Comprobante, 'tipo' | 'puntoVenta' | 'numero'>): string {
-  return `${c.tipo} ${String(c.puntoVenta).padStart(4, '0')}-${String(c.numero).padStart(8, '0')}`
+  return `${c.tipo} E ${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
 }
 
 export const MESES = [

@@ -60,7 +60,7 @@ function VistaPreviaDashboard() {
       <div className="flex items-center justify-between bg-noche px-5 py-3">
         <span className="text-sm font-semibold text-white">Dashboard general</span>
         <span className="rounded-full bg-esmeralda/20 px-2.5 py-1 text-[10px] font-bold tracking-wider text-esmeralda">
-          DEMO · DATOS FICTICIOS
+          DEMO · DATOS DE EJEMPLO
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 p-5 xl:grid-cols-4">
@@ -265,7 +265,7 @@ export default function Landing() {
             <Isologo className="h-6 w-6" />
             CobroSync by CAROLA · desarrollado por CaroIA Studio
           </div>
-          <div>Demo con datos ficticios</div>
+          <div>Demo con datos de ejemplo</div>
         </div>
       </footer>
     </div>

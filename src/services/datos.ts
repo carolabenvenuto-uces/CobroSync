@@ -1,7 +1,7 @@
 /**
  * Único punto de acceso a los datos.
  *
- * Etapa 1 (ahora): lee los JSON ficticios de public/datos-demo/ con fetch().
+ * Etapa 1 (ahora): lee los JSON de ejemplo de public/datos-demo/ con fetch().
  * Etapa 2: este archivo pasa a consultar Supabase. Las pantallas no se modifican,
  * porque solo conocen la función cargarDatos() y los tipos de domain/tipos.ts.
  */

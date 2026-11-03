@@ -141,7 +141,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             Ver presentación del producto
           </Link>
           <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
-            <BarChart3 className="h-3.5 w-3.5" /> Demo con datos ficticios
+            <BarChart3 className="h-3.5 w-3.5" /> Demo con datos de ejemplo
           </div>
         </div>
       </aside>

@@ -58,7 +58,7 @@ export default function Pendientes() {
     const l = filas.filter(f)
     return { cantidad: l.length, monto: l.reduce((s, x) => s + x.c.total, 0) }
   }
-  const tarjetas = [
+  const tarjetas: { titulo: string; ayuda: string; tono: 'amarillo' | 'rojo' | 'neutro'; filtro: Record<string, string>; r: { cantidad: number; monto: number } }[] = [
     { titulo: 'En plazo', ayuda: `Hasta ${PLAZO_ESCANEO_DIAS} días`, tono: 'amarillo' as const, filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
     { titulo: 'Atrasadas', ayuda: 'Aviso al gerente de sucursal', tono: 'rojo' as const, filtro: { estado: 'Atrasada' }, r: resumen((x) => x.nivel === 'atrasado') },
     { titulo: 'Críticas', ayuda: 'Aviso a gerencia general', tono: 'rojo' as const, filtro: { estado: 'Crítica' }, r: resumen((x) => x.nivel === 'critico') },

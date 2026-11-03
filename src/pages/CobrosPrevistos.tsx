@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
+import { FiltroSucursal } from '../components/Filtros'
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularTotales, proyeccionDelMes } from '../domain/finanzas'
 import { enMes, mesDe, semanaDelMes } from '../lib/fechas'
-import { formatoComprobante, formatoFecha, formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
+import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
 
 export default function CobrosPrevistos() {
   const { datos, anio } = useApp()
@@ -69,6 +70,7 @@ export default function CobrosPrevistos() {
                 </option>
               ))}
             </select>
+            <FiltroSucursal />
             <BotonExportar onClick={exportar} />
           </>
         }
@@ -77,19 +79,19 @@ export default function CobrosPrevistos() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Indicador
           titulo={`Por vencimiento · ${MESES[mes - 1]}`}
-          valor={formatoPesosCorto(proyeccion.totalPorVencimiento)}
+          valor={formatoPesos(proyeccion.totalPorVencimiento)}
           ayuda="Facturas presentadas que vencen en el mes"
           tono="marca"
         />
         <Indicador
           titulo={`Informado por compañías · ${MESES[mes - 1]}`}
-          valor={formatoPesosCorto(proyeccion.totalInformado)}
+          valor={formatoPesos(proyeccion.totalInformado)}
           ayuda="Pagos con fecha confirmada"
           tono="verde"
         />
         <Indicador
           titulo="Vencido sin cobrar"
-          valor={formatoPesosCorto(vencido)}
+          valor={formatoPesos(vencido)}
           ayuda={`Al ${formatoFecha(meta.fechaCorte)}, de meses anteriores`}
           tono="rojo"
         />
@@ -102,11 +104,11 @@ export default function CobrosPrevistos() {
             <dl className="mt-3 space-y-2">
               <div>
                 <dt className="text-xs text-slate-500">Por vencimiento</dt>
-                <dd className="whitespace-nowrap text-lg font-bold text-marca">{formatoPesosCorto(s.porVencimiento)}</dd>
+                <dd className="whitespace-nowrap text-base font-bold tabular-nums text-marca">{formatoPesos(s.porVencimiento)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Informado</dt>
-                <dd className="whitespace-nowrap text-lg font-bold text-esmeralda">{formatoPesosCorto(s.informado)}</dd>
+                <dd className="whitespace-nowrap text-base font-bold tabular-nums text-esmeralda">{formatoPesos(s.informado)}</dd>
               </div>
             </dl>
           </Card>

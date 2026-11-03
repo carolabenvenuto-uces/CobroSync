@@ -83,6 +83,11 @@ export default function UsarPlanilla() {
             Si trabajás con Excel: <strong>Guardar como → CSV UTF-8</strong> estando en la hoja Diario. Se espera el
             mismo orden de columnas que la planilla (C = Sucursal, O = Estado).
           </p>
+          <p className="mt-2 text-xs text-slate-500">
+            <strong>Reclamos (opcional):</strong> si agregás a la planilla las columnas <strong>S</strong> "Reclamado" (una x),{' '}
+            <strong>T</strong> "Cant. reclamos" y <strong>U</strong> "Fecha último reclamo", la página muestra qué vencidas se reclamaron
+            y cuáles hay que escalar.
+          </p>
         </Card>
 
         <label

@@ -125,10 +125,13 @@ const MOTIVOS_COMPROMISO = [
   'El cliente retira el auto la semana próxima',
 ]
 
-const MOTIVOS_RECHAZO = {
-  ilegible: ['La compañía no puede leer el escaneo, reenviar con mejor calidad', 'El escaneo está cortado: falta la parte inferior'],
-  sin_firma: ['La orden no tiene la firma del cliente', 'La conformidad no tiene sello del taller'],
+// Motivos con los que Auditoría (o la compañía) observa un documento
+const MOTIVOS_OBSERVACION = {
+  orden: ['Ilegible o cortado', 'No corresponde a esta factura', 'Incompleto'],
+  firma: ['Sin firma del cliente', 'Ilegible o cortado'],
+  factura: ['Ilegible o cortado'],
 }
+const MOTIVOS_RECHAZO_CIA = ['la compañía no puede leer el escaneo', 'falta la firma del cliente en la orden', 'la orden no coincide con el siniestro']
 
 const RESPUESTAS_SUCURSAL = [
   'Lo vuelvo a escanear hoy.',
@@ -144,8 +147,9 @@ const patente = () =>
   azar() < 0.8 ? `${letra()}${letra()}${entre(100, 999)}${letra()}${letra()}` : `${letra()}${letra()}${letra()}${entre(100, 999)}`
 // Siniestro con el formato de cada compañía (9 = dígito, A = letra) y números al azar
 const siniestroCon = (formato) => formato.replace(/9/g, () => String(entre(0, 9))).replace(/A/g, letra)
-const TIPOS_DOC = ['factura', 'orden_reparacion', 'remito', 'conformidad']
-const NOMBRE_DOC = { factura: 'factura', orden_reparacion: 'orden de reparación', remito: 'remito', conformidad: 'conformidad' }
+// Lo que Auditoría tilda en cada legajo
+const TIPOS_DOC = ['factura', 'orden', 'firma']
+const NOMBRE_DOC = { factura: 'factura', orden: 'orden de reparación o repuestos', firma: 'firma del cliente' }
 
 // ── Generación de comprobantes ───────────────────────────────────────────────
 const comprobantes = []
@@ -180,37 +184,34 @@ function crearFactura(fecha) {
   // 2) Qué subió y en qué estado
   let documentos
   if (!fechaDrive) {
-    documentos = TIPOS_DOC.map((tipo) => ({ tipo, estado: tipo === 'factura' ? 'ok' : 'faltante' }))
+    documentos = TIPOS_DOC.map((tipo) => ({ tipo, estado: 'faltante' }))
   } else {
-    // Los legajos viejos ya se corrigieron casi todos; los recientes tienen más problemas.
+    // Auditoría revisa al día siguiente de la subida: lo subido ayer o hoy está "para revisar".
+    const revisado = diffDias(fechaDrive, FECHA_CORTE) >= 1
+    // Los legajos viejos ya se corrigieron casi todos; los recientes tienen más observaciones.
     const factor = edad > 90 ? 0.01 : edad > 45 ? 0.08 : edad > 21 ? 0.5 : 1
     documentos = TIPOS_DOC.map((tipo) => {
-      if (tipo === 'factura' || azar() >= sucursal.errores * factor) {
-        return { tipo, estado: 'ok', archivo: nombreArchivo(tipo) }
-      }
-      const estado = elegir(tipo === 'remito' ? ['faltante', 'ilegible'] : ['faltante', 'ilegible', 'sin_firma'])
-      return estado === 'faltante' ? { tipo, estado } : { tipo, estado, archivo: nombreArchivo(tipo) }
+      const archivo = nombreArchivo(tipo)
+      if (!revisado) return { tipo, estado: 'en_revision', archivo }
+      if (azar() >= sucursal.errores * 1.5 * factor) return { tipo, estado: 'ok', archivo }
+      return { tipo, estado: 'observado', archivo, motivo: elegir(MOTIVOS_OBSERVACION[tipo]) }
     })
-    eventos.push({
-      fecha: fechaDrive,
-      autor: persona,
-      area: 'sucursal',
-      tipo: 'subida',
-      texto: `Subió ${documentos.filter((d) => d.archivo && d.tipo !== 'factura').map((d) => NOMBRE_DOC[d.tipo]).join(', ') || 'el legajo'}`,
-    })
+    eventos.push({ fecha: fechaDrive, autor: persona, area: 'sucursal', tipo: 'subida', texto: 'Subió la factura, la orden y la firma' })
   }
   let completo = documentos.every((d) => d.estado === 'ok')
 
-  // Si lo que subió tiene problemas, auditoría lo observa al día siguiente
-  const conProblemas = documentos.filter((d) => d.estado === 'ilegible' || d.estado === 'sin_firma')
-  if (fechaDrive && conProblemas.length > 0 && sumarDias(fechaDrive, 1) <= FECHA_CORTE) {
+  // Si Auditoría observó algo, queda en la conversación
+  const observados = documentos.filter((d) => d.estado === 'observado')
+  if (fechaDrive && observados.length > 0) {
     eventos.push({
       fecha: sumarDias(fechaDrive, 1),
       autor: elegir(AUDITORIA),
       area: 'auditoria',
       tipo: 'rechazo',
-      texto: `Observación: ${conProblemas.map((d) => `${NOMBRE_DOC[d.tipo]} ${d.estado === 'ilegible' ? 'ilegible' : 'sin firma'}`).join(', ')}. Por favor, volver a subir.`,
+      texto: `Observado: ${observados.map((d) => `${NOMBRE_DOC[d.tipo]} (${d.motivo.toLowerCase()})`).join(', ')}. Por favor, volver a subir.`,
     })
+  } else if (fechaDrive && completo) {
+    eventos.push({ fecha: sumarDias(fechaDrive, 1), autor: elegir(AUDITORIA), area: 'auditoria', tipo: 'mensaje', texto: 'Documentación revisada y aprobada' })
   }
 
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
@@ -220,24 +221,24 @@ function crearFactura(fecha) {
     let p = sumarDias(fechaDrive, Math.floor(expo(0.7)))
     let rechazadoSinResolver = false
     // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
-    if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.18 : 0.08)) {
-      const tipo = elegir(['orden_reparacion', 'conformidad'])
-      const problema = elegir(['ilegible', 'sin_firma'])
+    if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.05 : 0.04)) {
+      const tipo = elegir(['orden', 'firma'])
+      const motivo = elegir(MOTIVOS_OBSERVACION[tipo])
       eventos.push({
         fecha: p,
         autor: elegir(AUDITORIA),
         area: 'auditoria',
         tipo: 'rechazo',
-        texto: `Rechazo de ${aseguradora.nombre}: ${elegir(MOTIVOS_RECHAZO[problema])}.`,
+        texto: `Rechazo de ${aseguradora.nombre}: ${elegir(MOTIVOS_RECHAZO_CIA)}. Hay que reemplazar la ${NOMBRE_DOC[tipo]}.`,
       })
       const respuesta = sumarDias(p, entre(1, 6))
       // Algunos rechazos recientes todavía no tienen respuesta de la sucursal
-      if (respuesta <= FECHA_CORTE && !(edad < 30 && azar() < 0.5)) {
+      if (respuesta <= FECHA_CORTE && !(edad < 30 && azar() < 0.3)) {
         eventos.push({ fecha: respuesta, autor: persona, area: 'sucursal', tipo: 'mensaje', texto: elegir(RESPUESTAS_SUCURSAL) })
         p = sumarDias(respuesta, entre(0, 2))
       } else {
         // sigue rechazado hoy
-        documentos = documentos.map((d) => (d.tipo === tipo ? { ...d, estado: problema } : d))
+        documentos = documentos.map((d) => (d.tipo === tipo ? { ...d, estado: 'observado', motivo } : d))
         completo = false
         rechazadoSinResolver = true
       }
@@ -322,6 +323,7 @@ function crearFactura(fecha) {
     ncReferencia: null,
     ncInformada: null,
     compromiso,
+    reclamos: [],
     observaciones: '',
     documentos,
     eventos: eventos.sort((a, b) => a.fecha.localeCompare(b.fecha)),
@@ -386,6 +388,7 @@ for (const fecha of fechasDeFactura) {
       // Las viejas ya las revisó auditoría; las recientes pueden estar sin informar
       ncInformada: informada || diffDias(fechaNc, FECHA_CORTE) > 90,
       compromiso: null,
+      reclamos: [],
       observaciones: factura.observaciones,
       documentos: [],
       eventos: informada
@@ -396,6 +399,22 @@ for (const fecha of fechasDeFactura) {
   }
 }
 for (const c of comprobantes) delete c._persona
+
+// Reclamos a las compañías: la mayoría de las vencidas ya se reclamó alguna vez
+for (const c of comprobantes) {
+  if (c.tipo !== 'FC' || c.estado !== 'presentada' || !c.vencimiento || c.vencimiento >= FECHA_CORTE) continue
+  const diasVencida = diffDias(c.vencimiento, FECHA_CORTE)
+  if (azar() < 0.3 && diasVencida < 20) continue // todavía sin reclamar
+  const cantidad = Math.min(4, 1 + Math.floor(diasVencida / entre(8, 15)))
+  for (let i = 0; i < cantidad; i++) {
+    const fecha = sumarDias(c.vencimiento, 2 + i * entre(6, 10))
+    if (fecha > FECHA_CORTE) break
+    const medio = elegir(['mail', 'mail', 'portal', 'telefono'])
+    const autor = elegir(AUDITORIA)
+    c.reclamos.push({ fecha, medio, autor, nota: i === 0 ? 'Se pidió fecha de pago' : 'Sin respuesta: se reitera el reclamo' })
+    c.eventos.push({ fecha, autor, area: 'auditoria', tipo: 'reclamo', texto: `Reclamo ${i + 1} a la compañía por ${medio}` })
+  }
+}
 
 // Numeración correlativa por punto de venta y referencias crecientes, en orden de fecha
 comprobantes.sort((a, b) => a.fecha.localeCompare(b.fecha))

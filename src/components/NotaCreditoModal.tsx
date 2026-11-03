@@ -54,6 +54,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
       ncReferencia: factura.id,
       ncInformada: true,
       compromiso: null,
+      reclamos: [],
       observaciones: texto,
       documentos: [],
       eventos: [{ fecha: hoy, autor: usuario, area: 'sucursal', tipo: 'nota_credito', texto: `Informó la NC: ${texto}` }],

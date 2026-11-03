@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CalendarClock, Info, Receipt } from 'lucide-react'
+import { FiltroSucursal } from '../components/Filtros'
 import { LegajoPanel } from '../components/LegajoPanel'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { Chip } from '../components/ui/Badges'
@@ -18,7 +19,7 @@ import {
   type NivelEscaneo,
 } from '../domain/sucursales'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
-import { formatoComprobante, formatoFecha, formatoPesos, formatoPesosCorto } from '../lib/formato'
+import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 const TONO_NIVEL = { en_plazo: 'amarillo', atrasado: 'rojo', critico: 'rojo' } as const
 
@@ -111,6 +112,7 @@ export default function Pendientes() {
                 <Receipt className="h-4 w-4" /> Informar nota de crédito
               </button>
             )}
+            <FiltroSucursal />
             <BotonExportar onClick={exportar} />
           </>
         }
@@ -136,7 +138,7 @@ export default function Pendientes() {
           <Indicador titulo="Críticos" valor={String(cuenta('critico'))} tono="rojo" ayuda="Aviso a gerencia general" />
         </BotonIndicador>
         <Indicador titulo="Compromisos vencidos" valor={String(compromisosVencidos)} ayuda="Fecha prometida ya pasada" />
-        <Indicador titulo="Plata retenida" valor={formatoPesosCorto(retenido)} tono="marca" ayuda="No se puede presentar" />
+        <Indicador titulo="Plata retenida" valor={formatoPesos(retenido)} tono="marca" ayuda="No se puede presentar" />
       </div>
 
       <Card className="mt-4 overflow-hidden p-0">

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { calcularSemaforo, estaVencido, puedePresentarse } from '../src/domain/semaforo'
 import { avisoA, nivelEscaneo } from '../src/domain/sucursales'
+import { estadoReclamo } from '../src/domain/reclamos'
 import type { Comprobante, Documento } from '../src/domain/tipos'
 
 const CORTE = '2026-10-31'
 
 const completos: Documento[] = [
   { tipo: 'factura', estado: 'ok' },
-  { tipo: 'orden_reparacion', estado: 'ok' },
-  { tipo: 'remito', estado: 'ok' },
-  { tipo: 'conformidad', estado: 'ok' },
+  { tipo: 'orden', estado: 'ok' },
+  { tipo: 'firma', estado: 'ok' },
 ]
 
 /** Crea una factura completa y sin presentar; cada test cambia solo lo que necesita. */
@@ -35,6 +35,7 @@ function factura(cambios: Partial<Comprobante> = {}): Comprobante {
     ncReferencia: null,
     ncInformada: null,
     compromiso: null,
+    reclamos: [],
     observaciones: '',
     documentos: completos,
     eventos: [],
@@ -42,13 +43,13 @@ function factura(cambios: Partial<Comprobante> = {}): Comprobante {
   }
 }
 
-const sinOrden: Documento[] = completos.map((d) => (d.tipo === 'orden_reparacion' ? { ...d, estado: 'faltante' } : d))
+const sinOrden: Documento[] = completos.map((d) => (d.tipo === 'orden' ? { ...d, estado: 'faltante' } : d))
 
 describe('calcularSemaforo', () => {
   it('un legajo completo sin presentar le toca a auditoría y se puede presentar', () => {
     const c = factura()
     const r = calcularSemaforo(c, CORTE)
-    expect(r.etapa).toBe('para_presentar')
+    expect(r.etapa).toBe('pres_pendiente')
     expect(r.responsable).toBe('auditoria')
     expect(puedePresentarse(c, CORTE)).toBe(true)
   })
@@ -56,8 +57,8 @@ describe('calcularSemaforo', () => {
   it('si falta un documento y la sucursal está dentro de los 7 días, está en AMARILLO', () => {
     const r = calcularSemaforo(factura({ fecha: '2026-10-26', documentos: sinOrden }), CORTE)
     expect(r.color).toBe('amarillo')
-    expect(r.etapa).toBe('esperando_sucursal')
-    expect(r.detalle).toContain('Falta orden de reparación')
+    expect(r.etapa).toBe('doc_pendiente')
+    expect(r.detalle).toContain('Falta orden de reparación o repuestos')
   })
 
   it('el día 7 todavía está en plazo; el día 8 pasa a ROJO', () => {
@@ -65,26 +66,34 @@ describe('calcularSemaforo', () => {
     expect(calcularSemaforo(factura({ fecha: '2026-10-23', documentos: sinOrden }), CORTE).color).toBe('rojo')
   })
 
-  it('un documento sin firma bloquea en ROJO aunque esté dentro del plazo', () => {
+  it('un documento observado por Auditoría bloquea aunque esté dentro del plazo', () => {
     const c = factura({
       fecha: '2026-10-30',
-      documentos: completos.map((d) => (d.tipo === 'conformidad' ? { ...d, estado: 'sin_firma' } : d)),
+      documentos: completos.map((d) => (d.tipo === 'firma' ? { ...d, estado: 'observado', motivo: 'Sin firma del cliente' } : d)),
     })
     const r = calcularSemaforo(c, CORTE)
-    expect(r.color).toBe('rojo')
-    expect(r.detalle).toContain('Conformidad firmada: sin firma o sello')
+    expect(r.etapa).toBe('doc_observada')
+    expect(r.detalle).toContain('Firma del cliente: sin firma del cliente')
+    expect(puedePresentarse(c, CORTE)).toBe(false)
+  })
+
+  it('subido y sin revisar: le toca a Auditoría tildarlo', () => {
+    const c = factura({ documentos: completos.map((d) => ({ ...d, estado: 'en_revision' })) })
+    const r = calcularSemaforo(c, CORTE)
+    expect(r.etapa).toBe('en_revision')
+    expect(r.responsable).toBe('auditoria')
     expect(puedePresentarse(c, CORTE)).toBe(false)
   })
 
   it('un documento que no figura en el legajo cuenta como faltante', () => {
     const r = calcularSemaforo(factura({ fecha: '2026-10-01', documentos: [{ tipo: 'factura', estado: 'ok' }] }), CORTE)
     expect(r.color).toBe('rojo')
-    expect(r.detalle).toContain('Falta remito')
+    expect(r.detalle).toContain('Falta firma del cliente')
   })
 
   it('presentada y sin cobrar: le toca a la compañía', () => {
     const r = calcularSemaforo(factura({ estado: 'presentada', fechaPresentacion: '2026-10-22' }), CORTE)
-    expect(r.etapa).toBe('esperando_pago')
+    expect(r.etapa).toBe('al_dia')
     expect(r.responsable).toBe('compania')
   })
 
@@ -130,5 +139,35 @@ describe('estaVencido', () => {
 
   it('una factura nunca presentada no puede estar vencida', () => {
     expect(estaVencido(factura({ fecha: '2026-06-01', fechaDrive: null }), CORTE)).toBe(false)
+  })
+})
+
+describe('facturas vencidas y reclamos', () => {
+  const vencida = (reclamos: Comprobante['reclamos'], vencimiento = '2026-10-25') =>
+    factura({ estado: 'presentada', fechaPresentacion: '2026-09-25', vencimiento, reclamos })
+
+  it('una factura presentada y vencida queda en la etapa Vencida', () => {
+    expect(calcularSemaforo(vencida([]), CORTE).etapa).toBe('vencida')
+  })
+
+  it('vencida sin reclamos: hay que reclamar', () => {
+    expect(estadoReclamo(vencida([]), CORTE)).toBe('sin_reclamar')
+  })
+
+  it('con un reclamo reciente: se espera respuesta', () => {
+    const r = [{ fecha: '2026-10-28', medio: 'mail' as const, autor: 'Carola B.', nota: '' }]
+    expect(estadoReclamo(vencida(r), CORTE)).toBe('reclamada')
+  })
+
+  it('con 2 reclamos y 7 días sin respuesta: se escala a gerencia', () => {
+    const r = [
+      { fecha: '2026-10-15', medio: 'mail' as const, autor: 'Carola B.', nota: '' },
+      { fecha: '2026-10-22', medio: 'portal' as const, autor: 'Carola B.', nota: '' },
+    ]
+    expect(estadoReclamo(vencida(r, '2026-10-10'), CORTE)).toBe('escalar')
+  })
+
+  it('una factura al día no tiene estado de reclamo', () => {
+    expect(estadoReclamo(vencida([], '2026-11-15'), CORTE)).toBe(null)
   })
 })

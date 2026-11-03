@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
-import { PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
+import { DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
 import { rankingSucursales } from '../domain/sucursales'
 import { descargarExcel } from '../lib/exportar'
-import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
+import { formatoFecha, formatoPesos, MESES } from '../lib/formato'
+
+/** Con menos facturas que esto, los promedios de una sucursal se marcan como poco representativos. */
+const MINIMO_REPRESENTATIVO = 100
 
 /**
- * Ranking de sucursales: quién cumple con el escaneo y cuánto cuesta la demora.
- * Pensado para gerencia: convierte "siempre tienen una excusa" en datos.
+ * Ranking de sucursales: quién tiene más documentación pendiente y cuánta plata retiene.
+ * Se ordena por plata retenida hoy (lo que importa para cobrar), no por promedios,
+ * para que una sucursal con pocas facturas no quede arriba por un par de casos.
  */
 export default function RankingSucursales() {
   const { datos, hoy, anio, mes, parametros } = useApp()
@@ -18,14 +22,20 @@ export default function RankingSucursales() {
   const [periodo, setPeriodo] = useState<'anio' | 'mes'>('anio')
 
   const ranking = useMemo(
-    () => rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'mes' ? mes : null, parametros),
+    () =>
+      rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'mes' ? mes : null, parametros).sort(
+        (a, b) => b.retenido - a.retenido || b.pendientes - a.pendientes,
+      ),
     [comprobantes, meta.sucursales, hoy, anio, mes, periodo, parametros],
   )
-  const textoPeriodo = periodo === 'mes' ? `${MESES[mes - 1]} ${anio}` : `Año ${anio}`
+  const textoPeriodo = periodo === 'mes' ? `${MESES[mes - 1]} ${anio}` : `año ${anio}`
+  const totalRetenido = ranking.reduce((s, r) => s + r.retenido, 0)
 
   const grafico = ranking.map((r) => ({
-    sucursal: r.sucursal.nombre.replace('Sucursal ', ''),
-    dias: r.diasPromedioEscaneo ?? 0,
+    sucursal: r.sucursal.nombre,
+    enPlazo: r.pendientes - r.atrasados - r.criticos,
+    atrasados: r.atrasados,
+    criticos: r.criticos,
   }))
 
   function exportar() {
@@ -33,30 +43,32 @@ export default function RankingSucursales() {
       `ranking-sucursales-${periodo === 'mes' ? `${anio}-${mes}` : anio}`,
       [
         'Sucursal',
-        'Gerente',
-        'Facturas del período',
-        'Días promedio hasta escanear',
-        '% dentro de 7 días',
-        'Pendientes hoy',
-        'Atrasados (8-21 días)',
-        'Críticos (+21 días)',
-        'Compromisos vencidos',
-        'NC sin informar',
+        'Doc. pendiente hoy',
+        `En plazo (hasta ${PLAZO_ESCANEO_DIAS} días)`,
+        `Atrasadas (${PLAZO_ESCANEO_DIAS + 1} a ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
+        `Críticas (más de ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
         'Plata retenida hoy',
-        'Costo financiero estimado de la demora',
+        '% de lo retenido',
+        `Facturas del período (${textoPeriodo})`,
+        'Días promedio hasta subir el legajo',
+        '% subidas dentro del plazo',
+        'Compromisos vencidos',
+        'NC sin aviso',
+        'Costo estimado de la demora',
       ],
       ranking.map((r) => [
         r.sucursal.nombre,
-        r.sucursal.gerente,
+        r.pendientes,
+        r.pendientes - r.atrasados - r.criticos,
+        r.atrasados,
+        r.criticos,
+        r.retenido,
+        totalRetenido ? Math.round((r.retenido / totalRetenido) * 100) : 0,
         r.facturas,
         r.diasPromedioEscaneo,
         r.dentroDePlazoPct,
-        r.pendientes,
-        r.atrasados,
-        r.criticos,
         r.compromisosVencidos,
         r.ncSinInformar,
-        r.retenido,
         r.costoDemora,
       ]),
     )
@@ -66,12 +78,12 @@ export default function RankingSucursales() {
     <>
       <EncabezadoPagina
         titulo="Ranking de sucursales"
-        subtitulo={`Cumplimiento del escaneo · ${textoPeriodo}. Pendientes y plata retenida: a hoy.`}
+        subtitulo={`Documentación pendiente al ${formatoFecha(hoy)}, ordenado por plata retenida. Promedios del ${textoPeriodo}.`}
         acciones={
           <>
             <select className={claseSelect} value={periodo} onChange={(e) => setPeriodo(e.target.value as 'anio' | 'mes')}>
-              <option value="anio">Todo el año</option>
-              <option value="mes">Mes del filtro ({MESES[mes - 1]})</option>
+              <option value="anio">Promedios de todo el año</option>
+              <option value="mes">Promedios de {MESES[mes - 1].toLowerCase()}</option>
             </select>
             <BotonExportar onClick={exportar} />
           </>
@@ -79,31 +91,21 @@ export default function RankingSucursales() {
       />
 
       <Card>
-        <CardTitulo>Días promedio desde la factura hasta que la sucursal sube el legajo</CardTitulo>
-        <div className="h-64">
+        <CardTitulo>Facturas con documentación pendiente hoy, por sucursal</CardTitulo>
+        <div style={{ height: 60 + grafico.length * 44 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={grafico} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis dataKey="sucursal" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} width={32} />
-              <Tooltip formatter={(v) => [`${String(v)} días`, 'Promedio']} cursor={{ fill: '#F1F5F9' }} />
-              <ReferenceLine
-                y={PLAZO_ESCANEO_DIAS}
-                stroke="#EF4444"
-                strokeDasharray="4 4"
-                label={{ value: `Plazo: ${PLAZO_ESCANEO_DIAS} días`, position: 'insideTopRight', fontSize: 11, fill: '#EF4444' }}
-              />
-              <Bar dataKey="dias" radius={[4, 4, 0, 0]}>
-                {grafico.map((g) => (
-                  <Cell key={g.sucursal} fill={g.dias > PLAZO_ESCANEO_DIAS ? '#EF4444' : g.dias > PLAZO_ESCANEO_DIAS / 2 ? '#F59E0B' : '#10B981'} />
-                ))}
-              </Bar>
+            <BarChart data={grafico} layout="vertical" margin={{ top: 0, right: 24, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+              <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+              <YAxis type="category" dataKey="sucursal" tickLine={false} axisLine={false} fontSize={13} width={120} />
+              <Tooltip cursor={{ fill: '#F1F5F9' }} />
+              <Legend iconType="circle" />
+              <Bar dataKey="enPlazo" name={`En plazo (hasta ${PLAZO_ESCANEO_DIAS} días)`} stackId="p" fill="#F59E0B" />
+              <Bar dataKey="atrasados" name={`Atrasadas (${PLAZO_ESCANEO_DIAS + 1} a ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`} stackId="p" fill="#EF4444" />
+              <Bar dataKey="criticos" name={`Críticas (más de ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`} stackId="p" fill="#991B1B" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Verde: rápido (hasta {PLAZO_ESCANEO_DIAS / 2} días) · Amarillo: dentro del plazo · Rojo: en promedio pasa el plazo.
-        </p>
       </Card>
 
       <Card className="mt-4 overflow-hidden p-0">
@@ -113,42 +115,46 @@ export default function RankingSucursales() {
               <tr>
                 <th className="px-4 py-3 font-semibold">#</th>
                 <th className="px-3 py-3 font-semibold">Sucursal</th>
-                <th className="px-3 py-3 text-right font-semibold">Facturas</th>
-                <th className="px-3 py-3 text-right font-semibold">Días prom.</th>
-                <th className="px-3 py-3 text-right font-semibold">En plazo</th>
-                <th className="px-3 py-3 text-right font-semibold">Pendientes</th>
-                <th className="px-3 py-3 text-right font-semibold">Atrasados</th>
-                <th className="px-3 py-3 text-right font-semibold">Críticos</th>
+                <th className="px-3 py-3 text-right font-semibold">Plata retenida hoy</th>
+                <th className="px-3 py-3 text-right font-semibold">Doc. pendiente</th>
+                <th className="px-3 py-3 text-right font-semibold">Atrasadas</th>
+                <th className="px-3 py-3 text-right font-semibold">Críticas</th>
                 <th className="px-3 py-3 text-right font-semibold">Compromisos vencidos</th>
                 <th className="px-3 py-3 text-right font-semibold">NC sin aviso</th>
-                <th className="px-3 py-3 text-right font-semibold">Retenido hoy</th>
-                <th className="px-4 py-3 text-right font-semibold">Costo demora</th>
+                <th className="px-3 py-3 text-right font-semibold">Facturas ({periodo === 'mes' ? 'mes' : 'año'})</th>
+                <th className="px-3 py-3 text-right font-semibold">Días prom. hasta subir</th>
+                <th className="px-4 py-3 text-right font-semibold">Subidas en plazo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {ranking.map((r, i) => {
-                const lento = (r.diasPromedioEscaneo ?? 0) > PLAZO_ESCANEO_DIAS
+                const pocas = r.facturas < MINIMO_REPRESENTATIVO
                 return (
                   <tr key={r.sucursal.nombre}>
                     <td className="px-4 py-3 text-slate-400">{i + 1}</td>
                     <td className="px-3 py-3">
                       <div className="font-semibold">{r.sucursal.nombre}</div>
-                      <div className="text-xs text-slate-500">Gerente: {r.sucursal.gerente}</div>
+                      <div className="text-xs text-slate-500">{r.sucursal.gerente}</div>
                     </td>
-                    <td className="px-3 py-3 text-right">{r.facturas}</td>
-                    <td className={`px-3 py-3 text-right font-bold ${lento ? 'text-sem-rojo' : ''}`}>
-                      {r.diasPromedioEscaneo ?? '—'}
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <div className="font-bold tabular-nums">{formatoPesos(r.retenido)}</div>
+                      <div className="text-xs text-slate-500">
+                        {totalRetenido ? Math.round((r.retenido / totalRetenido) * 100) : 0} % del total
+                      </div>
                     </td>
-                    <td className="px-3 py-3 text-right">{r.dentroDePlazoPct === null ? '—' : `${r.dentroDePlazoPct} %`}</td>
-                    <td className="px-3 py-3 text-right">{r.pendientes}</td>
-                    <td className={`px-3 py-3 text-right ${r.atrasados ? 'font-semibold text-sem-rojo' : 'text-slate-400'}`}>{r.atrasados}</td>
-                    <td className={`px-3 py-3 text-right ${r.criticos ? 'font-semibold text-sem-rojo' : 'text-slate-400'}`}>{r.criticos}</td>
-                    <td className={`px-3 py-3 text-right ${r.compromisosVencidos ? 'font-semibold' : 'text-slate-400'}`}>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.pendientes}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${r.atrasados ? 'font-semibold text-sem-rojo' : 'text-slate-400'}`}>{r.atrasados}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${r.criticos ? 'font-semibold text-red-800' : 'text-slate-400'}`}>{r.criticos}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${r.compromisosVencidos ? 'font-semibold' : 'text-slate-400'}`}>
                       {r.compromisosVencidos}
                     </td>
-                    <td className={`px-3 py-3 text-right ${r.ncSinInformar ? 'font-semibold' : 'text-slate-400'}`}>{r.ncSinInformar}</td>
-                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatoPesosCorto(r.retenido)}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap font-semibold">{formatoPesos(r.costoDemora)}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${r.ncSinInformar ? 'font-semibold' : 'text-slate-400'}`}>{r.ncSinInformar}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.facturas.toLocaleString('es-AR')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {r.diasPromedioEscaneo ?? '—'}
+                      {pocas && <div className="text-[11px] text-slate-400">pocas facturas</div>}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">{r.dentroDePlazoPct === null ? '—' : `${r.dentroDePlazoPct} %`}</td>
                   </tr>
                 )
               })}
@@ -157,8 +163,8 @@ export default function RankingSucursales() {
         </div>
       </Card>
       <p className="mt-3 text-xs text-slate-500">
-        Ordenado por días promedio de escaneo, de más lento a más rápido. El costo de la demora se explica en "Impacto
-        económico".
+        Los promedios de una sucursal con menos de {MINIMO_REPRESENTATIVO} facturas en el período se marcan como poco
+        representativos. El costo de la demora por sucursal está en "Impacto económico".
       </p>
     </>
   )

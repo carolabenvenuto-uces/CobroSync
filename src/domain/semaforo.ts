@@ -1,13 +1,15 @@
 /**
  * Reglas del semáforo operativo.
  *
- *  ROJO     → la sucursal pasó el plazo de 7 días sin subir el legajo completo,
- *             o un documento está ilegible o sin firma. No puede avanzar.
- *  AMARILLO → en curso. Para no mezclar responsabilidades se divide en etapas:
- *             esperando a la sucursal (dentro del plazo) · para presentar (auditoría)
- *             · esperando el pago (compañía).
- *  VERDE    → cobrado.
- *  NEUTRO   → notas de crédito y facturas anuladas.
+ * Etapas, con el vocabulario de la planilla de control:
+ *  Doc. pendiente → falta documentación y la sucursal está dentro de los 7 días
+ *  Doc. atrasada  → falta documentación y pasaron más de 7 días (D. Pend. atrasada)
+ *  Doc. observada → Auditoría observó un documento (ilegible, sin firma…)
+ *  En revisión    → la sucursal subió todo y Auditoría tiene que tildarlo
+ *  Pres. pendiente→ legajo completo, falta presentarlo (P. Pend.)
+ *  Al día         → presentada y todavía no venció
+ *  Vencida        → presentada, vencida y sin cobrar: hay que reclamar
+ *  Cobrado · No aplica (NC y anuladas)
  *
  * Estas reglas son conocimiento del negocio: por eso viven acá, separadas de las
  * pantallas, y tienen sus propios tests (tests/semaforo.test.ts).
@@ -28,21 +30,23 @@ export const PLAZO_ESCANEO_DIAS = 7
 /** A partir de estos días sin legajo se avisa a la gerencia general. */
 export const DIAS_ESCALAR_GERENCIA_GENERAL = 21
 
-export const DOCUMENTOS_REQUERIDOS: TipoDocumento[] = ['factura', 'orden_reparacion', 'remito', 'conformidad']
+export const DOCUMENTOS_REQUERIDOS: TipoDocumento[] = ['factura', 'orden', 'firma']
 
 export const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = {
   factura: 'Factura',
-  orden_reparacion: 'Orden de reparación',
-  remito: 'Remito',
-  conformidad: 'Conformidad firmada',
+  orden: 'Orden de reparación o repuestos',
+  firma: 'Firma del cliente',
 }
 
 export const NOMBRE_ESTADO_DOCUMENTO: Record<EstadoDocumento, string> = {
-  ok: 'Correcto',
   faltante: 'Falta',
-  ilegible: 'Ilegible',
-  sin_firma: 'Sin firma o sello',
+  en_revision: 'Para revisar',
+  ok: 'Aprobado',
+  observado: 'Observado',
 }
+
+/** Motivos con los que Auditoría puede observar un documento. */
+export const MOTIVOS_OBSERVACION = ['Ilegible o cortado', 'Sin firma del cliente', 'No corresponde a esta factura', 'Incompleto'] as const
 
 export interface ResultadoSemaforo {
   color: ColorSemaforo
@@ -61,9 +65,9 @@ export function documentosDelLegajo(documentos: Documento[]): Documento[] {
 }
 
 function textoProblema(d: Documento): string {
-  return d.estado === 'faltante'
-    ? `Falta ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()}`
-    : `${NOMBRE_DOCUMENTO[d.tipo]}: ${NOMBRE_ESTADO_DOCUMENTO[d.estado].toLowerCase()}`
+  if (d.estado === 'faltante') return `Falta ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()}`
+  if (d.estado === 'observado') return `${NOMBRE_DOCUMENTO[d.tipo]}: ${(d.motivo ?? 'observado').toLowerCase()}`
+  return `${NOMBRE_DOCUMENTO[d.tipo]}: ${NOMBRE_ESTADO_DOCUMENTO[d.estado].toLowerCase()}`
 }
 
 export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoSemaforo {
@@ -71,17 +75,19 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
   if (c.estado === 'anulada') {
     return { color: 'neutro', etapa: 'no_aplica', responsable: null, detalle: ['Factura anulada con nota de crédito'] }
   }
-  if (c.estado === 'cobrada') return { color: 'verde', etapa: 'cobrado', responsable: null, detalle: ['Cobrado'] }
+  if (c.estado === 'cobrada') return { color: 'verde', etapa: 'cobrado', responsable: null, detalle: ['Cobrada'] }
 
   const documentos = documentosDelLegajo(c.documentos)
-  const conProblemas = documentos.filter((d) => d.estado === 'ilegible' || d.estado === 'sin_firma')
+  const conProblemas = documentos.filter((d) => d.estado === 'observado')
   const faltantes = documentos.filter((d) => d.estado === 'faltante')
+  const paraRevisar = documentos.filter((d) => d.estado === 'en_revision')
+  const dias = diffDias(c.fecha, fechaCorte)
 
-  // Un documento ilegible o sin firma bloquea siempre: ya se sabe que está mal.
+  // Un documento observado por Auditoría bloquea siempre: la sucursal tiene que reemplazarlo.
   if (conProblemas.length > 0) {
     return {
       color: 'rojo',
-      etapa: 'bloqueado',
+      etapa: 'doc_observada',
       responsable: 'sucursal',
       detalle: [...conProblemas, ...faltantes].map(textoProblema),
     }
@@ -89,38 +95,59 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
 
   // Faltan documentos: la sucursal tiene 7 días desde la emisión de la factura.
   if (faltantes.length > 0) {
-    const dias = diffDias(c.fecha, fechaCorte)
     const encabezado =
       c.fechaDrive === null ? 'La sucursal todavía no subió el legajo' : 'La sucursal subió el legajo incompleto'
     if (dias > PLAZO_ESCANEO_DIAS) {
       return {
         color: 'rojo',
-        etapa: 'bloqueado',
+        etapa: 'doc_atrasada',
         responsable: 'sucursal',
-        detalle: [`${encabezado}: ${dias} días de atraso total`, ...faltantes.map(textoProblema)],
+        detalle: [`${encabezado}: ${dias} días desde la factura`, ...faltantes.map(textoProblema)],
       }
     }
     return {
       color: 'amarillo',
-      etapa: 'esperando_sucursal',
+      etapa: 'doc_pendiente',
       responsable: 'sucursal',
       detalle: [`${encabezado} (día ${dias} de ${PLAZO_ESCANEO_DIAS})`, ...faltantes.map(textoProblema)],
+    }
+  }
+
+  // La sucursal subió todo: Auditoría revisa y tilda cada documento.
+  if (paraRevisar.length > 0) {
+    return {
+      color: 'amarillo',
+      etapa: 'en_revision',
+      responsable: 'auditoria',
+      detalle: [`Para revisar: ${paraRevisar.map((d) => NOMBRE_DOCUMENTO[d.tipo].toLowerCase()).join(', ')}`],
     }
   }
 
   if (c.fechaPresentacion === null) {
     return {
       color: 'amarillo',
-      etapa: 'para_presentar',
+      etapa: 'pres_pendiente',
       responsable: 'auditoria',
-      detalle: ['Legajo completo: listo para presentar a la compañía'],
+      detalle: ['Legajo completo: falta presentarlo a la compañía'],
+    }
+  }
+  if (c.vencimiento !== null && c.vencimiento < fechaCorte) {
+    const diasVencida = diffDias(c.vencimiento, fechaCorte)
+    return {
+      color: 'rojo',
+      etapa: 'vencida',
+      responsable: 'compania',
+      detalle: [
+        `Vencida hace ${diasVencida} días sin cobrar`,
+        c.reclamos.length === 0 ? 'Todavía no se reclamó' : `Reclamada ${c.reclamos.length} ${c.reclamos.length === 1 ? 'vez' : 'veces'}`,
+      ],
     }
   }
   return {
     color: 'amarillo',
-    etapa: 'esperando_pago',
+    etapa: 'al_dia',
     responsable: 'compania',
-    detalle: ['Presentado: esperando el pago de la compañía'],
+    detalle: [c.vencimiento ? `Presentada: vence el ${c.vencimiento.split('-').reverse().join('/')}` : 'Presentada: esperando el pago'],
   }
 }
 
@@ -131,5 +158,8 @@ export function estaVencido(c: Comprobante, fechaCorte: string): boolean {
 
 /** Solo se puede presentar un legajo completo que todavía no se presentó. */
 export function puedePresentarse(c: Comprobante, fechaCorte: string): boolean {
-  return calcularSemaforo(c, fechaCorte).etapa === 'para_presentar'
+  return calcularSemaforo(c, fechaCorte).etapa === 'pres_pendiente'
 }
+
+/** Etapas en las que la factura espera algo de la sucursal. */
+export const ETAPAS_SUCURSAL = ['doc_pendiente', 'doc_atrasada', 'doc_observada'] as const

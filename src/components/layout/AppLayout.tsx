@@ -4,7 +4,6 @@ import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { Marca } from '../Logo'
 import { Cargando, ErrorCarga } from '../ui/Estados'
-import { BarraFiltros } from './BarraFiltros'
 import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
@@ -29,8 +28,6 @@ export function AppLayout() {
             <Menu className="h-5 w-5" />
           </button>
         </div>
-
-        <BarraFiltros />
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {error ? <ErrorCarga mensaje={error} /> : datos ? <Outlet /> : <Cargando />}

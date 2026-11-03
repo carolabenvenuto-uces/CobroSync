@@ -42,10 +42,10 @@ describe('lectura de la planilla', () => {
 
   it('traduce los estados de la planilla a etapas', () => {
     expect(calcularSemaforo(porRef('6990001'), HOY).etapa).toBe('cobrado')
-    expect(calcularSemaforo(porRef('6990002'), HOY).etapa).toBe('esperando_pago')
-    expect(calcularSemaforo(porRef('6990003'), HOY).etapa).toBe('bloqueado') // D. Pend. de septiembre
-    expect(calcularSemaforo(porRef('6990004'), HOY).etapa).toBe('esperando_sucursal') // D. Pend. de hace 4 días
-    expect(calcularSemaforo(porRef('6990005'), HOY).etapa).toBe('para_presentar') // P. Pend.
+    expect(calcularSemaforo(porRef('6990002'), HOY).etapa).toBe('al_dia')
+    expect(calcularSemaforo(porRef('6990003'), HOY).etapa).toBe('doc_atrasada') // D. Pend. de septiembre
+    expect(calcularSemaforo(porRef('6990004'), HOY).etapa).toBe('doc_pendiente') // D. Pend. de hace 4 días
+    expect(calcularSemaforo(porRef('6990005'), HOY).etapa).toBe('pres_pendiente') // P. Pend.
     expect(calcularSemaforo(porRef('6990006'), HOY).etapa).toBe('no_aplica') // NC
   })
 

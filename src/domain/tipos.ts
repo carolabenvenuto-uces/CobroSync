@@ -63,7 +63,13 @@ export type Etapa =
 export interface Aseguradora {
   id: string
   nombre: string
+  /** razón social y CUIT como figuran en la factura (pestaña "CP") */
+  razonSocial?: string
+  cuit?: string
+  /** a dónde se presentan las facturas */
   email: string
+  /** a dónde se reclaman las vencidas */
+  emailReclamos?: string
   /** días que tarda en pagar desde la presentación (7 o 30) */
   plazoPagoDias: number
 }
@@ -71,6 +77,8 @@ export interface Aseguradora {
 export interface Sucursal {
   nombre: string
   puntoVenta: number
+  /** todos los puntos de venta de la sucursal */
+  puntosVenta?: number[]
   /** a quién se escala un escaneo atrasado */
   gerente: string
   /** personas que facturan y escanean */

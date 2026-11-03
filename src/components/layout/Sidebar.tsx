@@ -2,9 +2,10 @@ import { useMemo, type ComponentType } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import {
   BarChart3,
+  BookUser,
+  Search,
   Bell,
   Building2,
-  CalendarClock,
   ClipboardList,
   FileText,
   HandCoins,
@@ -19,47 +20,64 @@ import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { estadoReclamo } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
-import { calcularAlertas } from '../../pages/Alertas'
+import { calcularAvisos } from '../../pages/Avisos'
 import { Marca } from '../Logo'
+import { Campana } from '../Notificaciones'
 import { formatoFecha } from '../../lib/formato'
 
 interface ItemMenu {
   ruta: string
   etiqueta: string
   icono: ComponentType<{ className?: string }>
-  roles: Rol[]
   contador?: 'pendientes' | 'alertas' | 'reclamos'
 }
 
-const OFICINA: Rol[] = ['auditoria', 'gerencia']
-
-/** El menú se arma según el rol activo: cada pantalla declara quién la ve. */
-const SECCIONES: { titulo: string; items: ItemMenu[] }[] = [
-  {
-    titulo: 'Operación',
-    items: [
-      { ruta: '/app', etiqueta: 'Inicio', icono: LayoutDashboard, roles: OFICINA },
-      { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, roles: OFICINA, contador: 'pendientes' },
-      { ruta: '/app/pendientes', etiqueta: 'Mis pendientes', icono: ClipboardList, roles: ['sucursal'], contador: 'pendientes' },
-      { ruta: '/app/alertas', etiqueta: 'Alertas', icono: Bell, roles: OFICINA, contador: 'alertas' },
-      { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, roles: OFICINA, contador: 'reclamos' },
-      { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText, roles: ['sucursal', ...OFICINA] },
-    ],
-  },
-  {
-    titulo: 'Informes',
-    items: [
-      { ruta: '/app/sucursales', etiqueta: 'Ranking de sucursales', icono: Trophy, roles: OFICINA },
-      { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins, roles: OFICINA },
-      { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2, roles: OFICINA },
-      { ruta: '/app/cobros-previstos', etiqueta: 'Cobros previstos', icono: CalendarClock, roles: OFICINA },
-    ],
-  },
-  {
-    titulo: 'Datos',
-    items: [{ ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload, roles: OFICINA }],
-  },
-]
+/**
+ * Cada rol tiene su propio menú: Gerencia ve resúmenes, Auditoría ve todo el detalle
+ * y la Sucursal ve solo lo que tiene que hacer.
+ */
+const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
+  gerencia: [
+    {
+      titulo: 'Informes',
+      items: [
+        { ruta: '/app', etiqueta: 'Resumen', icono: LayoutDashboard },
+        { ruta: '/app/sucursales', etiqueta: 'Ranking de sucursales', icono: Trophy },
+        { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2 },
+        { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
+      ],
+    },
+    { titulo: 'Consultas', items: [{ ruta: '/app/control-diario', etiqueta: 'Buscar una factura', icono: Search }] },
+  ],
+  auditoria: [
+    {
+      titulo: 'Trabajo diario',
+      items: [
+        { ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' },
+        { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
+        { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
+        { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
+      ],
+    },
+    {
+      titulo: 'Informes',
+      items: [
+        { ruta: '/app/resumen', etiqueta: 'Resumen', icono: LayoutDashboard },
+        { ruta: '/app/sucursales', etiqueta: 'Ranking de sucursales', icono: Trophy },
+        { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2 },
+        { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
+      ],
+    },
+    {
+      titulo: 'Datos',
+      items: [
+        { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
+        { ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload },
+      ],
+    },
+  ],
+  sucursal: [{ titulo: 'Mi sucursal', items: [{ ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' }] }],
+}
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
   const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo } = useApp()
@@ -67,10 +85,10 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
 
   const contadores = useMemo(() => {
     if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0 }
-    const alertas = calcularAlertas(comprobantes, hoy, (id) => id)
+    const sectores = calcularAvisos(comprobantes, hoy)
     return {
       pendientes: comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
-      alertas: alertas.reduce((s, g) => s + g.items.length, 0),
+      alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
         return e === 'sin_reclamar' || e === 'escalar'
@@ -96,9 +114,9 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
-          {SECCIONES.map((seccion) => {
-            const items = seccion.items.filter((item) => item.roles.includes(rol))
-            if (items.length === 0) return null
+          <Campana />
+          {MENUS[rol].map((seccion) => {
+            const items = seccion.items
             return (
               <div key={seccion.titulo}>
                 <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">

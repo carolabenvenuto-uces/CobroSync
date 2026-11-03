@@ -7,8 +7,8 @@
  * React Context evita pasar estos valores "a mano" de componente en componente.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { AreaEvento, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
-import { anioDe, mesDe } from '../lib/fechas'
+import type { AreaEvento, Aseguradora, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
+import { anioDe, diffDias, mesDe } from '../lib/fechas'
 import { cargarDatos } from '../services/datos'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
@@ -21,11 +21,46 @@ export const NOMBRE_ROL: Record<Rol, string> = {
   gerencia: 'Gerencia',
 }
 
-/** Pantalla de inicio de cada rol. */
+/** Pantalla de inicio de cada rol (la ruta /app muestra una distinta según el rol). */
 export const INICIO_ROL: Record<Rol, string> = {
-  sucursal: '/app/pendientes',
+  sucursal: '/app',
   auditoria: '/app',
   gerencia: '/app',
+}
+
+/** Aviso para una persona: a Auditoría (para = 'auditoria') o a una sucursal (para = su nombre). */
+export interface Notificacion {
+  id: string
+  para: string
+  fecha: string
+  texto: string
+  comprobanteId: string
+  leida: boolean
+}
+
+/** Las novedades de los últimos días de la demo arrancan como notificaciones sin leer. */
+function notificacionesIniciales(d: DatosApp): Notificacion[] {
+  const lista: Notificacion[] = []
+  for (const c of d.comprobantes) {
+    for (const e of c.eventos) {
+      if (diffDias(e.fecha, d.meta.fechaCorte) > 3) continue
+      const n = crearNotificacion(c, e)
+      if (n) lista.push(n)
+    }
+  }
+  return lista.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 60)
+}
+
+let contador = 0
+function crearNotificacion(c: Comprobante, e: Evento): Notificacion | null {
+  const numero = `${c.tipo} E ${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+  const base = { id: `n-${++contador}`, fecha: e.fecha, comprobanteId: c.id, leida: false }
+  if (e.area === 'sucursal') return { ...base, para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` }
+  if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo') {
+    return { ...base, para: c.sucursal, texto: `Auditoría · ${numero}: ${e.texto}` }
+  }
+  if (e.area === 'sistema') return { ...base, para: c.sucursal, texto: `${numero}: ${e.texto}` }
+  return null
 }
 
 interface EstadoApp {
@@ -45,11 +80,20 @@ interface EstadoApp {
   /** En la demo los cambios viven en memoria: al recargar la página se pierden. */
   actualizarComprobante: (id: string, cambios: Partial<Comprobante>) => void
   agregarComprobante: (comprobante: Comprobante) => void
+  /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
+  actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
   registrarEvento: (id: string, tipo: Evento['tipo'], texto: string) => void
   /** tasa y objetivo de días para el informe de impacto económico */
   parametros: ParametrosImpacto
   setParametros: (p: ParametrosImpacto) => void
+  /** la factura abierta en el panel lateral (desde cualquier pantalla) */
+  legajoAbierto: string | null
+  abrirLegajo: (id: string | null) => void
+  /** notificaciones para quien está usando la demo */
+  misNotificaciones: Notificacion[]
+  marcarLeida: (id: string) => void
+  marcarTodasLeidas: () => void
   /** de dónde salen los datos: la demo o la planilla que cargó el usuario (solo en memoria) */
   fuente: { tipo: 'demo' } | { tipo: 'planilla'; archivo: string; filas: number }
   usarPlanilla: (resultado: ResultadoImportacion, archivo: string) => void
@@ -67,6 +111,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [anio, setAnio] = useState(2026)
   const [parametros, setParametros] = useState<ParametrosImpacto>(PARAMETROS_INICIALES)
   const [fuente, setFuente] = useState<EstadoApp['fuente']>({ tipo: 'demo' })
+  const [legajoAbierto, abrirLegajo] = useState<string | null>(null)
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
 
   const cargarDemo = useCallback(() => {
     cargarDatos()
@@ -75,6 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setAnio(anioDe(d.meta.fechaCorte))
         setMes(mesDe(d.meta.fechaCorte))
         setFuente({ tipo: 'demo' })
+        setNotificaciones(notificacionesIniciales(d))
         setSucursal(TODAS_LAS_SUCURSALES)
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
@@ -90,6 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMes(resultado.ultimoMes)
     setSucursal(TODAS_LAS_SUCURSALES)
     setFuente({ tipo: 'planilla', archivo, filas: resultado.filasLeidas })
+    setNotificaciones([])
   }, [])
 
   // Una persona de sucursal solo ve su sucursal: si estaba en "Todas", elige la primera.
@@ -120,10 +168,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDatos((actual) => (actual ? { ...actual, comprobantes: [...actual.comprobantes, comprobante] } : actual))
   }, [])
 
+  const actualizarAseguradoras = useCallback((aseguradoras: Aseguradora[]) => {
+    setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
+  }, [])
+
   const registrarEvento = useCallback(
     (id: string, tipo: Evento['tipo'], texto: string) => {
       const area: AreaEvento = rol
       const evento: Evento = { fecha: hoy, autor: usuario, area, tipo, texto }
+      // Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés
+      const comprobante = datos?.comprobantes.find((c) => c.id === id)
+      const aviso = comprobante ? crearNotificacion(comprobante, evento) : null
+      if (aviso) setNotificaciones((lista) => [aviso, ...lista])
       setDatos((actual) =>
         actual
           ? {
@@ -133,8 +189,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : actual,
       )
     },
-    [rol, hoy, usuario],
+    [rol, hoy, usuario, datos],
   )
+
+  const destinatario = rol === 'auditoria' ? 'auditoria' : rol === 'sucursal' ? sucursal : null
+  const misNotificaciones = useMemo(
+    () => (destinatario ? notificaciones.filter((n) => n.para === destinatario) : []),
+    [notificaciones, destinatario],
+  )
+  const marcarLeida = useCallback((nid: string) => {
+    setNotificaciones((lista) => lista.map((n) => (n.id === nid ? { ...n, leida: true } : n)))
+  }, [])
+  const marcarTodasLeidas = useCallback(() => {
+    setNotificaciones((lista) => lista.map((n) => (n.para === destinatario ? { ...n, leida: true } : n)))
+  }, [destinatario])
 
   const valor = useMemo(
     () => ({
@@ -151,12 +219,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hoy,
       actualizarComprobante,
       agregarComprobante,
+      actualizarAseguradoras,
       registrarEvento,
       parametros,
       setParametros,
       fuente,
       usarPlanilla,
       usarDemo: cargarDemo,
+      legajoAbierto,
+      abrirLegajo,
+      misNotificaciones,
+      marcarLeida,
+      marcarTodasLeidas,
     }),
     [
       datos,
@@ -170,11 +244,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hoy,
       actualizarComprobante,
       agregarComprobante,
+      actualizarAseguradoras,
       registrarEvento,
       parametros,
       fuente,
       usarPlanilla,
       cargarDemo,
+      legajoAbierto,
+      misNotificaciones,
+      marcarLeida,
+      marcarTodasLeidas,
     ],
   )
 

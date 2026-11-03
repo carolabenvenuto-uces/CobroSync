@@ -24,6 +24,10 @@
 - [x] Portal de sucursal: pendientes, subida por documento, compromisos con fecha, NC informadas
 - [x] Conversación por legajo (reemplaza los mails)
 - [x] Ranking de sucursales e impacto económico, exportables a Excel
+- [x] Vistas separadas por rol: Resumen (Gerencia), Avisos (Auditoría), Mis facturas (Sucursal)
+- [x] Tablas con filtros por columna, orden, búsqueda y encabezado fijo
+- [x] Notificaciones entre Sucursal y Auditoría (en la demo, en el mismo navegador)
+- [x] Pestaña Compañías y vista previa de la carga del Excel del ERP
 - [ ] Carga desde el celular con QR (simulada)
 - [ ] Resumen semanal por mail (simulado) para gerentes de sucursal
 - [ ] Revisión con usuarias reales del sector y ajustes

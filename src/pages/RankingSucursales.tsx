@@ -5,6 +5,7 @@ import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
 import { DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
 import { rankingSucursales } from '../domain/sucursales'
+import { anioDe, mesDe } from '../lib/fechas'
 import { descargarExcel } from '../lib/exportar'
 import { formatoFecha, formatoPesos, MESES } from '../lib/formato'
 
@@ -17,18 +18,20 @@ const MINIMO_REPRESENTATIVO = 100
  * para que una sucursal con pocas facturas no quede arriba por un par de casos.
  */
 export default function RankingSucursales() {
-  const { datos, hoy, anio, mes, parametros } = useApp()
+  const { datos, hoy, anio, parametros } = useApp()
   const { comprobantes, meta } = datos!
-  const [periodo, setPeriodo] = useState<'anio' | 'mes'>('anio')
+  // 'anio' o el número de mes (todos los meses hasta hoy se pueden elegir)
+  const [periodo, setPeriodo] = useState<'anio' | number>('anio')
+  const ultimoMes = anioDe(hoy) === anio ? mesDe(hoy) : 12
 
   const ranking = useMemo(
     () =>
-      rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'mes' ? mes : null, parametros).sort(
+      rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'anio' ? null : periodo, parametros).sort(
         (a, b) => b.retenido - a.retenido || b.pendientes - a.pendientes,
       ),
-    [comprobantes, meta.sucursales, hoy, anio, mes, periodo, parametros],
+    [comprobantes, meta.sucursales, hoy, anio, periodo, parametros],
   )
-  const textoPeriodo = periodo === 'mes' ? `${MESES[mes - 1]} ${anio}` : `año ${anio}`
+  const textoPeriodo = periodo === 'anio' ? `año ${anio}` : `${MESES[periodo - 1].toLowerCase()} ${anio}`
   const totalRetenido = ranking.reduce((s, r) => s + r.retenido, 0)
 
   const grafico = ranking.map((r) => ({
@@ -40,7 +43,7 @@ export default function RankingSucursales() {
 
   function exportar() {
     descargarExcel(
-      `ranking-sucursales-${periodo === 'mes' ? `${anio}-${mes}` : anio}`,
+      `ranking-sucursales-${periodo === 'anio' ? anio : `${anio}-${periodo}`}`,
       [
         'Sucursal',
         'Doc. pendiente hoy',
@@ -81,10 +84,22 @@ export default function RankingSucursales() {
         subtitulo={`Documentación pendiente al ${formatoFecha(hoy)}, ordenado por plata retenida. Promedios del ${textoPeriodo}.`}
         acciones={
           <>
-            <select className={claseSelect} value={periodo} onChange={(e) => setPeriodo(e.target.value as 'anio' | 'mes')}>
-              <option value="anio">Promedios de todo el año</option>
-              <option value="mes">Promedios de {MESES[mes - 1].toLowerCase()}</option>
-            </select>
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              Promedios de
+              <select
+                className={claseSelect}
+                value={periodo}
+                onChange={(e) => setPeriodo(e.target.value === 'anio' ? 'anio' : Number(e.target.value))}
+              >
+                <option value="anio">Todo el año {anio}</option>
+                {MESES.slice(0, ultimoMes).map((nombre, i) => (
+                  <option key={nombre} value={i + 1}>
+                    {nombre} {anio}
+                    {i + 1 === ultimoMes && anioDe(hoy) === anio ? ' (en curso)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
             <BotonExportar onClick={exportar} />
           </>
         }
@@ -121,7 +136,7 @@ export default function RankingSucursales() {
                 <th className="px-3 py-3 text-right font-semibold">Críticas</th>
                 <th className="px-3 py-3 text-right font-semibold">Compromisos vencidos</th>
                 <th className="px-3 py-3 text-right font-semibold">NC sin aviso</th>
-                <th className="px-3 py-3 text-right font-semibold">Facturas ({periodo === 'mes' ? 'mes' : 'año'})</th>
+                <th className="px-3 py-3 text-right font-semibold">Facturas ({periodo === 'anio' ? 'año' : 'mes'})</th>
                 <th className="px-3 py-3 text-right font-semibold">Días prom. hasta subir</th>
                 <th className="px-4 py-3 text-right font-semibold">Subidas en plazo</th>
               </tr>

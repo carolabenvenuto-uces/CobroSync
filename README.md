@@ -8,8 +8,6 @@ La demo está verticalizada en **concesionarias y talleres que facturan reparaci
 
 > ⚠️ **Datos de ejemplo.** Las sucursales y las compañías de seguro son reales; fechas, montos, números de comprobante, siniestros y patentes son inventados por [`scripts/generar-datos-demo.mjs`](scripts/generar-datos-demo.mjs), con proporciones tomadas de estadísticas de la planilla de control. Nunca se suben filas reales: ver [docs/decisiones/002-datos-ficticios.md](docs/decisiones/002-datos-ficticios.md).
 
-Desarrollado por **CaroIA Studio**.
-
 ---
 
 ## El problema
@@ -26,7 +24,13 @@ Cada factura a una aseguradora necesita un legajo de respaldo: factura, orden de
 | Presentación | Envío a cada compañía y seguimiento hasta el cobro |
 | Finanzas (Premium) | Saldos por compañía, vencidos, notas de crédito, DSO y proyección semanal |
 
-**Roles:** Sucursal (sube y corrige documentos, avisa demoras e informa notas de crédito), Auditoría (valida, presenta y registra rechazos), Gerencia (ranking de sucursales, impacto económico y saldos).
+**Roles (cada uno ve una app distinta):**
+
+| Rol | Pantalla de inicio | Qué más ve |
+|---|---|---|
+| Gerencia | Resumen simple del mes y del año | Ranking, Saldos, Impacto y "Buscar una factura" (solo consulta) |
+| Auditoría | Avisos por sector, que llevan a cada tabla ya filtrada | Pendientes, Reclamos, Control diario, informes, Compañías y "Usar mi planilla" |
+| Sucursal | Mis facturas: qué subir, qué corregir y qué está en revisión | Notificaciones de Auditoría |
 
 **Foco actual:** ser el lugar único de comunicación entre sucursales, auditoría y gerencia sobre cada factura. Ver [docs/decisiones/003-foco-en-sucursales.md](docs/decisiones/003-foco-en-sucursales.md).
 

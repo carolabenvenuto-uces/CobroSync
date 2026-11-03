@@ -1,40 +1,39 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarClock, Info, Receipt } from 'lucide-react'
+import { CalendarClock, Info } from 'lucide-react'
 import { FiltroSucursal } from '../components/Filtros'
-import { LegajoPanel } from '../components/LegajoPanel'
-import { NotaCreditoModal } from '../components/NotaCreditoModal'
-import { Chip } from '../components/ui/Badges'
-import { BotonExportar, Card, EncabezadoPagina, Indicador } from '../components/ui/Card'
-import { claseSelect } from '../components/ui/Estados'
-import { TODAS_LAS_SUCURSALES, useApp, useComprobantes } from '../context/AppContext'
+import { Chip, nombreEtapa } from '../components/ui/Badges'
+import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { Tabla, type Columna } from '../components/ui/Tabla'
+import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo, DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
-import {
-  avisoA,
-  compromisoVencido,
-  diasDeEspera,
-  esperaALaSucursal,
-  NOMBRE_NIVEL,
-  nivelEscaneo,
-  type NivelEscaneo,
-} from '../domain/sucursales'
+import { avisoA, compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo, type NivelEscaneo } from '../domain/sucursales'
+import type { Comprobante } from '../domain/tipos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
+import { observadaSinRespuesta } from './Avisos'
 
-const TONO_NIVEL = { en_plazo: 'amarillo', atrasado: 'rojo', critico: 'rojo' } as const
+const NOMBRE_ESTADO: Record<NivelEscaneo, string> = { en_plazo: 'En plazo', atrasado: 'Atrasada', critico: 'Crítica' }
+const TONO = { en_plazo: 'amarillo', atrasado: 'rojo', critico: 'rojo' } as const
+
+/** En qué situación está el aviso de la sucursal (para filtrar y para los avisos). */
+function situacion(c: Comprobante, hoy: string): string {
+  if (compromisoVencido(c, hoy)) return 'Compromiso vencido'
+  if (c.compromiso) return 'Con compromiso'
+  if (observadaSinRespuesta(c)) return 'Observada sin respuesta'
+  return 'Sin aviso de la sucursal'
+}
 
 /**
  * Pendientes de las sucursales: lo que cada sucursal todavía tiene que subir o corregir.
- * Para el rol Sucursal es su pantalla de inicio ("Mis pendientes").
+ * Las tarjetas de arriba y los filtros de las columnas filtran la misma tabla.
  */
 export default function Pendientes() {
-  const { datos, rol, sucursal, hoy } = useApp()
+  const { datos, hoy, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params, setParams] = useSearchParams()
-  const filtroNivel = (params.get('nivel') ?? 'todos') as NivelEscaneo | 'todos'
-  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
-  const [modalNc, setModalNc] = useState(false)
+  const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
   const filas = useMemo(
     () =>
@@ -42,204 +41,163 @@ export default function Pendientes() {
         .filter((c) => esperaALaSucursal(c, hoy))
         .map((c) => {
           const dias = diasDeEspera(c, hoy)
-          const nivel = nivelEscaneo(dias)
           return {
             c,
             dias,
-            nivel,
+            nivel: nivelEscaneo(dias),
             semaforo: calcularSemaforo(c, hoy),
+            situacion: situacion(c, hoy),
             sucursal: meta.sucursales.find((s) => s.nombre === c.sucursal),
           }
-        })
-        .sort((a, b) => b.dias - a.dias),
+        }),
     [comprobantes, hoy, meta.sucursales],
   )
-  const visibles = filas.filter((f) => filtroNivel === 'todos' || f.nivel === filtroNivel)
+  type Fila = (typeof filas)[number]
 
-  const cuenta = (n: NivelEscaneo) => filas.filter((f) => f.nivel === n).length
-  const compromisosVencidos = filas.filter((f) => compromisoVencido(f.c, hoy)).length
-  const retenido = filas.reduce((s, f) => s + f.c.total, 0)
-  const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
-  const seleccionado = comprobantes.find((c) => c.id === seleccionadoId) ?? null
-  const esSucursal = rol === 'sucursal'
-  const titulo = esSucursal ? `Mis pendientes · ${sucursal}` : 'Pendientes de sucursales'
-
-  function filtrar(nivel: NivelEscaneo | 'todos') {
-    setParams(nivel === 'todos' ? {} : { nivel }, { replace: true })
+  const resumen = (f: (x: Fila) => boolean) => {
+    const l = filas.filter(f)
+    return { cantidad: l.length, monto: l.reduce((s, x) => s + x.c.total, 0) }
   }
+  const tarjetas: { titulo: string; ayuda: string; tono: 'amarillo' | 'rojo' | 'neutro'; filtro: Record<string, string>; r: { cantidad: number; monto: number } }[] = [
+    { titulo: 'En plazo', ayuda: `Hasta ${PLAZO_ESCANEO_DIAS} días`, tono: 'amarillo' as const, filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
+    { titulo: 'Atrasadas', ayuda: 'Aviso al gerente de sucursal', tono: 'rojo' as const, filtro: { estado: 'Atrasada' }, r: resumen((x) => x.nivel === 'atrasado') },
+    { titulo: 'Críticas', ayuda: 'Aviso a gerencia general', tono: 'rojo' as const, filtro: { estado: 'Crítica' }, r: resumen((x) => x.nivel === 'critico') },
+    {
+      titulo: 'Compromisos vencidos',
+      ayuda: 'Fecha prometida ya pasada',
+      tono: 'neutro' as const,
+      filtro: { situacion: 'Compromiso vencido' },
+      r: resumen((x) => x.situacion === 'Compromiso vencido'),
+    },
+  ]
+  const filtrosIniciales = Object.fromEntries(params.entries())
 
-  function exportar() {
+  const columnas: Columna<Fila>[] = [
+    {
+      clave: 'dias',
+      titulo: 'Días',
+      orden: (x) => x.dias,
+      celda: (x) => <span className="text-base font-extrabold">{x.dias}</span>,
+    },
+    { clave: 'estado', titulo: 'Estado', filtro: (x) => NOMBRE_ESTADO[x.nivel], celda: (x) => <Chip tono={TONO[x.nivel]}>{NOMBRE_ESTADO[x.nivel]}</Chip> },
+    { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, orden: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
+    {
+      clave: 'factura',
+      titulo: 'Factura',
+      orden: (x) => x.c.fecha,
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          <div className="font-medium">{formatoComprobante(x.c)}</div>
+          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
+        </div>
+      ),
+    },
+    { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
+    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap">{x.c.siniestro}</span> },
+    { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
+    { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap font-semibold">{formatoPesos(x.c.total)}</span> },
+    {
+      clave: 'falta',
+      titulo: 'Qué falta',
+      filtro: (x) => nombreEtapa(x.semaforo.etapa),
+      celda: (x) => (
+        <div className="text-xs text-slate-700">
+          {(x.semaforo.detalle.length > 1 ? x.semaforo.detalle.slice(1) : x.semaforo.detalle).map((d) => (
+            <div key={d}>{d}</div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      clave: 'situacion',
+      titulo: 'Aviso de la sucursal',
+      filtro: (x) => x.situacion,
+      celda: (x) =>
+        x.c.compromiso ? (
+          <div className={`text-xs ${x.situacion === 'Compromiso vencido' ? 'font-semibold text-red-700' : 'text-slate-700'}`}>
+            <div className="flex items-center gap-1 whitespace-nowrap">
+              <CalendarClock className="h-3.5 w-3.5" />
+              {formatoFecha(x.c.compromiso.fecha)}
+              {x.situacion === 'Compromiso vencido' && ' · vencido'}
+            </div>
+            <div className="mt-0.5 text-slate-500">{x.c.compromiso.motivo}</div>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-500">{x.situacion}</span>
+        ),
+    },
+    { clave: 'aviso', titulo: 'Escalado a', filtro: (x) => avisoA(x.nivel, x.sucursal), celda: (x) => <span className="whitespace-nowrap text-xs">{avisoA(x.nivel, x.sucursal)}</span> },
+  ]
+
+  function exportar(lista: Fila[]) {
     descargarExcel(
       `pendientes-sucursales-${hoy}`,
-      ['Sucursal', 'Fecha factura', 'Comprobante', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Días', 'Nivel', 'Qué falta', 'Compromiso', 'Motivo', 'Aviso a'],
-      visibles.map((f) => [
-        f.c.sucursal,
-        fechaExcel(f.c.fecha),
-        formatoComprobante(f.c),
-        nombreCompania(f.c.aseguradoraId),
-        f.c.siniestro,
-        f.c.patente,
-        f.c.total,
-        f.dias,
-        NOMBRE_NIVEL[f.nivel],
-        f.semaforo.detalle.slice(1).join(' / ') || f.semaforo.detalle[0],
-        fechaExcel(f.c.compromiso?.fecha ?? null),
-        f.c.compromiso?.motivo ?? null,
-        avisoA(f.nivel, f.sucursal),
+      ['Días', 'Estado', 'Sucursal', 'Fecha factura', 'Comprobante', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Qué falta', 'Aviso de la sucursal', 'Compromiso', 'Escalado a'],
+      lista.map((x) => [
+        x.dias,
+        NOMBRE_ESTADO[x.nivel],
+        x.c.sucursal,
+        fechaExcel(x.c.fecha),
+        formatoComprobante(x.c),
+        nombreCompania(x.c.aseguradoraId),
+        x.c.siniestro,
+        x.c.patente,
+        x.c.total,
+        x.semaforo.detalle.join(' / '),
+        x.situacion,
+        x.c.compromiso ? `${fechaExcel(x.c.compromiso.fecha)} · ${x.c.compromiso.motivo}` : null,
+        avisoA(x.nivel, x.sucursal),
       ]),
     )
   }
 
   return (
     <>
-      <EncabezadoPagina
-        titulo={titulo}
-        subtitulo={
-          esSucursal
-            ? 'Facturas que todavía necesitan documentos de tu sucursal'
-            : sucursal === TODAS_LAS_SUCURSALES
-              ? 'Todas las sucursales'
-              : sucursal
-        }
-        acciones={
-          <>
-            {esSucursal && (
-              <button
-                type="button"
-                onClick={() => setModalNc(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
-              >
-                <Receipt className="h-4 w-4" /> Informar nota de crédito
-              </button>
-            )}
-            <FiltroSucursal />
-            <BotonExportar onClick={exportar} />
-          </>
-        }
-      />
+      <EncabezadoPagina titulo="Pendientes de sucursales" subtitulo="Facturas que esperan documentación de las sucursales" acciones={<FiltroSucursal />} />
 
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          La sucursal tiene <strong>{PLAZO_ESCANEO_DIAS} días</strong> desde la factura para subir el legajo completo.
-          Desde el día {PLAZO_ESCANEO_DIAS + 1} se avisa al gerente de la sucursal; desde el día{' '}
-          {DIAS_ESCALAR_GERENCIA_GENERAL + 1}, también a la gerencia general.
+          La sucursal tiene <strong>{PLAZO_ESCANEO_DIAS} días</strong> desde la factura. Desde el día {PLAZO_ESCANEO_DIAS + 1} se avisa al
+          gerente de la sucursal; desde el día {DIAS_ESCALAR_GERENCIA_GENERAL + 1}, también a la gerencia general.
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <BotonIndicador activo={filtroNivel === 'en_plazo'} onClick={() => filtrar('en_plazo')}>
-          <Indicador titulo="En plazo" valor={String(cuenta('en_plazo'))} tono="amarillo" ayuda={`Hasta ${PLAZO_ESCANEO_DIAS} días`} />
-        </BotonIndicador>
-        <BotonIndicador activo={filtroNivel === 'atrasado'} onClick={() => filtrar('atrasado')}>
-          <Indicador titulo="Atrasados" valor={String(cuenta('atrasado'))} tono="rojo" ayuda="Aviso al gerente de sucursal" />
-        </BotonIndicador>
-        <BotonIndicador activo={filtroNivel === 'critico'} onClick={() => filtrar('critico')}>
-          <Indicador titulo="Críticos" valor={String(cuenta('critico'))} tono="rojo" ayuda="Aviso a gerencia general" />
-        </BotonIndicador>
-        <Indicador titulo="Compromisos vencidos" valor={String(compromisosVencidos)} ayuda="Fecha prometida ya pasada" />
-        <Indicador titulo="Plata retenida" valor={formatoPesos(retenido)} tono="marca" ayuda="No se puede presentar" />
+      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {tarjetas.map((t) => {
+          const [clave, valor] = Object.entries(t.filtro)[0]
+          const activa = params.get(clave) === valor
+          return (
+            <button
+              key={t.titulo}
+              type="button"
+              onClick={() => setParams(activa ? {} : t.filtro, { replace: true })}
+              className={`rounded-xl text-left transition ${activa ? 'ring-2 ring-marca' : 'hover:ring-2 hover:ring-slate-200'}`}
+            >
+              <Indicador titulo={t.titulo} valor={String(t.r.cantidad)} tono={t.tono} ayuda={`${formatoPesos(t.r.monto)} · ${t.ayuda}`} />
+            </button>
+          )
+        })}
       </div>
 
-      <Card className="mt-4 overflow-hidden p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <span className="text-sm text-slate-500">
-            {visibles.length} facturas {filtroNivel !== 'todos' && `· ${NOMBRE_NIVEL[filtroNivel].toLowerCase()}`}
-          </span>
-          <select className={claseSelect} value={filtroNivel} onChange={(e) => filtrar(e.target.value as NivelEscaneo | 'todos')}>
-            <option value="todos">Todos los niveles</option>
-            <option value="en_plazo">En plazo</option>
-            <option value="atrasado">Atrasados</option>
-            <option value="critico">Críticos</option>
-          </select>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-fondo text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Días</th>
-                {!esSucursal && <th className="px-3 py-3 font-semibold">Sucursal</th>}
-                <th className="px-3 py-3 font-semibold">Factura</th>
-                <th className="px-3 py-3 font-semibold">Compañía · siniestro</th>
-                <th className="px-3 py-3 text-right font-semibold">Total</th>
-                <th className="px-3 py-3 font-semibold">Qué falta</th>
-                <th className="px-3 py-3 font-semibold">Compromiso</th>
-                <th className="px-3 py-3 font-semibold">Aviso a</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visibles.map((f) => {
-                const vencido = compromisoVencido(f.c, hoy)
-                return (
-                  <tr key={f.c.id} onClick={() => setSeleccionadoId(f.c.id)} className="cursor-pointer hover:bg-marca/5">
-                    <td className="px-4 py-3">
-                      <div className="text-lg font-extrabold leading-none">{f.dias}</div>
-                      <div className="mt-1">
-                        <Chip tono={TONO_NIVEL[f.nivel]}>{NOMBRE_NIVEL[f.nivel]}</Chip>
-                      </div>
-                    </td>
-                    {!esSucursal && <td className="px-3 py-3 whitespace-nowrap">{f.c.sucursal}</td>}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <div className="font-medium">{formatoComprobante(f.c)}</div>
-                      <div className="text-xs text-slate-500">{formatoFecha(f.c.fecha)}</div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="whitespace-nowrap">{nombreCompania(f.c.aseguradoraId)}</div>
-                      <div className="text-xs text-slate-500">
-                        {f.c.siniestro} · {f.c.patente}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-right whitespace-nowrap font-semibold">{formatoPesos(f.c.total)}</td>
-                    <td className="px-3 py-3 text-xs text-slate-700">
-                      {(f.semaforo.detalle.length > 1 ? f.semaforo.detalle.slice(1) : f.semaforo.detalle).map((d) => (
-                        <div key={d}>{d}</div>
-                      ))}
-                    </td>
-                    <td className="px-3 py-3 text-xs">
-                      {f.c.compromiso ? (
-                        <div className={vencido ? 'font-semibold text-red-700' : 'text-slate-700'}>
-                          <div className="flex items-center gap-1 whitespace-nowrap">
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            {formatoFecha(f.c.compromiso.fecha)}
-                            {vencido && ' · vencido'}
-                          </div>
-                          <div className="mt-0.5 text-slate-500">{f.c.compromiso.motivo}</div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">Sin aviso</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap text-slate-700">{avisoA(f.nivel, f.sucursal)}</td>
-                  </tr>
-                )
-              })}
-              {visibles.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                    No hay pendientes. ¡Todo al día!
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {seleccionado && <LegajoPanel comprobante={seleccionado} onCerrar={() => setSeleccionadoId(null)} />}
-      {modalNc && <NotaCreditoModal onCerrar={() => setModalNc(false)} />}
+      <Tabla
+        key={params.toString()}
+        filas={filas}
+        columnas={columnas}
+        clave={(x) => x.c.id}
+        onFila={(x) => abrirLegajo(x.c.id)}
+        buscar={(x) => [formatoComprobante(x.c), x.c.siniestro, x.c.patente, x.c.ref, x.c.sucursal].join(' ')}
+        textoBusqueda="Buscar por número de factura, siniestro, patente o referencia"
+        filtrosIniciales={filtrosIniciales}
+        ordenInicial={{ clave: 'dias', dir: 'desc' }}
+        exportar={exportar}
+        resumen={(l) => (
+          <>
+            <strong>{l.length.toLocaleString('es-AR')}</strong> facturas · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong> retenidos
+          </>
+        )}
+        vacio="No hay pendientes con estos filtros."
+      />
     </>
-  )
-}
-
-/** Hace clickeable una tarjeta de indicador para filtrar la tabla. */
-function BotonIndicador({ activo, onClick, children }: { activo: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl text-left transition ${activo ? 'ring-2 ring-marca' : 'hover:ring-2 hover:ring-slate-200'}`}
-    >
-      {children}
-    </button>
   )
 }

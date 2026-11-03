@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
+import { LegajoPanel } from '../LegajoPanel'
 import { Marca } from '../Logo'
 import { Cargando, ErrorCarga } from '../ui/Estados'
 import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente } = useApp()
+  const { datos, error, fuente, legajoAbierto, abrirLegajo } = useApp()
+  const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   return (
@@ -37,9 +39,12 @@ export function AppLayout() {
           {fuente.tipo === 'demo'
             ? 'Demo con datos de ejemplo (montos, fechas y números inventados)'
             : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
-          · CobroSync by CAROLA · desarrollado por CaroIA Studio
+          · CobroSync by CAROLA
         </footer>
       </div>
+
+      {/* El legajo se abre desde cualquier pantalla (tablas, avisos, notificaciones) */}
+      {legajo && <LegajoPanel key={legajo.id} comprobante={legajo} onCerrar={() => abrirLegajo(null)} />}
     </div>
   )
 }

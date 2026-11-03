@@ -156,6 +156,18 @@ function crearFactura(fecha) {
   }
   let completo = documentos.every((d) => d.estado === 'ok')
 
+  // Si lo que subió tiene problemas, auditoría lo observa al día siguiente
+  const conProblemas = documentos.filter((d) => d.estado === 'ilegible' || d.estado === 'sin_firma')
+  if (fechaDrive && conProblemas.length > 0 && sumarDias(fechaDrive, 1) <= FECHA_CORTE) {
+    eventos.push({
+      fecha: sumarDias(fechaDrive, 1),
+      autor: elegir(AUDITORIA),
+      area: 'auditoria',
+      tipo: 'rechazo',
+      texto: `Observación: ${conProblemas.map((d) => `${NOMBRE_DOC[d.tipo]} ${d.estado === 'ilegible' ? 'ilegible' : 'sin firma'}`).join(', ')}. Por favor, volver a subir.`,
+    })
+  }
+
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
   let fechaPresentacion = null
   if (completo && fechaDrive) {
@@ -213,7 +225,7 @@ function crearFactura(fecha) {
         autor: 'CobroSync',
         area: 'sistema',
         tipo: 'aviso',
-        texto: `Escaneo atrasado: se avisó a ${sucursal.gerente} (gerente de ${sucursal.nombre})`,
+        texto: `Pasaron ${PLAZO_ESCANEO} días sin legajo completo: se avisó a ${sucursal.gerente} (gerente de ${sucursal.nombre})`,
       })
     }
     if (edad > 21) {

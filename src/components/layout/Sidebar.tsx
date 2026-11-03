@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Presentation,
   Trophy,
+  Upload,
   X,
 } from 'lucide-react'
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
@@ -50,10 +51,14 @@ const SECCIONES: { titulo: string; items: ItemMenu[] }[] = [
       { ruta: '/app/cobros-previstos', etiqueta: 'Cobros previstos', icono: CalendarClock, roles: OFICINA },
     ],
   },
+  {
+    titulo: 'Datos',
+    items: [{ ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload, roles: OFICINA }],
+  },
 ]
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, usuario, sucursal, hoy } = useApp()
+  const { datos, rol, usuario, sucursal, hoy, fuente } = useApp()
   const comprobantes = useComprobantes()
 
   const contadores = useMemo(() => {
@@ -141,7 +146,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             Ver presentación del producto
           </Link>
           <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
-            <BarChart3 className="h-3.5 w-3.5" /> Demo con datos de ejemplo
+            <BarChart3 className="h-3.5 w-3.5" />
+            {fuente.tipo === 'demo' ? 'Demo con datos de ejemplo' : 'Datos de tu planilla'}
           </div>
         </div>
       </aside>

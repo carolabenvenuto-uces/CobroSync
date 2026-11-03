@@ -12,6 +12,7 @@ import Landing from './pages/Landing'
 import Pendientes from './pages/Pendientes'
 import RankingSucursales from './pages/RankingSucursales'
 import Saldos from './pages/Saldos'
+import UsarPlanilla from './pages/UsarPlanilla'
 
 /** Si el rol activo no tiene acceso a una pantalla, lo lleva a su inicio. */
 function SoloPara({ roles, children }: { roles: Rol[]; children: ReactNode }) {
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="impacto" element={oficina(<Impacto />)} />
         <Route path="saldos" element={oficina(<Saldos />)} />
         <Route path="cobros-previstos" element={oficina(<CobrosPrevistos />)} />
+        <Route path="planilla" element={oficina(<UsarPlanilla />)} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

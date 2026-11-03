@@ -9,7 +9,7 @@ import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error } = useApp()
+  const { datos, error, fuente } = useApp()
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   return (
@@ -37,7 +37,10 @@ export function AppLayout() {
         </main>
 
         <footer className="border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
-          Demo con datos de ejemplo (montos, fechas y números inventados) · CobroSync by CAROLA · desarrollado por CaroIA Studio
+          {fuente.tipo === 'demo'
+            ? 'Demo con datos de ejemplo (montos, fechas y números inventados)'
+            : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
+          · CobroSync by CAROLA · desarrollado por CaroIA Studio
         </footer>
       </div>
     </div>

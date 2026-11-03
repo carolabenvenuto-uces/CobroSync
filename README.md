@@ -30,6 +30,10 @@ Cada factura a una aseguradora necesita un legajo de respaldo: factura, orden de
 
 **Foco actual:** ser el lugar único de comunicación entre sucursales, auditoría y gerencia sobre cada factura. Ver [docs/decisiones/003-foco-en-sucursales.md](docs/decisiones/003-foco-en-sucursales.md).
 
+## Usar con la planilla real
+
+En la app, **Datos → Usar mi planilla**: se descarga la hoja *Diario* como CSV (Archivo → Descargar → .csv) y se arrastra a la página. Todo se procesa en el navegador; el archivo no se sube a ningún servidor ni se guarda.
+
 ## Estado del proyecto
 
 | Etapa | Contenido | Estado |

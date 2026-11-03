@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { FileSpreadsheet } from 'lucide-react'
 import { NOMBRE_ROL, TODAS_LAS_SUCURSALES, useApp } from '../../context/AppContext'
 import type { Rol } from '../../domain/tipos'
 import { formatoFecha, MESES } from '../../lib/formato'
@@ -7,7 +9,7 @@ const ROLES: Rol[] = ['sucursal', 'auditoria', 'gerencia']
 
 /** Filtros globales: afectan a todas las pantallas a la vez. */
 export function BarraFiltros() {
-  const { datos, rol, setRol, sucursal, setSucursal, anio, mes, setMes } = useApp()
+  const { datos, rol, setRol, sucursal, setSucursal, anio, mes, setMes, fuente, usarDemo } = useApp()
   const sucursales = (datos?.meta.sucursales ?? []).map((s) => s.nombre)
 
   return (
@@ -32,6 +34,18 @@ export function BarraFiltros() {
           ))}
         </select>
       </label>
+
+      {fuente.tipo === 'planilla' && (
+        <span className="inline-flex items-center gap-2 rounded-lg bg-esmeralda/10 px-3 py-1.5 text-xs font-semibold text-emerald-900">
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+          <Link to="/app/planilla" className="hover:underline">
+            Datos reales: {fuente.archivo} (solo en este navegador)
+          </Link>
+          <button type="button" onClick={usarDemo} className="ml-1 text-emerald-700 underline hover:text-emerald-900">
+            volver a la demo
+          </button>
+        </span>
+      )}
 
       <div className="ml-auto flex flex-wrap items-center gap-3">
         {datos && (

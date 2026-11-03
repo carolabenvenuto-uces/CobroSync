@@ -30,6 +30,8 @@
 
 ## Etapa 2: funcionalidad real básica
 
+- [x] Leer la planilla real (CSV de la hoja Diario) en el navegador, sin subirla a ningún servidor
+
 - [ ] Base de datos en Supabase (PostgreSQL) a partir del DER
 - [ ] Login con Google restringido a las cuentas corporativas, roles y Row Level Security
 - [ ] Avisos por mail reales (plazos de escaneo y escalamiento)

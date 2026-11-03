@@ -8,8 +8,6 @@ La demo está verticalizada en **concesionarias y talleres que facturan reparaci
 
 > ⚠️ **Datos de ejemplo.** Las sucursales y las compañías de seguro son reales; fechas, montos, números de comprobante, siniestros y patentes son inventados por [`scripts/generar-datos-demo.mjs`](scripts/generar-datos-demo.mjs), con proporciones tomadas de estadísticas de la planilla de control. Nunca se suben filas reales: ver [docs/decisiones/002-datos-ficticios.md](docs/decisiones/002-datos-ficticios.md).
 
-Desarrollado por **CaroIA Studio**.
-
 ---
 
 ## El problema

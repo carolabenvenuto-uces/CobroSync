@@ -263,7 +263,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-slate-500">
           <div className="flex items-center gap-2">
             <Isologo className="h-6 w-6" />
-            CobroSync by CAROLA · desarrollado por CaroIA Studio
+            CobroSync by CAROLA
           </div>
           <div>Demo con datos de ejemplo</div>
         </div>

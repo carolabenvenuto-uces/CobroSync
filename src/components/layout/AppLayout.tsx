@@ -39,7 +39,7 @@ export function AppLayout() {
           {fuente.tipo === 'demo'
             ? 'Demo con datos de ejemplo (montos, fechas y números inventados)'
             : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
-          · CobroSync by CAROLA · desarrollado por CaroIA Studio
+          · CobroSync by CAROLA
         </footer>
       </div>
 

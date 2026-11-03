@@ -26,7 +26,8 @@ export interface GrupoAlertas {
 /** Calcula todas las alertas a partir de los comprobantes (también se usa para el contador del menú). */
 export function calcularAlertas(comprobantes: Comprobante[], hoy: string, nombreCompania: (id: string) => string): GrupoAlertas[] {
   const pendientesSucursal = comprobantes.filter((c) => esperaALaSucursal(c, hoy))
-  const ultimoEvento = (c: Comprobante) => c.eventos[c.eventos.length - 1]
+  // Último movimiento de una persona (los avisos automáticos no cuentan como respuesta)
+  const ultimoEvento = (c: Comprobante) => c.eventos.filter((e) => e.area !== 'sistema').at(-1)
 
   return [
     {
@@ -65,7 +66,7 @@ export function calcularAlertas(comprobantes: Comprobante[], hoy: string, nombre
       tono: 'amarillo',
       items: pendientesSucursal
         .filter((c) => ultimoEvento(c)?.tipo === 'rechazo')
-        .map((c) => ({ c, detalle: `Rechazado el ${formatoFecha(ultimoEvento(c).fecha)} · ${c.sucursal}` })),
+        .map((c) => ({ c, detalle: `Rechazado el ${formatoFecha(ultimoEvento(c)?.fecha ?? null)} · ${c.sucursal}` })),
     },
     {
       clave: 'nc',

@@ -138,7 +138,7 @@ function crearFactura(fecha) {
     documentos = TIPOS_DOC.map((tipo) => ({ tipo, estado: tipo === 'factura' ? 'ok' : 'faltante' }))
   } else {
     // Los legajos viejos ya se corrigieron casi todos; los recientes tienen más problemas.
-    const factor = edad > 75 ? 0.15 : edad > 30 ? 0.6 : 1
+    const factor = edad > 90 ? 0.01 : edad > 45 ? 0.08 : edad > 21 ? 0.5 : 1
     documentos = TIPOS_DOC.map((tipo) => {
       if (tipo === 'factura' || azar() >= sucursal.errores * factor) {
         return { tipo, estado: 'ok', archivo: `${tipo}-${ref}.pdf` }
@@ -161,7 +161,8 @@ function crearFactura(fecha) {
   if (completo && fechaDrive) {
     let p = sumarDias(fechaDrive, entre(0, 3))
     let rechazadoSinResolver = false
-    if (p <= FECHA_CORTE && azar() < 0.08) {
+    // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
+    if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.18 : 0.08)) {
       const tipo = elegir(['orden_reparacion', 'conformidad'])
       const problema = elegir(['ilegible', 'sin_firma'])
       eventos.push({
@@ -172,7 +173,8 @@ function crearFactura(fecha) {
         texto: `Rechazo de ${aseguradora.nombre}: ${elegir(MOTIVOS_RECHAZO[problema])}.`,
       })
       const respuesta = sumarDias(p, entre(1, 6))
-      if (respuesta <= FECHA_CORTE) {
+      // Algunos rechazos recientes todavía no tienen respuesta de la sucursal
+      if (respuesta <= FECHA_CORTE && !(edad < 30 && azar() < 0.5)) {
         eventos.push({ fecha: respuesta, autor: persona, area: 'sucursal', tipo: 'mensaje', texto: elegir(RESPUESTAS_SUCURSAL) })
         p = sumarDias(respuesta, entre(0, 2))
       } else {

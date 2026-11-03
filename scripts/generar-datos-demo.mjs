@@ -138,7 +138,7 @@ function crearFactura(fecha) {
     documentos = TIPOS_DOC.map((tipo) => ({ tipo, estado: tipo === 'factura' ? 'ok' : 'faltante' }))
   } else {
     // Los legajos viejos ya se corrigieron casi todos; los recientes tienen más problemas.
-    const factor = edad > 75 ? 0.15 : edad > 30 ? 0.6 : 1
+    const factor = edad > 90 ? 0.01 : edad > 45 ? 0.08 : edad > 21 ? 0.5 : 1
     documentos = TIPOS_DOC.map((tipo) => {
       if (tipo === 'factura' || azar() >= sucursal.errores * factor) {
         return { tipo, estado: 'ok', archivo: `${tipo}-${ref}.pdf` }
@@ -156,12 +156,25 @@ function crearFactura(fecha) {
   }
   let completo = documentos.every((d) => d.estado === 'ok')
 
+  // Si lo que subió tiene problemas, auditoría lo observa al día siguiente
+  const conProblemas = documentos.filter((d) => d.estado === 'ilegible' || d.estado === 'sin_firma')
+  if (fechaDrive && conProblemas.length > 0 && sumarDias(fechaDrive, 1) <= FECHA_CORTE) {
+    eventos.push({
+      fecha: sumarDias(fechaDrive, 1),
+      autor: elegir(AUDITORIA),
+      area: 'auditoria',
+      tipo: 'rechazo',
+      texto: `Observación: ${conProblemas.map((d) => `${NOMBRE_DOC[d.tipo]} ${d.estado === 'ilegible' ? 'ilegible' : 'sin firma'}`).join(', ')}. Por favor, volver a subir.`,
+    })
+  }
+
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
   let fechaPresentacion = null
   if (completo && fechaDrive) {
     let p = sumarDias(fechaDrive, entre(0, 3))
     let rechazadoSinResolver = false
-    if (p <= FECHA_CORTE && azar() < 0.08) {
+    // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
+    if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.18 : 0.08)) {
       const tipo = elegir(['orden_reparacion', 'conformidad'])
       const problema = elegir(['ilegible', 'sin_firma'])
       eventos.push({
@@ -172,7 +185,8 @@ function crearFactura(fecha) {
         texto: `Rechazo de ${aseguradora.nombre}: ${elegir(MOTIVOS_RECHAZO[problema])}.`,
       })
       const respuesta = sumarDias(p, entre(1, 6))
-      if (respuesta <= FECHA_CORTE) {
+      // Algunos rechazos recientes todavía no tienen respuesta de la sucursal
+      if (respuesta <= FECHA_CORTE && !(edad < 30 && azar() < 0.5)) {
         eventos.push({ fecha: respuesta, autor: persona, area: 'sucursal', tipo: 'mensaje', texto: elegir(RESPUESTAS_SUCURSAL) })
         p = sumarDias(respuesta, entre(0, 2))
       } else {
@@ -211,7 +225,7 @@ function crearFactura(fecha) {
         autor: 'CobroSync',
         area: 'sistema',
         tipo: 'aviso',
-        texto: `Escaneo atrasado: se avisó a ${sucursal.gerente} (gerente de ${sucursal.nombre})`,
+        texto: `Pasaron ${PLAZO_ESCANEO} días sin legajo completo: se avisó a ${sucursal.gerente} (gerente de ${sucursal.nombre})`,
       })
     }
     if (edad > 21) {

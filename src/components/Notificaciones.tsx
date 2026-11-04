@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, ExternalLink, Inbox, MailOpen, Search } from 'lucide-react'
+import { ArrowLeft, Bell, ExternalLink, Inbox, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useApp, type Notificacion } from '../context/AppContext'
@@ -113,7 +113,7 @@ export default function BandejaNotificaciones() {
     const varias = (n.facturas ?? []).map((id) => porId.get(id)).filter((x) => x !== undefined)
     return (
       <article className="flex h-full flex-col">
-        <button type="button" onClick={() => setElegida(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-marca lg:hidden">
+        <button type="button" onClick={() => setElegida(null)} className="mb-4 flex items-center gap-1 text-sm font-semibold text-marca hover:underline">
           <ArrowLeft className="h-4 w-4" /> Volver a la bandeja
         </button>
         {n.tema && n.tema !== 'mensaje' && (
@@ -195,9 +195,10 @@ export default function BandejaNotificaciones() {
         }
       />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:grid lg:h-[calc(100vh-11rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(18rem,24rem)_1fr]">
+      {/* Como un mail: la bandeja a lo ancho; al abrir un mensaje, se lee a lo ancho y se vuelve a la bandeja */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* Bandeja */}
-        <div className={`flex min-h-0 flex-col border-slate-200 lg:border-r ${actual ? 'hidden lg:flex' : 'flex'}`}>
+        <div className={`flex-col ${actual ? 'hidden' : 'flex'}`}>
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2">
             {(
               [
@@ -235,7 +236,7 @@ export default function BandejaNotificaciones() {
               className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
             />
           </div>
-          <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+          <ul className="divide-y divide-slate-100">
             {lista.length === 0 && (
               <li className="flex flex-col items-center gap-2 px-5 py-12 text-center text-sm text-slate-500">
                 <Inbox className="h-8 w-8 text-slate-300" />
@@ -250,19 +251,26 @@ export default function BandejaNotificaciones() {
                   className={`flex w-full gap-3 border-l-4 px-4 py-3 text-left ${n.tema === 'rechazo' ? 'border-sem-rojo' : 'border-transparent'} ${n.id === elegida ? 'bg-marca/10' : 'hover:bg-fondo'} ${n.leida ? 'text-slate-500' : 'text-noche'}`}
                 >
                   <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${n.leida ? 'bg-transparent' : 'bg-marca'}`} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
+                  {/* En la compu, una sola línea como en un mail; en el celular, en tres renglones */}
+                  <span className="min-w-0 flex-1 md:flex md:items-center md:gap-4">
+                    <span className="flex items-baseline justify-between gap-2 md:w-56 md:shrink-0">
                       <span className={`truncate text-sm ${n.leida ? '' : 'font-bold'}`}>{remitente(n)}</span>
-                      <span className={`shrink-0 text-[11px] ${n.leida ? '' : 'font-semibold text-marca'}`}>{cuando(n.fecha, hoy)}</span>
+                      <span className={`shrink-0 text-[11px] md:hidden ${n.leida ? '' : 'font-semibold text-marca'}`}>{cuando(n.fecha, hoy)}</span>
                     </span>
-                    <span className={`flex items-center gap-1.5 text-sm ${n.leida ? '' : 'font-semibold'}`}>
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
                       {n.tema && n.tema !== 'mensaje' && <EtiquetaTema tema={n.tema} />}
-                      <span className="truncate">{partesDe(n.texto).asunto}</span>
+                      <span className={`truncate ${n.leida ? '' : 'font-semibold'}`}>{partesDe(n.texto).asunto}</span>
+                      <span className="hidden min-w-0 truncate text-slate-500 md:inline">
+                        {' — '}
+                        {partesDe(n.texto).factura ? `${partesDe(n.texto).factura} · ` : ''}
+                        {partesDe(n.texto).cuerpo}
+                      </span>
                     </span>
-                    <span className="block truncate text-xs text-slate-500">
+                    <span className="block truncate text-xs text-slate-500 md:hidden">
                       {partesDe(n.texto).factura ? `${partesDe(n.texto).factura} · ` : ''}
                       {partesDe(n.texto).cuerpo}
                     </span>
+                    <span className={`hidden shrink-0 text-xs md:inline ${n.leida ? 'text-slate-500' : 'font-semibold text-marca'}`}>{cuando(n.fecha, hoy)}</span>
                   </span>
                 </button>
               </li>
@@ -275,17 +283,8 @@ export default function BandejaNotificaciones() {
           </p>}
         </div>
 
-        {/* Mensaje abierto */}
-        <div className={`min-h-0 overflow-y-auto p-5 ${actual ? 'block' : 'hidden lg:block'}`}>
-          {actual ? (
-            detalle(actual)
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-slate-400">
-              <MailOpen className="h-10 w-10 text-slate-300" />
-              Ningún mensaje seleccionado.
-            </div>
-          )}
-        </div>
+        {/* Mensaje abierto, a lo ancho */}
+        {actual && <div className="mx-auto max-w-4xl p-6">{detalle(actual)}</div>}
       </div>
     </>
   )

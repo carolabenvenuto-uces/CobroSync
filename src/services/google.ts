@@ -90,6 +90,11 @@ export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; aho
 }
 
 /** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Auditoría. */
+/** Reporte de un problema técnico: le llega por mail solo a la desarrolladora. */
+export function reportarProblemaEnGoogle(texto: string, contexto: { pantalla: string; navegador: string }): Promise<boolean> {
+  return llamar('reportarProblema', texto, contexto)
+}
+
 export function guardarAjustesEnGoogle(ajustes: Ajustes): Promise<boolean> {
   return llamar('guardarAjustes', ajustes)
 }

@@ -5,10 +5,15 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (ajustes previos al lanzamiento)
 
 ### Cambiado
+- **Sucursal · Mis facturas:** las cuatro tarjetas van una debajo de la otra, a lo ancho: Para subir, En revisión, Por vencer o vencidas y Rechazos y observaciones.
+- **Aviso de plazos:** al abrirlo desde el botón, el cartel sale de la esquina y se agranda (el mismo movimiento que al cerrarlo).
+- **Sucursal · Mis siniestros, rediseñada como bandeja:** lista de siniestros a la izquierda (lo más reciente primero) y el siniestro elegido a la derecha, con facturado, notas de crédito, cobrado y lo que falta cobrar, y cada factura con sus documentos y sus notas de crédito colgadas debajo. Búsqueda, filtro por compañía y por estado. Sin etiquetas de estado en la lista (eso ya está en Mis facturas).
+- **Notificaciones como un correo:** la bandeja ocupa todo el ancho, con cada mensaje en una línea (remitente, asunto, vista previa y fecha); al abrir uno, se lee a lo ancho y se vuelve a la bandeja.
+- **Manual de uso:** cada sector ve lo general y lo suyo; Auditoría ve todo. Nuevo apartado "¿Algo no funciona?" para mandarle un reporte técnico a la desarrolladora: llega por mail solo a ella (correo de soporte en Ajustes), con el usuario, el sector y la pantalla.
 - **Sucursal · Mis facturas con los cuatro estados juntos:** Rechazos y observaciones, Por vencer o vencidas, Para subir y En revisión. Cada tarjeta abre su listado en una pantalla encima, que se cierra para volver (también con Escape). Se quita la pestaña "Para resolver": sus dos listas son ahora las dos primeras tarjetas.
 - **Aviso de plazos:** al cerrarlo, el cartel se achica y viaja hasta el botón "Plazos", que se resalta un momento; así se ve dónde queda.
 - **Notificaciones:** en la sucursal, filtros Todas / Rechazos / Documentación faltante (lo no leído ya va en negrita); en Auditoría y Gerencia, Todas / Sin leer. Buscador por número de factura o siniestro.
-- **Marca:** "CobroSync v1.0" con la versión chica al lado del nombre y la firma "Desarrollo CBenvenuto", igual en el pie de cada pantalla.
+- **Marca:** "CobroSync v1.0" con la versión chica al lado del nombre; debajo del logo, "by Carola Benvenuto"; en el pie de cada pantalla, "CobroSync v1.0 · Diseño y desarrollo: Carola Benvenuto".
 - **Tono:** se reemplazan las formas de "usted" que sonaban forzadas por frases sin verbo o impersonales ("Sin tareas pendientes", "Buscar por número…", "Hay que cambiarle el nombre"), con trato formal.
 
 ## [1.0.0] - 2026-11-04

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CornerDownRight, FolderOpen, Search } from 'lucide-react'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -10,9 +10,7 @@ import type { Comprobante, Documento } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
 
-const POR_COMPANIA = 15
-/** Gris (informativo), con borde para que no se pierda contra el fondo */
-const NC = 'bg-slate-200 text-slate-800 ring-1 ring-slate-400'
+const POR_PAGINA = 50
 const normalizar = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
 const ESTILO_DOC: Record<Documento['estado'], string> = {
@@ -51,7 +49,10 @@ export default function Siniestros() {
   const { datos, hoy, sucursal, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const [busqueda, setBusqueda] = useState('')
-  const [estado, setEstado] = useState<'curso' | 'cobrados' | 'todos'>('curso')
+  const [estado, setEstado] = useState<'curso' | 'cobrados' | 'todos'>('todos')
+  const [companiaElegida, setCompaniaElegida] = useState('')
+  const [elegido, setElegido] = useState<string | null>(null)
+  const [cantidad, setCantidad] = useState(POR_PAGINA)
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
   const grupos = useMemo(() => {
@@ -117,60 +118,36 @@ export default function Siniestros() {
       g.enCurso = vigentes.some((f) => f.estado !== 'cobrada')
       g.saldo = vigentes.reduce((t, f) => t + saldoSinCobro(f), 0)
     }
-    // Ordenados por compañía; dentro de cada una, primero lo que falta refacturar, después lo que tiene algo para hacer y lo más nuevo
-    const refacturar = (g: Grupo) => g.pendientes.some((x) => x.tipo === 'refacturar')
-    return [...mapa.values()].sort(
-      (a, b) =>
-        a.compania.localeCompare(b.compania, 'es') ||
-        Number(refacturar(b)) - Number(refacturar(a)) ||
-        Number(b.pendientes.length > 0) - Number(a.pendientes.length > 0) ||
-        b.ultimaFecha.localeCompare(a.ultimaFecha),
-    )
+    // Lo más reciente primero
+    return [...mapa.values()].sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comprobantes, datos, hoy])
 
-  const tieneNc = (g: Grupo) => g.notas.length > 0 || g.facturas.some((f) => f.estado === 'anulada' || (f.acreditado ?? 0) > 0 || f.anulacionInformada)
-  const docPendiente = (g: Grupo) => g.pendientes.filter((x) => x.tipo === 'doc').length
-  const porRefacturar = (g: Grupo) => g.pendientes.filter((x) => x.tipo === 'refacturar').length
-
-  const [companiasAbiertas, setCompaniasAbiertas] = useState<Set<string>>(new Set())
-  const [siniestrosAbiertos, setSiniestrosAbiertos] = useState<Set<string>>(new Set())
-  const [verTodos, setVerTodos] = useState<Set<string>>(new Set())
-  const alternar = (set: Set<string>, setter: (s: Set<string>) => void, clave: string) => {
-    const n = new Set(set)
-    if (n.has(clave)) n.delete(clave)
-    else n.add(clave)
-    setter(n)
-  }
-
   const texto = normalizar(busqueda)
   const buscando = texto.length >= 3
-  const delEstado = (g: Grupo) => (estado === 'todos' ? true : estado === 'curso' ? g.enCurso : !g.enCurso)
   const coincide = (g: Grupo) =>
     !buscando ||
     [g.siniestro, g.patente, g.compania, ...g.facturas.map((f) => `${f.puntoVenta}${String(f.numero).padStart(8, '0')} ${f.puntoVenta}${f.numero} ${f.numero} ${f.ref}`)]
       .map(normalizar)
       .some((x) => x.includes(texto))
 
-  const cuantos = { curso: grupos.filter((g) => g.enCurso).length, cobrados: grupos.filter((g) => !g.enCurso).length, todos: grupos.length }
+  const companias = useMemo(() => {
+    const m = new Map<string, { nombre: string; cantidad: number }>()
+    for (const g of grupos) m.set(g.companiaId, { nombre: g.compania, cantidad: (m.get(g.companiaId)?.cantidad ?? 0) + 1 })
+    return [...m.entries()].sort((a, b) => a[1].nombre.localeCompare(b[1].nombre, 'es'))
+  }, [grupos])
 
-  // Agrupados por compañía, cada una plegable
-  const porCompania = useMemo(() => {
-    const m = new Map<string, { id: string; nombre: string; grupos: Grupo[] }>()
-    for (const g of grupos) {
-      if (!delEstado(g) || !coincide(g)) continue
-      const x = m.get(g.companiaId) ?? { id: g.companiaId, nombre: g.compania, grupos: [] }
-      x.grupos.push(g)
-      m.set(g.companiaId, x)
-    }
-    return [...m.values()]
+  const visibles = useMemo(
+    () =>
+      grupos.filter(
+        (g) => (estado === 'todos' || (estado === 'curso' ? g.enCurso : !g.enCurso)) && (!companiaElegida || g.companiaId === companiaElegida) && coincide(g),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupos, estado, texto])
-
-  const totalVisibles = porCompania.reduce((t, c) => t + c.grupos.length, 0)
-  // Al buscar se abre todo lo que coincide; si hay una sola compañía, también
-  const companiaAbierta = (id: string) => buscando || porCompania.length === 1 || companiasAbiertas.has(id)
-  const siniestroAbierto = (g: Grupo, cantidad: number) => siniestrosAbiertos.has(g.clave) || (buscando && cantidad <= 3)
+    [grupos, estado, companiaElegida, texto],
+  )
+  const actual = grupos.find((g) => g.clave === elegido) ?? null
+  // Si la búsqueda deja un solo siniestro, se abre solo
+  const mostrado = actual ?? (buscando && visibles.length === 1 ? visibles[0] : null)
 
   const documento = (d: Documento) => {
     const enlaces = d.adjuntos ?? (d.url ? [{ archivo: d.archivo ?? '', url: d.url }] : [])
@@ -188,200 +165,199 @@ export default function Siniestros() {
     )
   }
 
-  const etiqueta = (clase: string, t: string) => <span className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-bold ${clase}`}>{t}</span>
+  /** Detalle de un siniestro: sus números y cada factura con sus documentos y, debajo, sus notas de crédito. */
+  const detalle = (g: Grupo) => {
+    const facturado = g.facturas.reduce((t, f) => t + f.total, 0)
+    const acreditado = g.notas.reduce((t, n) => t + Math.abs(n.total), 0)
+    const cobrado = g.facturas.reduce((t, f) => t + (f.estado === 'cobrada' ? f.total - (f.acreditado ?? 0) : 0), 0)
+    return (
+      <article>
+        <button type="button" onClick={() => setElegido(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-marca lg:hidden">
+          <ArrowLeft className="h-4 w-4" /> Volver a la lista
+        </button>
+        <h2 className="text-lg font-extrabold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</h2>
+        <p className="text-sm text-slate-500">
+          {g.compania}
+          {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
+        </p>
 
-  const detalle = (g: Grupo) => (
-    <div className="border-t border-slate-100">
-      {/* Una fila por comprobante; en el celular los datos bajan de renglón en vez de correrse de costado */}
-      <ul className="divide-y divide-slate-100 text-[13px]">
-        {g.facturas.map((f) => (
-          <li key={f.id}>
-            <button type="button" onClick={() => abrirLegajo(f.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 text-left hover:bg-marca/5">
-              <span className="min-w-[9rem] font-medium">
-                {formatoComprobante(f)}
-                <span className="ml-2 text-xs font-normal text-slate-500">{formatoFecha(f.fecha)}</span>
-              </span>
-              <span className="tabular-nums">{formatoPesos(f.total)}</span>
-              <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
-              <span className="flex flex-wrap gap-1 sm:ml-auto">{f.documentos.map(documento)}</span>
-            </button>
-          </li>
-        ))}
-        {g.notas.map((nc) => {
-          const f = g.facturas.find((x) => x.id === nc.ncReferencia)
-          return (
-            <li key={nc.id}>
-              <button type="button" onClick={() => abrirLegajo(nc.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-red-50/40 px-4 py-2 text-left hover:bg-marca/5">
-                <span className="min-w-[9rem] font-medium text-red-800">
-                  {formatoComprobante(nc)}
-                  <span className="ml-2 text-xs font-normal text-slate-500">{formatoFecha(nc.fecha)}</span>
+        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { t: 'Facturado', v: formatoPesos(facturado), c: 'text-noche' },
+            { t: 'Notas de crédito', v: acreditado ? `−${formatoPesos(acreditado)}` : '—', c: acreditado ? 'text-red-800' : 'text-slate-400' },
+            { t: 'Cobrado', v: cobrado ? formatoPesos(cobrado) : '—', c: cobrado ? 'text-emerald-700' : 'text-slate-400' },
+            { t: 'Falta cobrar', v: g.saldo ? formatoPesos(g.saldo) : '—', c: g.saldo ? 'text-noche' : 'text-slate-400' },
+          ].map((x) => (
+            <div key={x.t} className="rounded-lg bg-fondo px-3 py-2">
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{x.t}</dt>
+              <dd className={`text-sm font-bold tabular-nums ${x.c}`}>{x.v}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Comprobantes</h3>
+        <ul className="space-y-2">
+          {g.facturas.map((f) => (
+            <li key={f.id} className="rounded-xl border border-slate-200">
+              <button type="button" onClick={() => abrirLegajo(f.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2.5 text-left text-[13px] hover:bg-marca/5">
+                <span className="min-w-[9rem] font-semibold">
+                  {formatoComprobante(f)}
+                  <span className="ml-2 text-xs font-normal text-slate-500">{formatoFecha(f.fecha)}</span>
                 </span>
-                <span className="tabular-nums text-red-800">−{formatoPesos(Math.abs(nc.total))}</span>
-                <span className="text-xs text-slate-600">
-                  {!f ? 'Nota de crédito' : f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`}
-                </span>
+                <span className="tabular-nums">{formatoPesos(f.total)}</span>
+                <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
+                <span className="flex w-full flex-wrap gap-1">{f.documentos.map(documento)}</span>
               </button>
+              {/* Las notas de crédito, colgadas de la factura que acreditan */}
+              {g.notas
+                .filter((nc) => nc.ncReferencia === f.id)
+                .map((nc) => (
+                  <button
+                    key={nc.id}
+                    type="button"
+                    onClick={() => abrirLegajo(nc.id)}
+                    className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-slate-200 bg-red-50/40 px-3 py-2 text-left text-[13px] hover:bg-marca/5"
+                  >
+                    <CornerDownRight className="h-4 w-4 text-red-700" />
+                    <span className="font-medium text-red-800">{formatoComprobante(nc)}</span>
+                    <span className="tabular-nums text-red-800">−{formatoPesos(Math.abs(nc.total))}</span>
+                    <span className="text-xs text-slate-600">
+                      {f.estado === 'anulada' ? 'anula la factura completa' : 'acredita una parte'} · {formatoFecha(nc.fecha)}
+                    </span>
+                  </button>
+                ))}
             </li>
-          )
-        })}
-      </ul>
-      {g.pendientes.length > 0 && (
-        <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Pendiente:' : 'Pendiente de la sucursal:'}</div>
-          <ul className="space-y-1">
-            {g.pendientes.map((a) => (
-              <li key={a.texto} className="flex items-start gap-1.5">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a.texto}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {g.info.length > 0 && (
-        <ul className="space-y-1 border-t border-slate-100 bg-fondo px-4 py-2 text-xs text-slate-600">
-          {g.info.map((a) => (
-            <li key={a}>{a}</li>
           ))}
         </ul>
-      )}
-      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Cada factura se abre con sus documentos y lo que falta subir.</p>
-    </div>
-  )
+
+        {g.pendientes.length > 0 && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="mb-1 font-bold">Pendiente</div>
+            <ul className="space-y-1">
+              {g.pendientes.map((a) => (
+                <li key={a.texto} className="flex items-start gap-1.5">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a.texto}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {g.info.length > 0 && (
+          <ul className="mt-3 space-y-1 rounded-lg bg-fondo px-3 py-2 text-xs text-slate-600">
+            {g.info.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        )}
+      </article>
+    )
+  }
 
   return (
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo="Todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y las notas de crédito"
+        subtitulo="Cada siniestro con todas sus facturas, sus documentos y sus notas de crédito"
         sucursal={rol !== 'sucursal'}
       />
 
-      {/* Lo primero es buscar: casi siempre se viene a ver un siniestro puntual */}
-      <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-        <input
-          type="search"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por número de siniestro, patente o número de factura"
-          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-base shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-        />
+      {/* Búsqueda y dos filtros simples */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1 basis-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => {
+              setBusqueda(e.target.value)
+              setElegido(null)
+            }}
+            placeholder="Buscar por siniestro, patente o número de factura"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+          />
+        </label>
+        <select
+          aria-label="Compañía"
+          value={companiaElegida}
+          onChange={(e) => setCompaniaElegida(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white py-2.5 pl-2 pr-7 text-sm shadow-sm"
+        >
+          <option value="">Todas las compañías</option>
+          {companias.map(([id, x]) => (
+            <option key={id} value={id}>
+              {x.nombre} ({x.cantidad})
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Estado"
+          value={estado}
+          onChange={(e) => setEstado(e.target.value as typeof estado)}
+          className="rounded-lg border border-slate-200 bg-white py-2.5 pl-2 pr-7 text-sm shadow-sm"
+        >
+          <option value="todos">Todos</option>
+          <option value="curso">En curso (con algo sin cobrar)</option>
+          <option value="cobrados">Terminados (cobrados o anulados)</option>
+        </select>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(
-          [
-            ['curso', 'En curso', 'tienen alguna factura sin cobrar'],
-            ['cobrados', 'Terminados', 'todo cobrado o anulado'],
-            ['todos', 'Todos', ''],
-          ] as const
-        ).map(([clave, t, ayuda]) => (
-          <button
-            key={clave}
-            type="button"
-            onClick={() => setEstado(clave)}
-            title={ayuda}
-            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${estado === clave ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}
-          >
-            {t} ({cuantos[clave].toLocaleString('es-AR')})
-          </button>
-        ))}
-        <span className="text-xs text-slate-500">
-          {estado === 'curso' ? 'En curso: tienen alguna factura sin cobrar.' : estado === 'cobrados' ? 'Terminados: todo cobrado o anulado.' : ''}
-        </span>
-      </div>
+      {/* Lista a la izquierda, detalle a la derecha (en el celular, uno por vez) */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:grid lg:h-[calc(100vh-13rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(18rem,24rem)_1fr]">
+        <div className={`min-h-0 flex-col border-slate-200 lg:flex lg:border-r ${mostrado ? 'hidden' : 'flex'}`}>
+          <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+            {visibles.length.toLocaleString('es-AR')} {visibles.length === 1 ? 'siniestro' : 'siniestros'} · lo más reciente primero
+          </div>
+          <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+            {visibles.slice(0, cantidad).map((g) => (
+              <li key={g.clave}>
+                <button
+                  type="button"
+                  onClick={() => setElegido(g.clave)}
+                  className={`flex w-full items-start gap-3 px-4 py-2.5 text-left ${mostrado?.clave === g.clave ? 'bg-marca/10' : 'hover:bg-fondo'}`}
+                >
+                  <span
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${g.enCurso ? 'bg-marca' : 'bg-sem-verde'}`}
+                    title={g.enCurso ? 'En curso' : 'Terminado'}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">{g.siniestro || 'Sin número de siniestro'}</span>
+                      <span className="shrink-0 text-[11px] text-slate-500">{formatoFecha(g.ultimaFecha)}</span>
+                    </span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {g.compania}
+                      {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
+                      {g.notas.length > 0 ? ` · ${g.notas.length} NC` : ''}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+            {visibles.length === 0 && (
+              <li className="px-4 py-10 text-center text-sm text-slate-500">
+                {buscando ? 'Sin siniestros con esta búsqueda. Conviene probar con menos números o con la patente.' : 'Sin siniestros para mostrar.'}
+              </li>
+            )}
+            {visibles.length > cantidad && (
+              <li>
+                <button type="button" onClick={() => setCantidad(cantidad + POR_PAGINA)} className="w-full px-4 py-2.5 text-center text-sm font-semibold text-marca hover:bg-marca/5">
+                  Ver {Math.min(POR_PAGINA, visibles.length - cantidad)} más
+                </button>
+              </li>
+            )}
+          </ul>
+        </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        <span className="font-semibold">Qué significan las etiquetas:</span>
-        {/* Cada etiqueta con su explicación en un mismo bloque, para que no se separen al bajar de renglón */}
-        {(
-          [
-            ['bg-amber-100 text-amber-900 ring-1 ring-amber-300', 'Falta documentación', 'subir o reemplazar un documento'],
-            ['bg-red-100 text-red-800 ring-1 ring-red-300', 'Falta refacturar', 'hubo nota de crédito y no está la factura nueva'],
-            [NC, 'Con nota de crédito', 'solo informativo'],
-          ] as const
-        ).map(([clase, nombre, ayuda]) => (
-          <span key={nombre} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 ring-1 ring-slate-200">
-            {etiqueta(clase, nombre)}
-            <span>{ayuda}</span>
-          </span>
-        ))}
-      </div>
-
-      <div className="space-y-2">
-        {porCompania.map((c) => {
-          const abierta = companiaAbierta(c.id)
-          const conDoc = c.grupos.filter((g) => docPendiente(g) > 0).length
-          const conRef = c.grupos.filter((g) => porRefacturar(g) > 0).length
-          const saldo = c.grupos.reduce((t, g) => t + g.saldo, 0)
-          const todos = verTodos.has(c.id) || buscando
-          const lista = todos ? c.grupos : c.grupos.slice(0, POR_COMPANIA)
-          return (
-            <section key={c.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <button
-                type="button"
-                onClick={() => alternar(companiasAbiertas, setCompaniasAbiertas, c.id)}
-                aria-expanded={abierta}
-                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-fondo ${abierta ? 'border-b border-slate-200 bg-fondo' : ''}`}
-              >
-                {abierta ? <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" /> : <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />}
-                <span className="text-base font-bold">{c.nombre}</span>
-                <span className="text-sm text-slate-500">
-                  {c.grupos.length} {c.grupos.length === 1 ? 'siniestro' : 'siniestros'}
-                </span>
-                {conDoc > 0 && etiqueta('bg-amber-100 text-amber-900 ring-1 ring-amber-300', `${conDoc} con documentación pendiente`)}
-                {conRef > 0 && etiqueta('bg-red-100 text-red-800 ring-1 ring-red-300', `${conRef} por refacturar`)}
-                {saldo > 0 && <span className="ml-auto text-sm font-semibold tabular-nums">{formatoPesos(saldo)} sin cobrar</span>}
-              </button>
-              {abierta && (
-                <ul className="divide-y divide-slate-100">
-                  {lista.map((g) => {
-                    const abierto = siniestroAbierto(g, c.grupos.length)
-                    return (
-                      <li key={g.clave}>
-                        <button
-                          type="button"
-                          onClick={() => alternar(siniestrosAbiertos, setSiniestrosAbiertos, g.clave)}
-                          aria-expanded={abierto}
-                          className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left hover:bg-marca/5"
-                        >
-                          {abierto ? <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />}
-                          <span className="font-semibold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</span>
-                          <span className="text-sm text-slate-500">
-                            {g.patente ? `${g.patente} · ` : ''}
-                            {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'} · {formatoFecha(g.ultimaFecha)}
-                          </span>
-                          {docPendiente(g) > 0 && etiqueta('bg-amber-100 text-amber-900 ring-1 ring-amber-300', 'Falta documentación')}
-                          {porRefacturar(g) > 0 && etiqueta('bg-red-100 text-red-800 ring-1 ring-red-300', 'Falta refacturar')}
-                          {porRefacturar(g) === 0 && tieneNc(g) && etiqueta(NC, 'Con nota de crédito')}
-                          {!g.enCurso && etiqueta('bg-emerald-50 text-emerald-800 ring-1 ring-emerald-300', 'Terminado')}
-                          {g.saldo > 0 && <span className="ml-auto text-sm tabular-nums text-slate-700">{formatoPesos(g.saldo)}</span>}
-                        </button>
-                        {abierto && detalle(g)}
-                      </li>
-                    )
-                  })}
-                  {!todos && c.grupos.length > POR_COMPANIA && (
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => alternar(verTodos, setVerTodos, c.id)}
-                        className="w-full px-4 py-2.5 text-center text-sm font-semibold text-marca hover:bg-marca/5"
-                      >
-                        Ver los otros {c.grupos.length - POR_COMPANIA} siniestros de {c.nombre}
-                      </button>
-                    </li>
-                  )}
-                </ul>
-              )}
-            </section>
-          )
-        })}
-        {totalVisibles === 0 && (
-          <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-            {buscando ? 'No hay siniestros con esta búsqueda. Conviene probar con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
-          </p>
-        )}
+        <div className={`min-h-0 overflow-y-auto p-5 ${mostrado ? 'block' : 'hidden lg:block'}`}>
+          {mostrado ? (
+            detalle(mostrado)
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-slate-400">
+              <FolderOpen className="h-10 w-10 text-slate-300" />
+              Ningún siniestro seleccionado.
+            </div>
+          )}
+        </div>
       </div>
     </>
   )

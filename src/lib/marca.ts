@@ -11,7 +11,7 @@ export const VERSION = '1.0'
 export const AUTORA = 'Carola Benvenuto'
 export const ESTUDIO = 'CBenvenuto'
 /** Firma corta, debajo del logo */
-export const FIRMA = `Desarrollo ${ESTUDIO}`
+export const FIRMA = `by ${AUTORA}`
 /** Línea de autoría completa (pie, ingreso, manual) */
-export const AUTORIA = `${PRODUCTO} v${VERSION} · ${FIRMA}`
+export const AUTORIA = `${PRODUCTO} v${VERSION} · Diseño y desarrollo: ${AUTORA}`
 export const ANIO = 2026

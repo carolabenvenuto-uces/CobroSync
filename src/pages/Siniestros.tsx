@@ -11,6 +11,8 @@ import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
 
 const POR_COMPANIA = 15
+/** Gris (informativo), con borde para que no se pierda contra el fondo */
+const NC = 'bg-slate-200 text-slate-800 ring-1 ring-slate-400'
 const normalizar = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
 const ESTILO_DOC: Record<Documento['estado'], string> = {
@@ -290,13 +292,20 @@ export default function Siniestros() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        <span>Qué significan las etiquetas:</span>
-        {etiqueta('bg-amber-100 text-amber-900', 'Falta documentación')}
-        <span>subir o reemplazar un documento ·</span>
-        {etiqueta('bg-red-100 text-red-800', 'Falta refacturar')}
-        <span>hubo nota de crédito y no está la factura nueva ·</span>
-        {etiqueta('bg-slate-100 text-slate-700', 'Con nota de crédito')}
-        <span>solo para que lo sepas</span>
+        <span className="font-semibold">Qué significan las etiquetas:</span>
+        {/* Cada etiqueta con su explicación en un mismo bloque, para que no se separen al bajar de renglón */}
+        {(
+          [
+            ['bg-amber-100 text-amber-900 ring-1 ring-amber-300', 'Falta documentación', 'subir o reemplazar un documento'],
+            ['bg-red-100 text-red-800 ring-1 ring-red-300', 'Falta refacturar', 'hubo nota de crédito y no está la factura nueva'],
+            [NC, 'Con nota de crédito', 'solo para que lo sepas'],
+          ] as const
+        ).map(([clase, nombre, ayuda]) => (
+          <span key={nombre} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 ring-1 ring-slate-200">
+            {etiqueta(clase, nombre)}
+            <span>{ayuda}</span>
+          </span>
+        ))}
       </div>
 
       <div className="space-y-2">
@@ -320,8 +329,8 @@ export default function Siniestros() {
                 <span className="text-sm text-slate-500">
                   {c.grupos.length} {c.grupos.length === 1 ? 'siniestro' : 'siniestros'}
                 </span>
-                {conDoc > 0 && etiqueta('bg-amber-100 text-amber-900', `${conDoc} con documentación pendiente`)}
-                {conRef > 0 && etiqueta('bg-red-100 text-red-800', `${conRef} por refacturar`)}
+                {conDoc > 0 && etiqueta('bg-amber-100 text-amber-900 ring-1 ring-amber-300', `${conDoc} con documentación pendiente`)}
+                {conRef > 0 && etiqueta('bg-red-100 text-red-800 ring-1 ring-red-300', `${conRef} por refacturar`)}
                 {saldo > 0 && <span className="ml-auto text-sm font-semibold tabular-nums">{formatoPesos(saldo)} sin cobrar</span>}
               </button>
               {abierta && (
@@ -342,10 +351,10 @@ export default function Siniestros() {
                             {g.patente ? `${g.patente} · ` : ''}
                             {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'} · {formatoFecha(g.ultimaFecha)}
                           </span>
-                          {docPendiente(g) > 0 && etiqueta('bg-amber-100 text-amber-900', 'Falta documentación')}
-                          {porRefacturar(g) > 0 && etiqueta('bg-red-100 text-red-800', 'Falta refacturar')}
-                          {porRefacturar(g) === 0 && tieneNc(g) && etiqueta('bg-slate-100 text-slate-700', 'Con nota de crédito')}
-                          {!g.enCurso && etiqueta('bg-emerald-50 text-emerald-800', 'Terminado')}
+                          {docPendiente(g) > 0 && etiqueta('bg-amber-100 text-amber-900 ring-1 ring-amber-300', 'Falta documentación')}
+                          {porRefacturar(g) > 0 && etiqueta('bg-red-100 text-red-800 ring-1 ring-red-300', 'Falta refacturar')}
+                          {porRefacturar(g) === 0 && tieneNc(g) && etiqueta(NC, 'Con nota de crédito')}
+                          {!g.enCurso && etiqueta('bg-emerald-50 text-emerald-800 ring-1 ring-emerald-300', 'Terminado')}
                           {g.saldo > 0 && <span className="ml-auto text-sm tabular-nums text-slate-700">{formatoPesos(g.saldo)}</span>}
                         </button>
                         {abierto && detalle(g)}

@@ -6,7 +6,7 @@ import { Isologo } from '../components/Logo'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
 import { plazosActuales } from '../domain/plazos'
-import { AUTORA, AUTORIA, PRODUCTO, VERSION } from '../lib/marca'
+import { AUTORIA, PRODUCTO, VERSION } from '../lib/marca'
 
 /**
  * Manual de uso: qué hace CobroSync y cómo se usa cada pantalla, por sector.
@@ -577,7 +577,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
           ))}
           {rol && <ReportarProblema conGoogle={fuente.tipo === 'google'} />}
           <p className="pt-2 text-center text-xs text-slate-500">
-            {AUTORIA} · © {new Date().getFullYear()} {AUTORA}
+            {AUTORIA} · © {new Date().getFullYear()}
           </p>
         </div>
       </div>

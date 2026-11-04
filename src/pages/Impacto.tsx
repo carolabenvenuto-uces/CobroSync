@@ -135,7 +135,7 @@ export default function Impacto() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador
           titulo="Retenido hoy (real)"
           valor={formatoPesos(impacto.retenidoHoy)}

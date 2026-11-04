@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.6] - 2026-11-04
+
+### Cambiado
+- **Celular:** las listas ya no se corren de costado. Cada fila es una tarjeta: arriba la factura y el botón (Subir, o el estado), abajo el resto de los datos con su nombre. Los filtros y el orden quedan en "Filtrar y ordenar". Vale para Mis facturas, Para resolver, Detalle de facturas y las listas de Auditoría. Las tablas con totales al pie (Saldos) siguen como tabla, con la compañía fija.
+- **Mis facturas:** en la compu, la primera columna (la que queda fija) es la factura; los días van al lado.
+- **Mis siniestros:** las facturas de cada siniestro bajan de renglón en el celular en vez de apretarse.
+- **Resumen e Impacto:** en el celular, los importes del mes van uno debajo del otro, para que entren completos.
+- "En revisión" usa el celeste también en el botón de la lista.
+
 ## [0.12.5] - 2026-11-04
 
 ### Cambiado

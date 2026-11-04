@@ -110,6 +110,18 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
   type Fila = (typeof filas)[number]
   const columnas: Columna<Fila>[] = [
     {
+      clave: 'factura',
+      titulo: 'Factura',
+      movil: 'titulo',
+      orden: (x) => x.c.fecha,
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          <div className="font-medium">{formatoComprobante(x.c)}</div>
+          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
+        </div>
+      ),
+    },
+    {
       clave: 'dias',
       titulo: 'Días',
       orden: (x) => diasDeEspera(x.c, hoy),
@@ -126,17 +138,6 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           </div>
         )
       },
-    },
-    {
-      clave: 'factura',
-      titulo: 'Factura',
-      orden: (x) => x.c.fecha,
-      celda: (x) => (
-        <div className="whitespace-nowrap">
-          <div className="font-medium">{formatoComprobante(x.c)}</div>
-          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
-        </div>
-      ),
     },
     {
       clave: 'siniestro',
@@ -156,6 +157,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
     {
       clave: 'que',
       titulo: 'Qué hay que hacer',
+      movil: 'ancha',
       celda: (x) => (
         <div className="flex flex-wrap gap-1.5">
           {(['factura', 'orden'] as const).map((tipo) => {
@@ -185,9 +187,10 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
     {
       clave: 'accion',
       titulo: '',
+      movil: 'accion',
       celda: (x) =>
         x.s.etapa === 'en_revision' ? (
-          <Chip tono="azul">En revisión</Chip>
+          <Chip tono="celeste">En revisión</Chip>
         ) : (
           <button
             type="button"
@@ -227,6 +230,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       },
       {
         clave: 'motivo',
+        movil: 'ancha',
         titulo: 'Por qué',
         orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
         celda: (x) => {

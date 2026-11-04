@@ -10,6 +10,8 @@ import { BotonExportar } from './Card'
  * - encabezado fijo al bajar y primera columna fija al correr de costado
  * - compacta, para que entre a lo ancho de la pantalla sin correr la barra; las columnas que se
  *   usan poco se pueden ocultar con "Columnas" (la elección se recuerda en esa computadora)
+ * - en el celular, cada fila es una tarjeta: arriba lo principal (por ejemplo, la factura) y el
+ *   botón; abajo el resto de los datos con su nombre. Nada se corre de costado.
  */
 export interface Columna<T> {
   clave: string
@@ -24,6 +26,11 @@ export interface Columna<T> {
   clase?: string
   /** arranca oculta (se puede mostrar con el botón "Columnas") */
   oculta?: boolean
+  /**
+   * En el celular: 'titulo' va arriba a la izquierda (si ninguna lo dice, la primera columna),
+   * 'accion' arriba a la derecha (un botón), 'ancha' ocupa todo el ancho y 'no' no se muestra.
+   */
+  movil?: 'titulo' | 'accion' | 'ancha' | 'no'
 }
 
 interface Props<T> {
@@ -166,7 +173,7 @@ export function Tabla<T>({
       {/* Barra: lupa, resumen y exportar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
         {buscar && (
-          <label className="relative min-w-64 flex-1">
+          <label className="relative min-w-0 flex-1 sm:min-w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
@@ -196,7 +203,7 @@ export function Tabla<T>({
         )}
         <div className="ml-auto flex items-center gap-2">
           {todasLasColumnas.length > 6 && !pie && (
-            <details className="relative">
+            <details className="relative hidden sm:block">
               <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo">
                 <Columns3 className="h-4 w-4 text-marca" />
                 Columnas
@@ -217,7 +224,110 @@ export function Tabla<T>({
         </div>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto">
+      {/* Celular: una tarjeta por fila (las tablas con totales al pie se ven como tabla) */}
+      {!pie && (
+        <div className="sm:hidden">
+          {(todasLasColumnas.some((c) => c.filtro) || todasLasColumnas.some((c) => c.orden)) && (
+            <details className="border-b border-slate-100 px-4 py-2">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-marca">Filtrar y ordenar</summary>
+              <div className="mt-2 grid gap-2">
+                {todasLasColumnas
+                  .filter((c) => c.filtro)
+                  .map((col) => (
+                    <label key={col.clave} className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                      {col.titulo}
+                      <select
+                        value={filtros[col.clave] ?? TODOS}
+                        onChange={(e) => {
+                          setFiltros((f) => ({ ...f, [col.clave]: e.target.value }))
+                          setPagina(1)
+                        }}
+                        className="w-44 rounded-md border border-slate-200 bg-white px-1 py-1.5 text-xs"
+                      >
+                        <option value={TODOS}>Todos</option>
+                        {(opciones[col.clave] ?? []).map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                {todasLasColumnas.some((c) => c.orden) && (
+                  <label className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                    Ordenar por
+                    <select
+                      value={orden ? `${orden.clave}|${orden.dir}` : ''}
+                      onChange={(e) => {
+                        const [c, d] = e.target.value.split('|')
+                        setOrden(c ? { clave: c, dir: d as 'asc' | 'desc' } : null)
+                      }}
+                      className="w-44 rounded-md border border-slate-200 bg-white px-1 py-1.5 text-xs"
+                    >
+                      <option value="">Como viene</option>
+                      {todasLasColumnas
+                        .filter((c) => c.orden)
+                        .flatMap((c) => [
+                          <option key={`${c.clave}-d`} value={`${c.clave}|desc`}>
+                            {c.titulo || c.clave} (mayor primero)
+                          </option>,
+                          <option key={`${c.clave}-a`} value={`${c.clave}|asc`}>
+                            {c.titulo || c.clave} (menor primero)
+                          </option>,
+                        ])}
+                    </select>
+                  </label>
+                )}
+              </div>
+            </details>
+          )}
+          <ul className="divide-y divide-slate-100">
+            {pagina_.map((f) => {
+              const titulo = columnas.find((c) => c.movil === 'titulo') ?? columnas.find((c) => c.movil !== 'accion' && c.movil !== 'no')
+              const accion = columnas.find((c) => c.movil === 'accion')
+              const resto = columnas.filter((c) => c !== titulo && c !== accion && c.movil !== 'no')
+              return (
+                <li key={clave(f)} onClick={onFila ? () => onFila(f) : undefined} className={`px-4 py-3 ${onFila ? 'cursor-pointer active:bg-marca/5' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-2">
+                      {seleccion && (
+                        <input
+                          type="checkbox"
+                          aria-label="Elegir esta fila"
+                          className="mt-1"
+                          onClick={(e) => e.stopPropagation()}
+                          checked={seleccion.elegidas.has(clave(f))}
+                          onChange={(e) => {
+                            const n = new Set(seleccion.elegidas)
+                            if (e.target.checked) n.add(clave(f))
+                            else n.delete(clave(f))
+                            seleccion.alCambiar(n)
+                          }}
+                        />
+                      )}
+                      <div className="min-w-0 text-sm">{titulo?.celda(f)}</div>
+                    </div>
+                    {accion && <div className="shrink-0">{accion.celda(f)}</div>}
+                  </div>
+                  {resto.length > 0 && (
+                    <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
+                      {resto.map((col) => (
+                        <div key={col.clave} className={`min-w-0 ${col.movil === 'ancha' ? 'col-span-2' : ''}`}>
+                          {col.titulo && <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{col.titulo}</dt>}
+                          <dd className="min-w-0 break-words">{col.celda(f)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </li>
+              )
+            })}
+            {pagina_.length === 0 && <li className="px-4 py-10 text-center text-sm text-slate-500">{vacio}</li>}
+          </ul>
+        </div>
+      )}
+
+      <div className={`max-h-[70vh] overflow-auto ${pie ? '' : 'hidden sm:block'}`}>
         <table className="w-full text-left text-[13px]">
           <thead className="sticky top-0 z-20 bg-fondo shadow-[0_1px_0_0_#E2E8F0]">
             <tr className="text-[11px] uppercase tracking-wide text-slate-500">

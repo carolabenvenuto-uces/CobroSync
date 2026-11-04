@@ -190,39 +190,39 @@ export default function Siniestros() {
 
   const detalle = (g: Grupo) => (
     <div className="border-t border-slate-100">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-[13px]">
-          <tbody className="divide-y divide-slate-100">
-            {g.facturas.map((f) => (
-              <tr key={f.id} onClick={() => abrirLegajo(f.id)} className="cursor-pointer hover:bg-marca/5">
-                <td className="whitespace-nowrap px-4 py-2 font-medium">{formatoComprobante(f)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(f.fecha)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">{formatoPesos(f.total)}</td>
-                <td className="px-2 py-2">
-                  <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-wrap gap-1">{f.documentos.map(documento)}</div>
-                </td>
-              </tr>
-            ))}
-            {g.notas.map((nc) => (
-              <tr key={nc.id} onClick={() => abrirLegajo(nc.id)} className="cursor-pointer bg-red-50/40 hover:bg-marca/5">
-                <td className="whitespace-nowrap px-4 py-2 font-medium text-red-800">{formatoComprobante(nc)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(nc.fecha)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-red-800">−{formatoPesos(Math.abs(nc.total))}</td>
-                <td colSpan={2} className="px-2 py-2 text-xs text-slate-600">
-                  {(() => {
-                    const f = g.facturas.find((x) => x.id === nc.ncReferencia)
-                    if (!f) return 'Nota de crédito'
-                    return f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`
-                  })()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Una fila por comprobante; en el celular los datos bajan de renglón en vez de correrse de costado */}
+      <ul className="divide-y divide-slate-100 text-[13px]">
+        {g.facturas.map((f) => (
+          <li key={f.id}>
+            <button type="button" onClick={() => abrirLegajo(f.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 text-left hover:bg-marca/5">
+              <span className="min-w-[9rem] font-medium">
+                {formatoComprobante(f)}
+                <span className="ml-2 text-xs font-normal text-slate-500">{formatoFecha(f.fecha)}</span>
+              </span>
+              <span className="tabular-nums">{formatoPesos(f.total)}</span>
+              <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
+              <span className="flex flex-wrap gap-1 sm:ml-auto">{f.documentos.map(documento)}</span>
+            </button>
+          </li>
+        ))}
+        {g.notas.map((nc) => {
+          const f = g.facturas.find((x) => x.id === nc.ncReferencia)
+          return (
+            <li key={nc.id}>
+              <button type="button" onClick={() => abrirLegajo(nc.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-red-50/40 px-4 py-2 text-left hover:bg-marca/5">
+                <span className="min-w-[9rem] font-medium text-red-800">
+                  {formatoComprobante(nc)}
+                  <span className="ml-2 text-xs font-normal text-slate-500">{formatoFecha(nc.fecha)}</span>
+                </span>
+                <span className="tabular-nums text-red-800">−{formatoPesos(Math.abs(nc.total))}</span>
+                <span className="text-xs text-slate-600">
+                  {!f ? 'Nota de crédito' : f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
       {g.pendientes.length > 0 && (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
           <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Te queda pendiente:' : 'Pendiente de la sucursal:'}</div>

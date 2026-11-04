@@ -168,7 +168,7 @@ export default function Resumen() {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 2xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `${delMes.facturas.toLocaleString('es-AR')} facturas`)}
             {dato('Notas de crédito', -Math.abs(delMes.notasCredito), 'Anulaciones y descuentos (restan)', 'text-red-700')}
             {dato('Cobro previsto', previsto.previsto, 'Facturas presentadas que vencen en el mes', 'text-marca')}

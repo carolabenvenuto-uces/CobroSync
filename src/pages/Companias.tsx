@@ -103,14 +103,13 @@ export default function Companias() {
         <span>
           {fuente.tipo === 'demo' ? (
             <>
-              Razón social, CUIT y plazo son los reales. <strong>Los correos de la demo son inventados</strong> (terminan en
-              ".example"). Para ver los reales, cargá la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este
-              navegador y no se guarda.
+              Para completar los correos, cargue la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este navegador y
+              no se guarda.
             </>
           ) : fuente.tipo === 'google' ? (
-            <>Los datos que cargues de la planilla quedan guardados en CobroSync para todo el sector.</>
+            <>Los datos que se carguen de la planilla quedan guardados en CobroSync para todo el sector.</>
           ) : (
-            <>Los datos que cargues de la planilla se leen solo en este navegador y desaparecen al recargar.</>
+            <>Los datos que se carguen de la planilla se leen solo en este navegador y desaparecen al recargar.</>
           )}
         </span>
       </div>

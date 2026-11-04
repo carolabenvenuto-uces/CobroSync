@@ -106,8 +106,8 @@ export default function Siniestros() {
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
             f.anulacionInformada.parcial
-              ? `Avisaste una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
-              : `Avisaste que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
+              ? `Avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
+              : `Avisó que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
           )
         }
       }
@@ -227,7 +227,7 @@ export default function Siniestros() {
       </ul>
       {g.pendientes.length > 0 && (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Te queda pendiente:' : 'Pendiente de la sucursal:'}</div>
+          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Le queda pendiente:' : 'Pendiente de la sucursal:'}</div>
           <ul className="space-y-1">
             {g.pendientes.map((a) => (
               <li key={a.texto} className="flex items-start gap-1.5">
@@ -244,7 +244,7 @@ export default function Siniestros() {
           ))}
         </ul>
       )}
-      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Tocá una factura para abrirla, ver sus documentos o subir lo que falta.</p>
+      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Toque una factura para abrirla, ver sus documentos o subir lo que falta.</p>
     </div>
   )
 
@@ -252,7 +252,7 @@ export default function Siniestros() {
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo="Buscá un siniestro para ver todas sus facturas, sus documentos (también los ya aprobados) y las notas de crédito"
+        subtitulo="Busque un siniestro para ver todas sus facturas, sus documentos (también los ya aprobados) y las notas de crédito"
         sucursal={rol !== 'sucursal'}
       />
 
@@ -263,7 +263,7 @@ export default function Siniestros() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscá por número de siniestro, patente o número de factura"
+          placeholder="Busque por número de siniestro, patente o número de factura"
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-base shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
@@ -298,7 +298,7 @@ export default function Siniestros() {
           [
             ['bg-amber-100 text-amber-900 ring-1 ring-amber-300', 'Falta documentación', 'subir o reemplazar un documento'],
             ['bg-red-100 text-red-800 ring-1 ring-red-300', 'Falta refacturar', 'hubo nota de crédito y no está la factura nueva'],
-            [NC, 'Con nota de crédito', 'solo para que lo sepas'],
+            [NC, 'Con nota de crédito', 'solo informativo'],
           ] as const
         ).map(([clase, nombre, ayuda]) => (
           <span key={nombre} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 ring-1 ring-slate-200">
@@ -379,7 +379,7 @@ export default function Siniestros() {
         })}
         {totalVisibles === 0 && (
           <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-            {buscando ? 'No hay siniestros con esta búsqueda. Probá con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
+            {buscando ? 'No hay siniestros con esta búsqueda. Pruebe con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
           </p>
         )}
       </div>

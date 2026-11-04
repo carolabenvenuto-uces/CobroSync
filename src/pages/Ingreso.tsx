@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Building2, ChevronRight, ClipboardCheck, LineChart, LockKeyhole } from 'lucide-react'
+import { Building2, ChevronRight, ClipboardCheck, LineChart } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Isologo } from '../components/Logo'
+import { AUTORIA, VERSION } from '../lib/marca'
 import { useApp } from '../context/AppContext'
 import type { Rol } from '../domain/tipos'
 import { conectadoAGoogle } from '../services/google'
@@ -37,7 +39,9 @@ export default function Ingreso() {
       <div className="w-full max-w-xl">
         <div className="mb-8 flex flex-col items-center text-center">
           <Isologo className="h-14 w-14" claro />
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">CobroSync</h1>
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
+            CobroSync <span className="align-top text-sm font-semibold text-slate-400">{VERSION}</span>
+          </h1>
           <p className="mt-2 text-sm text-slate-300">Seguimiento de facturas a compañías de seguros</p>
         </div>
 
@@ -47,10 +51,6 @@ export default function Ingreso() {
             Cada persona entra con su cuenta de la empresa y ve solamente lo que le corresponde a su área.
           </p>
 
-          <div className="mt-4 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-xs text-blue-900">
-            <strong>Versión de demostración:</strong> elegí un usuario de ejemplo. En la versión real no hace falta elegir: el
-            área sale de la cuenta con la que ingresás.
-          </div>
 
           <ul className="mt-5 space-y-3">
             {PERFILES.map((p) => (
@@ -91,11 +91,13 @@ export default function Ingreso() {
             ))}
           </ul>
 
-          <p className="mt-5 flex items-start gap-2 text-xs text-slate-500">
-            <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            La demostración usa datos ficticios. Lo que hagas se borra al recargar la página.
-          </p>
         </div>
+        <p className="mt-6 text-center text-xs text-slate-400">
+          <Link to="/manual" className="font-semibold text-slate-200 hover:underline">
+            Manual de uso
+          </Link>{' '}
+          · {AUTORIA}
+        </p>
       </div>
     </div>
   )

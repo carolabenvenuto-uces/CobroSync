@@ -129,7 +129,7 @@ export default function Resumen() {
               type="button"
               onClick={() => window.print()}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo"
-              title="Abre la ventana de impresión: elegí la impresora o «Guardar como PDF»"
+              title="Abre la ventana de impresión: elija la impresora o «Guardar como PDF»"
             >
               <Printer className="h-4 w-4 text-marca" /> Imprimir o guardar en PDF
             </button>
@@ -141,21 +141,53 @@ export default function Resumen() {
         {/* 2. El año: lo primero que se ve, aparte del mes. Mismo formato que los datos del mes */}
         <div className="flex flex-col rounded-xl border border-marca/20 bg-blue-50/70 p-5 shadow-sm">
           <div className="text-sm font-bold uppercase tracking-wide text-marca">Año {anio}</div>
-          <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
-            {[
-              { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: 'text-noche' },
-              { titulo: 'Notas de crédito', valor: -Math.abs(anual.notasCredito), ayuda: 'Anulaciones y descuentos del año (restan)', clase: 'text-red-700' },
-              { titulo: 'Cobrado', valor: anual.cobrado, ayuda: 'Lo que ya pagaron las compañías', clase: 'text-esmeralda' },
-            ].map((x) => (
-              <div key={x.titulo}>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{x.titulo}</div>
-                <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.clase}`} style={GRANDE}>
-                  {formatoPesos(x.valor)}
+          {(() => {
+            const nc = Math.abs(anual.notasCredito)
+            const base = anual.facturado || 1
+            const falta = Math.max(0, anual.facturado - anual.cobrado - nc)
+            const pct = (v: number) => `${((v / base) * 100).toLocaleString('es-AR', { maximumFractionDigits: 1 })} %`
+            const partes = [
+              { titulo: 'Cobrado', valor: anual.cobrado, color: 'bg-sem-verde', texto: 'text-emerald-800' },
+              { titulo: 'Notas de crédito', valor: nc, color: 'bg-red-700', texto: 'text-red-800' },
+              { titulo: 'Falta cobrar', valor: falta, color: 'bg-sem-amarillo', texto: 'text-amber-900' },
+            ]
+            return (
+              <div className="mt-4 flex flex-1 flex-col gap-4">
+                {[
+                  { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: 'text-noche' },
+                  { titulo: 'Notas de crédito', valor: -nc, ayuda: `${pct(nc)} de lo facturado (restan)`, clase: 'text-red-700' },
+                  { titulo: 'Cobrado', valor: anual.cobrado, ayuda: `${pct(anual.cobrado)} de lo facturado`, clase: 'text-esmeralda' },
+                ].map((x) => (
+                  <div key={x.titulo}>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{x.titulo}</div>
+                    <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.clase}`} style={GRANDE}>
+                      {formatoPesos(x.valor)}
+                    </div>
+                    <div className="text-xs text-slate-500">{x.ayuda}</div>
+                  </div>
+                ))}
+                {/* Cómo se reparte lo facturado del año: el gráfico que completa el recuadro */}
+                <div className="mt-auto rounded-lg bg-white/70 p-3">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Qué pasó con lo facturado</div>
+                  <div className="flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={partes.map((x) => `${x.titulo} ${pct(x.valor)}`).join(', ')}>
+                    {partes.map((x) => (
+                      <div key={x.titulo} className={x.color} style={{ width: `${(x.valor / base) * 100}%` }} />
+                    ))}
+                  </div>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {partes.map((x) => (
+                      <li key={x.titulo} className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1.5 text-slate-600">
+                          <span className={`h-2 w-2 rounded-full ${x.color}`} /> {x.titulo}
+                        </span>
+                        <span className={`font-semibold tabular-nums ${x.texto}`}>{pct(x.valor)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="text-xs text-slate-500">{x.ayuda}</div>
               </div>
-            ))}
-          </div>
+            )
+          })()}
         </div>
 
         {/* 3. El mes: cobros previstos contra lo realmente cobrado */}

@@ -124,9 +124,9 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       <div className="fixed inset-x-0 top-6 z-50 mx-auto flex max-h-[90vh] w-[min(64rem,95vw)] flex-col rounded-xl bg-white shadow-2xl" role="dialog" aria-label="Subir varios archivos">
         <div className="flex items-start justify-between border-b border-slate-200 p-5">
           <div>
-            <h2 className="text-lg font-extrabold">Subir varios archivos de una vez</h2>
+            <h2 className="text-lg font-extrabold">Subir varios PDF de una vez</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Soltá todos los PDF juntos. Cada uno va a la factura del número que tiene en el nombre; revisá y tocá <strong>Subir todo</strong>.
+              Suelte todos los PDF juntos. Cada uno va a la factura del número que tiene en el nombre; revise y toque <strong>Subir todo</strong>.
             </p>
           </div>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 hover:bg-fondo">
@@ -147,7 +147,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             }`}
           >
             <Upload className="h-7 w-7 text-marca" />
-            <span className="font-semibold">Soltá acá los PDF (todos juntos) o tocá para elegirlos</span>
+            <span className="font-semibold">Suelte acá los PDF (todos juntos) o toque para elegirlos</span>
             <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => agregar(e.target.files)} />
           </label>
 
@@ -156,16 +156,16 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             <div className="mb-1 font-bold">Solo PDF, y el nombre tiene que tener el número de la factura</div>
             <ul className="list-disc space-y-0.5 pl-4">
               <li>
-                El <strong>punto de venta y el número de factura</strong>: <code>35-11032</code> (los ceros de adelante no hacen falta). Un archivo sin ese número, o con un número que no es de una factura pendiente de tu sucursal, no se sube:
-                renombralo y volvé a soltarlo.
+                El <strong>punto de venta y el número de factura</strong>: <code>35-11032</code> (los ceros de adelante no hacen falta). Un archivo sin ese número, o con un número que no es de una factura pendiente de su sucursal, no se sube:
+                renómbrelo y vuelva a soltarlo.
               </li>
               <li>
-                Agregá <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si escaneaste las dos juntas en un solo PDF, no hace falta.
+                Agregue <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si escaneó las dos juntas en un solo PDF, no hace falta.
               </li>
               <li>
                 Ejemplos: <code>35-11032 orden.pdf</code> · <code>35-11032 factura.pdf</code> · <code>35-11032.pdf</code> (las dos juntas)
               </li>
-              <li>Solo <strong>PDF</strong>: las compañías no aceptan fotos. Desde el celular, escaneá con la cámara o con Google Drive, que guardan en PDF.</li>
+              <li>Solo <strong>PDF</strong>: las compañías no aceptan fotos. Desde el celular, escanee con la cámara o con Google Drive, que guardan en PDF.</li>
             </ul>
           </div>
 
@@ -226,7 +226,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
           <span className="text-sm text-slate-600">
-            {filas.length === 0 ? 'Todavía no agregaste archivos.' : `${asignadas.length} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
+            {filas.length === 0 ? 'Todavía no agregó archivos.' : `${asignadas.length} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"

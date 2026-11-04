@@ -169,7 +169,7 @@ export default function BandejaNotificaciones() {
         titulo="Notificaciones"
         subtitulo={
           rol === 'sucursal'
-            ? 'Lo que te respondió o pidió Auditoría. Tocá un mensaje para leerlo y abrir la factura.'
+            ? 'Lo que le respondió o pidió Auditoría. Toque un mensaje para leerlo y abrir la factura.'
             : rol === 'gerencia'
               ? 'Escalamientos: documentación crítica y reclamos sin respuesta'
               : 'Lo que hicieron las sucursales: subidas, respuestas, fechas estimadas y notas de crédito'
@@ -206,7 +206,7 @@ export default function BandejaNotificaciones() {
             {lista.length === 0 && (
               <li className="flex flex-col items-center gap-2 px-5 py-12 text-center text-sm text-slate-500">
                 <Inbox className="h-8 w-8 text-slate-300" />
-                {ver === 'sin_leer' ? 'No tenés mensajes sin leer.' : 'No hay notificaciones.'}
+                {ver === 'sin_leer' ? 'No tiene mensajes sin leer.' : 'No hay notificaciones.'}
               </li>
             )}
             {lista.map((n) => (
@@ -235,11 +235,11 @@ export default function BandejaNotificaciones() {
               </li>
             ))}
           </ul>
-          <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+          {fuente.tipo === 'google' && <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
             {fuente.tipo === 'google'
-              ? 'Se actualiza sola cada minuto. Lo que leés queda marcado en tu cuenta, en cualquier computadora o celular.'
-              : 'En la demo las notificaciones viven en este navegador.'}
-          </p>
+              ? 'Se actualiza sola cada minuto. Lo que lee queda marcado en su cuenta, en cualquier computadora o celular.'
+              : ''}
+          </p>}
         </div>
 
         {/* Mensaje abierto */}
@@ -249,7 +249,7 @@ export default function BandejaNotificaciones() {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-slate-400">
               <MailOpen className="h-10 w-10 text-slate-300" />
-              Elegí un mensaje de la lista para leerlo.
+              Elija un mensaje de la lista para leerlo.
             </div>
           )}
         </div>

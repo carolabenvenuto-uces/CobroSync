@@ -10,7 +10,7 @@ import Companias from './pages/Companias'
 import ControlDiario from './pages/ControlDiario'
 import Impacto from './pages/Impacto'
 import Ingreso from './pages/Ingreso'
-import Landing from './pages/Landing'
+import Manual from './pages/Manual'
 import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
 import Presentar from './pages/Presentar'
@@ -44,7 +44,9 @@ export default function App() {
     <Routes>
       {/* Pantalla de inicio: en la demo se elige el usuario; con Google se pasa directo a /app */}
       <Route path="/" element={<Ingreso />} />
-      <Route path="/presentacion" element={<Landing />} />
+      {/* El manual de uso reemplaza a la presentación del producto */}
+      <Route path="/manual" element={<Manual suelto />} />
+      <Route path="/presentacion" element={<Navigate to="/manual" replace />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<Inicio />} />
         <Route path="resumen" element={oficina(<Resumen />)} />
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="siniestros" element={<Siniestros />} />
         <Route path="resolver" element={<MisFacturas vista="resolver" />} />
         <Route path="notificaciones" element={<BandejaNotificaciones />} />
+        <Route path="manual" element={<Manual />} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

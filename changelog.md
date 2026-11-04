@@ -1,5 +1,25 @@
 # Changelog
 
+Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
+
+## [1.0.0] - 2026-11-04
+
+### Agregado
+- **Manual de uso** (en el menú, abajo, y en la pantalla de ingreso): qué es CobroSync, el camino de una factura, qué significa cada color, notificaciones, listas y Excel, y una guía por sector (Sucursal y Gerencia completas; Auditoría, base para completar). Reemplaza a la presentación del producto.
+- **Marca y autoría:** CobroSync 1.0, un desarrollo de Benvenuto Desarrollos · Carola Benvenuto. La firma va debajo del logo, en el ingreso, en el pie de cada pantalla y en el manual. Todo sale de un solo archivo (src/lib/marca.ts).
+
+### Cambiado
+- **Sucursal · Mis facturas, más liviana:** el aviso de plazos aparece grande la primera vez, con "Entendido", y después queda en un botón chico "Plazos" arriba a la derecha. Los dos botones de acción son finos y van arriba. Queda una sola tarjeta, "Para subir", que se abre y se cierra tocándola. Lo que está en revisión pasa a una línea con "Verlas". El buscador va pegado a la lista, con el resultado justo debajo.
+- **Sucursal · Para resolver:** tarjetas más chicas, con flecha para abrir y cerrar.
+- **Tono formal en toda la aplicación:** los textos, ayudas, errores y mails pasan de "vos" a "usted" ("Toque", "Tiene", "su sucursal").
+- **Sin avisos de demostración:** se quitaron los carteles que aclaraban que es una demo (ingreso, pie, notificaciones, legajo, Ajustes, Compañías).
+- **Resumen · Año:** cada importe dice qué porcentaje es de lo facturado, y un gráfico muestra cómo se reparte lo facturado del año: cobrado, notas de crédito y lo que falta cobrar. Llena el espacio que quedaba en blanco.
+
+## [0.12.9] - 2026-11-04
+
+### Corregido
+- **Exportar a Excel:** ahora baja un Excel de verdad (.xlsx) en lugar de un CSV. Cada dato va en su columna en cualquier computadora (antes, con Excel configurado con coma, quedaba todo en una celda). Los importes son números (se pueden sumar), las fechas son fechas, y la primera fila va en negrita, fija y con filtro.
+
 ## [0.12.8] - 2026-11-04
 
 ### Cambiado

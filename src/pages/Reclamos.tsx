@@ -150,7 +150,7 @@ export default function Reclamos() {
         <span>
           Después de cada reclamo se espera la respuesta {plazosActuales().respuestaReclamo} días; si no llega, hay que volver a reclamar.
           Con {RECLAMOS_PARA_ESCALAR} reclamos sin respuesta, Auditoría pide apoyo a gerencia. Cada reclamo se registra en la factura con
-          fecha, medio y nota{rol === 'auditoria' ? ': tocá la fila para registrarlo.' : '.'}
+          fecha, medio y nota{rol === 'auditoria' ? ': toque la fila para registrarlo.' : '.'}
         </span>
       </div>
 
@@ -179,7 +179,7 @@ export default function Reclamos() {
                 {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
               </>
             ) : (
-              <span className="text-slate-500">Para reclamar varias juntas: filtrá por compañía y elegí con la casilla.</span>
+              <span className="text-slate-500">Para reclamar varias juntas: filtre por compañía y elija con la casilla.</span>
             )}
           </span>
           {mensaje && <span className="text-sm text-emerald-800">{mensaje}</span>}

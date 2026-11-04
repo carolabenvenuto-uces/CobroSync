@@ -335,7 +335,11 @@ prueba('las notificaciones leídas se guardan en la cuenta', () => {
 prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura', () => {
   como('rocamora@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
-  const r = gs('subirArchivo', c.id, 'orden', 'foto celular.jpg', 'image/jpeg', Buffer.from('hola').toString('base64'))
+  const datos = Buffer.from('hola').toString('base64')
+  const numero = `${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+  falla(() => gs('subirArchivo', c.id, 'orden', `${numero} orden.jpg`, 'image/jpeg', datos), 'Solo se aceptan PDF')
+  falla(() => gs('subirArchivo', c.id, 'orden', 'scan0001.pdf', 'application/pdf', datos), 'número de la factura')
+  const r = gs('subirArchivo', c.id, 'orden', `${numero} orden.pdf`, 'application/pdf', datos)
   esperar(r.url.startsWith('https://drive.google.com/'), 'sin link')
   esperar(archivos.at(-1).startsWith(`CobroSync/Rocamora/${c.fecha.slice(0, 7)}/FC ${c.puntoVenta}-`), archivos.at(-1))
 })

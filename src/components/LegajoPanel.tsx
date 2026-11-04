@@ -29,7 +29,8 @@ import { compromisoVencido } from '../domain/sucursales'
 import { importeCobrado, saldoSinCobro } from '../domain/importes'
 import { facturasDelSiniestro } from '../domain/siniestros'
 import { esNotaTotal } from '../services/erp'
-import { prepararArchivo } from '../lib/imagenes'
+import { esPdf, prepararArchivo } from '../lib/imagenes'
+import { numeroParaNombre, revisarNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -126,11 +127,24 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   async function subir(tipos: TipoDocumento[], lista: FileList | null | undefined) {
     const archivos = lista ? [...lista] : []
     if (archivos.length === 0) return
-    setSubiendo(true)
     setErrorSubida(null)
+    // Se exige lo mismo que en la carga de varios archivos: PDF y el número de ESTA factura en el
+    // nombre, para que no entre un archivo de otra factura por error
+    for (const a of archivos) {
+      const r = revisarNombre(a.name, [c], esPdf(a))
+      if (!r.ok) {
+        setErrorSubida(
+          r.error.startsWith('No es un PDF')
+            ? `"${a.name}" no es un PDF. Solo se aceptan PDF: las compañías no reciben fotos.`
+            : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} orden.pdf"). Renombralo y volvé a subirlo.`,
+        )
+        return
+      }
+    }
+    setSubiendo(true)
     try {
-      // Con Google cada archivo se guarda en el Drive de la empresa (las fotos se achican antes);
-      // en la demo solo se registra el nombre. Un documento puede tener varias páginas o fotos.
+      // Con Google cada archivo se guarda en el Drive de la empresa; en la demo solo se registra el
+      // nombre. Un documento puede tener varias páginas (varios PDF).
       const adjuntos: { archivo: string; url?: string }[] = []
       for (const a of archivos) {
         const listo = await prepararArchivo(a)
@@ -398,7 +412,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           {c.tipo === 'FC' && (
             <section>
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="font-bold">Documentación</h3>
+                <div>
+                  <h3 className="font-bold">Documentación</h3>
+                  {rol === 'sucursal' && abierta && (
+                    <p className="text-[11px] text-slate-500">
+                      PDF llamado <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} factura.pdf</code> o{' '}
+                      <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} orden.pdf</code>
+                    </p>
+                  )}
+                </div>
                 {rol === 'auditoria' && paraRevisar.length > 0 && (
                   <button type="button" onClick={() => aprobar(paraRevisar)} className={`${botonChico} bg-esmeralda text-white hover:bg-emerald-600`}>
                     <Check className="h-3.5 w-3.5" /> Aprobar todo
@@ -446,7 +468,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                               {d.fecha ? ` el ${formatoFecha(d.fecha)}` : ''}
                               {d.origen === 'varios' && ' · carga de varios archivos'}
                               {d.origen === 'varios-automatico' && (
-                                <span className="font-semibold text-amber-800"> · asignado solo por el nombre del archivo: revisá que corresponda</span>
+                                <span className="font-semibold text-amber-800"> · asignado por el número del nombre del archivo: revisá que corresponda</span>
                               )}
                             </div>
                           )}
@@ -458,7 +480,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                           <label className={`${botonChico} cursor-pointer bg-marca text-white hover:bg-marca-oscuro`}>
                             <FileUp className="h-3.5 w-3.5" />
                             {d.estado === 'faltante' ? 'Subir' : 'Reemplazar'}
-                            <input type="file" multiple accept=".pdf,image/*" className="sr-only" onChange={(e) => void subir([d.tipo], e.target.files)} />
+                            <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir([d.tipo], e.target.files)} />
                           </label>
                         ) : rol === 'sucursal' && abierta && d.estado === 'en_revision' ? (
                           <>
@@ -504,7 +526,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               {rol === 'sucursal' && abierta && pendientesDeSubir.length > 1 && (
                 <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-marca/50 px-4 py-2.5 text-sm font-semibold text-marca hover:bg-marca/5">
                   <FileUp className="h-4 w-4" /> Subir un PDF con todo lo que falta
-                  <input type="file" multiple accept=".pdf,image/*" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
+                  <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
                 </label>
               )}
               {c.subidoPor && (
@@ -518,7 +540,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   {subiendo
                     ? 'Subiendo el archivo…'
                     : fuente.tipo === 'google'
-                      ? 'Se guarda en el Drive de la empresa. Desde el celular podés sacarle una foto al documento.'
+                      ? 'Solo PDF, con el número de la factura en el nombre. Desde el celular, escaneá con la cámara o con Google Drive, que guardan en PDF.'
                       : 'En la demo el archivo no se sube a ningún lado: solo se registra su nombre.'}
                 </p>
                 {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}

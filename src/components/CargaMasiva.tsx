@@ -1,10 +1,10 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import { FileUp, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, sugerirFactura, type TipoArchivo } from '../domain/archivos'
+import { facturasParaCargar, revisarNombre, type TipoArchivo } from '../domain/archivos'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
-import { prepararArchivo } from '../lib/imagenes'
+import { esPdf, prepararArchivo } from '../lib/imagenes'
 import { formatoComprobante } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
 
@@ -17,10 +17,11 @@ const NOMBRE_TIPO: Record<TipoArchivo, string> = {
 
 interface Fila {
   archivo: File
+  /** vacío si el archivo no cumple la regla (no se sube) */
   facturaId: string
   tipo: TipoArchivo
-  por: string | null
-  candidatas: string[]
+  /** por qué no se puede subir: no es PDF, el nombre no tiene el número o el número no existe */
+  error: string | null
 }
 
 /**
@@ -45,8 +46,8 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
     setFilas((actuales) => [
       ...actuales,
       ...nuevos.map((archivo): Fila => {
-        const s = sugerirFactura(archivo.name, facturas)
-        return { archivo, facturaId: s.factura?.id ?? '', tipo: s.tipo, por: s.por, candidatas: s.candidatas.map((c) => c.id) }
+        const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
+        return r.ok ? { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null } : { archivo, facturaId: '', tipo: r.tipo, error: r.error }
       }),
     ])
     setEstado(null)
@@ -92,7 +93,8 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                   subidoPor: usuario,
                   fecha: hoy,
                   // Si CobroSync la asignó por el nombre y nadie la cambió, Auditoría lo ve para revisarlo con atención
-                  origen: archivos.every((f) => f.por) ? 'varios-automatico' : 'varios',
+                  // La factura sale del número del nombre: Auditoría igual lo revisa
+                  origen: 'varios-automatico',
                 }
               : d,
           )
@@ -124,7 +126,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           <div>
             <h2 className="text-lg font-extrabold">Subir varios archivos de una vez</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Soltá todos los escaneos juntos. CobroSync sugiere a qué factura va cada uno; revisá y tocá <strong>Subir todo</strong>.
+              Soltá todos los PDF juntos. Cada uno va a la factura del número que tiene en el nombre; revisá y tocá <strong>Subir todo</strong>.
             </p>
           </div>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 hover:bg-fondo">
@@ -146,24 +148,26 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           >
             <Upload className="h-7 w-7 text-marca" />
             <span className="font-semibold">Soltá acá los PDF o fotos (todos juntos)</span>
-            <input type="file" multiple accept="application/pdf,image/*" className="sr-only" onChange={(e) => agregar(e.target.files)} />
+            <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => agregar(e.target.files)} />
           </label>
 
-          {/* Guía corta: con el nombre bien puesto, cada archivo se asigna solo */}
+          {/* La regla de los nombres: se exige, para que ningún archivo quede sin saber de qué factura es */}
           <div className="mt-3 rounded-lg border border-marca/20 bg-marca/5 p-3 text-xs text-blue-950">
-            <div className="mb-1 font-bold">Cómo nombrar los archivos para que se asignen solos</div>
+            <div className="mb-1 font-bold">Solo PDF, y el nombre tiene que tener el número de la factura</div>
             <ul className="list-disc space-y-0.5 pl-4">
               <li>
-                Poné el <strong>punto de venta y el número de factura</strong>, como figura en la factura: <code>35-00011032</code> (también sirve{' '}
-                <code>35-11032</code>). Si no lo tenés, el <strong>siniestro</strong> o la <strong>patente</strong>.
+                El <strong>punto de venta y el número de factura</strong>, como figura en la factura: <code>35-00011032</code> (también sirve{' '}
+                <code>35-11032</code>). Un archivo sin ese número, o con un número que no es de una factura pendiente de tu sucursal, no se sube:
+                renombralo y volvé a soltarlo.
               </li>
               <li>
                 Agregá <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si escaneaste las dos juntas en un solo PDF, no hace falta.
               </li>
               <li>
                 Ejemplos: <code>35-00011032 orden.pdf</code> · <code>35-00011032 factura.pdf</code> · <code>35-00011032.pdf</code> (las dos juntas) ·{' '}
-                <code>siniestro 051-2-335854.pdf</code>
+                <code>35-11032 factura.pdf</code>
               </li>
+              <li>Solo <strong>PDF</strong>: las compañías no aceptan fotos. Desde el celular, escaneá con la cámara o con Google Drive, que guardan en PDF.</li>
             </ul>
           </div>
 
@@ -179,35 +183,32 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filas.map((f, i) => {
-                  const opciones = f.candidatas.length ? facturas.filter((c) => f.candidatas.includes(c.id)) : facturas
+                  const factura = facturas.find((c) => c.id === f.facturaId)
                   return (
-                    <tr key={`${f.archivo.name}-${i}`} className={f.facturaId ? '' : 'bg-amber-50'}>
+                    <tr key={`${f.archivo.name}-${i}`} className={f.error ? 'bg-red-50' : ''}>
                       <td className="max-w-56 truncate px-2 py-2 font-medium" title={f.archivo.name}>
                         {f.archivo.name}
-                        <div className="text-[11px] font-normal text-slate-500">
-                          {f.por ? `Encontrada por ${f.por}` : f.candidatas.length ? `${f.candidatas.length} posibles: elegí` : 'Elegí la factura'}
-                        </div>
                       </td>
                       <td className="px-2 py-2">
-                        <select value={f.facturaId} onChange={(e) => cambiar(i, { facturaId: e.target.value, por: null })} className={`${claseSelect} w-full max-w-xs`}>
-                          <option value="">— Elegir —</option>
-                          {opciones.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {formatoComprobante(c)}
-                              {c.siniestro ? ` · ${c.siniestro}` : ''}
-                              {c.patente ? ` · ${c.patente}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                        {factura ? (
+                          <span className="whitespace-nowrap">
+                            {formatoComprobante(factura)}
+                            {factura.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {factura.siniestro}</span>}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-red-800">{f.error}</span>
+                        )}
                       </td>
                       <td className="px-2 py-2">
-                        <select value={f.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoArchivo })} className={claseSelect}>
-                          {(Object.keys(NOMBRE_TIPO) as TipoArchivo[]).map((t) => (
-                            <option key={t} value={t}>
-                              {NOMBRE_TIPO[t]}
-                            </option>
-                          ))}
-                        </select>
+                        {!f.error && (
+                          <select value={f.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoArchivo })} className={claseSelect}>
+                            {(Object.keys(NOMBRE_TIPO) as TipoArchivo[]).map((t) => (
+                              <option key={t} value={t}>
+                                {NOMBRE_TIPO[t]}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td className="px-2 py-2 text-right">
                         <button type="button" onClick={() => setFilas((l) => l.filter((_, j) => j !== i))} className="text-xs text-slate-500 hover:text-sem-rojo">
@@ -227,7 +228,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
           <span className="text-sm text-slate-600">
-            {filas.length === 0 ? 'Todavía no agregaste archivos.' : `${asignadas.length} listos para subir${sinAsignar ? ` · ${sinAsignar} sin factura (no se suben)` : ''}`}
+            {filas.length === 0 ? 'Todavía no agregaste archivos.' : `${asignadas.length} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.1] - 2026-11-04
+
+### Cambiado
+- **Solo PDF:** los documentos tienen que ser PDF (las compañías no aceptan fotos ni otros formatos). Lo controlan la pantalla y el servidor.
+- **El nombre del archivo se exige, no solo se pide:** tiene que tener el punto de venta y el número de la factura ("35-00011032 orden.pdf"). En la carga de varios archivos, uno sin número o con un número que no es de una factura pendiente de la sucursal queda en rojo y no se sube. En el legajo, el archivo tiene que tener el número de esa factura. El legajo le muestra a la sucursal cómo tiene que llamarse.
+
 ## [0.12.0] - 2026-11-04
 
 ### Agregado

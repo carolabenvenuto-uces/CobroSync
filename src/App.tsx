@@ -43,8 +43,8 @@ export default function App() {
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<Inicio />} />
         <Route path="resumen" element={oficina(<Resumen />)} />
-        <Route path="pendientes" element={auditoria(<Pendientes />)} />
-        <Route path="reclamos" element={auditoria(<Reclamos />)} />
+        <Route path="pendientes" element={oficina(<Pendientes />)} />
+        <Route path="reclamos" element={oficina(<Reclamos />)} />
         <Route path="control-diario" element={oficina(<ControlDiario />)} />
         <Route path="sucursales" element={oficina(<RankingSucursales />)} />
         <Route path="impacto" element={oficina(<Impacto />)} />

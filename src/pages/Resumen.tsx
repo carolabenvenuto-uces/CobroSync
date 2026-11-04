@@ -208,7 +208,7 @@ export default function Resumen() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
-            Sucursales con más plata retenida por documentación
+            Sucursales con mayor importe retenido por documentación
           </CardTitulo>
           <ul className="divide-y divide-slate-100 text-sm">
             {sucursales.map((r) => (

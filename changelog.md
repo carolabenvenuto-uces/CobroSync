@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0] - 2026-11-04
+
+### Agregado
+- **Preparado para la prueba piloto con Google** (`google/`): la aplicación puede publicarse en Google Apps Script con las cuentas de la empresa. Los datos quedan en una planilla de Google y los documentos, en el Drive de la empresa. Cada persona entra con su cuenta y su rol sale de la pestaña Usuarios. Incluye los avisos por mail (día 8 al gerente de la sucursal, día 22 a Gerencia General) y un resumen semanal los lunes.
+- **Pasar la planilla a CobroSync:** con Google, "Usar mi planilla" agrega las facturas actuales sin duplicarlas.
+- **Paquete para Google:** GitHub lo genera en cada actualización (Actions → `cobrosync-google`). Instalación en `google/LEEME.md`.
+
+### Cambiado
+- **Notificaciones de Gerencia agrupadas:** un aviso por sucursal ("Alvarez Thomas: 15 facturas pasaron a documentación crítica"), que abre la lista filtrada.
+- **Mis facturas:** "Qué hay que hacer" muestra tres etiquetas (Factura · Orden · Firma) según lo que falta, lo observado y lo aprobado.
+- **Textos más formales:** "importe retenido" en lugar de "plata retenida".
+
 ## [0.6.1] - 2026-11-03
 
 ### Agregado

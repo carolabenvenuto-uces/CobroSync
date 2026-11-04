@@ -2,14 +2,15 @@
   "name": "cobrosync",
   "private": true,
   "version": "0.1.0",
-  "description": "CobroSync by CAROLA: gestión documental y cobranzas B2B (prototipo con datos ficticios)",
+  "description": "CobroSync: gestión documental y cobranzas de facturas a compañías de seguros",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "datos:demo": "node scripts/generar-datos-demo.mjs"
+    "datos:demo": "node scripts/generar-datos-demo.mjs",
+    "build:google": "vite build --mode google && node scripts/empaquetar-google.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.575.0",
@@ -27,6 +28,7 @@
     "tailwindcss": "^4.1.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "vite-plugin-singlefile": "^2.3.0"
   }
 }

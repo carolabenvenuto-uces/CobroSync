@@ -28,7 +28,7 @@ function avisoNc(c: Comprobante): string {
  * Para Gerencia es "Buscar una factura": la misma tabla, solo para consultar.
  */
 export default function ControlDiario() {
-  const { datos, hoy, rol, abrirLegajo, agregarComprobante } = useApp()
+  const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante } = useApp()
   const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params] = useSearchParams()
@@ -215,7 +215,7 @@ export default function ControlDiario() {
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1">
             {mensajeErp.texto}
-            {!mensajeErp.error && (
+            {!mensajeErp.error && fuente.tipo !== 'google' && (
               <div className="mt-1 text-xs">
                 Es una vista previa: <strong>no se guarda</strong> y se pierde al recargar la página. Guardarlo queda para la etapa 2 (Google).
               </div>

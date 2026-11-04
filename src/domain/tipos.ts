@@ -90,6 +90,8 @@ export interface Documento {
   estado: EstadoDocumento
   /** nombre del archivo subido, si lo hay */
   archivo?: string
+  /** link al archivo en el Drive de la empresa (con Google) */
+  url?: string
   /** por qué se observó (ilegible, sin firma, no corresponde…) */
   motivo?: string
 }

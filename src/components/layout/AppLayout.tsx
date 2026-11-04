@@ -9,7 +9,7 @@ import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente, legajoAbierto, abrirLegajo } = useApp()
+  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo } = useApp()
   const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
 
@@ -38,8 +38,10 @@ export function AppLayout() {
         <footer className="border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
           {fuente.tipo === 'demo'
             ? 'Demo con datos de ejemplo (montos, fechas y números inventados)'
-            : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
-          · CobroSync by CAROLA
+            : fuente.tipo === 'google'
+              ? `Conectado como ${fuente.email} · ${guardado.estado === 'guardando' ? 'Guardando…' : guardado.estado === 'error' ? `No se pudo guardar: ${guardado.mensaje}` : 'Cambios guardados'}`
+              : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
+          · CobroSync
         </footer>
       </div>
 

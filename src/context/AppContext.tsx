@@ -6,10 +6,11 @@
  *
  * React Context evita pasar estos valores "a mano" de componente en componente.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { AreaEvento, Aseguradora, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { AreaEvento, Aseguradora, TipoDocumento, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
 import { anioDe, diffDias, mesDe } from '../lib/fechas'
 import { cargarDatos } from '../services/datos'
+import { cargarDesdeGoogle, conectadoAGoogle, guardarEnGoogle, subirAGoogle, type UsuarioGoogle } from '../services/google'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
 
@@ -36,6 +37,52 @@ export interface Notificacion {
   texto: string
   comprobanteId: string
   leida: boolean
+  /** avisos a Gerencia: de qué tipo y de qué sucursal, para agruparlos */
+  clase?: 'critica' | 'escalar'
+  sucursal?: string
+  /** facturas que junta un aviso agrupado */
+  facturas?: string[]
+  /** si está, al tocar el aviso se abre esta pantalla en vez de una factura */
+  ruta?: string
+}
+
+/**
+ * A Gerencia le llega un aviso por sucursal y por tipo, no uno por factura:
+ * "Alvarez Thomas: 15 facturas pasaron a documentación crítica". Al tocarlo se abre la lista.
+ */
+export function agruparGerencia(lista: Notificacion[]): Notificacion[] {
+  const grupos = new Map<string, Notificacion>()
+  const resto: Notificacion[] = []
+  for (const n of lista) {
+    if (n.para !== 'gerencia' || !n.clase || !n.sucursal) {
+      resto.push(n)
+      continue
+    }
+    const clave = `${n.clase}|${n.sucursal}`
+    const g = grupos.get(clave)
+    const facturas = [...new Set([...(g?.facturas ?? []), ...(n.facturas ?? [n.comprobanteId])])]
+    const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
+    const cant = facturas.length
+    const texto =
+      n.clase === 'critica'
+        ? `${n.sucursal}: ${cant} ${cant === 1 ? 'factura pasó' : 'facturas pasaron'} a documentación crítica (más de 21 días)`
+        : `${n.sucursal}: ${cant} ${cant === 1 ? 'factura vencida' : 'facturas vencidas'} con 3 reclamos sin respuesta`
+    const ruta =
+      n.clase === 'critica'
+        ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal)}&estado=Cr%C3%ADtica`
+        : `/app/reclamos?sucursal=${encodeURIComponent(n.sucursal)}&estado=${encodeURIComponent('Escalar a gerencia')}`
+    grupos.set(clave, {
+      ...(g ?? n),
+      id: g?.id ?? `g-${clave}`,
+      fecha,
+      texto,
+      facturas,
+      ruta,
+      // un aviso nuevo dentro del grupo lo vuelve a marcar como no leído
+      leida: (g?.leida ?? true) && n.leida,
+    })
+  }
+  return [...resto, ...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha))
 }
 
 /**
@@ -54,7 +101,7 @@ function notificacionesIniciales(d: DatosApp): Notificacion[] {
   }
   // Hasta 40 por destinatario, las más nuevas primero
   const porDestinatario = new Map<string, number>()
-  return lista
+  return agruparGerencia(lista)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .filter((n) => {
       const cant = (porDestinatario.get(n.para) ?? 0) + 1
@@ -79,11 +126,11 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   }
   if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, texto: `${numero}: ${e.texto}` })
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
-    lista.push({ ...base(), para: 'gerencia', texto: `Documentación crítica · ${c.sucursal} · ${numero}: más de 21 días sin documentación completa` })
+    lista.push({ ...base(), para: 'gerencia', clase: 'critica', sucursal: c.sucursal, texto: `Documentación crítica · ${c.sucursal} · ${numero}` })
   }
   const nReclamo = e.tipo === 'reclamo' ? Number(/Reclamo (\d+)/.exec(e.texto)?.[1] ?? 0) : 0
   if (nReclamo >= 3) {
-    lista.push({ ...base(), para: 'gerencia', texto: `Para escalar · ${numero} (${c.sucursal}): la compañía no respondió a ${nReclamo} reclamos` })
+    lista.push({ ...base(), para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, texto: `Para escalar · ${numero} (${c.sucursal})` })
   }
   return lista
 }
@@ -120,7 +167,11 @@ interface EstadoApp {
   marcarLeida: (id: string) => void
   marcarTodasLeidas: () => void
   /** de dónde salen los datos: la demo o la planilla que cargó el usuario (solo en memoria) */
-  fuente: { tipo: 'demo' } | { tipo: 'planilla'; archivo: string; filas: number }
+  fuente: { tipo: 'demo' } | { tipo: 'planilla'; archivo: string; filas: number } | { tipo: 'google'; email: string }
+  /** con Google: si los últimos cambios ya se guardaron */
+  guardado: { estado: 'ok' | 'guardando' | 'error'; mensaje?: string }
+  /** sube un archivo de la factura: a Drive con Google; en la demo solo registra el nombre */
+  subirDocumento: (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => Promise<{ archivo: string; url?: string }>
   usarPlanilla: (resultado: ResultadoImportacion, archivo: string) => void
   usarDemo: () => void
 }
@@ -138,8 +189,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fuente, setFuente] = useState<EstadoApp['fuente']>({ tipo: 'demo' })
   const [legajoAbierto, abrirLegajo] = useState<string | null>(null)
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+  const [usuarioGoogle, setUsuarioGoogle] = useState<UsuarioGoogle | null>(null)
+  const [guardado, setGuardado] = useState<EstadoApp['guardado']>({ estado: 'ok' })
+  // Facturas cambiadas que falta guardar en Google
+  const pendientesDeGuardar = useRef(new Set<string>())
 
   const cargarDemo = useCallback(() => {
+    // Abierta desde Google Apps Script: los datos y el rol vienen de la cuenta de la empresa
+    if (conectadoAGoogle()) {
+      cargarDesdeGoogle()
+        .then(({ usuario: u, datos: d }) => {
+          setDatos(d)
+          setUsuarioGoogle(u)
+          setRolInterno(u.rol)
+          setSucursal(u.rol === 'sucursal' && u.sucursal ? u.sucursal : TODAS_LAS_SUCURSALES)
+          setAnio(anioDe(d.meta.fechaCorte))
+          setMes(mesDe(d.meta.fechaCorte))
+          setFuente({ tipo: 'google', email: u.email })
+          setNotificaciones(notificacionesIniciales(d))
+        })
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      return
+    }
     cargarDatos()
       .then((d) => {
         setDatos(d)
@@ -169,6 +240,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Al volver a Auditoría o Gerencia, el filtro vuelve a "Todas".
   const setRol = useCallback(
     (nuevo: Rol) => {
+      // Con Google el rol lo define la cuenta de la empresa: no se puede cambiar
+      if (usuarioGoogle) return
       setRolInterno(nuevo)
       if (nuevo === 'sucursal' && sucursal === TODAS_LAS_SUCURSALES && datos) {
         setSucursal(datos.meta.sucursales[0].nombre)
@@ -176,15 +249,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSucursal(TODAS_LAS_SUCURSALES)
       }
     },
-    [sucursal, datos, rol],
+    [sucursal, datos, rol, usuarioGoogle],
   )
 
   const sucursalActual: Sucursal | undefined = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
-  const usuario =
-    rol === 'sucursal' ? (sucursalActual?.personas[0] ?? 'Sucursal') : rol === 'auditoria' ? 'Carola B.' : 'Gerencia'
+  const usuario = usuarioGoogle
+    ? usuarioGoogle.nombre
+    : rol === 'sucursal' ? (sucursalActual?.personas[0] ?? 'Sucursal') : rol === 'auditoria' ? 'Carola B.' : 'Gerencia'
   const hoy = datos?.meta.fechaCorte ?? ''
 
   const actualizarComprobante = useCallback((id: string, cambios: Partial<Comprobante>) => {
+    pendientesDeGuardar.current.add(id)
     setDatos((actual) =>
       actual
         ? { ...actual, comprobantes: actual.comprobantes.map((c) => (c.id === id ? { ...c, ...cambios } : c)) }
@@ -193,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const agregarComprobante = useCallback((comprobante: Comprobante) => {
+    pendientesDeGuardar.current.add(comprobante.id)
     setDatos((actual) => (actual ? { ...actual, comprobantes: [...actual.comprobantes, comprobante] } : actual))
   }, [])
 
@@ -207,7 +283,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés
       const comprobante = datos?.comprobantes.find((c) => c.id === id)
       const avisos = comprobante ? crearNotificaciones(comprobante, evento) : []
-      if (avisos.length) setNotificaciones((lista) => [...avisos, ...lista])
+      if (avisos.length) setNotificaciones((lista) => agruparGerencia([...avisos, ...lista]))
+      pendientesDeGuardar.current.add(id)
       setDatos((actual) =>
         actual
           ? {
@@ -218,6 +295,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
     },
     [rol, hoy, usuario, datos],
+  )
+
+  // Con Google, cada cambio se guarda en la planilla apenas se ve en pantalla
+  useEffect(() => {
+    if (fuente.tipo !== 'google' || !datos || pendientesDeGuardar.current.size === 0) return
+    const ids = [...pendientesDeGuardar.current]
+    pendientesDeGuardar.current.clear()
+    const aGuardar = datos.comprobantes.filter((c) => ids.includes(c.id))
+    setGuardado({ estado: 'guardando' })
+    Promise.all(aGuardar.map(guardarEnGoogle))
+      .then(() => setGuardado({ estado: 'ok' }))
+      .catch((e: unknown) => {
+        ids.forEach((id) => pendientesDeGuardar.current.add(id))
+        setGuardado({ estado: 'error', mensaje: e instanceof Error ? e.message : String(e) })
+      })
+  }, [datos, fuente.tipo])
+
+  const subirDocumento = useCallback(
+    async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>
+      fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name },
+    [fuente.tipo],
   )
 
   const destinatario = rol === 'sucursal' ? sucursal : rol
@@ -252,6 +350,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       parametros,
       setParametros,
       fuente,
+      guardado,
+      subirDocumento,
       usarPlanilla,
       usarDemo: cargarDemo,
       legajoAbierto,
@@ -276,6 +376,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registrarEvento,
       parametros,
       fuente,
+      guardado,
+      subirDocumento,
       usarPlanilla,
       cargarDemo,
       legajoAbierto,

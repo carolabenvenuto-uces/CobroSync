@@ -1,9 +1,9 @@
 /**
  * Único punto de acceso a los datos.
  *
- * Etapa 1 (ahora): lee los JSON de ejemplo de public/datos-demo/ con fetch().
- * Etapa 2: este archivo pasa a consultar Supabase. Las pantallas no se modifican,
- * porque solo conocen la función cargarDatos() y los tipos de domain/tipos.ts.
+ * Demo (GitHub Pages): lee los JSON de ejemplo de public/datos-demo/ con fetch().
+ * Prueba piloto (Google): los datos vienen de services/google.ts. Las pantallas no cambian,
+ * porque solo conocen el contexto de la aplicación y los tipos de domain/tipos.ts.
  */
 import type { Aseguradora, CobroPrevisto, Comprobante, DatosApp, MetaDemo } from '../domain/tipos'
 

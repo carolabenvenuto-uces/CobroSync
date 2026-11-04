@@ -49,6 +49,17 @@ jobs:
         with:
           path: dist
 
+      # Versión para Google Apps Script (prueba piloto): se descarga desde la pestaña
+      # Actions de GitHub → la última ejecución → "cobrosync-google". Ver google/LEEME.md.
+      - name: Compilar la versión para Google
+        run: npm run build:google
+
+      - name: Guardar el paquete para Google
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobrosync-google
+          path: dist-google/paquete
+
   deploy:
     # Solo se publica lo que llega a main, nunca un PR.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

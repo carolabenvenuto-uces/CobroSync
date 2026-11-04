@@ -5,6 +5,7 @@ import { useApp, type Notificacion } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
+import { partesDe } from '../lib/notificaciones'
 import { BadgeEtapa } from './ui/Badges'
 import { EncabezadoPagina } from './ui/Card'
 
@@ -29,13 +30,6 @@ export function Campana({ onCerrar }: { onCerrar?: () => void }) {
       {sinLeer > 0 && <span className="rounded-full bg-sem-rojo px-2 py-0.5 text-[11px] font-bold text-white">{sinLeer}</span>}
     </NavLink>
   )
-}
-
-/** "Rechazo de Allianz: falta la firma" → asunto "Rechazo de Allianz" */
-function asuntoDe(texto: string): string {
-  const corte = texto.search(/[:.]\s/)
-  const base = corte > 8 && corte <= 70 ? texto.slice(0, corte) : texto
-  return base.length > 70 ? `${base.slice(0, 67).trimEnd()}…` : base
 }
 
 function cuando(fecha: string, hoy: string): string {
@@ -68,7 +62,7 @@ export default function BandejaNotificaciones() {
 
   const remitente = (n: Notificacion) => {
     if (rol === 'sucursal') return 'Auditoría'
-    if (rol === 'gerencia') return n.sucursal ? `CobroSync · ${n.sucursal}` : 'CobroSync'
+    if (rol === 'gerencia') return n.sucursal ? `Auditoría · ${n.sucursal}` : 'Auditoría'
     return n.sucursal ?? porId.get(n.comprobanteId)?.sucursal ?? 'Sucursal'
   }
 
@@ -90,14 +84,15 @@ export default function BandejaNotificaciones() {
         <button type="button" onClick={() => setElegida(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-marca lg:hidden">
           <ArrowLeft className="h-4 w-4" /> Volver a la bandeja
         </button>
-        <h2 className="text-lg font-extrabold leading-snug">{asuntoDe(n.texto)}</h2>
+        <h2 className="text-lg font-extrabold leading-snug">{partesDe(n.texto).asunto}</h2>
         <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-slate-500">
           <span>
             De: <strong className="text-slate-700">{remitente(n)}</strong>
           </span>
+          {partesDe(n.texto).factura && <span>Factura: <strong className="text-slate-700">{partesDe(n.texto).factura}</strong></span>}
           <span>{formatoFecha(n.fecha)}</span>
         </div>
-        <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-800">{n.texto}</p>
+        <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-800">{partesDe(n.texto).cuerpo}</p>
 
         {c && varias.length <= 1 && (
           <button
@@ -129,7 +124,7 @@ export default function BandejaNotificaciones() {
                         {f.sucursal} · {formatoPesos(f.total)}
                       </span>
                     </span>
-                    <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
+                    <span className="shrink-0 text-xs font-semibold text-sem-rojo">{diffDias(f.fecha, hoy)} días</span>
                   </button>
                 </li>
               ))}
@@ -208,8 +203,11 @@ export default function BandejaNotificaciones() {
                       <span className={`truncate text-sm ${n.leida ? '' : 'font-bold'}`}>{remitente(n)}</span>
                       <span className={`shrink-0 text-[11px] ${n.leida ? '' : 'font-semibold text-marca'}`}>{cuando(n.fecha, hoy)}</span>
                     </span>
-                    <span className={`block truncate text-sm ${n.leida ? '' : 'font-semibold'}`}>{asuntoDe(n.texto)}</span>
-                    <span className="block truncate text-xs text-slate-500">{n.texto}</span>
+                    <span className={`block truncate text-sm ${n.leida ? '' : 'font-semibold'}`}>{partesDe(n.texto).asunto}</span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {partesDe(n.texto).factura ? `${partesDe(n.texto).factura} · ` : ''}
+                      {partesDe(n.texto).cuerpo}
+                    </span>
                   </span>
                 </button>
               </li>

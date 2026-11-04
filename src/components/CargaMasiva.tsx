@@ -147,7 +147,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             }`}
           >
             <Upload className="h-7 w-7 text-marca" />
-            <span className="font-semibold">Soltá acá los PDF o fotos (todos juntos)</span>
+            <span className="font-semibold">Soltá acá los PDF (todos juntos) o tocá para elegirlos</span>
             <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => agregar(e.target.files)} />
           </label>
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.4] - 2026-11-04
+
+### Cambiado
+- **Notificaciones:** el asunto dice lo que pasó ("Observado", "Pasaron 10 días sin legajo completo") y la factura va aparte, en vez de repetir el número. A Gerencia le escribe "Auditoría · sucursal", y en los avisos agrupados cada factura muestra sus días de espera.
+- **Sucursal:** el número de "Mis facturas" en el menú es el mismo que la tarjeta Para subir. Si la fecha estimada que avisaron ya pasó, se ve en rojo. La marca MiPyME es la misma (roja, con "!") en todas las pantallas. En Mis siniestros, lo que falta refacturar va primero.
+- La carga de varios archivos ya no dice "PDF o fotos": solo PDF.
+
 ## [0.12.3] - 2026-11-04
 
 ### Cambiado

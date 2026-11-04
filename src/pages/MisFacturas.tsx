@@ -119,8 +119,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           <div>
             <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
             {esMipyme(x.c) && (
-              <div className="whitespace-nowrap text-[11px] font-semibold text-marca" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
-                MiPyME · {plazoSucursal(x.c)} d
+              <div className="mt-0.5 inline-block whitespace-nowrap rounded bg-sem-rojo px-1.5 py-0.5 text-[11px] font-bold text-white" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
+                ! MiPyME · {plazoSucursal(x.c)} d
               </div>
             )}
           </div>
@@ -173,7 +173,11 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             )
           })}
           {x.c.compromiso && (
-            <span className="w-full text-[11px] text-slate-500">Avisaste que lo subís el {formatoFecha(x.c.compromiso.fecha)}</span>
+            x.c.compromiso.fecha >= hoy ? (
+              <span className="w-full text-[11px] text-slate-500">Fecha estimada que avisaste: {formatoFecha(x.c.compromiso.fecha)}</span>
+            ) : (
+              <span className="w-full text-[11px] font-semibold text-sem-rojo">La fecha estimada que avisaste ({formatoFecha(x.c.compromiso.fecha)}) ya pasó</span>
+            )
           )}
         </div>
       ),
@@ -277,7 +281,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-3xl font-extrabold">{lista.length}</span>
                     <span className="font-bold">{t.titulo}</span>
-                    {mipymes > 0 && <span className="rounded bg-marca px-1.5 py-0.5 text-[11px] font-bold text-white">{mipymes} MiPyME</span>}
+                    {mipymes > 0 && <span className="rounded bg-sem-rojo px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
                   </div>
                   <p className="text-xs text-slate-600">{t.ayuda}</p>
                 </div>
@@ -409,7 +413,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <div className="min-w-0 flex-1 text-sm text-amber-950">
           <p>
             Tenés <strong className="text-base">{plazosActuales().comun} días</strong> desde la fecha de la factura para subir la factura y la orden
-            firmada. Si es <strong className="rounded bg-marca px-1 text-white">MiPyME</strong>, solo{' '}
+            firmada. Si es <strong className="rounded bg-sem-rojo px-1 text-white">! MiPyME</strong>, solo{' '}
             <strong className="text-base">{plazosActuales().mipyme} días</strong>: subilas primero.
           </p>
           <p className="mt-1 text-xs">

@@ -105,7 +105,11 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
     if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0 }
     const sectores = calcularAvisos(comprobantes, hoy)
     return {
-      pendientes: comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
+      // En la sucursal, "Mis facturas" cuenta lo mismo que la tarjeta Para subir (lo observado va en Para resolver)
+      pendientes:
+        rol === 'sucursal'
+          ? comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada'].includes(calcularSemaforo(c, hoy).etapa)).length
+          : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
       alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
@@ -114,7 +118,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
       presentar: comprobantes.filter((c) => c.tipo === 'FC' && calcularSemaforo(c, hoy).etapa === 'pres_pendiente').length,
       resolver: paraResolver(comprobantes, hoy).length,
     }
-  }, [datos, comprobantes, hoy])
+  }, [datos, comprobantes, hoy, rol])
 
   return (
     <>

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2] - 2026-11-04
+
+### Cambiado
+- **Todos los mails salen solo los lunes:** al gerente de cada sucursal, la lista de sus facturas atrasadas; a Gerencia General, un único mail con lo que quedó sin resolver (compañías sin respuesta a 3 reclamos y documentación crítica). Si no hay nada pendiente, no sale ningún mail. En la semana lo ven en las notificaciones de CobroSync.
+- **Tarjetas del Resumen:** se pueden tocar y abren el Detalle de facturas con ese grupo (pendiente, sin presentar, al día o vencido), con todos los filtros de la tabla. Los importes se ajustan al ancho de la pantalla y ya no se salen de la tarjeta.
+- **Ranking:** nueva columna con la tendencia de cada sucursal contra el mes anterior (días promedio hasta subir el legajo).
+
 ## [0.9.1] - 2026-11-04
 
 ### Cambiado (vistas de Gerencia)

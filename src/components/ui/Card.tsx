@@ -1,5 +1,6 @@
-import { Download } from 'lucide-react'
+import { ChevronRight, Download } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { FiltroSucursal } from '../Filtros'
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -25,30 +26,53 @@ const TONO_VALOR: Record<Tono, string> = {
   rojo: 'text-sem-rojo',
 }
 
-/** Tarjeta de indicador (KPI). */
+/**
+ * Tarjeta de indicador (KPI). El número se achica con el ancho de la pantalla para que los
+ * importes grandes ($ 1.873.420.646,07) entren siempre en una línea. Con `to`, la tarjeta se puede
+ * tocar y abre el detalle.
+ */
 export function Indicador({
   titulo,
   valor,
   ayuda,
   tono = 'neutro',
   icono,
+  to,
 }: {
   titulo: string
   valor: string
   ayuda?: string
   tono?: Tono
   icono?: ReactNode
+  to?: string
 }) {
-  return (
-    <Card className="p-4">
+  const contenido = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</div>
         {icono && <div className="text-slate-400">{icono}</div>}
+        {to && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-marca" />}
       </div>
-      <div className={`mt-2 whitespace-nowrap text-2xl font-extrabold tracking-tight ${TONO_VALOR[tono]}`}>{valor}</div>
+      <div
+        className={`mt-2 whitespace-nowrap font-extrabold tracking-tight tabular-nums ${TONO_VALOR[tono]}`}
+        style={{ fontSize: 'clamp(1rem, 1.3vw, 1.5rem)' }}
+      >
+        {valor}
+      </div>
       {ayuda && <div className="mt-1 text-xs text-slate-500">{ayuda}</div>}
-    </Card>
+    </>
   )
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className="group block min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-marca/40 hover:shadow-md"
+      >
+        {contenido}
+      </Link>
+    )
+  }
+  return <Card className="min-w-0 overflow-hidden p-4">{contenido}</Card>
 }
 
 /**

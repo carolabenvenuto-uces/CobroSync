@@ -74,7 +74,7 @@ export function Campana() {
             <p className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">
               {fuente.tipo === 'google'
                 ? 'Se actualizan solas cada minuto. Lo que leés queda marcado en tu cuenta, en cualquier computadora o celular.'
-                : 'En la demo las notificaciones viven en este navegador. En la versión real se actualizan solas y los avisos importantes también llegan por mail.'}
+                : 'En la demo las notificaciones viven en este navegador. En la versión real se actualizan solas y los lunes llega por mail un resumen de lo pendiente.'}
             </p>
           </div>
         </>

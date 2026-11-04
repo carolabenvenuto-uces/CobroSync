@@ -3,24 +3,28 @@ import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarDays } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
-import { useApp, useComprobantes } from '../context/AppContext'
+import { TODAS_LAS_SUCURSALES, useApp, useComprobantes } from '../context/AppContext'
 import { calcularTotales, previstoVsCobrado, saldosPorAseguradora, totalesDelMes } from '../domain/finanzas'
-import { calcularSemaforo } from '../domain/semaforo'
+import { calcularSemaforo, enGrupo, type GrupoSaldo } from '../domain/semaforo'
 import { rankingSucursales } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
 import { anioDe, diaDe, mesDe } from '../lib/fechas'
 import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
 import { saldoFactura } from '../domain/importes'
 
-const SIN_PRESENTAR = ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision', 'pres_pendiente']
-
 /**
  * Resumen: lo que la gerencia necesita ver de un vistazo, cada dato una sola vez.
  * 1. Cómo estamos hoy · 2. El año, a la izquierda · 3. El mes elegido: cobros previstos contra
  * lo realmente cobrado · 4. Dónde está la plata pendiente. El detalle está en las demás pantallas.
  */
+/** Importes del recuadro del año: se achican con la pantalla para entrar en una línea. */
+const GRANDE = { fontSize: 'clamp(1.1rem, 1.6vw, 1.6rem)' }
+
 export default function Resumen() {
-  const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros } = useApp()
+  const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros, sucursal } = useApp()
+  // Cada tarjeta abre el Detalle de facturas con ese grupo (y la sucursal elegida)
+  const verFacturas = (grupo: GrupoSaldo) =>
+    `/app/control-diario?grupo=${grupo}${sucursal === TODAS_LAS_SUCURSALES ? '' : `&sucursal=${encodeURIComponent(sucursal)}`}`
   const comprobantes = useComprobantes()
   const { aseguradoras, meta } = datos!
 
@@ -45,12 +49,8 @@ export default function Resumen() {
   // 1. Situación de hoy
   const situacion = useMemo(() => {
     const totales = calcularTotales(comprobantes, hoy)
-    const etapa = (c: Comprobante) => calcularSemaforo(c, hoy).etapa
-    return {
-      ...totales,
-      sinPresentar: suma(comprobantes.filter((c) => SIN_PRESENTAR.includes(etapa(c)))),
-      alDia: suma(comprobantes.filter((c) => etapa(c) === 'al_dia')),
-    }
+    const de = (g: GrupoSaldo) => suma(comprobantes.filter((c) => enGrupo(g, calcularSemaforo(c, hoy).etapa, saldoFactura(c))))
+    return { ...totales, sinPresentar: de('sin_presentar'), alDia: de('al_dia') }
   }, [comprobantes, hoy])
 
   // 2. El año
@@ -92,7 +92,9 @@ export default function Resumen() {
   const dato = (titulo: string, valor: number, ayuda: string, clase = '') => (
     <div>
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</div>
-      <div className={`text-lg font-extrabold tabular-nums ${clase}`}>{formatoPesos(valor)}</div>
+      <div className={`whitespace-nowrap font-extrabold tabular-nums ${clase}`} style={{ fontSize: 'clamp(0.95rem, 1.15vw, 1.15rem)' }}>
+        {formatoPesos(valor)}
+      </div>
       <div className="text-xs text-slate-500">{ayuda}</div>
     </div>
   )
@@ -102,11 +104,11 @@ export default function Resumen() {
       <EncabezadoPagina titulo="Resumen" sucursal />
 
       {/* 1. Cómo estamos hoy */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Indicador titulo="Pendiente de cobro" valor={formatoPesos(situacion.pendiente)} tono="marca" ayuda="Todo lo facturado que falta cobrar" />
-        <Indicador titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
-        <Indicador titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
-        <Indicador titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Indicador to={verFacturas('pendiente')} titulo="Pendiente de cobro" valor={formatoPesos(situacion.pendiente)} tono="marca" ayuda="Todo lo facturado que falta cobrar" />
+        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
+        <Indicador to={verFacturas('al_dia')} titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
+        <Indicador to={verFacturas('vencido')} titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -116,18 +118,18 @@ export default function Resumen() {
           <div className="mt-4 space-y-4">
             <div>
               <div className="text-xs text-slate-300">Facturado</div>
-              <div className="text-2xl font-extrabold tabular-nums">{formatoPesos(anual.facturado)}</div>
+              <div className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(anual.facturado)}</div>
               <div className="text-xs text-slate-400">
                 {anual.facturas.toLocaleString('es-AR')} facturas · notas de crédito {formatoPesos(anual.notasCredito)}
               </div>
             </div>
             <div>
               <div className="text-xs text-slate-300">Cobrado</div>
-              <div className="text-2xl font-extrabold tabular-nums text-emerald-300">{formatoPesos(anual.cobrado)}</div>
+              <div className="whitespace-nowrap font-extrabold tabular-nums text-emerald-300" style={GRANDE}>{formatoPesos(anual.cobrado)}</div>
             </div>
             <div>
               <div className="text-xs text-slate-300">Falta cobrar de lo facturado en {anio}</div>
-              <div className="text-2xl font-extrabold tabular-nums">{formatoPesos(anual.pendiente)}</div>
+              <div className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(anual.pendiente)}</div>
               <div className="text-xs text-slate-400">De eso, vencido: {formatoPesos(anual.vencido)}</div>
             </div>
           </div>

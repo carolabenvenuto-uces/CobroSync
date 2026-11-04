@@ -464,6 +464,88 @@ for (const c of comprobantes) {
   }
 }
 
+// ── Facturación parcial y notas de crédito parciales ─────────────────────────
+// Con su propio generador aleatorio, para no cambiar el resto de los datos de ejemplo.
+{
+  const azar2 = crearAleatorio(SEMILLA + 1)
+  const entre2 = (min, max) => min + Math.floor(azar2() * (max - min + 1))
+  const ultimoNumero = {}
+  let ultimaRef = 0
+  for (const c of comprobantes) {
+    ultimoNumero[c.puntoVenta] = Math.max(ultimoNumero[c.puntoVenta] ?? 0, c.numero)
+    ultimaRef = Math.max(ultimaRef, Number(c.ref))
+  }
+  const facturas = comprobantes.filter((c) => c.tipo === 'FC' && c.estado !== 'anulada')
+
+  // 1) Mismo siniestro, varias facturas: los repuestos que faltaban se facturan días después
+  const nuevas = []
+  for (const original of facturas) {
+    if (azar2() > 0.025 || original.estado === 'anulada') continue
+    const fecha = sumarDias(original.fecha, entre2(3, 12))
+    if (fecha > FECHA_CORTE) continue
+    // Sigue el mismo recorrido que la original, unos días después
+    const d = diffDias(original.fecha, fecha)
+    const mover = (x) => (x && sumarDias(x, d) <= FECHA_CORTE ? sumarDias(x, d) : null)
+    const fechaDrive = mover(original.fechaDrive)
+    const fechaPresentacion = original.estado === 'anulada' ? null : mover(original.fechaPresentacion)
+    const fechaCobro = mover(original.fechaCobro)
+    const estado = fechaCobro ? 'cobrada' : fechaPresentacion ? 'presentada' : fechaDrive ? 'en_gestion' : 'pendiente_drive'
+    // La orden y la firma son las mismas de la original; la factura es propia
+    const documentos = original.documentos.map((doc) =>
+      doc.tipo === 'factura' ? (fechaDrive ? { ...doc } : { tipo: 'factura', estado: 'faltante' }) : { ...doc },
+    )
+    const parcial = {
+      ...original,
+      id: `${original.id}-p2`,
+      ref: String(++ultimaRef),
+      fecha,
+      numero: ++ultimoNumero[original.puntoVenta],
+      total: Math.round(original.total * (0.15 + azar2() * 0.3) * 100) / 100,
+      fechaDrive,
+      subidoPor: fechaDrive ? original.subidoPor : null,
+      fechaPresentacion,
+      vencimiento: fechaPresentacion ? sumarDias(original.vencimiento ?? fechaPresentacion, d) : null,
+      fechaCobro,
+      estado,
+      compromiso: null,
+      reclamos: estado === 'presentada' ? original.reclamos.map((r) => ({ ...r })) : [],
+      observaciones: 'Repuestos que faltaban de la misma orden',
+      documentos,
+      eventos: [],
+    }
+    nuevas.push(parcial)
+  }
+  comprobantes.push(...nuevas)
+
+  // 2) Notas de crédito parciales (un repuesto que no se usó, una diferencia de precio)
+  for (const f of facturas) {
+    if (azar2() > 0.02 || f.estado === 'pendiente_drive') continue
+    const importe = Math.round(f.total * (0.05 + azar2() * 0.2) * 100) / 100
+    const fecha = sumarDias(f.fecha, entre2(5, 20))
+    if (fecha > FECHA_CORTE) continue
+    const nc = {
+      ...f,
+      id: `${f.id}-ncp`,
+      ref: String(++ultimaRef),
+      tipo: 'NC',
+      fecha,
+      numero: ++ultimoNumero[f.puntoVenta],
+      total: -importe,
+      fechaDrive: null, subidoPor: null, fechaPresentacion: null, vencimiento: null, fechaCobro: null,
+      estado: 'nota_credito',
+      ncReferencia: f.id,
+      ncInformada: true,
+      compromiso: null, reclamos: [], documentos: [],
+      observaciones: 'Nota de crédito parcial: repuesto que no se utilizó',
+      eventos: [{ fecha, autor: 'Facturación', area: 'sucursal', tipo: 'nota_credito', texto: 'Informó una nota de crédito parcial: repuesto que no se utilizó' }],
+    }
+    f.acreditado = importe
+    f.eventos.push({ fecha, autor: 'Auditoría', area: 'auditoria', tipo: 'nota_credito', texto: `Nota de crédito parcial por $ ${importe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` })
+    comprobantes.push(nc)
+  }
+  comprobantes.sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
 // ── Escritura ────────────────────────────────────────────────────────────────
 // Razón social, CUIT y plazo son datos públicos (pestaña "CP" de la planilla).
 // Los correos son inventados: los reales se ven solo al cargar la planilla propia.

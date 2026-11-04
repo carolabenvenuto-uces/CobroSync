@@ -11,6 +11,7 @@
  * La tasa y el objetivo de días se pueden ajustar en pantalla.
  */
 import { anioDe, diffDias, mesDe } from '../lib/fechas'
+import { saldoFactura, saldoSinCobro } from './importes'
 import type { Comprobante } from './tipos'
 
 export interface ParametrosImpacto {
@@ -33,7 +34,7 @@ export function diasDeDemoraExtra(c: Comprobante, fechaCorte: string, objetivoDi
 }
 
 export function costoDemora(c: Comprobante, fechaCorte: string, p: ParametrosImpacto): number {
-  return (c.total * diasDeDemoraExtra(c, fechaCorte, p.objetivoDias) * p.tasaAnualPct) / 100 / 365
+  return (saldoSinCobro(c) * diasDeDemoraExtra(c, fechaCorte, p.objetivoDias) * p.tasaAnualPct) / 100 / 365
 }
 
 export interface Impacto {
@@ -76,7 +77,7 @@ export function calcularImpacto(
     valores.length === 0 ? null : Math.round(valores.reduce((s, v) => s + v, 0) / valores.length)
 
   return {
-    retenidoHoy: retenidas.reduce((s, c) => s + c.total, 0),
+    retenidoHoy: retenidas.reduce((s, c) => s + saldoFactura(c), 0),
     legajosRetenidos: retenidas.length,
     costoDelAnio,
     diasExtraPromedio: facturas.length === 0 ? 0 : Math.round((diasExtra / facturas.length) * 10) / 10,

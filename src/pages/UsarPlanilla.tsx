@@ -14,7 +14,7 @@ function hoyLocal(): string {
 }
 
 /**
- * Cargar la planilla real (hoja Diario en CSV) para ver los pendientes, alertas e
+ * Cargar la planilla real (el Excel completo o la hoja Diario en CSV) para ver los pendientes, alertas e
  * informes con datos verdaderos. Se procesa solo en este navegador.
  */
 export default function UsarPlanilla() {
@@ -32,7 +32,7 @@ export default function UsarPlanilla() {
     setError(null)
     setCargando(true)
     try {
-      const texto = await leerArchivo(archivo)
+      const texto = await leerArchivo(archivo, /diario/i)
       const resultado = importarPlanilla(texto, hoyLocal())
       // Con Google no se reemplazan los datos de la empresa: primero se muestra qué se va a pasar
       if (!conGoogle) usarPlanilla(resultado, archivo.name)
@@ -107,18 +107,16 @@ export default function UsarPlanilla() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardTitulo>1. Descargá la hoja Diario</CardTitulo>
+          <CardTitulo>1. Descargá la planilla</CardTitulo>
           <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
-            <li>Abrí la planilla de control en Google Sheets y pasate a la pestaña <strong>Diario</strong>.</li>
+            <li>Abrí la planilla de control en Google Sheets.</li>
             <li>
-              Menú <strong>Archivo → Descargar → Valores separados por comas (.csv)</strong>. Se descarga solo la hoja que
-              tenés abierta.
+              Menú <strong>Archivo → Descargar → Microsoft Excel (.xlsx)</strong>. Se toma sola la pestaña <strong>Diario</strong>.
             </li>
             <li>Arrastrá el archivo acá al lado (o tocá para elegirlo).</li>
           </ol>
           <p className="mt-4 text-xs text-slate-500">
-            Si trabajás con Excel: <strong>Guardar como → CSV UTF-8</strong> estando en la hoja Diario. Se espera el
-            mismo orden de columnas que la planilla (C = Sucursal, O = Estado).
+            También sirve un CSV de la hoja Diario. Se espera el mismo orden de columnas que la planilla (C = Sucursal, O = Estado).
           </p>
           <p className="mt-2 text-xs text-slate-500">
             <strong>Reclamos (opcional):</strong> si agregás a la planilla las columnas <strong>S</strong> "Reclamado" (una x),{' '}
@@ -139,11 +137,11 @@ export default function UsarPlanilla() {
           }`}
         >
           <Upload className="h-8 w-8 text-marca" />
-          <span className="font-semibold">{cargando ? 'Leyendo…' : '2. Soltá acá el CSV de la hoja Diario'}</span>
+          <span className="font-semibold">{cargando ? 'Leyendo…' : '2. Soltá acá el Excel de la planilla'}</span>
           <span className="text-xs text-slate-500">o tocá para elegirlo</span>
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="sr-only"
             onChange={(e) => void procesar(e.target.files?.[0])}
           />

@@ -60,7 +60,9 @@ export interface Cambio {
   nuevo?: Comprobante
 }
 
-export function aplicarCambiosEnGoogle(cambios: Cambio[]): Promise<{ comprobantes: Comprobante[]; ahora: string }> {
+export function aplicarCambiosEnGoogle(
+  cambios: Cambio[],
+): Promise<{ comprobantes: Comprobante[]; ahora: string; errores?: { id: string; mensaje: string }[] }> {
   return llamar('aplicarCambios', cambios)
 }
 
@@ -81,8 +83,9 @@ export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nue
   return llamar('sincronizarDesdePlanilla', lista)
 }
 
-export function guardarAseguradorasEnGoogle(lista: Aseguradora[]): Promise<number> {
-  return llamar('guardarAseguradoras', lista)
+/** Agrega compañías nuevas; con completarExistentes, también completa CUIT, razón social, plazo y correos. */
+export function guardarAseguradorasEnGoogle(lista: Aseguradora[], completarExistentes = false): Promise<number> {
+  return llamar('guardarAseguradoras', lista, completarExistentes)
 }
 
 /** Sube un PDF o una foto al Drive de la empresa, en la carpeta de la factura. */

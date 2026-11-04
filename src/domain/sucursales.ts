@@ -9,6 +9,7 @@
 import { diffDias, enMes, anioDe } from '../lib/fechas'
 import { calcularSemaforo, DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from './semaforo'
 import { costoDemora, type ParametrosImpacto } from './impacto'
+import { saldoFactura } from './importes'
 import type { Comprobante, Sucursal } from './tipos'
 
 export type NivelEscaneo = 'en_plazo' | 'atrasado' | 'critico'
@@ -100,7 +101,7 @@ export function rankingSucursales(
         criticos: niveles.filter((n) => n === 'critico').length,
         compromisosVencidos: propias.filter((c) => compromisoVencido(c, fechaCorte)).length,
         ncSinInformar: propias.filter((c) => c.tipo === 'NC' && c.ncInformada === false).length,
-        retenido: pendientes.reduce((s, c) => s + c.total, 0),
+        retenido: pendientes.reduce((s, c) => s + saldoFactura(c), 0),
         costoDemora: facturas.reduce((s, c) => s + costoDemora(c, fechaCorte, parametros), 0),
       }
     })

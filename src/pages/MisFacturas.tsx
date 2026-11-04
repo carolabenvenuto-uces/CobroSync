@@ -6,6 +6,7 @@ import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
 import { diasDeEspera } from '../domain/sucursales'
+import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
@@ -54,6 +55,7 @@ const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; ic
 export default function MisFacturas() {
   const { sucursal, hoy, abrirLegajo, misNotificaciones } = useApp()
   const comprobantes = useComprobantes()
+  const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
   const [grupo, setGrupo] = useState<Grupo | 'todas'>('todas')
   const [modalNc, setModalNc] = useState(false)
   const [busqueda, setBusqueda] = useState('')
@@ -101,7 +103,19 @@ export default function MisFacturas() {
         </div>
       ),
     },
-    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap">{x.c.siniestro}</span> },
+    {
+      clave: 'siniestro',
+      titulo: 'Siniestro',
+      celda: (x) => {
+        const n = porSiniestro.get(claveSiniestro(x.c)) ?? 0
+        return (
+          <span className="whitespace-nowrap">
+            {x.c.siniestro}
+            {n > 1 && <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600" title="Facturas del mismo siniestro (facturación parcial)">{n} facturas</span>}
+          </span>
+        )
+      },
+    },
     { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {

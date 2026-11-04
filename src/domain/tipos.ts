@@ -92,6 +92,8 @@ export interface Documento {
   archivo?: string
   /** link al archivo en el Drive de la empresa (con Google) */
   url?: string
+  /** si el documento tiene varias páginas o fotos, todas (la primera también está en archivo/url) */
+  adjuntos?: { archivo: string; url?: string }[]
   /** por qué se observó (ilegible, sin firma, no corresponde…) */
   motivo?: string
 }
@@ -157,6 +159,17 @@ export interface Comprobante {
   /** en una NC: si la sucursal avisó a auditoría (o auditoría ya la revisó) */
   ncInformada: boolean | null
   compromiso: Compromiso | null
+  /**
+   * la sucursal avisó una nota de crédito para esta factura (la NC llega después con el ERP):
+   * total (anula la factura) o parcial por un importe
+   */
+  anulacionInformada?: { fecha: string; motivo: string; parcial?: boolean; importe?: number } | null
+  /** lo que restan las notas de crédito parciales vinculadas */
+  acreditado?: number | null
+  /** lo que efectivamente cobró (si no se indica, el saldo) */
+  importeCobrado?: number | null
+  /** percepciones de IIBB de la factura (vienen del ERP): no se acreditan en la nota de crédito */
+  percepciones?: number | null
   /** reclamos a la compañía (facturas vencidas) */
   reclamos: Reclamo[]
   observaciones: string

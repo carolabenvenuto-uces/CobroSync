@@ -2,11 +2,12 @@
  * Cálculos financieros: lo que hoy hacen las hojas "Saldos" y "Cobros Previstos"
  * con fórmulas, pero calculado siempre a partir de los comprobantes.
  *
- * Fórmula base (la misma de la planilla):
- *   Pendiente = Facturado + Notas de crédito (negativas) − Cobrado
+ * Pendiente = lo que falta cobrar de cada factura abierta (su saldo: total menos notas de crédito
+ * parciales). Las facturas anuladas no suman, aunque la nota de crédito no incluya percepciones.
  */
 import { enMes, diffDias, semanaDelMes, semanasDelMes } from '../lib/fechas'
 import { calcularSemaforo, estaVencido } from './semaforo'
+import { importeCobrado, saldoFactura } from './importes'
 import type { Aseguradora, CobroPrevisto, Comprobante } from './tipos'
 
 export interface Totales {
@@ -22,6 +23,7 @@ export function calcularTotales(comprobantes: Comprobante[], fechaCorte: string)
   let notasCredito = 0
   let cobrado = 0
   let vencido = 0
+  let pendiente = 0
 
   for (const c of comprobantes) {
     if (c.tipo === 'NC') {
@@ -29,11 +31,12 @@ export function calcularTotales(comprobantes: Comprobante[], fechaCorte: string)
       continue
     }
     facturado += c.total
-    if (c.estado === 'cobrada') cobrado += c.total
-    if (estaVencido(c, fechaCorte)) vencido += c.total
+    cobrado += importeCobrado(c)
+    pendiente += saldoFactura(c)
+    if (estaVencido(c, fechaCorte)) vencido += saldoFactura(c)
   }
 
-  return { facturado, notasCredito, cobrado, pendiente: facturado + notasCredito - cobrado, vencido }
+  return { facturado, notasCredito, cobrado, pendiente, vencido }
 }
 
 export interface TotalesMes {
@@ -50,7 +53,7 @@ export function totalesDelMes(comprobantes: Comprobante[], anio: number, mes: nu
   for (const c of comprobantes) {
     if (c.tipo === 'NC' && enMes(c.fecha, anio, mes)) notasCredito += c.total
     if (c.tipo === 'FC' && enMes(c.fecha, anio, mes)) facturado += c.total
-    if (c.estado === 'cobrada' && enMes(c.fechaCobro, anio, mes)) cobrado += c.total
+    if (c.estado === 'cobrada' && enMes(c.fechaCobro, anio, mes)) cobrado += importeCobrado(c)
   }
   return { facturado, notasCredito, cobrado }
 }
@@ -114,7 +117,7 @@ export function serieSemanalDelMes(comprobantes: Comprobante[], anio: number, me
     if (c.tipo !== 'FC') continue
     if (enMes(c.fecha, anio, mes)) serie[semanaDelMes(c.fecha) - 1].facturado += c.total
     if (c.estado === 'cobrada' && enMes(c.fechaCobro, anio, mes)) {
-      serie[semanaDelMes(c.fechaCobro) - 1].cobrado += c.total
+      serie[semanaDelMes(c.fechaCobro) - 1].cobrado += importeCobrado(c)
     }
   }
   return serie
@@ -152,7 +155,7 @@ export function proyeccionDelMes(
 
   for (const c of comprobantes) {
     if (c.tipo === 'FC' && c.estado === 'presentada' && enMes(c.vencimiento, anio, mes)) {
-      semanas[semanaDelMes(c.vencimiento) - 1].porVencimiento += c.total
+      semanas[semanaDelMes(c.vencimiento) - 1].porVencimiento += saldoFactura(c)
     }
   }
   for (const cp of cobrosPrevistos) {

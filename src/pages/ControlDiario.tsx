@@ -8,6 +8,7 @@ import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
+import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
@@ -19,7 +20,7 @@ import { leerArchivo } from '../services/planilla'
 const mesDeFecha = (iso: string) => `${iso.slice(0, 7)} · ${MESES[Number(iso.slice(5, 7)) - 1]}`
 
 function avisoNc(c: Comprobante): string {
-  if (c.tipo !== 'NC') return ''
+  if (c.tipo === 'FC') return c.anulacionInformada && c.estado !== 'anulada' ? 'Anulación informada' : c.acreditado ? 'NC parcial' : ''
   return c.ncInformada ? 'Informada' : 'Sin aviso'
 }
 
@@ -28,13 +29,14 @@ function avisoNc(c: Comprobante): string {
  * Para Gerencia es "Buscar una factura": la misma tabla, solo para consultar.
  */
 export default function ControlDiario() {
-  const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante } = useApp()
+  const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante, actualizarComprobante, registrarEvento } = useApp()
   const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params] = useSearchParams()
   const soloConsulta = rol === 'gerencia'
   // Gerencia filtra la sucursal desde la columna: busca siempre en todas
   const comprobantes = soloConsulta ? datos!.comprobantes : filtradosPorSucursal
+  const porSiniestro = useMemo(() => contarPorSiniestro(datos!.comprobantes), [datos])
   const entradaErp = useRef<HTMLInputElement>(null)
   const [mensajeErp, setMensajeErp] = useState<{ texto: string; error?: boolean } | null>(null)
 
@@ -54,11 +56,24 @@ export default function ControlDiario() {
   async function cargarErp(archivo: File | undefined) {
     if (!archivo) return
     try {
-      const texto = await leerArchivo(archivo)
+      const texto = await leerArchivo(archivo, /quiter|erp|factur/i)
       const r = importarErp(texto, datos!.comprobantes, aseguradoras, meta.sucursales, hoy)
       r.nuevas.forEach(agregarComprobante)
+      // Notas de crédito que la sucursal había avisado: total → anula; parcial → resta del saldo
+      r.vinculadas.forEach(({ facturaId, ncId, tipo, importe }) => {
+        const nc = r.nuevas.find((x) => x.id === ncId)
+        const factura = datos!.comprobantes.find((x) => x.id === facturaId)
+        const numero = nc ? formatoComprobante(nc) : ''
+        if (tipo === 'total') {
+          actualizarComprobante(facturaId, { estado: 'anulada', anulacionInformada: null })
+          registrarEvento(facturaId, 'nota_credito', `Anulada con la nota de crédito ${numero} (vinculada al cargar el ERP)`)
+        } else {
+          actualizarComprobante(facturaId, { acreditado: (factura?.acreditado ?? 0) + importe, anulacionInformada: null })
+          registrarEvento(facturaId, 'nota_credito', `Nota de crédito parcial ${numero} por ${formatoPesos(importe)} (vinculada al cargar el ERP)`)
+        }
+      })
       setMensajeErp({
-        texto: `Se agregaron ${r.nuevas.length} facturas nuevas en "Doc. pendiente". ${r.repetidas} ya estaban cargadas y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.`,
+        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.`,
       })
     } catch (e) {
       setMensajeErp({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
@@ -91,7 +106,19 @@ export default function ControlDiario() {
       filtro: (x) => nombreCompania[x.c.aseguradoraId] ?? x.c.aseguradoraId,
       celda: (x) => <span className="whitespace-nowrap">{nombreCompania[x.c.aseguradoraId]}</span>,
     },
-    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.siniestro}</span> },
+    {
+      clave: 'siniestro',
+      titulo: 'Siniestro',
+      celda: (x) => {
+        const n = porSiniestro.get(claveSiniestro(x.c)) ?? 0
+        return (
+          <span className="whitespace-nowrap text-slate-600">
+            {x.c.siniestro}
+            {n > 1 && <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600" title="Facturas del mismo siniestro (facturación parcial)">{n} facturas</span>}
+          </span>
+        )
+      },
+    },
     { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
     {
       clave: 'total',
@@ -140,8 +167,8 @@ export default function ControlDiario() {
       titulo: 'Aviso de NC',
       filtro: (x) => avisoNc(x.c),
       celda: (x) =>
-        x.c.tipo === 'NC' ? (
-          <span className={`whitespace-nowrap text-xs ${x.c.ncInformada ? 'text-slate-600' : 'font-semibold text-sem-rojo'}`}>{avisoNc(x.c)}</span>
+        avisoNc(x.c) ? (
+          <span className={`whitespace-nowrap text-xs ${avisoNc(x.c) === 'Sin aviso' ? 'font-semibold text-sem-rojo' : 'text-slate-600'}`}>{avisoNc(x.c)}</span>
         ) : null,
     },
     { clave: 'obs', titulo: 'Observaciones', celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
@@ -191,12 +218,12 @@ export default function ControlDiario() {
             {!soloConsulta && <FiltroSucursal />}
             {!soloConsulta && (
               <>
-                <input ref={entradaErp} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
+                <input ref={entradaErp} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
                 <button
                   type="button"
                   onClick={() => entradaErp.current?.click()}
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche hover:bg-fondo"
-                  title="Elegí la exportación de facturas del ERP guardada como CSV"
+                  title="Elegí el Excel de facturas exportado del ERP (.xlsx o CSV)"
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
                 </button>

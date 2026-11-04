@@ -76,6 +76,16 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
     return { color: 'neutro', etapa: 'no_aplica', responsable: null, detalle: ['Factura anulada con nota de crédito'] }
   }
   if (c.estado === 'cobrada') return { color: 'verde', etapa: 'cobrado', responsable: null, detalle: ['Cobrada'] }
+  // La sucursal avisó que se anula toda la factura: ya no se le pide documentación; Auditoría confirma
+  // (una NC parcial no frena nada: la factura sigue vigente por su saldo)
+  if (c.anulacionInformada && !c.anulacionInformada.parcial) {
+    return {
+      color: 'neutro',
+      etapa: 'no_aplica',
+      responsable: 'auditoria',
+      detalle: [`La sucursal informó que se anula con nota de crédito: ${c.anulacionInformada.motivo}`],
+    }
+  }
 
   const documentos = documentosDelLegajo(c.documentos)
   const conProblemas = documentos.filter((d) => d.estado === 'observado')

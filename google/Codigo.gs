@@ -37,7 +37,8 @@ var HOJAS = {
       'total', 'fechaDrive', 'subidoPor', 'fechaPresentacion', 'vencimiento', 'fechaCobro', 'estado',
       'ncReferencia', 'ncInformada', 'observaciones',
       // Estas columnas guardan listas en formato JSON (no editarlas a mano)
-      'compromiso', 'reclamos', 'documentos', 'eventos', 'actualizado',
+      'compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada',
+      'acreditado', 'importeCobrado', 'percepciones', 'actualizado',
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
@@ -47,8 +48,9 @@ var HOJAS = {
   },
 };
 
-var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos'];
+var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada'];
 var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'];
+var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones']; // vacío = sin dato
 var PLAZO_DOCUMENTACION = 7; // días que tiene la sucursal
 var DIAS_GERENCIA_GENERAL = 21; // desde el día 22 se avisa también a Gerencia General
 
@@ -103,7 +105,7 @@ function obtenerDatos() {
  * - evento: un mensaje nuevo para la conversación (se agrega, nunca reemplaza)
  * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Auditoría.
  */
-var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado'];
+var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada'];
 
 function aplicarCambios(cambios) {
   var usuario = usuarioActual_();
@@ -111,7 +113,21 @@ function aplicarCambios(cambios) {
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     var tocadas = {};
+    var errores = [];
     cambios.forEach(function (op) {
+      // Cada cambio se aplica por separado: si uno no se puede guardar, los demás sí
+      try { aplicarUno_(hoja, usuario, op, tocadas); } catch (e) {
+        errores.push({ id: op.id, mensaje: e.message });
+        var f = buscarFila_(hoja, op.id);
+        if (f) tocadas[op.id] = f; // se devuelve como está guardada, para que la pantalla vuelva atrás
+      }
+    });
+    var actualizadas = Object.keys(tocadas).map(function (id) { return leerFila_(hoja, tocadas[id]); });
+    return { comprobantes: actualizadas, ahora: ahora_(), errores: errores };
+  });
+}
+
+function aplicarUno_(hoja, usuario, op, tocadas) {
       var fila = buscarFila_(hoja, op.id);
       if (op.nuevo) {
         if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar facturas nuevas.');
@@ -149,10 +165,6 @@ function aplicarCambios(cambios) {
       }
       escribirFila_(hoja, HOJAS.comprobantes, fila, c);
       tocadas[op.id] = fila;
-    });
-    var actualizadas = Object.keys(tocadas).map(function (id) { return leerFila_(hoja, tocadas[id]); });
-    return { comprobantes: actualizadas, ahora: ahora_() };
-  });
 }
 
 /** Lo que cambió desde la última consulta (la aplicación pregunta cada minuto). */
@@ -271,7 +283,7 @@ function sincronizarDesdePlanilla(lista) {
  * Agrega las compañías que todavía no estén en la pestaña "Aseguradoras" (al pasar la planilla
  * de control a CobroSync). No cambia las que ya están cargadas. Solo Auditoría.
  */
-function guardarAseguradoras(lista) {
+function guardarAseguradoras(lista, completarExistentes) {
   var usuario = usuarioActual_();
   if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar compañías.');
   return conBloqueo_(function () {
@@ -279,9 +291,17 @@ function guardarAseguradoras(lista) {
     var existentes = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
     var nuevas = 0;
     lista.forEach(function (a) {
-      if (existentes[a.id]) return;
-      escribirFila_(hoja, HOJAS.aseguradoras, null, a);
-      nuevas++;
+      var actual = existentes[a.id];
+      if (!actual) {
+        escribirFila_(hoja, HOJAS.aseguradoras, null, a);
+        nuevas++;
+        return;
+      }
+      // Con la pestaña CP o Info. Compañías: completa razón social, CUIT, plazo y correos
+      if (completarExistentes) {
+        ['razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias'].forEach(function (k) { if (a[k]) actual[k] = a[k]; });
+        escribirFila_(hoja, HOJAS.aseguradoras, buscarFila_(hoja, a.id), actual);
+      }
     });
     return nuevas;
   });
@@ -324,6 +344,8 @@ function avisosDiarios() {
     var hoja = hoja_(HOJAS.comprobantes);
     leerHoja_(HOJAS.comprobantes).forEach(function (c, i) {
       if (!esperaALaSucursal_(c)) return;
+      // Si la sucursal avisó para cuándo lo sube y esa fecha no pasó, no se la reclama
+      if (c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy) return;
       var dias = diasEntre_(c.fecha, hoy);
       var eventos = c.eventos || [];
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
@@ -433,8 +455,9 @@ function filaAObjeto_(h, fila) {
   h.columnas.forEach(function (col, i) {
     var v = fila[i];
     if (v instanceof Date) v = Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
-    if (COLUMNAS_JSON.indexOf(col) >= 0) v = v ? JSON.parse(v) : (col === 'compromiso' ? null : []);
+    if (COLUMNAS_JSON.indexOf(col) >= 0) v = v ? JSON.parse(v) : (col === 'compromiso' || col === 'anulacionInformada' ? null : []);
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);
+    else if (COLUMNAS_NUMERO_OPCIONAL.indexOf(col) >= 0) v = v === '' ? null : Number(v);
     else if (col === 'ncInformada') v = v === '' ? null : v === true || v === 'TRUE' || v === 'SI';
     else if (v === '') v = null;
     else if (typeof v === 'number') v = String(v);
@@ -495,7 +518,7 @@ function mismaSucursal_(a, b) {
 }
 
 function esperaALaSucursal_(c) {
-  if (c.tipo !== 'FC' || c.estado === 'anulada' || c.estado === 'cobrada' || c.fechaPresentacion) return false;
+  if (c.tipo !== 'FC' || c.estado === 'anulada' || c.estado === 'cobrada' || c.fechaPresentacion || (c.anulacionInformada && !c.anulacionInformada.parcial)) return false;
   var docs = c.documentos || [];
   return docs.length === 0 || docs.some(function (d) { return d.estado === 'faltante' || d.estado === 'observado'; });
 }

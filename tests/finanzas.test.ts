@@ -19,10 +19,10 @@ describe('calcularTotales (sobre los datos de demo)', () => {
     expect(totales.pendiente).toBeCloseTo(totales.facturado + totales.notasCredito - totales.cobrado, 2)
   })
 
-  it('el pendiente coincide con la suma de facturas sin cobrar ni anular', () => {
+  it('el pendiente coincide con el saldo de las facturas sin cobrar ni anular', () => {
     const sinCobrar = comprobantes
       .filter((c) => c.tipo === 'FC' && c.estado !== 'cobrada' && c.estado !== 'anulada')
-      .reduce((s, c) => s + c.total, 0)
+      .reduce((s, c) => s + c.total - (c.acreditado ?? 0), 0)
     expect(totales.pendiente).toBeCloseTo(sinCobrar, 2)
   })
 

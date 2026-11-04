@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { formatoComprobante, formatoPesos } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
@@ -11,57 +10,51 @@ const MOTIVOS_NC = [
   'Error en el importe: se refactura',
   'Factura vencida: se refactura con fecha actual',
   'Pedido de la compañía tras un rechazo',
+  'Repuesto o mano de obra que no corresponde (parcial)',
   'Otro motivo',
 ]
 
 /**
- * La sucursal informa una nota de crédito vinculada a la factura que anula.
- * Hoy esto se entera auditoría tarde (o nunca); acá queda registrado y avisado.
+ * La sucursal avisa que una factura se anula con una nota de crédito.
+ * Hoy Auditoría se entera tarde (o nunca); acá queda registrado y avisado.
  */
 export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
-  const { datos, hoy, usuario, agregarComprobante, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, hoy, actualizarComprobante, registrarEvento } = useApp()
   const comprobantes = useComprobantes()
   const facturas = useMemo(
     () =>
       comprobantes
-        .filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada' && diffDias(c.fecha, hoy) <= 120)
+        .filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada' && !c.anulacionInformada && diffDias(c.fecha, hoy) <= 120)
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [comprobantes, hoy],
   )
   const [facturaId, setFacturaId] = useState(facturas[0]?.id ?? '')
   const [motivo, setMotivo] = useState(MOTIVOS_NC[0])
   const [comentario, setComentario] = useState('')
+  const [parcial, setParcial] = useState(false)
+  const [importeTexto, setImporteTexto] = useState('')
   const [listo, setListo] = useState(false)
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
+
+  /**
+   * La sucursal avisa que la factura se anula y por qué. La nota de crédito real llega con la
+   * exportación del ERP y se vincula sola con este aviso (ver services/erp.ts).
+   */
+  const importeParcial = Number(importeTexto.replace(/\./g, '').replace(',', '.')) || 0
+  const facturaElegida = facturas.find((f) => f.id === facturaId)
+  const parcialValido = !parcial || (importeParcial > 0 && (!facturaElegida || importeParcial < facturaElegida.total))
 
   function informar() {
     const factura = facturas.find((f) => f.id === facturaId)
     if (!factura) return
     const texto = `${motivo}${comentario ? `: ${comentario}` : ''}`
-    const nc: Comprobante = {
-      ...factura,
-      id: `nc-demo-${Date.now()}`,
-      tipo: 'NC',
-      fecha: hoy,
-      numero: factura.numero + 1000,
-      total: -factura.total,
-      fechaDrive: null,
-      subidoPor: null,
-      fechaPresentacion: null,
-      vencimiento: null,
-      fechaCobro: null,
-      estado: 'nota_credito',
-      ncReferencia: factura.id,
-      ncInformada: true,
-      compromiso: null,
-      reclamos: [],
-      observaciones: texto,
-      documentos: [],
-      eventos: [{ fecha: hoy, autor: usuario, area: 'sucursal', tipo: 'nota_credito', texto: `Informó la NC: ${texto}` }],
+    if (parcial) {
+      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto, parcial: true, importe: importeParcial } })
+      registrarEvento(factura.id, 'nota_credito', `Informó una nota de crédito parcial por ${formatoPesos(importeParcial)}. ${texto}`)
+    } else {
+      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto }, compromiso: null })
+      registrarEvento(factura.id, 'nota_credito', `Informó que se anula toda la factura con nota de crédito. ${texto}`)
     }
-    agregarComprobante(nc)
-    actualizarComprobante(factura.id, { estado: 'anulada', compromiso: null, observaciones: texto })
-    registrarEvento(factura.id, 'nota_credito', `Anulada con nota de crédito. ${texto}`)
     setListo(true)
   }
 
@@ -77,7 +70,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
 
         {listo ? (
           <div className="mt-4 space-y-4 text-sm">
-            <p>Listo: auditoría ya ve la nota de crédito y la factura quedó anulada. Queda registrado en la conversación del legajo.</p>
+            <p>Listo: Auditoría ya lo ve. {parcial ? 'La factura sigue vigente por el saldo.' : 'La factura deja de figurar como pendiente de documentación.'} Cuando la nota de crédito llegue con el ERP, queda vinculada a esta factura.</p>
             <button type="button" onClick={onCerrar} className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white">
               Cerrar
             </button>
@@ -94,6 +87,37 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
                 ))}
               </select>
             </label>
+            <fieldset className="block text-xs font-semibold text-slate-500">
+              La nota de crédito
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {[
+                  { valor: false, texto: 'Anula toda la factura' },
+                  { valor: true, texto: 'Es parcial (por un importe)' },
+                ].map((o) => (
+                  <button
+                    key={o.texto}
+                    type="button"
+                    onClick={() => setParcial(o.valor)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${parcial === o.valor ? 'border-marca bg-marca/10 text-marca' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    {o.texto}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {parcial && (
+              <label className="block text-xs font-semibold text-slate-500">
+                Importe de la nota de crédito
+                <input
+                  inputMode="decimal"
+                  value={importeTexto}
+                  onChange={(e) => setImporteTexto(e.target.value)}
+                  placeholder="Ej.: 150.000,00"
+                  className={`${claseSelect} mt-1 w-full`}
+                />
+                <span className="mt-1 block font-normal text-slate-500">La factura sigue vigente por el saldo y se le sigue pidiendo la documentación.</span>
+              </label>
+            )}
             <label className="block text-xs font-semibold text-slate-500">
               Motivo
               <select className={`${claseSelect} mt-1 w-full`} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
@@ -115,7 +139,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
             <button
               type="button"
               onClick={informar}
-              disabled={!facturaId}
+              disabled={!facturaId || !parcialValido}
               className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white hover:bg-marca-oscuro disabled:bg-slate-200"
             >
               Informar a auditoría

@@ -53,8 +53,18 @@ export interface ResultadoImportacion {
   ultimoMes: number
 }
 
-/** Lee el archivo como texto: prueba UTF-8 y, si hay caracteres rotos, Windows-1252 (CSV de Excel). */
-export async function leerArchivo(archivo: File): Promise<string> {
+/**
+ * Lee el archivo como texto. Acepta el Excel tal cual (.xlsx: se toma la hoja cuyo nombre coincida
+ * con "hoja", o la primera) o un CSV (prueba UTF-8 y, si hay caracteres rotos, Windows-1252).
+ */
+export async function leerArchivo(archivo: File, hoja?: RegExp): Promise<string> {
+  if (/\.xlsx$/i.test(archivo.name)) {
+    const { xlsxACsv } = await import('../lib/xlsx')
+    return xlsxACsv(archivo, hoja)
+  }
+  if (/\.xls$/i.test(archivo.name)) {
+    throw new Error('Ese archivo es de un Excel viejo (.xls). Abrilo y guardalo como "Libro de Excel (.xlsx)" o como CSV.')
+  }
   const bytes = await archivo.arrayBuffer()
   const utf8 = new TextDecoder('utf-8').decode(bytes)
   return utf8.includes('�') ? new TextDecoder('windows-1252').decode(bytes) : utf8

@@ -235,8 +235,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       ...columnas,
     ]
     const delTema = (t: 'rechazo' | 'documentacion') => urgentes.filter((u) => u.p.tema === t)
-    const temaActivo = tema ?? (delTema('rechazo').length ? 'rechazo' : 'documentacion')
-    const listaTema = delTema(temaActivo).filter((u) => !soloMipyme || u.p.mipyme)
+    const temaActivo = tema
+    const listaTema = (temaActivo ? delTema(temaActivo) : []).filter((u) => !soloMipyme || u.p.mipyme)
     const TEMAS = [
       {
         clave: 'rechazo' as const,
@@ -308,7 +308,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
               <button
                 key={t.clave}
                 type="button"
-                onClick={() => setTema(t.clave)}
+                onClick={() => setTema(temaActivo === t.clave ? null : t.clave)}
                 className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition ${t.color} ${temaActivo === t.clave ? 'ring-2 ring-marca' : ''}`}
               >
                 <Icono className="mt-1 h-6 w-6 shrink-0" />
@@ -325,6 +325,12 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           })}
         </div>
 
+        {!temaActivo ? (
+          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            Tocá una de las dos tarjetas para ver las facturas. Empezá por las que tienen la etiqueta <strong>MiPyME</strong>.
+          </p>
+        ) : (
+        <>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
           <span className="text-slate-600">
             Arriba van las <strong>MiPyME</strong> (tienen 5 días y la compañía las acepta o rechaza en pocos días); después, lo más atrasado.
@@ -346,6 +352,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} · ${TEMAS.find((t) => t.clave === temaActivo)!.titulo.toLowerCase()}`}
           vacio={temaActivo === 'rechazo' ? 'No tenés rechazos ni observaciones. ¡Bien!' : 'No tenés documentación por vencer ni vencida. ¡Bien!'}
         />
+        </>
+        )}
       </>
     )
   }
@@ -373,29 +381,29 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setCargaMasiva(true)}
-          className="flex items-center gap-4 rounded-xl border-2 border-marca/30 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
+          className="flex items-center gap-4 rounded-xl bg-marca p-4 text-left text-white shadow-md transition hover:bg-marca-oscuro"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca/10">
-            <FileUp className="h-6 w-6 text-marca" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <FileUp className="h-6 w-6 text-white" />
           </span>
           <span>
             <span className="block text-base font-bold">Subir varios archivos de una vez</span>
-            <span className="block text-xs text-slate-600">
-              Soltá todos los PDF juntos: cada uno va a su factura por el número que tiene en el nombre (por ejemplo 35-00011032 orden.pdf).
+            <span className="block text-xs text-white/85">
+              Soltá todos los PDF juntos: cada uno va a su factura por el número que tiene en el nombre (por ejemplo 35-11032 orden.pdf).
             </span>
           </span>
         </button>
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          className="flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
+          className="flex items-center gap-4 rounded-xl bg-noche p-4 text-left text-white shadow-md transition hover:bg-slate-800"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sem-rojo/10">
-            <Receipt className="h-6 w-6 text-sem-rojo" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
+            <Receipt className="h-6 w-6 text-white" />
           </span>
           <span>
             <span className="block text-base font-bold">Informar una nota de crédito</span>
-            <span className="block text-xs text-slate-600">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
+            <span className="block text-xs text-white/80">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
           </span>
         </button>
       </div>
@@ -442,7 +450,10 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             firmada. Si es <strong className="rounded bg-marca px-1 text-white">MiPyME</strong>, solo{' '}
             <strong className="text-base">{plazosActuales().mipyme} días</strong>: subilas primero.
           </p>
-          <p className="mt-1 text-xs">Si no podés a tiempo, entrá a la factura y tocá "No lo puedo subir todavía" para avisar la fecha.</p>
+          <p className="mt-1 text-xs">
+            ¿No llegás? Entrá a la factura y tocá <strong>"Avisar fecha estimada de entrega"</strong>: elegís el motivo y el día en que vas a tener la
+            documentación. Auditoría ya sabe cuándo esperarla y la factura no te aparece en Para resolver hasta ese día.
+          </p>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             {(['faltante', 'observado', 'en_revision', 'ok'] as const).map((e) => (
               <span key={e} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-semibold ${ESTADO_DOC[e].clase}`}>

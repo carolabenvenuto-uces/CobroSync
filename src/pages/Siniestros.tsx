@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -10,7 +10,7 @@ import type { Comprobante, Documento } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
 
-const POR_PAGINA = 20
+const POR_COMPANIA = 15
 const normalizar = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
 const ESTILO_DOC: Record<Documento['estado'], string> = {
@@ -31,7 +31,11 @@ interface Grupo {
   notas: Comprobante[]
   ultimaFecha: string
   /** lo que le queda por hacer a la sucursal en este siniestro */
-  pendientes: string[]
+  pendientes: { tipo: 'doc' | 'refacturar'; texto: string }[]
+  /** tiene alguna factura sin cobrar (ni anulada) */
+  enCurso: boolean
+  /** saldo sin cobrar de las facturas vigentes */
+  saldo: number
   /** para que sepa en qué está (no tiene que hacer nada) */
   info: string[]
 }
@@ -45,9 +49,7 @@ export default function Siniestros() {
   const { datos, hoy, sucursal, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const [busqueda, setBusqueda] = useState('')
-  const [filtro, setFiltro] = useState<'todos' | 'pendiente' | 'nc'>('pendiente')
-  const [companiaElegida, setCompaniaElegida] = useState('')
-  const [pagina, setPagina] = useState(1)
+  const [estado, setEstado] = useState<'curso' | 'cobrados' | 'todos'>('curso')
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
   const grupos = useMemo(() => {
@@ -67,6 +69,8 @@ export default function Siniestros() {
         ultimaFecha: '',
         pendientes: [],
         info: [],
+        enCurso: false,
+        saldo: 0,
       }
       g.facturas.push(c)
       if (c.fecha > g.ultimaFecha) g.ultimaFecha = c.fecha
@@ -87,15 +91,15 @@ export default function Siniestros() {
         const numero = formatoComprobante(f)
         if (esperaALaSucursal(f, hoy)) {
           for (const d of f.documentos) {
-            if (d.estado === 'faltante') g.pendientes.push(`Subir la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}`)
-            if (d.estado === 'observado') g.pendientes.push(`Reemplazar la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}${d.motivo ? ` (${d.motivo.toLowerCase()})` : ''}`)
+            if (d.estado === 'faltante') g.pendientes.push({ tipo: 'doc', texto: `Subir la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}` })
+            if (d.estado === 'observado') g.pendientes.push({ tipo: 'doc', texto: `Reemplazar la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}${d.motivo ? ` (${d.motivo.toLowerCase()})` : ''}` })
           }
         }
         if ((f.acreditado ?? 0) > 0 && !refacturada(f)) {
-          g.pendientes.push(`${numero} tuvo una nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}: si esa parte se vuelve a facturar, falta la factura nueva`)
+          g.pendientes.push({ tipo: 'refacturar', texto: `${numero} tuvo una nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}: si esa parte se vuelve a facturar, falta la factura nueva` })
         }
         if (f.estado === 'anulada' && !refacturada(f) && diffDias(f.fecha, hoy) <= 60) {
-          g.pendientes.push(`${numero} se anuló con una nota de crédito: si se refactura, falta la factura nueva`)
+          g.pendientes.push({ tipo: 'refacturar', texto: `${numero} se anuló con una nota de crédito: si se refactura, falta la factura nueva` })
         }
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
@@ -105,6 +109,11 @@ export default function Siniestros() {
           )
         }
       }
+    }
+    for (const g of mapa.values()) {
+      const vigentes = g.facturas.filter((f) => f.estado !== 'anulada')
+      g.enCurso = vigentes.some((f) => f.estado !== 'cobrada')
+      g.saldo = vigentes.reduce((t, f) => t + saldoSinCobro(f), 0)
     }
     // Ordenados por compañía; dentro de cada una, primero lo que tiene algo para hacer y lo más nuevo
     return [...mapa.values()].sort(
@@ -116,30 +125,48 @@ export default function Siniestros() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comprobantes, datos, hoy])
 
-  const conNotas = (g: Grupo) => g.notas.length > 0 || g.facturas.some((f) => f.estado === 'anulada' || (f.acreditado ?? 0) > 0 || f.anulacionInformada)
-  const companias = useMemo(() => {
-    const m = new Map<string, { nombre: string; cantidad: number }>()
-    for (const g of grupos) m.set(g.companiaId, { nombre: g.compania, cantidad: (m.get(g.companiaId)?.cantidad ?? 0) + 1 })
-    return [...m.entries()].sort((a, b) => a[1].nombre.localeCompare(b[1].nombre, 'es'))
-  }, [grupos])
+  const tieneNc = (g: Grupo) => g.notas.length > 0 || g.facturas.some((f) => f.estado === 'anulada' || (f.acreditado ?? 0) > 0 || f.anulacionInformada)
+  const docPendiente = (g: Grupo) => g.pendientes.filter((x) => x.tipo === 'doc').length
+  const porRefacturar = (g: Grupo) => g.pendientes.filter((x) => x.tipo === 'refacturar').length
 
-  const visibles = useMemo(() => {
-    const t = normalizar(busqueda)
-    return grupos.filter((g) => {
-      if (companiaElegida && g.companiaId !== companiaElegida) return false
-      if (filtro === 'pendiente' && g.pendientes.length === 0) return false
-      if (filtro === 'nc' && !conNotas(g)) return false
-      if (t.length < 3) return true
-      return [g.siniestro, g.patente, g.compania, ...g.facturas.map((f) => `${f.puntoVenta}${String(f.numero).padStart(8, '0')} ${f.numero} ${f.ref}`)]
-        .map(normalizar)
-        .some((x) => x.includes(t))
-    })
+  const [companiasAbiertas, setCompaniasAbiertas] = useState<Set<string>>(new Set())
+  const [siniestrosAbiertos, setSiniestrosAbiertos] = useState<Set<string>>(new Set())
+  const [verTodos, setVerTodos] = useState<Set<string>>(new Set())
+  const alternar = (set: Set<string>, setter: (s: Set<string>) => void, clave: string) => {
+    const n = new Set(set)
+    if (n.has(clave)) n.delete(clave)
+    else n.add(clave)
+    setter(n)
+  }
+
+  const texto = normalizar(busqueda)
+  const buscando = texto.length >= 3
+  const delEstado = (g: Grupo) => (estado === 'todos' ? true : estado === 'curso' ? g.enCurso : !g.enCurso)
+  const coincide = (g: Grupo) =>
+    !buscando ||
+    [g.siniestro, g.patente, g.compania, ...g.facturas.map((f) => `${f.puntoVenta}${String(f.numero).padStart(8, '0')} ${f.puntoVenta}${f.numero} ${f.numero} ${f.ref}`)]
+      .map(normalizar)
+      .some((x) => x.includes(texto))
+
+  const cuantos = { curso: grupos.filter((g) => g.enCurso).length, cobrados: grupos.filter((g) => !g.enCurso).length, todos: grupos.length }
+
+  // Agrupados por compañía, cada una plegable
+  const porCompania = useMemo(() => {
+    const m = new Map<string, { id: string; nombre: string; grupos: Grupo[] }>()
+    for (const g of grupos) {
+      if (!delEstado(g) || !coincide(g)) continue
+      const x = m.get(g.companiaId) ?? { id: g.companiaId, nombre: g.compania, grupos: [] }
+      x.grupos.push(g)
+      m.set(g.companiaId, x)
+    }
+    return [...m.values()]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupos, busqueda, filtro, companiaElegida])
+  }, [grupos, estado, texto])
 
-  const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
-  const actual = Math.min(pagina, totalPaginas)
-  const deLaPagina = visibles.slice((actual - 1) * POR_PAGINA, actual * POR_PAGINA)
+  const totalVisibles = porCompania.reduce((t, c) => t + c.grupos.length, 0)
+  // Al buscar se abre todo lo que coincide; si hay una sola compañía, también
+  const companiaAbierta = (id: string) => buscando || porCompania.length === 1 || companiasAbiertas.has(id)
+  const siniestroAbierto = (g: Grupo, cantidad: number) => siniestrosAbiertos.has(g.clave) || (buscando && cantidad <= 3)
 
   const documento = (d: Documento) => {
     const enlaces = d.adjuntos ?? (d.url ? [{ archivo: d.archivo ?? '', url: d.url }] : [])
@@ -157,156 +184,194 @@ export default function Siniestros() {
     )
   }
 
+  const etiqueta = (clase: string, t: string) => <span className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-bold ${clase}`}>{t}</span>
+
+  const detalle = (g: Grupo) => (
+    <div className="border-t border-slate-100">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-[13px]">
+          <tbody className="divide-y divide-slate-100">
+            {g.facturas.map((f) => (
+              <tr key={f.id} onClick={() => abrirLegajo(f.id)} className="cursor-pointer hover:bg-marca/5">
+                <td className="whitespace-nowrap px-4 py-2 font-medium">{formatoComprobante(f)}</td>
+                <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(f.fecha)}</td>
+                <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">{formatoPesos(f.total)}</td>
+                <td className="px-2 py-2">
+                  <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex flex-wrap gap-1">{f.documentos.map(documento)}</div>
+                </td>
+              </tr>
+            ))}
+            {g.notas.map((nc) => (
+              <tr key={nc.id} onClick={() => abrirLegajo(nc.id)} className="cursor-pointer bg-red-50/40 hover:bg-marca/5">
+                <td className="whitespace-nowrap px-4 py-2 font-medium text-red-800">{formatoComprobante(nc)}</td>
+                <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(nc.fecha)}</td>
+                <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-red-800">−{formatoPesos(Math.abs(nc.total))}</td>
+                <td colSpan={2} className="px-2 py-2 text-xs text-slate-600">
+                  {(() => {
+                    const f = g.facturas.find((x) => x.id === nc.ncReferencia)
+                    if (!f) return 'Nota de crédito'
+                    return f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`
+                  })()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {g.pendientes.length > 0 && (
+        <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          <div className="mb-1 font-bold">Te queda pendiente:</div>
+          <ul className="space-y-1">
+            {g.pendientes.map((a) => (
+              <li key={a.texto} className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a.texto}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {g.info.length > 0 && (
+        <ul className="space-y-1 border-t border-slate-100 bg-fondo px-4 py-2 text-xs text-slate-600">
+          {g.info.map((a) => (
+            <li key={a}>{a}</li>
+          ))}
+        </ul>
+      )}
+      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Tocá una factura para abrirla, ver sus documentos o subir lo que falta.</p>
+    </div>
+  )
+
   return (
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo="Todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y las notas de crédito"
+        subtitulo="Buscá un siniestro para ver todas sus facturas, sus documentos (también los ya aprobados) y las notas de crédito"
         sucursal={rol !== 'sucursal'}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-72 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => {
-              setBusqueda(e.target.value)
-              setPagina(1)
-            }}
-            placeholder="Buscá por siniestro, patente o número de factura"
-            className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-          />
-        </label>
-        <select
-          aria-label="Compañía"
-          value={companiaElegida}
-          onChange={(e) => {
-            setCompaniaElegida(e.target.value)
-            setPagina(1)
-          }}
-          className="rounded-lg border border-slate-200 bg-white py-2 pl-2 pr-7 text-sm font-semibold shadow-sm"
-        >
-          <option value="">Todas las compañías</option>
-          {companias.map(([id, x]) => (
-            <option key={id} value={id}>
-              {x.nombre} ({x.cantidad})
-            </option>
-          ))}
-        </select>
+      {/* Lo primero es buscar: casi siempre se viene a ver un siniestro puntual */}
+      <div className="relative mb-3">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscá por número de siniestro, patente o número de factura"
+          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-base shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+        />
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {(
           [
-            ['pendiente', 'Tengo algo para hacer'],
-            ['nc', 'Anuladas o con nota de crédito'],
-            ['todos', 'Todos'],
+            ['curso', 'En curso', 'tienen alguna factura sin cobrar'],
+            ['cobrados', 'Terminados', 'todo cobrado o anulado'],
+            ['todos', 'Todos', ''],
           ] as const
-        ).map(([clave, texto]) => (
+        ).map(([clave, t, ayuda]) => (
           <button
             key={clave}
             type="button"
-            onClick={() => {
-              setFiltro(clave)
-              setPagina(1)
-            }}
-            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${filtro === clave ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}
+            onClick={() => setEstado(clave)}
+            title={ayuda}
+            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${estado === clave ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}
           >
-            {texto}
+            {t} ({cuantos[clave].toLocaleString('es-AR')})
           </button>
         ))}
-        <span className="text-sm text-slate-500">{visibles.length.toLocaleString('es-AR')} siniestros</span>
+        <span className="text-xs text-slate-500">
+          {estado === 'curso' ? 'En curso: tienen alguna factura sin cobrar.' : estado === 'cobrados' ? 'Terminados: todo cobrado o anulado.' : ''}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {deLaPagina.map((g, i) => {
-          const nuevaCompania = i === 0 || deLaPagina[i - 1].companiaId !== g.companiaId
-          const total = g.facturas.filter((f) => f.estado !== 'anulada').reduce((t, f) => t + saldoSinCobro(f), 0)
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <span>Qué significan las etiquetas:</span>
+        {etiqueta('bg-amber-100 text-amber-900', 'Falta documentación')}
+        <span>subir o reemplazar un documento ·</span>
+        {etiqueta('bg-red-100 text-red-800', 'Falta refacturar')}
+        <span>hubo nota de crédito y no está la factura nueva ·</span>
+        {etiqueta('bg-slate-100 text-slate-700', 'Con nota de crédito')}
+        <span>solo para que lo sepas</span>
+      </div>
+
+      <div className="space-y-2">
+        {porCompania.map((c) => {
+          const abierta = companiaAbierta(c.id)
+          const conDoc = c.grupos.filter((g) => docPendiente(g) > 0).length
+          const conRef = c.grupos.filter((g) => porRefacturar(g) > 0).length
+          const saldo = c.grupos.reduce((t, g) => t + g.saldo, 0)
+          const todos = verTodos.has(c.id) || buscando
+          const lista = todos ? c.grupos : c.grupos.slice(0, POR_COMPANIA)
           return (
-            <div key={g.clave}>
-            {nuevaCompania && <h2 className="mb-2 mt-4 text-sm font-bold uppercase tracking-wide text-slate-500 first:mt-0">{g.compania}</h2>}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
-                <div>
-                  <span className="font-bold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</span>
-                  <span className="ml-2 text-sm text-slate-500">
-                    {g.compania}
-                    {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
-                  </span>
-                </div>
-                <span className="text-sm font-semibold tabular-nums">{formatoPesos(total)}</span>
-              </div>
-              <table className="w-full text-left text-[13px]">
-                <tbody className="divide-y divide-slate-100">
-                  {g.facturas.map((f) => (
-                    <tr key={f.id} onClick={() => abrirLegajo(f.id)} className="cursor-pointer hover:bg-marca/5">
-                      <td className="whitespace-nowrap px-4 py-2 font-medium">{formatoComprobante(f)}</td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(f.fecha)}</td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">{formatoPesos(f.total)}</td>
-                      <td className="px-2 py-2">
-                        <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex flex-wrap gap-1">{f.documentos.map(documento)}</div>
-                      </td>
-                    </tr>
-                  ))}
-                  {g.notas.map((nc) => (
-                    <tr key={nc.id} onClick={() => abrirLegajo(nc.id)} className="cursor-pointer bg-red-50/40 hover:bg-marca/5">
-                      <td className="whitespace-nowrap px-4 py-2 font-medium text-red-800">{formatoComprobante(nc)}</td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(nc.fecha)}</td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-red-800">{formatoPesos(nc.total)}</td>
-                      <td colSpan={2} className="px-2 py-2 text-xs text-slate-600">
-                        {(() => {
-                          const f = g.facturas.find((x) => x.id === nc.ncReferencia)
-                          if (!f) return 'Nota de crédito'
-                          return f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`
-                        })()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {g.pendientes.length > 0 && (
-                <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-                  <div className="mb-1 font-bold">Te queda pendiente:</div>
-                  <ul className="space-y-1">
-                    {g.pendientes.map((a) => (
-                      <li key={a} className="flex items-start gap-1.5">
-                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a}
+            <section key={c.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() => alternar(companiasAbiertas, setCompaniasAbiertas, c.id)}
+                aria-expanded={abierta}
+                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-fondo ${abierta ? 'border-b border-slate-200 bg-fondo' : ''}`}
+              >
+                {abierta ? <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" /> : <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />}
+                <span className="text-base font-bold">{c.nombre}</span>
+                <span className="text-sm text-slate-500">
+                  {c.grupos.length} {c.grupos.length === 1 ? 'siniestro' : 'siniestros'}
+                </span>
+                {conDoc > 0 && etiqueta('bg-amber-100 text-amber-900', `${conDoc} con documentación pendiente`)}
+                {conRef > 0 && etiqueta('bg-red-100 text-red-800', `${conRef} por refacturar`)}
+                {saldo > 0 && <span className="ml-auto text-sm font-semibold tabular-nums">{formatoPesos(saldo)} sin cobrar</span>}
+              </button>
+              {abierta && (
+                <ul className="divide-y divide-slate-100">
+                  {lista.map((g) => {
+                    const abierto = siniestroAbierto(g, c.grupos.length)
+                    return (
+                      <li key={g.clave}>
+                        <button
+                          type="button"
+                          onClick={() => alternar(siniestrosAbiertos, setSiniestrosAbiertos, g.clave)}
+                          aria-expanded={abierto}
+                          className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left hover:bg-marca/5"
+                        >
+                          {abierto ? <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />}
+                          <span className="font-semibold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</span>
+                          <span className="text-sm text-slate-500">
+                            {g.patente ? `${g.patente} · ` : ''}
+                            {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'} · {formatoFecha(g.ultimaFecha)}
+                          </span>
+                          {docPendiente(g) > 0 && etiqueta('bg-amber-100 text-amber-900', 'Falta documentación')}
+                          {porRefacturar(g) > 0 && etiqueta('bg-red-100 text-red-800', 'Falta refacturar')}
+                          {porRefacturar(g) === 0 && tieneNc(g) && etiqueta('bg-slate-100 text-slate-700', 'Con nota de crédito')}
+                          {!g.enCurso && etiqueta('bg-emerald-50 text-emerald-800', 'Terminado')}
+                          {g.saldo > 0 && <span className="ml-auto text-sm tabular-nums text-slate-700">{formatoPesos(g.saldo)}</span>}
+                        </button>
+                        {abierto && detalle(g)}
                       </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {g.info.length > 0 && (
-                <ul className="space-y-1 border-t border-slate-100 bg-fondo px-4 py-2 text-xs text-slate-600">
-                  {g.info.map((a) => (
-                    <li key={a}>{a}</li>
-                  ))}
+                    )
+                  })}
+                  {!todos && c.grupos.length > POR_COMPANIA && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => alternar(verTodos, setVerTodos, c.id)}
+                        className="w-full px-4 py-2.5 text-center text-sm font-semibold text-marca hover:bg-marca/5"
+                      >
+                        Ver los otros {c.grupos.length - POR_COMPANIA} siniestros de {c.nombre}
+                      </button>
+                    </li>
+                  )}
                 </ul>
               )}
-            </div>
-            </div>
+            </section>
           )
         })}
-        {deLaPagina.length === 0 && <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">{filtro === 'pendiente' && !busqueda ? 'No te queda nada pendiente en tus siniestros. ¡Todo al día!' : 'No hay siniestros con esta búsqueda.'}</p>}
+        {totalVisibles === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+            {buscando ? 'No hay siniestros con esta búsqueda. Probá con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
+          </p>
+        )}
       </div>
-
-      {totalPaginas > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-slate-500">
-            Página {actual} de {totalPaginas}
-          </span>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setPagina(actual - 1)} disabled={actual === 1} className="rounded-lg border border-slate-200 bg-white p-1.5 disabled:opacity-40" aria-label="Página anterior">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => setPagina(actual + 1)} disabled={actual === totalPaginas} className="rounded-lg border border-slate-200 bg-white p-1.5 disabled:opacity-40" aria-label="Página siguiente">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
     </>
   )
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.7] - 2026-11-04
+
+### Corregido
+- **Ordenar por una columna ya no "pierde" filas:** las que no tienen dato (por ejemplo, sin fecha de subida) quedan siempre al final, en las dos direcciones. Un tercer toque en el título vuelve al orden original.
+- **Filtros:** cada filtro ofrece solo las opciones que existen con los demás filtros puestos, con cuántas filas hay de cada una ("Factura (812)"). Un filtro que tiene una sola opción (por ejemplo, Comprobante cuando no hay notas de crédito en la lista) no se muestra. Las opciones de Estado siguen el orden en que avanza una factura, y las de Fecha, el orden de los meses.
+
 ## [0.12.6] - 2026-11-04
 
 ### Cambiado

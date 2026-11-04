@@ -7,6 +7,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  ListTodo,
   FileText,
   FolderOpen,
   HandCoins,
@@ -23,6 +24,7 @@ import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { calcularSemaforo } from '../../domain/semaforo'
 import { paraResolver } from '../../domain/resolver'
+import { pedidosAbiertos, pedidosParaSucursal } from '../../domain/pedidos'
 import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
@@ -34,7 +36,7 @@ interface ItemMenu {
   ruta: string
   etiqueta: string
   icono: ComponentType<{ className?: string }>
-  contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver'
+  contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver' | 'pedidos'
 }
 
 /**
@@ -61,6 +63,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         { ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' },
         { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
         { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
+        { ruta: '/app/pedidos', etiqueta: 'Pedidos a sucursales', icono: ListTodo, contador: 'pedidos' },
         { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
       ],
@@ -100,20 +103,24 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const comprobantes = useComprobantes()
 
   const contadores = useMemo(() => {
-    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0 }
+    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0, pedidos: 0 }
     const sectores = calcularAvisos(comprobantes, hoy)
     return {
       // En la sucursal, "Mis facturas" cuenta lo que tiene tareas: para subir y rechazos u observaciones
       pendientes:
         rol === 'sucursal'
-          ? comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada', 'doc_observada'].includes(calcularSemaforo(c, hoy).etapa)).length
+          ? new Set([
+              ...comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada', 'doc_observada'].includes(calcularSemaforo(c, hoy).etapa)).map((c) => c.id),
+              ...pedidosParaSucursal(comprobantes, hoy).map((p) => p.c.id),
+            ]).size
           : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
       alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
         return e !== null && RECLAMO_PARA_ACTUAR.includes(e)
       }).length,
-      presentar: comprobantes.filter((c) => c.tipo === 'FC' && calcularSemaforo(c, hoy).etapa === 'pres_pendiente').length,
+      presentar: comprobantes.filter((c) => c.tipo === 'FC' && (c.reenviar || calcularSemaforo(c, hoy).etapa === 'pres_pendiente')).length,
+      pedidos: pedidosAbiertos(comprobantes, hoy).length,
       resolver: paraResolver(comprobantes, hoy).length,
     }
   }, [datos, comprobantes, hoy, rol])

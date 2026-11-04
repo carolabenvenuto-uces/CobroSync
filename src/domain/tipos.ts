@@ -80,6 +80,12 @@ export interface Aseguradora {
   plazoPagoDias: number
   /** es gran empresa y recibe factura de crédito MiPyME (si no se indica, sí) */
   recibeFce?: boolean
+  /** cómo se le presentan las facturas: por mail o en su plataforma (si no se indica, mail) */
+  canal?: 'mail' | 'portal'
+  /** dirección de la plataforma de la compañía, si presenta por portal */
+  portalUrl?: string
+  /** días después del vencimiento antes de reclamar (compañías que suelen pagar; si no se indica, 0) */
+  toleranciaReclamo?: number
 }
 
 export interface Sucursal {
@@ -131,12 +137,37 @@ export interface Evento {
   texto: string
 }
 
+/**
+ * Qué respondió la compañía a un reclamo: pasa al circuito de pagos, pide reenviar la
+ * documentación o pide refacturar (monto u otro dato mal).
+ */
+export type RespuestaReclamo = 'pagos' | 'documentacion' | 'refacturar'
+
 /** Un reclamo a la compañía por una factura vencida. */
 export interface Reclamo {
   fecha: string
   medio: 'mail' | 'portal' | 'telefono'
   autor: string
   nota: string
+  respuesta?: { fecha: string; tipo: RespuestaReclamo; nota?: string } | null
+}
+
+/**
+ * Lo que Auditoría le pide a la sucursal sobre una factura (o una nota de crédito): corregir un
+ * error, refacturar, avisar una NC. Queda abierto hasta que la sucursal responde y Auditoría lo cierra.
+ */
+export type TipoPedido = 'error_factura' | 'refacturar' | 'aviso_nc' | 'otro'
+
+export interface Pedido {
+  id: string
+  fecha: string
+  tipo: TipoPedido
+  detalle: string
+  autor: string
+  /** lo que contestó la sucursal (la factura nueva, la NC, una aclaración) */
+  respuesta?: { fecha: string; autor: string; texto: string } | null
+  /** Auditoría lo dio por resuelto */
+  cerrado?: { fecha: string; autor: string } | null
 }
 
 export interface Compromiso {
@@ -190,6 +221,12 @@ export interface Comprobante {
   observaciones: string
   documentos: Documento[]
   eventos: Evento[]
+  /** pedidos de Auditoría a la sucursal (errores, refacturación) */
+  pedidos?: Pedido[]
+  /** quién de Auditoría la está viendo ahora (para que dos personas no hagan lo mismo a la vez) */
+  atendiendo?: { por: string; hasta: string } | null
+  /** la compañía pidió que se reenvíe la documentación: vuelve a la lista de Presentar */
+  reenviar?: boolean | null
 }
 
 export interface CobroPrevisto {

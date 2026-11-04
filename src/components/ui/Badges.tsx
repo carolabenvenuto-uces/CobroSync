@@ -1,3 +1,4 @@
+import { Zap } from 'lucide-react'
 import type { ColorSemaforo, EstadoComprobante, Etapa } from '../../domain/tipos'
 
 /**
@@ -112,4 +113,20 @@ export function Chip({ children, tono = 'gris' }: { children: string; tono?: 'gr
     celeste: 'bg-sky-500/10 text-sky-800',
   }[tono]
   return <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${clases}`}>{children}</span>
+}
+
+/**
+ * Marca de factura MiPyME: un rayo (menos días de plazo, va primero) y la palabra, en una pastilla
+ * con borde. Sin signos sueltos que se confundan con los números de la factura.
+ */
+export function EtiquetaMipyme({ texto = 'MiPyME', chica = false }: { texto?: string; chica?: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-noche/40 bg-white font-bold text-noche ${chica ? 'px-1 py-0 text-[10px]' : 'px-1.5 py-0.5 text-[11px]'}`}
+      title="Factura MiPyME: tiene menos días de plazo"
+    >
+      <Zap className={chica ? 'h-2.5 w-2.5' : 'h-3 w-3'} aria-hidden="true" />
+      {texto}
+    </span>
+  )
 }

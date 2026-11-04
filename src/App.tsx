@@ -11,6 +11,7 @@ import ControlDiario from './pages/ControlDiario'
 import Impacto from './pages/Impacto'
 import Ingreso from './pages/Ingreso'
 import Manual from './pages/Manual'
+import Pedidos from './pages/Pedidos'
 import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
 import Presentar from './pages/Presentar'
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
         <Route path="ajustes" element={auditoria(<Ajustes />)} />
         <Route path="presentar" element={auditoria(<Presentar />)} />
+        <Route path="pedidos" element={auditoria(<Pedidos />)} />
         <Route path="siniestros" element={<Siniestros />} />
         {/* "Para resolver" quedó dentro de Mis facturas (tarjetas de rechazos y por vencer) */}
         <Route path="resolver" element={<Navigate to="/app" replace />} />

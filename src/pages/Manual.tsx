@@ -3,7 +3,7 @@ import { reportarProblemaEnGoogle } from '../services/google'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Building2, ClipboardCheck, LifeBuoy, Send, Store } from 'lucide-react'
 import { Isologo } from '../components/Logo'
-import { BadgeEtapa } from '../components/ui/Badges'
+import { BadgeEtapa, EtiquetaMipyme } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
 import { plazosActuales } from '../domain/plazos'
 import { AUTORIA, PRODUCTO, VERSION } from '../lib/marca'
@@ -128,7 +128,7 @@ const SECCIONES: Seccion[] = [
             <Etiqueta clase="bg-slate-100 text-slate-700">Gris</Etiqueta> informativo; no hace falta hacer nada.
           </li>
           <li>
-            <Etiqueta clase="bg-noche text-white">! MiPyME</Etiqueta> factura MiPyME: tiene menos días de plazo, conviene hacerla primero.
+            <EtiquetaMipyme /> factura MiPyME: tiene menos días de plazo, conviene hacerla primero.
           </li>
         </ul>
       </>
@@ -396,31 +396,37 @@ const SECCIONES: Seccion[] = [
   {
     id: 'aud-base',
     sector: 'auditoria',
-    titulo: 'Auditoría (en preparación)',
+    titulo: 'Auditoría: el día a día',
     contenido: () => (
       <>
-        <p>Esta parte del manual se completa cuando termine la revisión de las pantallas de Auditoría. Por ahora, en resumen:</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
+        <ul className="list-disc space-y-1.5 pl-5">
           <li>
-            <Pantalla>Avisos</Pantalla>: lo que hay que hacer hoy, por sector.
+            <Pantalla>Control diario</Pantalla>: la carga del Excel del ERP (las filas van solas a la pestaña Quiter de la planilla) y la
+            revisión de documentos: aprobar u observar cada uno.
           </li>
           <li>
-            <Pantalla>Pendientes de sucursales</Pantalla>: facturas esperando documentación, en plazo, atrasadas o críticas.
+            <Pantalla>Presentar</Pantalla>: lo aprobado, agrupado por compañía y por canal (mail o plataforma). Por compañía: elegir las
+            facturas, <strong>descargar todos los documentos en un .zip</strong> (cada PDF con el número de factura en el nombre), armar el
+            mail o abrir la plataforma, y marcarlas como presentadas. Vuelven acá las que la compañía pidió reenviar.
           </li>
           <li>
-            <Pantalla>Control diario</Pantalla>: la carga del Excel del ERP y la revisión de documentos (aprobar u observar).
+            <Pantalla>Vencidas y reclamos</Pantalla>: reclamos en lote y la respuesta de la compañía con un clic: pasa a pagos (se espera
+            un mes), reenviar la documentación (vuelve a Presentar) o refacturar (pedido a la sucursal).
           </li>
           <li>
-            <Pantalla>Presentar</Pantalla>: las facturas aprobadas, para armar el mail de presentación y marcarlas de una vez.
+            <Pantalla>Pedidos a sucursales</Pantalla>: lo que se les pidió (errores de factura, refacturaciones, notas de crédito sin
+            avisar), con los días de espera. Lo respondido queda para revisar y dar por resuelto. Los pedidos sin responder también salen
+            en el mail de los lunes de cada sucursal.
           </li>
           <li>
-            <Pantalla>Vencidas y reclamos</Pantalla>: reclamos a las compañías, en lote.
-          </li>
-          <li>
-            <Pantalla>Compañías</Pantalla>, <Pantalla>Usar mi planilla</Pantalla> y <Pantalla>Ajustes</Pantalla>: datos de las compañías,
-            sincronización con la planilla de control, plazos y textos de las notificaciones.
+            <Pantalla>Compañías</Pantalla>: por dónde se presenta a cada una y los días de tolerancia antes de reclamar a las que suelen
+            pagar.
           </li>
         </ul>
+        <Nota>
+          Para no pisarse: al abrir una factura, o al preparar una presentación, queda tomada unos minutos a nombre de quien la abrió. La otra
+          persona ve el aviso "La está presentando…" y no puede elegirla en Presentar.
+        </Nota>
       </>
     ),
   },

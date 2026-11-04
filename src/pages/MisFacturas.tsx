@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
-import { Chip } from '../components/ui/Badges'
+import { Chip, EtiquetaMipyme } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
@@ -11,6 +11,7 @@ import { esMipyme, plazosActuales, plazoSucursal } from '../domain/plazos'
 import { diasDeEspera } from '../domain/sucursales'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import { paraResolver } from '../domain/resolver'
+import { NOMBRE_PEDIDO, pedidosParaSucursal } from '../domain/pedidos'
 import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
@@ -55,8 +56,8 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
   },
   {
     clave: 'rechazos',
-    titulo: 'Rechazos y observaciones',
-    ayuda: 'Documentos que Auditoría o la compañía no aceptaron: hay que reemplazarlos',
+    titulo: 'Rechazos y pedidos de Auditoría',
+    ayuda: 'Documentos no aceptados, errores de factura, refacturaciones y notas de crédito sin avisar',
     icono: PencilLine,
     color: 'border-sem-rojo/60 bg-sem-rojo/5',
     acento: 'text-red-800',
@@ -155,9 +156,17 @@ export default function MisFacturas() {
       .filter((u) => u.x)
   }, [comprobantes, filas, hoy])
   const motivo = new Map(urgentes.map((u) => [u.x.c.id, u.p]))
+  // Pedidos de Auditoría sin responder (también los de notas de crédito que entraron sin aviso)
+  const pedidos = useMemo(() => pedidosParaSucursal(comprobantes, hoy), [comprobantes, hoy])
+  const pedidoDe = new Map(pedidos.map((p) => [p.c.id, p]))
 
   const listaDe = (l: Lista) => {
-    if (l === 'rechazos') return urgentes.filter((u) => u.p.tema === 'rechazo').map((u) => u.x)
+    if (l === 'rechazos') {
+      const rechazos = urgentes.filter((u) => u.p.tema === 'rechazo').map((u) => u.x)
+      const ya = new Set(rechazos.map((x) => x.c.id))
+      const conPedido = [...pedidoDe.values()].filter((p) => !ya.has(p.c.id)).map((p) => ({ c: p.c, s: calcularSemaforo(p.c, hoy) }))
+      return [...rechazos, ...conPedido]
+    }
     if (l === 'vencer') return urgentes.filter((u) => u.p.tema === 'documentacion').map((u) => u.x)
     return filas.filter((x) => ETAPAS[l].includes(x.s.etapa))
   }
@@ -195,8 +204,8 @@ export default function MisFacturas() {
           <div>
             <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
             {esMipyme(x.c) && (
-              <div className="mt-0.5 inline-block whitespace-nowrap rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
-                ! MiPyME · {plazoSucursal(x.c)} d
+              <div className="mt-0.5">
+                <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} />
               </div>
             )}
           </div>
@@ -224,7 +233,8 @@ export default function MisFacturas() {
       movil: 'ancha',
       celda: (x) => (
         <div className="flex flex-wrap gap-1.5">
-          {(['factura', 'orden'] as const).map((tipo) => {
+          {x.c.tipo === 'NC' && <span className="text-xs text-slate-600">Nota de crédito: falta responder el pedido</span>}
+          {x.c.tipo === 'FC' && (['factura', 'orden'] as const).map((tipo) => {
             const d = x.c.documentos.find((doc) => doc.tipo === tipo)
             const estado = d?.estado ?? 'faltante'
             const e = ESTADO_DOC[estado]
@@ -254,7 +264,7 @@ export default function MisFacturas() {
       titulo: '',
       movil: 'accion',
       celda: (x) =>
-        x.s.etapa === 'en_revision' ? (
+        x.s.etapa === 'en_revision' && !pedidoDe.has(x.c.id) ? (
           <Chip tono="celeste">En revisión</Chip>
         ) : (
           <button
@@ -266,7 +276,9 @@ export default function MisFacturas() {
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro"
           >
             <FileUp className="h-4 w-4" />
-            {x.s.etapa === 'doc_observada' ? (
+            {pedidoDe.has(x.c.id) ? (
+              'Responder'
+            ) : x.s.etapa === 'doc_observada' ? (
               'Corregir'
             ) : (
               <>
@@ -287,7 +299,7 @@ export default function MisFacturas() {
       orden: (x) => (esMipyme(x.c) ? 1 : 0),
       celda: (x) =>
         esMipyme(x.c) ? (
-          <span className="whitespace-nowrap rounded-md bg-noche px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
+          <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} días`} />
         ) : (
           <span className="text-xs text-slate-500">Común</span>
         ),
@@ -299,7 +311,17 @@ export default function MisFacturas() {
       orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
       celda: (x) => {
         const p = motivo.get(x.c.id)
-        return p ? <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span> : null
+        const pedido = pedidoDe.get(x.c.id)
+        return (
+          <span className="flex flex-col gap-0.5">
+            {p && <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>}
+            {pedido && (
+              <span className="text-xs font-semibold text-red-800">
+                Pedido de Auditoría · {NOMBRE_PEDIDO[pedido.pedido.tipo]}: {pedido.pedido.detalle}
+              </span>
+            )}
+          </span>
+        )
       },
     },
     ...columnas,
@@ -373,7 +395,7 @@ export default function MisFacturas() {
               <span className="min-w-0 flex-1">
                 <span className={`flex flex-wrap items-center gap-2 font-bold ${l.acento}`}>
                   {l.titulo}
-                  {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
+                  {mipymes > 0 && <EtiquetaMipyme texto={`${mipymes} MiPyME`} />}
                 </span>
                 <span className="block text-xs text-slate-600">{l.ayuda}</span>
               </span>
@@ -487,7 +509,7 @@ export default function MisFacturas() {
               <strong>{p.comun} días</strong> desde la fecha de la factura para subir la <strong>factura</strong> y la <strong>orden firmada</strong>.
             </p>
             <p className="mt-2 text-sm text-slate-700">
-              Facturas <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>: <strong>{p.mipyme} días</strong>. Conviene subirlas primero.
+              Facturas <EtiquetaMipyme />: <strong>{p.mipyme} días</strong>. Conviene subirlas primero.
             </p>
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950">
               Si no es posible a tiempo: dentro de la factura, el botón <strong>"Avisar fecha estimada de entrega"</strong> permite indicar el motivo y

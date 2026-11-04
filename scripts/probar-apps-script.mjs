@@ -104,11 +104,16 @@ const contexto = {
   SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
-  DriveApp: { getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive } },
+  DriveApp: {
+    getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive },
+    getFileById: (id) => ({ getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b } }),
+  },
   Utilities: {
     formatDate: (d) => d.toISOString().slice(0, 10),
     newBlob: (_bytes, _mime, name) => ({ name }),
     base64Decode: (b) => Buffer.from(b, 'base64'),
+    base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
+    zip: (blobs, nombre) => ({ nombre, getBytes: () => Buffer.from(JSON.stringify(blobs.map((b) => b.name))) }),
   },
   MailApp: { sendEmail: (m) => mails.push(m) },
   ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create: () => {} }), everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
@@ -408,6 +413,31 @@ prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () =
   gs('resumenSemanal')
   esperar(!mails.some((m) => m.to === 'gerente.warnes@svaauto.com.ar'), 'le llegó un mail a una sucursal sin pendientes')
   esperar(mails.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), 'no le llegó a la que sí tiene')
+})
+prueba('pedidos: Auditoría pide; la sucursal responde pero no puede borrar ni inventar pedidos', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Rocamora' && x.tipo === 'FC')
+  gs('aplicarCambios', [{ id: c.id, campos: { pedidos: [{ id: 'p1', fecha: '2026-11-04', tipo: 'error_factura', detalle: 'El importe no coincide', autor: 'cualquiera' }] } }])
+  como('rocamora@svaauto.com.ar')
+  gs('aplicarCambios', [{ id: c.id, campos: { pedidos: [] } }])
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.pedidos.length === 1, 'la sucursal pudo borrar el pedido')
+  esperar(leido.pedidos[0].autor !== 'cualquiera', 'el pedido no quedó firmado por quien lo hizo')
+  gs('aplicarCambios', [{ id: c.id, campos: { pedidos: [{ ...leido.pedidos[0], respuesta: { texto: 'Se refacturó con la FC 35-12000', autor: 'otro' } }, { id: 'falso', tipo: 'otro', detalle: 'x' }] } }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.pedidos.length === 1 && leido.pedidos[0].respuesta.texto.includes('35-12000'), JSON.stringify(leido.pedidos))
+  esperar(leido.pedidos[0].respuesta.autor === 'Facturación Rocamora', 'la respuesta no la firma el servidor')
+})
+prueba('descargar los documentos de varias facturas en un .zip, con el número en cada nombre; la sucursal no puede', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo: 'factura', estado: 'ok', url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view' }] }])
+  const r = gs('descargarDocumentos', [c.id], 'Sancor 2026-11-04')
+  const nombres = JSON.parse(Buffer.from(r.base64, 'base64').toString())
+  esperar(r.nombre === 'Sancor 2026-11-04.zip' && r.cantidad === 1, JSON.stringify(r))
+  esperar(nombres[0] === `FC E ${c.puntoVenta}-${c.numero} factura.pdf`, nombres[0])
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('descargarDocumentos', [c.id], 'x'), 'Solo Auditoría')
 })
 prueba('un reporte técnico le llega solo a la desarrolladora', () => {
   como('rocamora@svaauto.com.ar')

@@ -101,6 +101,11 @@ export interface Documento {
   adjuntos?: { archivo: string; url?: string }[]
   /** por qué se observó (ilegible, sin firma, no corresponde…) */
   motivo?: string
+  /** quién lo subió y cuándo (cada documento, aunque se hayan subido juntos) */
+  subidoPor?: string
+  fecha?: string
+  /** cómo llegó: desde el legajo o en una carga de varios archivos (y si se asignó solo por el nombre) */
+  origen?: 'legajo' | 'varios' | 'varios-automatico'
 }
 
 export type AreaEvento = 'sucursal' | 'auditoria' | 'gerencia' | 'sistema'

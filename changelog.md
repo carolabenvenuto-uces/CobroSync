@@ -5,6 +5,7 @@
 ### Agregado (vista de la sucursal)
 - **Subir varios archivos de una vez:** se sueltan todos los escaneos juntos y CobroSync sugiere a qué factura va cada uno (por número de factura, siniestro, patente o referencia que tenga el nombre) y qué documento es. Se revisa y se sube todo; cada factura sigue con su legajo.
 - **Mis siniestros:** todas las facturas de cada siniestro con sus documentos (también los aprobados, con enlace para verlos), las notas de crédito y avisos de lo que puede quedar para refacturar (NC parcial, factura anulada sin la nueva).
+- **Cada documento muestra quién lo subió y cuándo**, también en la carga de varios archivos. Si CobroSync lo asignó solo por el nombre, Auditoría lo ve marcado para revisar que corresponda; se observa igual que siempre ("No corresponde a esta factura").
 - **Guía para nombrar los archivos** dentro de la carga (punto de venta y número, qué documento es, ejemplos).
 - **Para resolver primero:** arriba de Mis facturas, las observadas, las que pasaron el plazo y las que vencen en 2 días, con las MiPyME primero.
 - **Informar una nota de crédito** pasa a ser un botón grande, al lado de "Subir varios archivos".

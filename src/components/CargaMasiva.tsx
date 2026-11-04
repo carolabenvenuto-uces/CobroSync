@@ -90,6 +90,10 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                   archivo: adjuntos.length > 1 ? `${adjuntos[0].archivo} (+${adjuntos.length - 1})` : adjuntos[0].archivo,
                   url: adjuntos[0].url,
                   adjuntos: adjuntos.length > 1 ? adjuntos : undefined,
+                  subidoPor: usuario,
+                  fecha: hoy,
+                  // Si CobroSync la asignó por el nombre y nadie la cambió, Auditoría lo ve para revisarlo con atención
+                  origen: archivos.every((f) => f.por) ? 'varios-automatico' : 'varios',
                 }
               : d,
           )

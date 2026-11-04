@@ -131,6 +131,9 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         archivo: adjuntos.length > 1 ? `${adjuntos[0].archivo} (+${adjuntos.length - 1})` : adjuntos[0].archivo,
         url: adjuntos[0].url,
         adjuntos: adjuntos.length > 1 ? adjuntos : undefined,
+        subidoPor: usuario,
+        fecha: hoy,
+        origen: 'legajo',
       })
       guardarDocumentos(
         documentos.map((d): Documento => (tipos.includes(d.tipo) ? documento(d.tipo) : d)),
@@ -401,6 +404,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             ) : (
                               <div className="truncate text-xs text-slate-500">{d.archivo}</div>
                             ))}
+                          {d.subidoPor && d.estado !== 'faltante' && (
+                            <div className="text-[11px] text-slate-500">
+                              Subido por {d.subidoPor}
+                              {d.fecha ? ` el ${formatoFecha(d.fecha)}` : ''}
+                              {d.origen === 'varios' && ' · carga de varios archivos'}
+                              {d.origen === 'varios-automatico' && (
+                                <span className="font-semibold text-amber-800"> · asignado solo por el nombre del archivo: revisá que corresponda</span>
+                              )}
+                            </div>
+                          )}
                           {d.estado === 'observado' && d.motivo && <div className="text-xs font-semibold text-red-700">{d.motivo}</div>}
                         </div>
                       </div>

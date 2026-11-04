@@ -41,6 +41,9 @@ jobs:
       - name: Correr los tests
         run: npm test
 
+      - name: Probar el servidor de Google (planilla, Drive y mails simulados)
+        run: npm run test:apps-script
+
       - name: Compilar (TypeScript + Vite)
         run: npm run build
 

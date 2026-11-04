@@ -22,6 +22,7 @@ import {
 } from '../services/google'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
+import { NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
 
 export const TODAS_LAS_SUCURSALES = 'Todas'
 
@@ -49,6 +50,8 @@ export interface Notificacion {
   /** avisos a Gerencia: de qué tipo y de qué sucursal, para agruparlos */
   clase?: 'critica' | 'escalar'
   sucursal?: string
+  /** id de la compañía (los pedidos de apoyo se agrupan por compañía) */
+  compania?: string
   /** facturas que junta un aviso agrupado */
   facturas?: string[]
   /** si está, al tocar el aviso se abre esta pantalla en vez de una factura */
@@ -59,27 +62,31 @@ export interface Notificacion {
  * A Gerencia le llega un aviso por sucursal y por tipo, no uno por factura:
  * "Alvarez Thomas: 15 facturas pasaron a documentación crítica". Al tocarlo se abre la lista.
  */
-export function agruparGerencia(lista: Notificacion[]): Notificacion[] {
+export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<string, string> = {}): Notificacion[] {
   const grupos = new Map<string, Notificacion>()
   const resto: Notificacion[] = []
   for (const n of lista) {
-    if (n.para !== 'gerencia' || !n.clase || !n.sucursal) {
+    const agrupable = n.para === 'gerencia' && (n.clase === 'critica' ? !!n.sucursal : n.clase === 'escalar' && !!n.compania)
+    if (!agrupable) {
       resto.push(n)
       continue
     }
-    const clave = `${n.clase}|${n.sucursal}`
+    // Lo crítico se agrupa por sucursal; los pedidos de apoyo, por compañía
+    const clave = n.clase === 'critica' ? `critica|${n.sucursal}` : `escalar|${n.compania}`
     const g = grupos.get(clave)
     const facturas = [...new Set([...(g?.facturas ?? []), ...(n.facturas ?? [n.comprobanteId])])]
     const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
     const cant = facturas.length
+    const compania = nombresCompanias[n.compania ?? ''] ?? 'una compañía'
+    // Escrito como lo que Gerencia tiene que hacer, no como un listado
     const texto =
       n.clase === 'critica'
-        ? `${n.sucursal}: ${cant} ${cant === 1 ? 'factura pasó' : 'facturas pasaron'} a documentación crítica (más de 21 días)`
-        : `${n.sucursal}: ${cant} ${cant === 1 ? 'factura vencida' : 'facturas vencidas'} con 3 reclamos sin respuesta`
+        ? `Auditoría marcó como críticas ${cant === 1 ? 'una factura' : `${cant} facturas`} de ${n.sucursal}: falta la documentación hace más de 21 días. Pedile a la sucursal que la complete.`
+        : `Auditoría necesita tu apoyo con ${compania}: no responde los reclamos de ${cant === 1 ? 'una factura vencida' : `${cant} facturas vencidas`}.`
     const ruta =
       n.clase === 'critica'
-        ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal)}&estado=Cr%C3%ADtica`
-        : `/app/reclamos?sucursal=${encodeURIComponent(n.sucursal)}&estado=${encodeURIComponent('Escalar a gerencia')}`
+        ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal ?? '')}&estado=Cr%C3%ADtica`
+        : `/app/reclamos?compania=${encodeURIComponent(n.compania ?? '')}&estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`
     grupos.set(clave, {
       ...(g ?? n),
       // el id cambia cuando el grupo suma facturas: así vuelve a aparecer como no leído
@@ -111,7 +118,7 @@ function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): 
   }
   // Hasta 40 por destinatario, las más nuevas primero
   const porDestinatario = new Map<string, number>()
-  return conLeidas(agruparGerencia(lista), leidas)
+  return conLeidas(agruparGerencia(lista, nombresDe(d)), leidas)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .filter((n) => {
       const cant = (porDestinatario.get(n.para) ?? 0) + 1
@@ -119,6 +126,9 @@ function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): 
       return cant <= 40
     })
 }
+
+const nombresDe = (d: DatosApp | null | undefined): Record<string, string> =>
+  Object.fromEntries((d?.aseguradoras ?? []).map((a) => [a.id, a.nombre]))
 
 /** Marca como leídas las notificaciones que la persona ya leyó (en cualquier computadora). */
 function conLeidas(lista: Notificacion[], leidas: Set<string>): Notificacion[] {
@@ -152,7 +162,7 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   }
   const nReclamo = e.tipo === 'reclamo' ? Number(/Reclamo (\d+)/.exec(e.texto)?.[1] ?? 0) : 0
   if (nReclamo >= 3) {
-    lista.push({ ...base(), para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, texto: `Para escalar · ${numero} (${c.sucursal})` })
+    lista.push({ ...base(), para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, compania: c.aseguradoraId, texto: `Sin respuesta de la compañía · ${numero}` })
   }
   return lista
 }
@@ -354,7 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (nuevas.length) {
         setNotificaciones((l) => {
           const ids = new Set(l.map((n) => n.id))
-          return conLeidas(agruparGerencia([...nuevas.filter((n) => !ids.has(n.id)), ...l]), leidas.current)
+          return conLeidas(agruparGerencia([...nuevas.filter((n) => !ids.has(n.id)), ...l], nombresDe(datosRef.current)), leidas.current)
         })
       }
     }
@@ -445,7 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés
       const comprobante = datos?.comprobantes.find((c) => c.id === id)
       const avisos = comprobante ? crearNotificaciones(comprobante, evento) : []
-      if (avisos.length) setNotificaciones((lista) => agruparGerencia([...avisos, ...lista]))
+      if (avisos.length) setNotificaciones((lista) => agruparGerencia([...avisos, ...lista], nombresDe(datos)))
       encolar({ id, evento: { tipo, texto } })
       setDatos((actual) =>
         actual

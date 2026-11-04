@@ -335,6 +335,24 @@ prueba('avisos diarios: un mail por gerente y no se repiten', () => {
   gs('avisosDiarios')
   esperar(mails.length === antes, 'se repitieron los avisos')
 })
+prueba('a Gerencia General le llega un solo mail que dice qué tiene que hacer', () => {
+  hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
+  // Una factura vencida con 3 reclamos sin respuesta
+  const iRec = hojas.Comprobantes.filas.findIndex((f, i) => i > 0 && f[HOJAS_COLUMNAS.indexOf('tipo')] === 'FC')
+  const f = hojas.Comprobantes.filas[iRec]
+  f[HOJAS_COLUMNAS.indexOf('estado')] = 'presentada'
+  f[HOJAS_COLUMNAS.indexOf('vencimiento')] = '2026-01-01'
+  f[HOJAS_COLUMNAS.indexOf('reclamos')] = JSON.stringify([1, 2, 3].map(() => ({ fecha: '2026-02-01', medio: 'mail', autor: 'Auditoría', nota: '' })))
+  mails.length = 0
+  gs('avisosDiarios')
+  const aGerencia = mails.filter((m) => m.to === 'gerencia.general@svaauto.com.ar')
+  esperar(aGerencia.length === 1, `${aGerencia.length} mails a Gerencia`)
+  esperar(aGerencia[0].body.includes('Auditoría necesita tu apoyo') && aGerencia[0].body.includes('Pedile a cada sucursal'), aGerencia[0].body.slice(0, 300))
+  esperar(!aGerencia[0].body.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
+  mails.length = 0
+  gs('avisosDiarios')
+  esperar(!mails.some((m) => m.to === 'gerencia.general@svaauto.com.ar'), 'se repitió el pedido de apoyo')
+})
 prueba('resumen semanal para cada gerente de sucursal', () => {
   mails.length = 0
   gs('resumenSemanal')

@@ -1,14 +1,13 @@
 import { useMemo, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWarning, Receipt, Siren, TriangleAlert } from 'lucide-react'
-import { FiltroSucursal } from '../components/Filtros'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { estadoReclamo } from '../domain/reclamos'
+import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
-import { formatoFecha, formatoPesos } from '../lib/formato'
+import { formatoPesos } from '../lib/formato'
 
 export interface Aviso {
   clave: string
@@ -131,11 +130,11 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'escalar',
-          titulo: 'Para escalar a gerencia',
+          titulo: 'Sin respuesta: pedir apoyo a gerencia',
           descripcion: 'La compañía no respondió a 3 reclamos',
           icono: Megaphone,
           facturas: comprobantes.filter((c) => estadoReclamo(c, hoy) === 'escalar'),
-          ruta: '/app/reclamos?estado=Escalar a gerencia',
+          ruta: `/app/reclamos?estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`,
         },
       ],
     },
@@ -151,8 +150,8 @@ export default function Avisos() {
     <>
       <EncabezadoPagina
         titulo="Avisos"
-        subtitulo={`Lo que necesita atención al ${formatoFecha(hoy)}, separado por quién tiene que actuar. Tocá un aviso para ver las facturas.`}
-        acciones={<FiltroSucursal />}
+        subtitulo="Lo que necesita atención, separado por quién tiene que actuar. Tocá un aviso para ver las facturas."
+        sucursal
       />
 
       <div className="space-y-6">

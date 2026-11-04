@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FileSpreadsheet, Info, X } from 'lucide-react'
-import { FiltroSucursal } from '../components/Filtros'
 import { BadgeEtapa, nombreEtapa, quienEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
@@ -27,7 +26,7 @@ function avisoNc(c: Comprobante): string {
 
 /**
  * Control diario: la hoja "Diario" de la planilla, con el estado calculado y el legajo a un clic.
- * Para Gerencia es "Buscar una factura": la misma tabla, solo para consultar.
+ * Para Gerencia es "Detalle de facturas": la misma tabla, solo para consultar (por si necesita buscar una).
  */
 export default function ControlDiario() {
   const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante, actualizarComprobante, registrarEvento } = useApp()
@@ -230,15 +229,15 @@ export default function ControlDiario() {
   return (
     <>
       <EncabezadoPagina
-        titulo={soloConsulta ? 'Buscar una factura' : 'Control diario'}
+        titulo={soloConsulta ? 'Detalle de facturas' : 'Control diario'}
         subtitulo={
           soloConsulta
-            ? 'Escribí el número, el siniestro o la patente y tocá la fila para ver en qué está'
+            ? 'Todas las facturas y notas de crédito. Buscá por número, siniestro o patente y tocá la fila para ver en qué está.'
             : 'Todas las facturas y notas de crédito, como la hoja "Diario" de la planilla'
         }
+        sucursal={!soloConsulta}
         acciones={
           <>
-            {!soloConsulta && <FiltroSucursal />}
             {!soloConsulta && (
               <>
                 <input ref={entradaErp} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />

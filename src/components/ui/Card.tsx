@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { FiltroSucursal } from '../Filtros'
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>
@@ -50,20 +51,31 @@ export function Indicador({
   )
 }
 
+/**
+ * Título de cada pantalla. Con `sucursal`, el filtro de sucursal queda debajo del título, a la vista
+ * (no arriba a la derecha). La fecha del día no se repite acá: está una sola vez, en el menú.
+ */
 export function EncabezadoPagina({
   titulo,
   subtitulo,
   acciones,
+  sucursal = false,
 }: {
   titulo: string
   subtitulo?: string
   acciones?: ReactNode
+  sucursal?: boolean
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-noche">{titulo}</h1>
-        {subtitulo && <p className="mt-1 text-sm text-slate-500">{subtitulo}</p>}
+        {(sucursal || subtitulo) && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {sucursal && <FiltroSucursal enLinea />}
+            {subtitulo && <p className="text-sm text-slate-500">{subtitulo}</p>}
+          </div>
+        )}
       </div>
       {acciones && <div className="flex flex-wrap gap-2">{acciones}</div>}
     </div>

@@ -7,7 +7,7 @@
  */
 import { enMes, diffDias, semanaDelMes, semanasDelMes } from '../lib/fechas'
 import { calcularSemaforo, estaVencido } from './semaforo'
-import { importeCobrado, saldoFactura } from './importes'
+import { importeCobrado, saldoFactura, saldoSinCobro } from './importes'
 import type { Aseguradora, CobroPrevisto, Comprobante } from './tipos'
 
 export interface Totales {
@@ -168,6 +168,45 @@ export function proyeccionDelMes(
     semanas,
     totalPorVencimiento: semanas.reduce((s, x) => s + x.porVencimiento, 0),
     totalInformado: semanas.reduce((s, x) => s + x.informado, 0),
+  }
+}
+
+export interface SemanaPrevisto {
+  semana: string
+  /** lo que vencía en la semana (facturas presentadas, por su fecha de vencimiento) */
+  previsto: number
+  /** lo que efectivamente se cobró en la semana (de cualquier factura) */
+  cobrado: number
+}
+
+/**
+ * Cobros previstos contra lo realmente cobrado, semana por semana. Previsto = saldo de las facturas
+ * presentadas que vencen ese mes (aunque después se hayan cobrado); cobrado = lo que entró ese mes.
+ * `previstoSinCobrar` es lo que vence (o venció) en el mes y todavía no se cobró.
+ */
+export function previstoVsCobrado(comprobantes: Comprobante[], anio: number, mes: number) {
+  const dias = new Date(Date.UTC(anio, mes, 0)).getUTCDate()
+  const semanas: SemanaPrevisto[] = Array.from({ length: semanasDelMes(anio, mes) }, (_, i) => ({
+    semana: `Sem. ${i + 1} (${i * 7 + 1}-${Math.min((i + 1) * 7, dias)})`,
+    previsto: 0,
+    cobrado: 0,
+  }))
+  let previstoSinCobrar = 0
+  for (const c of comprobantes) {
+    if (c.tipo !== 'FC' || c.estado === 'anulada') continue
+    if (c.vencimiento && enMes(c.vencimiento, anio, mes)) {
+      semanas[semanaDelMes(c.vencimiento) - 1].previsto += saldoSinCobro(c)
+      previstoSinCobrar += saldoFactura(c)
+    }
+    if (c.estado === 'cobrada' && c.fechaCobro && enMes(c.fechaCobro, anio, mes)) {
+      semanas[semanaDelMes(c.fechaCobro) - 1].cobrado += importeCobrado(c)
+    }
+  }
+  return {
+    semanas,
+    previsto: semanas.reduce((t, x) => t + x.previsto, 0),
+    cobrado: semanas.reduce((t, x) => t + x.cobrado, 0),
+    previstoSinCobrar,
   }
 }
 

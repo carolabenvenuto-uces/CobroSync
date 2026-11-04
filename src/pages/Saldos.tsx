@@ -1,11 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { FiltroSucursal } from '../components/Filtros'
-import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
-import { TODAS_LAS_SUCURSALES, useApp, useComprobantes } from '../context/AppContext'
-import { calcularTotales, saldosPorAseguradora } from '../domain/finanzas'
-import { estadoReclamo } from '../domain/reclamos'
+import { useApp, useComprobantes } from '../context/AppContext'
+import { saldosPorAseguradora } from '../domain/finanzas'
+import { estadoReclamo, ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { descargarExcel } from '../lib/exportar'
 import { formatoFecha, formatoPesos } from '../lib/formato'
@@ -15,7 +14,7 @@ import { formatoFecha, formatoPesos } from '../lib/formato'
  * pendiente en sin presentar, al día y vencido, y lo vencido según si ya se reclamó.
  */
 export default function Saldos() {
-  const { datos, sucursal, hoy, rol } = useApp()
+  const { datos, hoy, rol } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
 
@@ -32,22 +31,27 @@ export default function Saldos() {
           vencidoSinReclamar: suma((c) => estadoReclamo(c, hoy) === 'sin_reclamar'),
           vencidoParaEscalar: suma((c) => estadoReclamo(c, hoy) === 'escalar'),
           facturasVencidas: propias.filter((c) => etapa(c) === 'vencida').length,
+          // Seguimiento: reclamos hechos por las facturas que siguen sin cobrar
+          ...(() => {
+            const abiertas = propias.filter((c) => c.tipo === 'FC' && c.estado === 'presentada')
+            const reclamadas = abiertas.filter((c) => c.reclamos.length > 0)
+            const ultimo = reclamadas.map(ultimoReclamo).filter((f): f is string => !!f).sort().pop() ?? null
+            return { reclamosHechos: reclamadas.reduce((t, c) => t + c.reclamos.length, 0), facturasReclamadas: reclamadas.length, ultimoReclamo: ultimo }
+          })(),
         }
       }),
     [comprobantes, aseguradoras, hoy],
   )
-  const totales = useMemo(() => calcularTotales(comprobantes, hoy), [comprobantes, hoy])
   type Fila = (typeof filas)[number]
   type Clave = 'facturado' | 'notasCredito' | 'cobrado' | 'pendiente' | 'vencido' | 'sinPresentar' | 'alDia' | 'vencidoSinReclamar' | 'vencidoParaEscalar'
   const sumar = (lista: Fila[], k: Clave) => lista.reduce((s, f) => s + f[k], 0)
-  const total = (k: Clave) => sumar(filas, k)
   const situacionReclamos = (s: Fila) =>
-    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Para escalar' : s.vencidoSinReclamar > 0 ? 'Sin reclamar' : 'Reclamado'
+    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Sin respuesta' : s.vencidoSinReclamar > 0 ? 'Sin reclamar' : 'Reclamado'
 
   function exportar(lista: Fila[]) {
     descargarExcel(
       `saldos-por-compania-${hoy}`,
-      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido sin reclamar', 'Vencido para escalar'],
+      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido sin reclamar', 'Vencido sin respuesta', 'Reclamos hechos', 'Facturas reclamadas', 'Último reclamo'],
       [
         ...lista.map((s) => [
           s.aseguradora.nombre,
@@ -60,6 +64,9 @@ export default function Saldos() {
           s.vencido,
           s.vencidoSinReclamar,
           s.vencidoParaEscalar,
+          s.reclamosHechos,
+          s.facturasReclamadas,
+          s.ultimoReclamo ? formatoFecha(s.ultimoReclamo) : null,
         ]),
         ['Total', sumar(lista, 'facturado'), sumar(lista, 'notasCredito'), sumar(lista, 'cobrado'), sumar(lista, 'pendiente'), sumar(lista, 'sinPresentar'), sumar(lista, 'alDia'), sumar(lista, 'vencido'), sumar(lista, 'vencidoSinReclamar'), sumar(lista, 'vencidoParaEscalar')],
       ],
@@ -99,8 +106,25 @@ export default function Saldos() {
       ),
     },
     {
+      clave: 'seguimiento',
+      titulo: 'Reclamos hechos',
+      derecha: true,
+      orden: (s) => s.reclamosHechos,
+      celda: (s) =>
+        s.reclamosHechos === 0 ? (
+          <span className="text-xs text-slate-400">—</span>
+        ) : (
+          <div className="whitespace-nowrap text-xs">
+            <div className="font-semibold text-noche">
+              {s.reclamosHechos} {s.reclamosHechos === 1 ? 'reclamo' : 'reclamos'} · {s.facturasReclamadas} {s.facturasReclamadas === 1 ? 'factura' : 'facturas'}
+            </div>
+            {s.ultimoReclamo && <div className="text-slate-500">Último: {formatoFecha(s.ultimoReclamo)}</div>}
+          </div>
+        ),
+    },
+    {
       clave: 'reclamos',
-      titulo: 'Reclamos',
+      titulo: 'Situación de lo vencido',
       filtro: situacionReclamos,
       celda: (s) =>
         s.vencido <= 0 ? (
@@ -111,7 +135,7 @@ export default function Saldos() {
             className={`block space-y-0.5 text-xs ${rol === 'auditoria' ? 'hover:underline' : 'pointer-events-none'}`}
           >
             {s.vencidoSinReclamar > 0 && <div className="whitespace-nowrap font-semibold text-red-800">Sin reclamar: {formatoPesos(s.vencidoSinReclamar)}</div>}
-            {s.vencidoParaEscalar > 0 && <div className="whitespace-nowrap font-semibold text-amber-800">Para escalar: {formatoPesos(s.vencidoParaEscalar)}</div>}
+            {s.vencidoParaEscalar > 0 && <div className="whitespace-nowrap font-semibold text-amber-800">Sin respuesta: {formatoPesos(s.vencidoParaEscalar)}</div>}
             {s.vencidoSinReclamar === 0 && s.vencidoParaEscalar === 0 && <div className="text-slate-600">Reclamado</div>}
           </Link>
         ),
@@ -122,18 +146,7 @@ export default function Saldos() {
 
   return (
     <>
-      <EncabezadoPagina
-        titulo="Saldos por compañía"
-        subtitulo={`Cuenta corriente al ${formatoFecha(hoy)} · ${sucursal === TODAS_LAS_SUCURSALES ? 'todas las sucursales' : sucursal}`}
-        acciones={<FiltroSucursal />}
-      />
-
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Indicador titulo="Pendiente total" valor={formatoPesos(totales.pendiente)} tono="marca" ayuda="Facturado + NC − cobrado" />
-        <Indicador titulo="Sin presentar" valor={formatoPesos(total('sinPresentar'))} ayuda="Doc. pendiente y pres. pendiente" />
-        <Indicador titulo="Al día" valor={formatoPesos(total('alDia'))} ayuda="Presentado, todavía no vence" />
-        <Indicador titulo="Vencido" valor={formatoPesos(totales.vencido)} tono="rojo" ayuda={`Sin reclamar: ${formatoPesos(total('vencidoSinReclamar'))}`} />
-      </div>
+      <EncabezadoPagina titulo="Saldos por compañía" subtitulo="Cuenta corriente de cada compañía" sucursal />
 
       <Tabla
         filas={filas}
@@ -154,6 +167,7 @@ export default function Saldos() {
             <td className={celdaPie}>{formatoPesos(sumar(l, 'sinPresentar'))}</td>
             <td className={celdaPie}>{formatoPesos(sumar(l, 'alDia'))}</td>
             <td className={`${celdaPie} text-red-800`}>{formatoPesos(sumar(l, 'vencido'))}</td>
+            <td className={celdaPie}>{l.reduce((t, s) => t + s.reclamosHechos, 0) || ''}</td>
             <td />
           </tr>
         )}

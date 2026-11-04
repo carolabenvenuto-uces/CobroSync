@@ -4,7 +4,6 @@ import {
   LogOut,
   BarChart3,
   BookUser,
-  Search,
   Bell,
   Building2,
   ClipboardList,
@@ -48,7 +47,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
       ],
     },
-    { titulo: 'Consultas', items: [{ ruta: '/app/control-diario', etiqueta: 'Buscar una factura', icono: Search }] },
+    { titulo: 'Detalle', items: [{ ruta: '/app/control-diario', etiqueta: 'Detalle de facturas', icono: FileText }] },
   ],
   auditoria: [
     {

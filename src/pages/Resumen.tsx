@@ -2,34 +2,47 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarDays } from 'lucide-react'
-import { FiltroMes, FiltroSucursal } from '../components/Filtros'
 import { Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
-import { claseSelect } from '../components/ui/Estados'
-import { TODAS_LAS_SUCURSALES, useApp, useComprobantes } from '../context/AppContext'
-import { calcularTotales, proyeccionDelMes, saldosPorAseguradora } from '../domain/finanzas'
+import { useApp, useComprobantes } from '../context/AppContext'
+import { calcularTotales, previstoVsCobrado, saldosPorAseguradora, totalesDelMes } from '../domain/finanzas'
 import { calcularSemaforo } from '../domain/semaforo'
 import { rankingSucursales } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
-import { anioDe, diaDe, enMes, mesDe, semanaDelMes, semanasDelMes } from '../lib/fechas'
-import { formatoFecha, formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
+import { anioDe, diaDe, mesDe } from '../lib/fechas'
+import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
+import { saldoFactura } from '../domain/importes'
 
 const SIN_PRESENTAR = ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision', 'pres_pendiente']
 
 /**
  * Resumen: lo que la gerencia necesita ver de un vistazo, cada dato una sola vez.
- * El detalle está en las demás pantallas.
+ * 1. Cómo estamos hoy · 2. El año, a la izquierda · 3. El mes elegido: cobros previstos contra
+ * lo realmente cobrado · 4. Dónde está la plata pendiente. El detalle está en las demás pantallas.
  */
 export default function Resumen() {
-  const { datos, anio, mes, sucursal, hoy, parametros } = useApp()
+  const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros } = useApp()
   const comprobantes = useComprobantes()
-  const { aseguradoras, meta, cobrosPrevistos } = datos!
+  const { aseguradoras, meta } = datos!
 
+  // El mes se elige en el mismo cuadro. Se puede mirar también el mes que viene (lo que vence).
+  const anioHoy = anioDe(hoy)
+  const mesHoy = mesDe(hoy)
+  const ultimoMes = anio === anioHoy ? Math.min(12, mesHoy + 1) : 12
+  // El mes próximo solo vale acá (las demás pantallas llegan hasta el mes en curso)
+  const [mesProximo, setMesProximo] = useState(false)
+  const mes = mesProximo ? ultimoMes : mesGlobal
+  const setMes = (m: number) => {
+    const proximo = anio === anioHoy && m > mesHoy
+    setMesProximo(proximo)
+    if (!proximo) setMesGlobal(m)
+  }
   const diasDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate()
-  const enCurso = anioDe(hoy) === anio && mesDe(hoy) === mes && diaDe(hoy) < diasDelMes
-  const nombreMes = MESES[mes - 1].toLowerCase()
-  const suma = (lista: Comprobante[]) => lista.reduce((s, c) => s + c.total, 0)
+  const enCurso = anio === anioHoy && mes === mesHoy && diaDe(hoy) < diasDelMes
+  const futuro = anio === anioHoy && mes > mesHoy
 
-  // Situación de hoy
+  const suma = (lista: Comprobante[]) => lista.reduce((s, c) => s + saldoFactura(c), 0)
+
+  // 1. Situación de hoy
   const situacion = useMemo(() => {
     const totales = calcularTotales(comprobantes, hoy)
     const etapa = (c: Comprobante) => calcularSemaforo(c, hoy).etapa
@@ -40,38 +53,17 @@ export default function Resumen() {
     }
   }, [comprobantes, hoy])
 
-  // El mes: facturado y cobrado, una sola vez, con su detalle por semana
-  const delMes = useMemo(() => {
-    const fc = comprobantes.filter((c) => c.tipo === 'FC' && enMes(c.fecha, anio, mes))
-    const nc = comprobantes.filter((c) => c.tipo === 'NC' && enMes(c.fecha, anio, mes))
-    const cobradas = comprobantes.filter((c) => c.estado === 'cobrada' && enMes(c.fechaCobro, anio, mes))
-    const hasta = enCurso ? semanaDelMes(hoy) : semanasDelMes(anio, mes)
-    const semanas = Array.from({ length: hasta }, (_, i) => ({
-      semana: `Sem. ${i + 1} (${i * 7 + 1}-${Math.min((i + 1) * 7, diasDelMes)})`,
-      facturado: 0,
-      cobrado: 0,
-    }))
-    for (const c of fc) if (semanaDelMes(c.fecha) <= hasta) semanas[semanaDelMes(c.fecha) - 1].facturado += c.total
-    for (const c of cobradas) if (semanaDelMes(c.fechaCobro as string) <= hasta) semanas[semanaDelMes(c.fechaCobro as string) - 1].cobrado += c.total
-    return {
-      facturas: fc.length,
-      facturado: suma(fc),
-      nc: suma(nc),
-      cobrado: suma(cobradas),
-      cobradoDelMes: suma(cobradas.filter((c) => enMes(c.fecha, anio, mes))),
-      semanas,
-    }
-  }, [comprobantes, anio, mes, enCurso, hoy, diasDelMes])
+  // 2. El año
+  const anual = useMemo(() => {
+    const delAnio = comprobantes.filter((c) => anioDe(c.fecha) === anio)
+    return { ...calcularTotales(delAnio, hoy), facturas: delAnio.filter((c) => c.tipo === 'FC').length }
+  }, [comprobantes, anio, hoy])
 
-  // Cobros esperados: el mes en curso y el siguiente
-  const mesHoy = mesDe(hoy)
-  const [mesProyectado, setMesProyectado] = useState(diaDe(hoy) >= 25 ? Math.min(12, mesHoy + 1) : mesHoy)
-  const proyeccion = useMemo(() => {
-    const ids = new Set(comprobantes.map((c) => c.id))
-    return proyeccionDelMes(comprobantes, cobrosPrevistos.filter((cp) => ids.has(cp.comprobanteId)), anioDe(hoy), mesProyectado)
-  }, [comprobantes, cobrosPrevistos, hoy, mesProyectado])
+  // 3. El mes elegido
+  const delMes = useMemo(() => totalesDelMes(comprobantes, anio, mes), [comprobantes, anio, mes])
+  const previsto = useMemo(() => previstoVsCobrado(comprobantes, anio, mes), [comprobantes, anio, mes])
 
-  // Dónde está la plata pendiente
+  // 4. Dónde está la plata pendiente
   const sucursales = useMemo(
     () => rankingSucursales(datos!.comprobantes, meta.sucursales, hoy, anio, null, parametros).sort((a, b) => b.retenido - a.retenido).slice(0, 3),
     [datos, meta.sucursales, hoy, anio, parametros],
@@ -81,20 +73,33 @@ export default function Resumen() {
     [comprobantes, aseguradoras, hoy],
   )
 
-  const anual = useMemo(() => calcularTotales(comprobantes.filter((c) => anioDe(c.fecha) === anio), hoy), [comprobantes, anio, hoy])
+  const selectorMes = (
+    <select
+      aria-label="Mes"
+      value={mes}
+      onChange={(e) => setMes(Number(e.target.value))}
+      className="rounded-lg border border-slate-200 bg-white py-1 pl-2 pr-7 text-sm font-bold text-noche shadow-sm hover:border-marca/50 focus:border-marca focus:outline-none"
+    >
+      {MESES.slice(0, ultimoMes).map((nombre, i) => (
+        <option key={nombre} value={i + 1}>
+          {nombre} {anio}
+          {anio === anioHoy && i + 1 === mesHoy ? ' (en curso)' : anio === anioHoy && i + 1 > mesHoy ? ' (próximo)' : ''}
+        </option>
+      ))}
+    </select>
+  )
+
+  const dato = (titulo: string, valor: number, ayuda: string, clase = '') => (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</div>
+      <div className={`text-lg font-extrabold tabular-nums ${clase}`}>{formatoPesos(valor)}</div>
+      <div className="text-xs text-slate-500">{ayuda}</div>
+    </div>
+  )
 
   return (
     <>
-      <EncabezadoPagina
-        titulo="Resumen"
-        subtitulo={`${sucursal === TODAS_LAS_SUCURSALES ? 'Todas las sucursales' : sucursal} · datos al ${formatoFecha(hoy)}`}
-        acciones={
-          <>
-            <FiltroSucursal />
-            <FiltroMes />
-          </>
-        }
-      />
+      <EncabezadoPagina titulo="Resumen" sucursal />
 
       {/* 1. Cómo estamos hoy */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -104,105 +109,65 @@ export default function Resumen() {
         <Indicador titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
       </div>
 
-      {/* 2. El mes: un solo lugar para facturado y cobrado */}
-      <Card className="mt-4">
-        <CardTitulo>
-          {MESES[mes - 1]} {anio}
-          {enCurso ? ' · en curso' : ''}
-        </CardTitulo>
-        {enCurso && (
-          <p className="-mt-2 mb-3 flex items-center gap-2 text-xs text-blue-900">
-            <CalendarDays className="h-3.5 w-3.5" /> Día {diaDe(hoy)} de {diasDelMes}: los totales son parciales.
-          </p>
-        )}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturado</div>
-            <div className="text-xl font-extrabold tabular-nums">{formatoPesos(delMes.facturado)}</div>
-            <div className="text-xs text-slate-500">
-              {delMes.facturas.toLocaleString('es-AR')} facturas · NC {formatoPesos(delMes.nc)}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        {/* 2. El año: lo primero que se ve, aparte del mes */}
+        <div className="rounded-xl bg-noche p-5 text-white shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-300">Año {anio}</div>
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="text-xs text-slate-300">Facturado</div>
+              <div className="text-2xl font-extrabold tabular-nums">{formatoPesos(anual.facturado)}</div>
+              <div className="text-xs text-slate-400">
+                {anual.facturas.toLocaleString('es-AR')} facturas · notas de crédito {formatoPesos(anual.notasCredito)}
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cobrado</div>
-            <div className="text-xl font-extrabold tabular-nums text-esmeralda">{formatoPesos(delMes.cobrado)}</div>
-            <div className="text-xs text-slate-500">
-              De facturas de {nombreMes}: {formatoPesos(delMes.cobradoDelMes)} · de meses anteriores: {formatoPesos(delMes.cobrado - delMes.cobradoDelMes)}
+            <div>
+              <div className="text-xs text-slate-300">Cobrado</div>
+              <div className="text-2xl font-extrabold tabular-nums text-emerald-300">{formatoPesos(anual.cobrado)}</div>
             </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Año {anio}</div>
-            <div className="text-sm tabular-nums">
-              Facturado {formatoPesos(anual.facturado)}
-              <br />
-              Cobrado {formatoPesos(anual.cobrado)}
+            <div>
+              <div className="text-xs text-slate-300">Falta cobrar de lo facturado en {anio}</div>
+              <div className="text-2xl font-extrabold tabular-nums">{formatoPesos(anual.pendiente)}</div>
+              <div className="text-xs text-slate-400">De eso, vencido: {formatoPesos(anual.vencido)}</div>
             </div>
           </div>
         </div>
-        <div className="mt-4 h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={delMes.semanas} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis dataKey="semana" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickFormatter={(v: number) => formatoPesosCorto(v)} tickLine={false} axisLine={false} fontSize={12} width={80} />
-              <Tooltip formatter={(v) => formatoPesos(Number(v))} cursor={{ fill: '#F1F5F9' }} />
-              <Legend iconType="circle" />
-              <Bar dataKey="facturado" name="Facturado en la semana" fill="#2563EB" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="cobrado" name="Cobrado en la semana (de cualquier mes)" fill="#10B981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
 
-      {/* 3. Cobros esperados (antes, la pestaña Cobros previstos) */}
-      <Card className="mt-4">
-        <CardTitulo
-          accion={
-            <select className={claseSelect} value={mesProyectado} onChange={(e) => setMesProyectado(Number(e.target.value))}>
-              {[mesHoy, Math.min(12, mesHoy + 1)]
-                .filter((m, i, l) => l.indexOf(m) === i)
-                .map((m) => (
-                  <option key={m} value={m}>
-                    {MESES[m - 1]} {anioDe(hoy)}
-                  </option>
-                ))}
-            </select>
-          }
-        >
-          Cobros esperados por semana
-        </CardTitulo>
-        <p className="-mt-2 mb-3 text-xs text-slate-500">
-          Según el vencimiento de las facturas presentadas, y lo que las compañías ya muestran "en proceso de pago".
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="py-2 pr-4 font-semibold">Semana</th>
-                <th className="py-2 pr-4 text-right font-semibold">Por vencimiento</th>
-                <th className="py-2 text-right font-semibold">Informado por las compañías</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {proyeccion.semanas.map((s) => (
-                <tr key={s.semana}>
-                  <td className="py-2 pr-4">Semana {s.semana}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatoPesos(s.porVencimiento)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatoPesos(s.informado)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="font-bold">
-              <tr className="border-t border-slate-200">
-                <td className="py-2 pr-4">Total</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{formatoPesos(proyeccion.totalPorVencimiento)}</td>
-                <td className="py-2 text-right tabular-nums">{formatoPesos(proyeccion.totalInformado)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">No incluye lo ya vencido ({formatoPesos(situacion.vencido)}), que se sigue en "Vencidas y reclamos".</p>
-      </Card>
+        {/* 3. El mes: cobros previstos contra lo realmente cobrado */}
+        <Card className="lg:col-span-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            {selectorMes}
+            {enCurso && (
+              <span className="flex items-center gap-1.5 text-xs text-blue-900">
+                <CalendarDays className="h-3.5 w-3.5" /> Día {diaDe(hoy)} de {diasDelMes}: el mes todavía no terminó
+              </span>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `Notas de crédito ${formatoPesos(delMes.notasCredito)}`)}
+            {dato('Cobro previsto', previsto.previsto, 'Facturas presentadas que vencen en el mes', 'text-marca')}
+            {dato(
+              'Cobrado en el mes',
+              previsto.cobrado,
+              previsto.previstoSinCobrar > 0 ? `De lo previsto falta cobrar ${formatoPesos(previsto.previstoSinCobrar)}` : 'Se cobró todo lo previsto',
+              'text-esmeralda',
+            )}
+          </div>
+          <div className="mt-4 h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={previsto.semanas} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="semana" tickLine={false} axisLine={false} fontSize={11} />
+                <YAxis tickFormatter={(v: number) => formatoPesosCorto(v)} tickLine={false} axisLine={false} fontSize={12} width={80} />
+                <Tooltip formatter={(v) => formatoPesos(Number(v))} cursor={{ fill: '#F1F5F9' }} />
+                <Legend iconType="circle" />
+                <Bar dataKey="previsto" name="Previsto (por vencimiento)" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="cobrado" name="Cobrado" fill="#10B981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
 
       {/* 4. Dónde está la plata pendiente */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

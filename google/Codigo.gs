@@ -40,6 +40,7 @@ var HOJAS = {
       'compromiso', 'reclamos', 'documentos', 'eventos', 'actualizado',
     ],
   },
+  lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
   cobros: {
     nombre: 'CobrosPrevistos',
     columnas: ['id', 'comprobanteId', 'aseguradoraId', 'fechaIngreso', 'monto', 'estado'],
@@ -80,6 +81,8 @@ function obtenerDatos() {
   });
   return {
     usuario: usuario,
+    ahora: ahora_(),
+    leidas: leidasDe_(usuario.email),
     datos: {
       aseguradoras: leerHoja_(HOJAS.aseguradoras),
       comprobantes: comprobantes,
@@ -89,29 +92,105 @@ function obtenerDatos() {
   };
 }
 
-/** Guarda una factura completa (estado, documentos, conversación, reclamos). */
-function guardarComprobante(c) {
+/**
+ * Guarda los cambios hechos en la aplicación, uno por uno, sobre lo que hay guardado en ese momento.
+ * Así, si dos personas trabajan en la misma factura a la vez, no se pisan: por ejemplo, la sucursal
+ * sube la firma mientras Auditoría escribe una observación, y quedan las dos cosas.
+ *
+ * Cada cambio es { id, campos?, documentos?, evento?, nuevo? }:
+ * - campos: datos de la factura que cambian (estado, fechas, observaciones, reclamos…)
+ * - documentos: solo los documentos que cambiaron (se reemplazan por tipo: factura, orden, firma)
+ * - evento: un mensaje nuevo para la conversación (se agrega, nunca reemplaza)
+ * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Auditoría.
+ */
+var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado'];
+
+function aplicarCambios(cambios) {
   var usuario = usuarioActual_();
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
-    var fila = buscarFila_(hoja, c.id);
-    if (usuario.rol === 'sucursal') {
-      // Una sucursal solo puede tocar facturas suyas que ya existan
+    var tocadas = {};
+    cambios.forEach(function (op) {
+      var fila = buscarFila_(hoja, op.id);
+      if (op.nuevo) {
+        if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar facturas nuevas.');
+        if (fila) return; // ya estaba
+        escribirFila_(hoja, HOJAS.comprobantes, null, op.nuevo);
+        tocadas[op.id] = hoja.getLastRow();
+        return;
+      }
       if (!fila) throw new Error('La factura no existe.');
-      var actual = filaAObjeto_(HOJAS.comprobantes, hoja.getRange(fila, 1, 1, HOJAS.comprobantes.columnas.length).getValues()[0]);
-      if (!mismaSucursal_(actual.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
-      // La sucursal solo cambia lo suyo: documentos, aviso de demora, conversación y aviso de NC.
-      // Importes, fechas de presentación y cobro quedan como estaban.
-      ['documentos', 'fechaDrive', 'subidoPor', 'compromiso', 'eventos', 'ncInformada'].forEach(function (k) {
-        if (k in c) actual[k] = c[k];
-      });
-      if (c.estado === 'en_gestion' && actual.estado === 'pendiente_drive') actual.estado = 'en_gestion';
-      c = actual;
-    }
-    escribirFila_(hoja, HOJAS.comprobantes, fila, c);
+      var c = leerFila_(hoja, fila);
+      if (usuario.rol === 'sucursal' && !mismaSucursal_(c.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
+
+      if (op.campos) {
+        Object.keys(op.campos).forEach(function (k) {
+          if (k === 'id' || k === 'documentos' || k === 'eventos') return;
+          if (usuario.rol === 'sucursal') {
+            // La sucursal solo cambia lo suyo; importes, presentación y cobro quedan como estaban
+            if (CAMPOS_SUCURSAL.indexOf(k) < 0) return;
+            if (k === 'estado' && !(op.campos.estado === 'en_gestion' && c.estado === 'pendiente_drive')) return;
+          }
+          c[k] = op.campos[k];
+        });
+      }
+      if (op.documentos) {
+        var docs = c.documentos || [];
+        op.documentos.forEach(function (d) {
+          var i = docs.map(function (x) { return x.tipo; }).indexOf(d.tipo);
+          if (i >= 0) docs[i] = d; else docs.push(d);
+        });
+        c.documentos = docs;
+      }
+      if (op.evento) {
+        // El servidor firma el mensaje: nadie puede escribir en nombre de otro
+        (c.eventos = c.eventos || []).push({ fecha: hoy_(), autor: usuario.nombre, area: usuario.rol, tipo: op.evento.tipo, texto: String(op.evento.texto) });
+      }
+      escribirFila_(hoja, HOJAS.comprobantes, fila, c);
+      tocadas[op.id] = fila;
+    });
+    var actualizadas = Object.keys(tocadas).map(function (id) { return leerFila_(hoja, tocadas[id]); });
+    return { comprobantes: actualizadas, ahora: ahora_() };
+  });
+}
+
+/** Lo que cambió desde la última consulta (la aplicación pregunta cada minuto). */
+function obtenerCambios(desde) {
+  var usuario = usuarioActual_();
+  var hoja = hoja_(HOJAS.comprobantes);
+  var ahora = ahora_();
+  if (hoja.getLastRow() < 2) return { comprobantes: [], ahora: ahora };
+  var col = HOJAS.comprobantes.columnas.indexOf('actualizado') + 1;
+  var marcas = hoja.getRange(2, col, hoja.getLastRow() - 1, 1).getValues();
+  var lista = [];
+  for (var i = 0; i < marcas.length; i++) {
+    if (String(marcas[i][0]) > String(desde)) lista.push(leerFila_(hoja, i + 2));
+  }
+  if (usuario.rol === 'sucursal') lista = lista.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
+  return { comprobantes: lista, ahora: ahora };
+}
+
+/** Las notificaciones leídas se guardan en la cuenta: valen en cualquier computadora o celular. */
+function marcarLeidas(ids) {
+  var email = usuarioActual_().email;
+  return conBloqueo_(function () {
+    var hoja = hoja_(HOJAS.lecturas);
+    var fila = buscarFila_(hoja, email);
+    var actuales = fila ? JSON.parse(hoja.getRange(fila, 2).getValues()[0][0] || '[]') : [];
+    var todas = actuales.concat(ids.filter(function (id) { return actuales.indexOf(id) < 0; })).slice(-1500);
+    var valores = [[email, JSON.stringify(todas), ahora_()]];
+    if (fila) hoja.getRange(fila, 1, 1, 3).setValues(valores);
+    else hoja.appendRow(valores[0]);
     return true;
   });
+}
+
+function leidasDe_(email) {
+  var hoja = SpreadsheetApp.getActive().getSheetByName(HOJAS.lecturas.nombre);
+  if (!hoja) return [];
+  var fila = buscarFila_(hoja, email);
+  return fila ? JSON.parse(hoja.getRange(fila, 2).getValues()[0][0] || '[]') : [];
 }
 
 /** Agrega facturas nuevas (por ejemplo, desde la exportación del ERP). Solo Auditoría. */
@@ -369,13 +448,21 @@ function filaAObjeto_(h, fila) {
 
 function escribirFila_(hoja, h, fila, o) {
   var valores = h.columnas.map(function (col) {
-    if (col === 'actualizado') return new Date();
+    if (col === 'actualizado') return ahora_();
     var v = o[col];
     if (COLUMNAS_JSON.indexOf(col) >= 0) return v === null || v === undefined ? '' : JSON.stringify(v);
     return v === null || v === undefined ? '' : v;
   });
   if (fila) hoja.getRange(fila, 1, 1, valores.length).setValues([valores]);
   else hoja.appendRow(valores);
+}
+
+function leerFila_(hoja, fila) {
+  return filaAObjeto_(HOJAS.comprobantes, hoja.getRange(fila, 1, 1, HOJAS.comprobantes.columnas.length).getValues()[0]);
+}
+
+function ahora_() {
+  return new Date().toISOString();
 }
 
 function buscarFila_(hoja, id) {

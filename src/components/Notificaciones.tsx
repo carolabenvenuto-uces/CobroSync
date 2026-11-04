@@ -11,7 +11,7 @@ import { formatoFecha } from '../lib/formato'
  * reclamos sin respuesta). Al tocar una, se abre la factura.
  */
 export function Campana() {
-  const { rol, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
+  const { rol, fuente, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
   const [abierta, setAbierta] = useState(false)
   const navigate = useNavigate()
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
@@ -72,7 +72,9 @@ export function Campana() {
               ))}
             </ul>
             <p className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">
-              En la demo las notificaciones viven en este navegador. En el piloto también llegarían por mail.
+              {fuente.tipo === 'google'
+                ? 'Se actualizan solas cada minuto. Lo que leés queda marcado en tu cuenta, en cualquier computadora o celular.'
+                : 'En la demo las notificaciones viven en este navegador. En la versión real se actualizan solas y los avisos importantes también llegan por mail.'}
             </p>
           </div>
         </>

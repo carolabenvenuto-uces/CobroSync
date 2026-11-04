@@ -36,8 +36,10 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
     ({ usuario, datos }) => {
       window.__llamadas = []
       const respuestas = {
-        obtenerDatos: () => ({ usuario, datos: usuario.rol === 'sucursal' ? { ...datos, comprobantes: datos.comprobantes.filter((c) => c.sucursal === usuario.sucursal) } : datos }),
-        guardarComprobante: () => true,
+        obtenerDatos: () => ({ usuario, ahora: '2026-11-04T10:00:00.000Z', leidas: [], datos: usuario.rol === 'sucursal' ? { ...datos, comprobantes: datos.comprobantes.filter((c) => c.sucursal === usuario.sucursal) } : datos }),
+        aplicarCambios: () => ({ comprobantes: [], ahora: '2026-11-04T10:00:01.000Z' }),
+        obtenerCambios: () => ({ comprobantes: [], ahora: '2026-11-04T10:01:00.000Z' }),
+        marcarLeidas: () => true,
         agregarComprobantes: (l) => l.length,
         guardarAseguradoras: () => 0,
         subirArchivo: (_id, tipo, nombre) => ({ archivo: nombre, url: 'https://drive.google.com/prueba' }),
@@ -93,7 +95,15 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
             if (nombre === 'withFailureHandler') return () => crear(ok)
             return (...args) => {
               window.__llamadas.push(nombre)
-              setTimeout(() => ok && ok(nombre === 'obtenerDatos' ? { usuario, datos } : true), 10)
+              const r =
+                nombre === 'obtenerDatos'
+                  ? { usuario, datos, ahora: '2026-11-04T10:00:00.000Z', leidas: [] }
+                  : nombre === 'aplicarCambios'
+                    ? { comprobantes: [], ahora: 'x' }
+                    : nombre === 'obtenerCambios'
+                      ? { comprobantes: window.__cambios ?? [], ahora: '2026-11-04T10:02:00.000Z' }
+                      : true
+              setTimeout(() => ok && ok(r), 10)
             }
           },
         })
@@ -107,9 +117,22 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
     await pagina.evaluate(() => { location.hash = '#/app/control-diario?estado=En%20revisi%C3%B3n' })
     await pagina.locator('tbody tr').first().click()
     await pagina.getByRole('button', { name: /Aprobar todo/ }).click()
-    await pagina.waitForFunction(() => window.__llamadas.includes('guardarComprobante'), null, { timeout: 5000 })
+    await pagina.waitForFunction(() => window.__llamadas.includes('aplicarCambios'), null, { timeout: 5000 })
     await pagina.getByText('Cambios guardados').waitFor({ timeout: 5000 })
     console.log('ok   auditoría: aprobar documentos se manda a guardar en Google')
+
+    // Otra persona (una sucursal) escribe en una factura: sin recargar, a Auditoría le llega la notificación
+    const contar = async () => Number((await pagina.getByRole('button', { name: /Notificaciones/ }).innerText()).replace(/\D/g, '') || 0)
+    const antes = await contar()
+    await pagina.evaluate((c) => {
+      window.__cambios = [{ ...c, eventos: [...c.eventos, { fecha: '2026-11-04', autor: 'Facturación Rocamora', area: 'sucursal', tipo: 'mensaje', texto: 'Ya subí la orden' }] }]
+      document.dispatchEvent(new Event('visibilitychange'))
+    }, datos.comprobantes.find((c) => c.sucursal === 'Rocamora'))
+    await pagina.waitForFunction((n) => {
+      const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Notificaciones'))
+      return Number(b.textContent.replace(/\D/g, '') || 0) > n
+    }, antes, { timeout: 5000 })
+    console.log(`ok   auditoría: sin recargar, llega la notificación de un cambio de la sucursal (${antes} → ${await contar()})`)
   } catch (e) {
     fallas++
     console.log(`FAIL guardado: ${e.message}`)

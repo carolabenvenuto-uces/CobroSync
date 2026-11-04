@@ -102,7 +102,7 @@ const fila = (nombre, valores) => hojas[nombre].appendRow(valores)
 
 prueba('configurarPlanilla crea todas las pestañas', () => {
   gs('configurarPlanilla')
-  for (const n of ['Config', 'Usuarios', 'Sucursales', 'Aseguradoras', 'Comprobantes', 'CobrosPrevistos']) esperar(hojas[n], `falta ${n}`)
+  for (const n of ['Config', 'Usuarios', 'Sucursales', 'Aseguradoras', 'Comprobantes', 'CobrosPrevistos', 'Lecturas']) esperar(hojas[n], `falta ${n}`)
   esperar(hojas.Config.getLastRow() > 1, 'Config sin valores iniciales')
 })
 
@@ -159,8 +159,7 @@ prueba('la sucursal solo recibe sus facturas (aunque el nombre esté escrito dis
 })
 prueba('la sucursal carga documentos pero no puede cambiar el importe', () => {
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
-  const cambiado = { ...c, total: 1, documentos: c.documentos.map((d) => ({ ...d, estado: 'en_revision', archivo: 'x.pdf' })) }
-  gs('guardarComprobante', cambiado)
+  gs('aplicarCambios', [{ id: c.id, campos: { total: 1 }, documentos: c.documentos.map((d) => ({ ...d, estado: 'en_revision', archivo: 'x.pdf' })) }])
   como('auditoria@svaauto.com.ar')
   const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.total === c.total, 'la sucursal pudo cambiar el importe')
@@ -170,21 +169,63 @@ prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
   como('auditoria@svaauto.com.ar')
   const ajena = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Warnes')
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('guardarComprobante', { ...ajena, observaciones: 'x' }), 'otra sucursal')
+  falla(() => gs('aplicarCambios', [{ id: ajena.id, campos: { observaciones: 'x' } }]), 'otra sucursal')
   falla(() => gs('subirArchivo', ajena.id, 'factura', 'f.pdf', 'application/pdf', 'AAAA'), 'otra sucursal')
 })
 prueba('Gerencia solo consulta', () => {
   como('gerencia.general@svaauto.com.ar')
   const d = gs('obtenerDatos')
   esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length, 'Gerencia no ve todo')
-  falla(() => gs('guardarComprobante', d.datos.comprobantes[0]), 'solo puede consultar')
+  falla(() => gs('aplicarCambios', [{ id: d.datos.comprobantes[0].id, campos: { observaciones: 'x' } }]), 'solo puede consultar')
 })
 prueba('Auditoría aprueba y registra el cobro', () => {
   como('auditoria@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.estado === 'presentada')
-  gs('guardarComprobante', { ...c, estado: 'cobrada', fechaCobro: '2026-11-04', eventos: [...c.eventos, { fecha: '2026-11-04', autor: 'Auditoría', area: 'auditoria', tipo: 'mensaje', texto: 'Cobro registrado' }] })
+  gs('aplicarCambios', [{ id: c.id, campos: { estado: 'cobrada', fechaCobro: '2026-11-04' } }, { id: c.id, evento: { tipo: 'mensaje', texto: 'Cobro registrado' } }])
   const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.estado === 'cobrada' && leido.eventos.at(-1).texto === 'Cobro registrado', 'no se guardó el cobro')
+})
+prueba('dos personas en la misma factura a la vez: no se pisan', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Rocamora' && x.tipo === 'FC' && x.estado !== 'cobrada')
+  // Las dos abrieron la factura igual; cada una guarda su cambio sin ver el de la otra
+  como('rocamora@svaauto.com.ar')
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo: 'firma', estado: 'en_revision', archivo: 'firma.jpg' }] }, { id: c.id, evento: { tipo: 'subida', texto: 'Subió la firma' } }])
+  como('auditoria@svaauto.com.ar')
+  gs('aplicarCambios', [{ id: c.id, campos: { observaciones: 'Revisar la orden' } }, { id: c.id, evento: { tipo: 'mensaje', texto: 'Ojo con la orden' } }])
+  const final = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(final.documentos.find((d) => d.tipo === 'firma').archivo === 'firma.jpg', 'se perdió la firma de la sucursal')
+  esperar(final.observaciones === 'Revisar la orden', 'se perdió la observación de Auditoría')
+  const textos = final.eventos.map((e) => e.texto)
+  esperar(textos.includes('Subió la firma') && textos.includes('Ojo con la orden'), `conversación: ${textos.join(' | ')}`)
+  const deSucursal = final.eventos.find((e) => e.texto === 'Subió la firma')
+  esperar(deSucursal.autor === 'Facturación Rocamora' && deSucursal.area === 'sucursal', 'el servidor no firmó el mensaje')
+})
+prueba('cada minuto llegan solo los cambios nuevos', () => {
+  como('auditoria@svaauto.com.ar')
+  const desde = gs('obtenerDatos').ahora
+  const c = gs('obtenerDatos').datos.comprobantes[5]
+  esperar(gs('obtenerCambios', desde).comprobantes.length === 0, 'trajo cambios viejos')
+  const espera = Date.now() + 5
+  while (Date.now() < espera);
+  como('rocamora@svaauto.com.ar')
+  const propia = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
+  gs('aplicarCambios', [{ id: propia.id, evento: { tipo: 'mensaje', texto: 'Hola Auditoría' } }])
+  como('auditoria@svaauto.com.ar')
+  const cambios = gs('obtenerCambios', desde).comprobantes
+  esperar(cambios.length === 1 && cambios[0].id === propia.id, `trajo ${cambios.length}`)
+  como('rocamora@svaauto.com.ar')
+  esperar(gs('obtenerCambios', desde).comprobantes.every((x) => x.sucursal === 'Rocamora'), 'la sucursal recibió cambios ajenos')
+  void c
+})
+prueba('las notificaciones leídas se guardan en la cuenta', () => {
+  como('auditoria@svaauto.com.ar')
+  gs('marcarLeidas', ['a', 'b'])
+  gs('marcarLeidas', ['b', 'c'])
+  const leidas = gs('obtenerDatos').leidas
+  esperar(leidas.join(',') === 'a,b,c', leidas.join(','))
+  como('rocamora@svaauto.com.ar')
+  esperar(gs('obtenerDatos').leidas.length === 0, 'se mezclaron las leídas de otra cuenta')
 })
 prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura', () => {
   como('rocamora@svaauto.com.ar')
@@ -197,6 +238,12 @@ prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {
   como('auditoria@svaauto.com.ar')
   const nueva = { ...lote[0], id: 'erp-999', ref: '9999999' }
   esperar(gs('agregarComprobantes', [nueva, nueva]) === 1, 'duplicó o no agregó')
+  const otra = { ...lote[1], id: 'erp-1000', ref: '9999998' }
+  gs('aplicarCambios', [{ id: otra.id, nuevo: otra }, { id: otra.id, nuevo: otra }])
+  esperar(gs('obtenerDatos').datos.comprobantes.filter((x) => x.id === 'erp-1000').length === 1, 'se duplicó al cargar desde la app')
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('aplicarCambios', [{ id: 'erp-x', nuevo: { ...otra, id: 'erp-x' } }]), 'Solo Auditoría')
+  como('auditoria@svaauto.com.ar')
 })
 prueba('avisos diarios: un mail por gerente y no se repiten', () => {
   mails.length = 0

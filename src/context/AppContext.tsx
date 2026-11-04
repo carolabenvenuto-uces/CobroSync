@@ -10,7 +10,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { AreaEvento, Aseguradora, TipoDocumento, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
 import { anioDe, diffDias, mesDe } from '../lib/fechas'
 import { cargarDatos } from '../services/datos'
-import { cargarDesdeGoogle, conectadoAGoogle, guardarEnGoogle, subirAGoogle, type UsuarioGoogle } from '../services/google'
+import {
+  aplicarCambiosEnGoogle,
+  cargarDesdeGoogle,
+  conectadoAGoogle,
+  marcarLeidasEnGoogle,
+  obtenerCambiosDeGoogle,
+  subirAGoogle,
+  type Cambio,
+  type UsuarioGoogle,
+} from '../services/google'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
 
@@ -73,7 +82,8 @@ export function agruparGerencia(lista: Notificacion[]): Notificacion[] {
         : `/app/reclamos?sucursal=${encodeURIComponent(n.sucursal)}&estado=${encodeURIComponent('Escalar a gerencia')}`
     grupos.set(clave, {
       ...(g ?? n),
-      id: g?.id ?? `g-${clave}`,
+      // el id cambia cuando el grupo suma facturas: así vuelve a aparecer como no leído
+      id: `g-${clave}-${fecha}-${cant}`,
       fecha,
       texto,
       facturas,
@@ -89,7 +99,7 @@ export function agruparGerencia(lista: Notificacion[]): Notificacion[] {
  * Las novedades de los últimos días de la demo arrancan como notificaciones sin leer:
  * 3 días para Auditoría y sucursales; 14 para Gerencia, que recibe menos avisos.
  */
-function notificacionesIniciales(d: DatosApp): Notificacion[] {
+function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): Notificacion[] {
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
     for (const e of c.eventos) {
@@ -101,7 +111,7 @@ function notificacionesIniciales(d: DatosApp): Notificacion[] {
   }
   // Hasta 40 por destinatario, las más nuevas primero
   const porDestinatario = new Map<string, number>()
-  return agruparGerencia(lista)
+  return conLeidas(agruparGerencia(lista), leidas)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .filter((n) => {
       const cant = (porDestinatario.get(n.para) ?? 0) + 1
@@ -110,7 +120,18 @@ function notificacionesIniciales(d: DatosApp): Notificacion[] {
     })
 }
 
-let contador = 0
+/** Marca como leídas las notificaciones que la persona ya leyó (en cualquier computadora). */
+function conLeidas(lista: Notificacion[], leidas: Set<string>): Notificacion[] {
+  return lista.map((n) => (leidas.has(n.id) ? { ...n, leida: true } : n))
+}
+
+/** Huella corta de un texto, para que cada notificación tenga siempre el mismo id. */
+function huella(texto: string): string {
+  let h = 5381
+  for (let i = 0; i < texto.length; i++) h = ((h << 5) + h + texto.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+
 /**
  * Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés.
  * A Gerencia le llegan solo los escalamientos: documentación crítica (más de 21 días)
@@ -118,7 +139,8 @@ let contador = 0
  */
 function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   const numero = `${c.tipo} E ${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
-  const base = () => ({ id: `n-${++contador}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
+  const id = `${c.id}|${e.fecha}|${e.tipo}|${huella(e.texto)}`
+  const base = () => ({ id: `${id}|${lista.length}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
   const lista: Notificacion[] = []
   if (e.area === 'sucursal') lista.push({ ...base(), para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` })
   if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo') {
@@ -217,14 +239,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [usuarioGoogle, setUsuarioGoogle] = useState<UsuarioGoogle | null>(null)
   const [sesionDemo, setSesionDemo] = useState(() => leerSesion() !== null)
   const [guardado, setGuardado] = useState<EstadoApp['guardado']>({ estado: 'ok' })
-  // Facturas cambiadas que falta guardar en Google
-  const pendientesDeGuardar = useRef(new Set<string>())
+  // Con Google: cambios que falta guardar, la última consulta al servidor y las notificaciones leídas
+  const cola = useRef<Cambio[]>([])
+  const enviando = useRef(false)
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const marcaServidor = useRef('')
+  const leidas = useRef(new Set<string>())
+  const datosRef = useRef<DatosApp | null>(null)
+  datosRef.current = datos
 
   const cargarDemo = useCallback(() => {
     // Abierta desde Google Apps Script: los datos y el rol vienen de la cuenta de la empresa
     if (conectadoAGoogle()) {
       cargarDesdeGoogle()
-        .then(({ usuario: u, datos: d }) => {
+        .then(({ usuario: u, datos: d, ahora, leidas: yaLeidas }) => {
+          marcaServidor.current = ahora
+          leidas.current = new Set(yaLeidas)
           setDatos(d)
           setUsuarioGoogle(u)
           setRolInterno(u.rol)
@@ -232,7 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setAnio(anioDe(d.meta.fechaCorte))
           setMes(mesDe(d.meta.fechaCorte))
           setFuente({ tipo: 'google', email: u.email })
-          setNotificaciones(notificacionesIniciales(d))
+          setNotificaciones(notificacionesIniciales(d, leidas.current))
         })
         .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       return
@@ -305,19 +335,100 @@ export function AppProvider({ children }: { children: ReactNode }) {
     : rol === 'sucursal' ? (sucursalActual?.personas[0] ?? 'Sucursal') : rol === 'auditoria' ? 'Carola B.' : 'Gerencia'
   const hoy = datos?.meta.fechaCorte ?? ''
 
-  const actualizarComprobante = useCallback((id: string, cambios: Partial<Comprobante>) => {
-    pendientesDeGuardar.current.add(id)
-    setDatos((actual) =>
-      actual
-        ? { ...actual, comprobantes: actual.comprobantes.map((c) => (c.id === id ? { ...c, ...cambios } : c)) }
-        : actual,
-    )
+  // ── Guardado en Google ──
+  // Cada cambio se manda por separado (campos, documentos que cambiaron, mensaje nuevo) y el
+  // servidor lo aplica sobre lo que hay guardado en ese momento: dos personas no se pisan.
+
+  /** Reemplaza facturas con la versión del servidor (salvo las que tienen cambios sin guardar). */
+  const aplicarDelServidor = useCallback((lista: Comprobante[], avisar: boolean) => {
+    const previas = new Map((datosRef.current?.comprobantes ?? []).map((c) => [c.id, c]))
+    const pendientes = new Set(cola.current.map((op) => op.id))
+    const vigentes = lista.filter((c) => !pendientes.has(c.id))
+    if (vigentes.length === 0) return
+    if (avisar) {
+      // Mensajes nuevos de otras personas → notificaciones
+      const nuevas = vigentes.flatMap((c) => {
+        const antes = previas.get(c.id)?.eventos.length ?? 0
+        return c.eventos.slice(antes).flatMap((e) => crearNotificaciones(c, e))
+      })
+      if (nuevas.length) {
+        setNotificaciones((l) => {
+          const ids = new Set(l.map((n) => n.id))
+          return conLeidas(agruparGerencia([...nuevas.filter((n) => !ids.has(n.id)), ...l]), leidas.current)
+        })
+      }
+    }
+    const porId = new Map(vigentes.map((c) => [c.id, c]))
+    setDatos((actual) => {
+      if (!actual) return actual
+      const existentes = new Set(actual.comprobantes.map((c) => c.id))
+      return {
+        ...actual,
+        comprobantes: [
+          ...actual.comprobantes.map((c) => porId.get(c.id) ?? c),
+          ...vigentes.filter((c) => !existentes.has(c.id)),
+        ],
+      }
+    })
   }, [])
 
-  const agregarComprobante = useCallback((comprobante: Comprobante) => {
-    pendientesDeGuardar.current.add(comprobante.id)
-    setDatos((actual) => (actual ? { ...actual, comprobantes: [...actual.comprobantes, comprobante] } : actual))
-  }, [])
+  const enviarCambios = useCallback(() => {
+    if (enviando.current || cola.current.length === 0) return
+    const lote = cola.current.splice(0)
+    enviando.current = true
+    setGuardado({ estado: 'guardando' })
+    aplicarCambiosEnGoogle(lote)
+      .then((r) => {
+        aplicarDelServidor(r.comprobantes, false)
+        setGuardado({ estado: cola.current.length ? 'guardando' : 'ok' })
+      })
+      .catch((e: unknown) => {
+        cola.current.unshift(...lote)
+        setGuardado({ estado: 'error', mensaje: e instanceof Error ? e.message : String(e) })
+      })
+      .finally(() => {
+        enviando.current = false
+        if (cola.current.length) temporizador.current = setTimeout(enviarCambios, 300)
+      })
+  }, [aplicarDelServidor])
+
+  const encolar = useCallback(
+    (op: Cambio) => {
+      if (!usuarioGoogle) return
+      cola.current.push(op)
+      if (temporizador.current) clearTimeout(temporizador.current)
+      temporizador.current = setTimeout(enviarCambios, 300)
+    },
+    [usuarioGoogle, enviarCambios],
+  )
+
+  const actualizarComprobante = useCallback(
+    (id: string, cambios: Partial<Comprobante>) => {
+      const previo = datosRef.current?.comprobantes.find((c) => c.id === id)
+      const { documentos, ...campos } = cambios
+      // Solo los documentos que realmente cambiaron
+      const docsCambiados = documentos?.filter((d) => JSON.stringify(d) !== JSON.stringify(previo?.documentos.find((x) => x.tipo === d.tipo)))
+      encolar({
+        id,
+        campos: Object.keys(campos).length ? campos : undefined,
+        documentos: docsCambiados?.length ? docsCambiados : undefined,
+      })
+      setDatos((actual) =>
+        actual
+          ? { ...actual, comprobantes: actual.comprobantes.map((c) => (c.id === id ? { ...c, ...cambios } : c)) }
+          : actual,
+      )
+    },
+    [encolar],
+  )
+
+  const agregarComprobante = useCallback(
+    (comprobante: Comprobante) => {
+      encolar({ id: comprobante.id, nuevo: comprobante })
+      setDatos((actual) => (actual ? { ...actual, comprobantes: [...actual.comprobantes, comprobante] } : actual))
+    },
+    [encolar],
+  )
 
   const actualizarAseguradoras = useCallback((aseguradoras: Aseguradora[]) => {
     setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
@@ -331,7 +442,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const comprobante = datos?.comprobantes.find((c) => c.id === id)
       const avisos = comprobante ? crearNotificaciones(comprobante, evento) : []
       if (avisos.length) setNotificaciones((lista) => agruparGerencia([...avisos, ...lista]))
-      pendientesDeGuardar.current.add(id)
+      encolar({ id, evento: { tipo, texto } })
       setDatos((actual) =>
         actual
           ? {
@@ -341,23 +452,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : actual,
       )
     },
-    [rol, hoy, usuario, datos],
+    [rol, hoy, usuario, datos, encolar],
   )
 
-  // Con Google, cada cambio se guarda en la planilla apenas se ve en pantalla
+  // Con Google: cada minuto (y al volver a la pestaña) se traen los cambios de los demás
   useEffect(() => {
-    if (fuente.tipo !== 'google' || !datos || pendientesDeGuardar.current.size === 0) return
-    const ids = [...pendientesDeGuardar.current]
-    pendientesDeGuardar.current.clear()
-    const aGuardar = datos.comprobantes.filter((c) => ids.includes(c.id))
-    setGuardado({ estado: 'guardando' })
-    Promise.all(aGuardar.map(guardarEnGoogle))
-      .then(() => setGuardado({ estado: 'ok' }))
-      .catch((e: unknown) => {
-        ids.forEach((id) => pendientesDeGuardar.current.add(id))
-        setGuardado({ estado: 'error', mensaje: e instanceof Error ? e.message : String(e) })
-      })
-  }, [datos, fuente.tipo])
+    if (!usuarioGoogle) return
+    const consultar = () => {
+      if (!marcaServidor.current) return
+      obtenerCambiosDeGoogle(marcaServidor.current)
+        .then((r) => {
+          marcaServidor.current = r.ahora
+          aplicarDelServidor(r.comprobantes, true)
+        })
+        .catch(() => {
+          // sin conexión por un momento: se vuelve a intentar en la próxima consulta
+        })
+    }
+    const intervalo = setInterval(consultar, 60_000)
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') consultar()
+    }
+    document.addEventListener('visibilitychange', alVolver)
+    return () => {
+      clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', alVolver)
+    }
+  }, [usuarioGoogle, aplicarDelServidor])
 
   const subirDocumento = useCallback(
     async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>
@@ -370,12 +491,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => (destinatario ? notificaciones.filter((n) => n.para === destinatario) : []),
     [notificaciones, destinatario],
   )
-  const marcarLeida = useCallback((nid: string) => {
-    setNotificaciones((lista) => lista.map((n) => (n.id === nid ? { ...n, leida: true } : n)))
-  }, [])
+  // Las leídas se guardan en la cuenta (con Google): valen en cualquier computadora o celular
+  const recordarLeidas = useCallback(
+    (ids: string[]) => {
+      ids.forEach((id) => leidas.current.add(id))
+      if (usuarioGoogle && ids.length) marcarLeidasEnGoogle(ids).catch(() => {})
+    },
+    [usuarioGoogle],
+  )
+  const marcarLeida = useCallback(
+    (nid: string) => {
+      recordarLeidas([nid])
+      setNotificaciones((lista) => lista.map((n) => (n.id === nid ? { ...n, leida: true } : n)))
+    },
+    [recordarLeidas],
+  )
   const marcarTodasLeidas = useCallback(() => {
+    recordarLeidas(notificaciones.filter((n) => n.para === destinatario && !n.leida).map((n) => n.id))
     setNotificaciones((lista) => lista.map((n) => (n.para === destinatario ? { ...n, leida: true } : n)))
-  }, [destinatario])
+  }, [destinatario, notificaciones, recordarLeidas])
 
   const valor = useMemo(
     () => ({

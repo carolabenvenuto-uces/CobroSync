@@ -152,7 +152,7 @@ export default function ControlDiario() {
     { clave: 'ref', titulo: 'Ref.', oculta: true, orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
     { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
     {
-      clave: 'comprobante',
+      clave: 'comprobante', movil: 'titulo',
       titulo: 'Comprobante',
       filtro: (x) => (x.c.tipo === 'NC' ? 'Nota de crédito' : 'Factura'),
       celda: (x) => <span className="whitespace-nowrap font-medium">{formatoComprobante(x.c)}</span>,
@@ -186,7 +186,7 @@ export default function ControlDiario() {
       celda: (x) => <span className={`whitespace-nowrap font-semibold tabular-nums ${x.c.total < 0 ? 'text-sem-rojo' : ''}`}>{formatoPesos(x.c.total)}</span>,
     },
     {
-      clave: 'subida',
+      clave: 'subida', movil: 'no',
       titulo: 'Subida',
       orden: (x) => x.c.fechaDrive,
       celda: (x) => (
@@ -197,7 +197,7 @@ export default function ControlDiario() {
       ),
     },
     {
-      clave: 'aprobada',
+      clave: 'aprobada', movil: 'no',
       titulo: 'Doc. aprobada',
       orden: (x) => x.c.fechaAprobacion ?? null,
       celda: (x) => (
@@ -208,7 +208,7 @@ export default function ControlDiario() {
       ),
     },
     {
-      clave: 'presentacion',
+      clave: 'presentacion', movil: 'no',
       titulo: 'Presentación',
       orden: (x) => x.c.fechaPresentacion,
       celda: (x) => (
@@ -221,7 +221,7 @@ export default function ControlDiario() {
     { clave: 'vto', titulo: 'Vto.', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
     { clave: 'cobro', titulo: 'Cobro', orden: (x) => x.c.fechaCobro, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fechaCobro)}</span> },
     {
-      clave: 'estado',
+      clave: 'estado', movil: 'accion',
       titulo: 'Estado',
       filtro: (x) => nombreEtapa(x.s.etapa),
       celda: (x) => (
@@ -232,7 +232,7 @@ export default function ControlDiario() {
       ),
     },
     {
-      clave: 'nc',
+      clave: 'nc', movil: 'no',
       titulo: 'Aviso de NC',
       filtro: (x) => avisoNc(x.c),
       celda: (x) =>

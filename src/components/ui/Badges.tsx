@@ -102,13 +102,14 @@ export const NOMBRE_ESTADO: Record<EstadoComprobante, string> = {
 }
 
 /** Chip neutro para textos cortos (niveles, avisos). */
-export function Chip({ children, tono = 'gris' }: { children: string; tono?: 'gris' | 'rojo' | 'amarillo' | 'verde' | 'azul' }) {
+export function Chip({ children, tono = 'gris' }: { children: string; tono?: 'gris' | 'rojo' | 'amarillo' | 'verde' | 'azul' | 'celeste' }) {
   const clases = {
     gris: 'bg-slate-100 text-slate-700',
     rojo: 'bg-sem-rojo/10 text-red-800',
     amarillo: 'bg-sem-amarillo/15 text-amber-900',
     verde: 'bg-sem-verde/15 text-emerald-800',
     azul: 'bg-marca/10 text-blue-800',
+    celeste: 'bg-sky-500/10 text-sky-800',
   }[tono]
   return <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${clases}`}>{children}</span>
 }

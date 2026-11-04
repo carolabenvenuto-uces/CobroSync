@@ -82,7 +82,7 @@ export default function Pendientes() {
     { clave: 'estado', titulo: 'Estado', filtro: (x) => NOMBRE_ESTADO[x.nivel], celda: (x) => <Chip tono={TONO[x.nivel]}>{NOMBRE_ESTADO[x.nivel]}</Chip> },
     { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, orden: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
     {
-      clave: 'factura',
+      clave: 'factura', movil: 'titulo',
       titulo: 'Factura',
       orden: (x) => x.c.fecha,
       celda: (x) => (
@@ -97,7 +97,7 @@ export default function Pendientes() {
     { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap font-semibold">{formatoPesos(x.c.total)}</span> },
     {
-      clave: 'falta',
+      clave: 'falta', movil: 'ancha',
       titulo: 'Qué falta',
       filtro: (x) => nombreEtapa(x.semaforo.etapa),
       celda: (x) => (
@@ -109,7 +109,7 @@ export default function Pendientes() {
       ),
     },
     {
-      clave: 'situacion',
+      clave: 'situacion', movil: 'ancha',
       titulo: 'Aviso de la sucursal',
       filtro: (x) => x.situacion,
       celda: (x) =>

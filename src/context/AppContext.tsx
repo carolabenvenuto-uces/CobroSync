@@ -264,7 +264,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [anio, setAnio] = useState(2026)
   const [parametros, setParametros] = useState<ParametrosImpacto>(PARAMETROS_INICIALES)
   const [fuente, setFuente] = useState<EstadoApp['fuente']>({ tipo: 'demo' })
-  const [legajoAbierto, abrirLegajo] = useState<string | null>(null)
+  const [legajoAbierto, setLegajoAbierto] = useState<string | null>(null)
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [usuarioGoogle, setUsuarioGoogle] = useState<UsuarioGoogle | null>(null)
   const [sesionDemo, setSesionDemo] = useState(() => leerSesion() !== null)
@@ -356,7 +356,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cerrarSesion = useCallback(() => {
     setSesionDemo(false)
     guardarSesion(null)
-    abrirLegajo(null)
+    setLegajoAbierto(null)
   }, [])
 
   const sucursalActual: Sucursal | undefined = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
@@ -572,6 +572,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [recordarLeidas],
   )
+  // Abrir una factura da por leídos sus avisos: si se resolvió entrando por otro lado (la tabla,
+  // el buscador), la notificación no queda colgada como pendiente
+  const abrirLegajo = useCallback(
+    (id: string | null) => {
+      setLegajoAbierto(id)
+      if (!id) return
+      const ids = notificaciones.filter((n) => n.para === destinatario && !n.leida && (n.comprobanteId === id || n.facturas?.length === 1 && n.facturas[0] === id)).map((n) => n.id)
+      if (ids.length) {
+        recordarLeidas(ids)
+        setNotificaciones((lista) => lista.map((n) => (ids.includes(n.id) ? { ...n, leida: true } : n)))
+      }
+    },
+    [notificaciones, destinatario, recordarLeidas],
+  )
+
   const marcarTodasLeidas = useCallback(() => {
     recordarLeidas(notificaciones.filter((n) => n.para === destinatario && !n.leida).map((n) => n.id))
     setNotificaciones((lista) => lista.map((n) => (n.para === destinatario ? { ...n, leida: true } : n)))
@@ -638,6 +653,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       iniciarSesion,
       cerrarSesion,
       legajoAbierto,
+      abrirLegajo,
       misNotificaciones,
       marcarLeida,
       marcarTodasLeidas,

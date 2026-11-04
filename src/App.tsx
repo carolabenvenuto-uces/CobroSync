@@ -58,6 +58,7 @@ export default function App() {
         <Route path="ajustes" element={auditoria(<Ajustes />)} />
         <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="siniestros" element={<Siniestros />} />
+        <Route path="resolver" element={<MisFacturas vista="resolver" />} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

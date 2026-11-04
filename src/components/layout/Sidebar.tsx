@@ -2,6 +2,7 @@ import { useMemo, type ComponentType } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   LogOut,
+  AlertTriangle,
   BarChart3,
   BookUser,
   Bell,
@@ -22,6 +23,7 @@ import {
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { calcularSemaforo } from '../../domain/semaforo'
+import { paraResolver } from '../../domain/resolver'
 import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
@@ -33,7 +35,7 @@ interface ItemMenu {
   ruta: string
   etiqueta: string
   icono: ComponentType<{ className?: string }>
-  contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar'
+  contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver'
 }
 
 /**
@@ -86,6 +88,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
     {
       titulo: 'Mi sucursal',
       items: [
+        { ruta: '/app/resolver', etiqueta: 'Para resolver', icono: AlertTriangle, contador: 'resolver' },
         { ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' },
         { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
       ],
@@ -99,7 +102,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const comprobantes = useComprobantes()
 
   const contadores = useMemo(() => {
-    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0 }
+    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0 }
     const sectores = calcularAvisos(comprobantes, hoy)
     return {
       pendientes: comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
@@ -109,6 +112,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         return e !== null && RECLAMO_PARA_ACTUAR.includes(e)
       }).length,
       presentar: comprobantes.filter((c) => c.tipo === 'FC' && calcularSemaforo(c, hoy).etapa === 'pres_pendiente').length,
+      resolver: paraResolver(comprobantes, hoy).length,
     }
   }, [datos, comprobantes, hoy])
 

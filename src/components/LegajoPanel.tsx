@@ -587,6 +587,36 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           )}
 
           {/* Nota de crédito: con qué factura se vincula */}
+          {c.tipo === 'NC' &&
+            (() => {
+              // Qué hace esta nota de crédito, en palabras, para cualquiera que la abra
+              const f = c.ncReferencia ? datos?.comprobantes.find((x) => x.id === c.ncReferencia) : undefined
+              const vinculada = !!(f && c.ncInformada !== false)
+              const total = vinculada && f!.estado === 'anulada'
+              const aviso = f?.eventos.filter((e) => e.tipo === 'nota_credito' && e.area === 'sucursal').at(-1)
+              return (
+                <section className="rounded-lg border border-red-200 bg-red-50/60 p-3">
+                  <h3 className="font-bold text-red-900">Nota de crédito por {formatoPesos(Math.abs(c.total))}</h3>
+                  {vinculada ? (
+                    <p className="mt-1 text-slate-700">
+                      {total ? 'Anula completa la factura ' : 'Acredita una parte de la factura '}
+                      <button type="button" onClick={() => abrirLegajo(f!.id)} className="font-semibold text-marca hover:underline">
+                        {formatoComprobante(f!)}
+                      </button>{' '}
+                      ({formatoPesos(f!.total)}{f!.siniestro ? ` · siniestro ${f!.siniestro}` : ''}).
+                      {!total && ` A esa factura le queda un saldo de ${formatoPesos(saldoSinCobro(f!))}.`}
+                      {total && ' Esa factura ya no se presenta ni se cobra.'}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-slate-600">
+                      Todavía no está vinculada con una factura{f ? ` (posible: ${formatoComprobante(f)})` : ''}. Auditoría la revisa y la vincula.
+                    </p>
+                  )}
+                  {aviso && <p className="mt-1 text-xs text-slate-600">Motivo que informó la sucursal: {aviso.texto}</p>}
+                </section>
+              )
+            })()}
+
           {c.tipo === 'NC' && rol === 'auditoria' && (
             <section className="space-y-2 rounded-lg border border-slate-200 p-3">
               <h3 className="font-bold">Factura que acredita</h3>

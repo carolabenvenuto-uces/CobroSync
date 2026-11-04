@@ -23,7 +23,7 @@ import {
 } from '../services/google'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
-import { NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
 import { configurarPlazos, plazosActuales, type Ajustes } from '../domain/plazos'
 import { configurarTextos, textoAviso } from '../domain/textos'
 
@@ -116,6 +116,13 @@ function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): 
   configurarTextos(d.meta.textos)
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
+    // Sin respuesta a 3 reclamos: Auditoría pide apoyo a Gerencia desde que terminó la espera
+    if (estadoReclamo(c, d.meta.fechaCorte) === 'escalar') {
+      const desde = finDeEspera(c) ?? d.meta.fechaCorte
+      if (diffDias(desde, d.meta.fechaCorte) <= 14) {
+        lista.push({ id: `${c.id}|apoyo|${desde}`, para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, compania: c.aseguradoraId, fecha: desde, comprobanteId: c.id, leida: false, texto: '' })
+      }
+    }
     for (const e of c.eventos) {
       const dias = diffDias(e.fecha, d.meta.fechaCorte)
       for (const n of crearNotificaciones(c, e)) {
@@ -167,10 +174,8 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
     lista.push({ ...base(), para: 'gerencia', clase: 'critica', sucursal: c.sucursal, texto: `Documentación crítica · ${c.sucursal} · ${numero}` })
   }
-  const nReclamo = e.tipo === 'reclamo' ? Number(/Reclamo (\d+)/.exec(e.texto)?.[1] ?? 0) : 0
-  if (nReclamo >= 3) {
-    lista.push({ ...base(), para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, compania: c.aseguradoraId, texto: `Sin respuesta de la compañía · ${numero}` })
-  }
+  // Los pedidos de apoyo a Gerencia no salen de un movimiento: salen del estado de la factura
+  // (3 reclamos y pasó la semana sin respuesta). Ver notificacionesIniciales.
   return lista
 }
 

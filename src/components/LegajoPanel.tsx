@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
 import {
   calcularSemaforo,
   documentosDelLegajo,
@@ -692,7 +692,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 {reclamo && (
                   <span
                     className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
-                      reclamo === 'sin_reclamar' ? 'bg-red-800/10 text-red-900' : reclamo === 'escalar' ? 'bg-sem-amarillo/20 text-amber-900' : 'bg-slate-100 text-slate-700'
+                      reclamo === 'sin_reclamar' || reclamo === 'volver'
+                        ? 'bg-red-800/10 text-red-900'
+                        : reclamo === 'escalar'
+                          ? 'bg-sem-amarillo/20 text-amber-900'
+                          : 'bg-slate-100 text-slate-700'
                     }`}
                   >
                     {NOMBRE_ESTADO_RECLAMO[reclamo]}
@@ -712,6 +716,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     </li>
                   ))}
                 </ol>
+              )}
+              {reclamo === 'reclamada' && finDeEspera(c) && (
+                <p className="mt-2 rounded-md bg-fondo p-2 text-xs text-slate-600">
+                  Se espera la respuesta de la compañía hasta el {formatoFecha(finDeEspera(c))}. Si no responde, hay que volver a reclamar.
+                </p>
+              )}
+              {reclamo === 'volver' && (
+                <p className="mt-2 rounded-md bg-sem-rojo/10 p-2 text-xs text-red-900">
+                  Pasó la semana sin respuesta de la compañía: hay que volver a reclamar.
+                </p>
               )}
               {reclamo === 'escalar' && (
                 <p className="mt-2 rounded-md bg-sem-amarillo/15 p-2 text-xs text-amber-900">

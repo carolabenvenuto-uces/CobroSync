@@ -97,15 +97,18 @@ export default function Ajustes() {
         <Card>
           <CardTitulo>
             <span className="inline-flex items-center gap-2">
-              <Timer className="h-4 w-4 text-marca" /> Plazos de la sucursal
+              <Timer className="h-4 w-4 text-marca" /> Plazos
             </span>
           </CardTitulo>
-          <p className="-mt-2 mb-4 text-xs text-slate-500">Días corridos desde la fecha de la factura para subir la documentación completa.</p>
+          <p className="-mt-2 mb-4 text-xs text-slate-500">
+            Días corridos. Los de la sucursal se cuentan desde la fecha de la factura; la espera de un reclamo, desde el reclamo.
+          </p>
           <div className="grid grid-cols-2 gap-4">
             {numero('comun', 'Factura común', 'Después pasa a atrasada')}
             {numero('mipyme', 'Factura MiPyME', 'Más corto: la compañía tiene pocos días para aceptarla')}
             {numero('criticaComun', 'Crítica (común) desde', 'Le llega a Gerencia', 90)}
             {numero('criticaMipyme', 'Crítica (MiPyME) desde', 'Le llega a Gerencia', 90)}
+            {numero('respuestaReclamo', 'Espera de respuesta a un reclamo', 'Después: volver a reclamar (con 3, pedir apoyo a Gerencia)', 30)}
           </div>
         </Card>
 

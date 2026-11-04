@@ -184,17 +184,22 @@ describe('facturas vencidas y reclamos', () => {
     expect(estadoReclamo(vencida(r), CORTE)).toBe('reclamada')
   })
 
-  it('con 2 reclamos todavía no se escala, aunque lleve mucho tiempo vencida', () => {
+  it('si pasó una semana del último reclamo sin respuesta, hay que volver a reclamar (con 2 todavía no se pide apoyo)', () => {
     const r = [
       { fecha: '2026-06-15', medio: 'mail' as const, autor: 'Carola B.', nota: '' },
       { fecha: '2026-07-22', medio: 'portal' as const, autor: 'Carola B.', nota: '' },
     ]
-    expect(estadoReclamo(vencida(r, '2026-06-10'), CORTE)).toBe('reclamada')
+    expect(estadoReclamo(vencida(r, '2026-06-10'), CORTE)).toBe('volver')
   })
 
-  it('con 3 reclamos sin respuesta se escala a gerencia', () => {
-    const r = ['2026-10-12', '2026-10-19', '2026-10-26'].map((fecha) => ({ fecha, medio: 'mail' as const, autor: 'Carola B.', nota: '' }))
-    expect(estadoReclamo(vencida(r, '2026-10-10'), CORTE)).toBe('escalar')
+  it('con 3 reclamos y una semana sin respuesta del último, queda Sin respuesta (apoyo de gerencia)', () => {
+    const r = ['2026-10-05', '2026-10-12', '2026-10-19'].map((fecha) => ({ fecha, medio: 'mail' as const, autor: 'Carola B.', nota: '' }))
+    expect(estadoReclamo(vencida(r, '2026-10-01'), CORTE)).toBe('escalar')
+  })
+
+  it('el tercer reclamo también espera una semana antes de pedir apoyo', () => {
+    const r = ['2026-10-12', '2026-10-19', '2026-10-28'].map((fecha) => ({ fecha, medio: 'mail' as const, autor: 'Carola B.', nota: '' }))
+    expect(estadoReclamo(vencida(r, '2026-10-10'), CORTE)).toBe('reclamada')
   })
 
   it('una factura al día no tiene estado de reclamo', () => {

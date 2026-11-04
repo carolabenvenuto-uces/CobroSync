@@ -54,6 +54,8 @@ export default function Resumen() {
     return { ...totales, sinPresentar: de('sin_presentar'), alDia: de('al_dia') }
   }, [comprobantes, hoy])
 
+  const pct = (v: number) => (situacion.pendiente > 0 ? Math.round((v / situacion.pendiente) * 100) : 0)
+
   // 2. El año
   const anual = useMemo(() => {
     const delAnio = comprobantes.filter((c) => anioDe(c.fecha) === anio)
@@ -164,17 +166,26 @@ export default function Resumen() {
       </div>
 
       {/* 3. Lo pendiente de hoy, una sola vez: el total y en qué etapa está */}
-      <div className="mb-3 mt-6 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy</h2>
+      <div className="mb-2 mt-6 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy</h2>
+          <p className="text-xs text-slate-500">Todo lo facturado que falta cobrar, según en qué etapa está: sin presentar + al día + vencido.</p>
+        </div>
         <Link to={verFacturas('pendiente')} className="group inline-flex items-baseline gap-2 text-marca hover:underline">
           <span className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(situacion.pendiente)}</span>
           <span className="text-xs font-semibold">Ver facturas →</span>
         </Link>
       </div>
+      {/* La barra muestra cuánto es cada parte del total */}
+      <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+        <div className="bg-sem-amarillo" style={{ width: `${pct(situacion.sinPresentar)}%` }} />
+        <div className="bg-marca" style={{ width: `${pct(situacion.alDia)}%` }} />
+        <div className="bg-sem-rojo" style={{ width: `${pct(situacion.vencido)}%` }} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
-        <Indicador to={verFacturas('al_dia')} titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
-        <Indicador to={verFacturas('vencido')} titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
+        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" punto="bg-sem-amarillo" valor={formatoPesos(situacion.sinPresentar)} ayuda={`${pct(situacion.sinPresentar)} % · esperando documentación o presentación`} />
+        <Indicador to={verFacturas('al_dia')} titulo="Al día" punto="bg-marca" valor={formatoPesos(situacion.alDia)} ayuda={`${pct(situacion.alDia)} % · presentado, todavía no vence`} />
+        <Indicador to={verFacturas('vencido')} titulo="Vencido" punto="bg-sem-rojo" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda={`${pct(situacion.vencido)} % · presentado, vencido y sin cobrar`} />
       </div>
 
       {/* 4. Dónde está la plata pendiente. Con una sucursal elegida, los datos de esa sucursal */}

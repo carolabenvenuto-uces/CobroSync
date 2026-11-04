@@ -38,6 +38,7 @@ export function Indicador({
   tono = 'neutro',
   icono,
   to,
+  punto,
 }: {
   titulo: string
   valor: string
@@ -45,11 +46,16 @@ export function Indicador({
   tono?: Tono
   icono?: ReactNode
   to?: string
+  /** color de un puntito antes del título, para relacionarlo con una barra o un gráfico (ej. 'bg-marca') */
+  punto?: string
 }) {
   const contenido = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</div>
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {punto && <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${punto}`} aria-hidden="true" />}
+          {titulo}
+        </div>
         {icono && <div className="text-slate-400">{icono}</div>}
         {to && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-marca" />}
       </div>

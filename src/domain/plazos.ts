@@ -26,6 +26,8 @@ export interface Plazos {
   montoMinimoMipyme: number
   /** puntos de venta que se usan solo para facturas MiPyME (opcional) */
   puntosVentaMipyme: number[]
+  /** días que se espera la respuesta de la compañía después de un reclamo */
+  respuestaReclamo: number
 }
 
 export const PLAZOS_INICIALES: Plazos = {
@@ -35,6 +37,7 @@ export const PLAZOS_INICIALES: Plazos = {
   criticaMipyme: 12,
   montoMinimoMipyme: 5_549_862,
   puntosVentaMipyme: [],
+  respuestaReclamo: 7,
 }
 
 let actuales: Plazos = PLAZOS_INICIALES

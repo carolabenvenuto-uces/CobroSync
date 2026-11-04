@@ -68,6 +68,7 @@ var CONFIG_INICIAL = [
   ['diasCriticaMipyme', '12', 'Ídem para una factura MiPyME'],
   ['montoMinimoMipyme', '5549862', 'Monto mínimo de la factura de crédito MiPyME (total). Se actualiza una vez por año'],
   ['puntosVentaMipyme', '', 'Puntos de venta que se usan solo para MiPyME, separados por coma (opcional)'],
+  ['diasRespuestaReclamo', '7', 'Días que se espera la respuesta de la compañía a un reclamo. Después: volver a reclamar; con 3, apoyo de Gerencia'],
   ['textoAvisoApoyo', '', 'Notificación a Gerencia cuando una compañía no responde 3 reclamos (vacío = texto original). Se cambia en Ajustes'],
   ['textoAvisoCritica', '', 'Notificación a Gerencia por facturas críticas (vacío = texto original). Se cambia en Ajustes'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
@@ -458,7 +459,10 @@ function pendientesParaGerencia_(comprobantes, hoy) {
   comprobantes.forEach(function (c) {
     if (esperaALaSucursal_(c) && diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce)) sumar(criticas, c.sucursal, c);
     var vencida = c.tipo === 'FC' && c.estado === 'presentada' && c.vencimiento && String(c.vencimiento) < hoy;
-    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
+    // 3 reclamos y pasó la espera del último sin respuesta
+    var fechas = (c.reclamos || []).map(function (r) { return String(r.fecha || ''); }).filter(String).sort();
+    var esperaCumplida = !fechas.length || diasEntre_(fechas[fechas.length - 1], hoy) >= p.respuestaReclamo;
+    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA && esperaCumplida) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
   });
   var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
@@ -490,6 +494,7 @@ function plazos_() {
     criticaMipyme: n('diasCriticaMipyme', 12),
     montoMinimoMipyme: n('montoMinimoMipyme', 5549862),
     puntosVentaMipyme: String(config_('puntosVentaMipyme') || '').split(/[^0-9]+/).filter(String).map(Number),
+    respuestaReclamo: n('diasRespuestaReclamo', 7),
   };
 }
 
@@ -520,6 +525,7 @@ function guardarAjustes(a) {
       diasCriticaMipyme: a.plazos.criticaMipyme,
       montoMinimoMipyme: a.plazos.montoMinimoMipyme,
       puntosVentaMipyme: (a.plazos.puntosVentaMipyme || []).join(', '),
+      diasRespuestaReclamo: a.plazos.respuestaReclamo || 7,
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
       textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),

@@ -307,7 +307,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           <span>
             <span className="block text-base font-bold">Subir varios archivos de una vez</span>
             <span className="block text-xs text-slate-600">
-              Soltá todos los escaneos juntos: se asignan solos a cada factura por el número, el siniestro o la patente.
+              Soltá todos los PDF juntos: cada uno va a su factura por el número que tiene en el nombre (por ejemplo 35-00011032 orden.pdf).
             </span>
           </span>
         </button>

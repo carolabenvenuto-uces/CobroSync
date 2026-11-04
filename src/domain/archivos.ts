@@ -81,6 +81,38 @@ export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugeren
   return { factura: null, por: null, candidatas: [], tipo }
 }
 
+/** Número de factura como tiene que ir en el nombre: "35-00011032". */
+export function numeroParaNombre(c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string {
+  return `${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+}
+
+export type RevisionNombre =
+  | { ok: true; factura: Comprobante; tipo: TipoArchivo }
+  | { ok: false; error: string; tipo: TipoArchivo }
+
+const EJEMPLO = '35-00011032 orden.pdf'
+
+/**
+ * La regla que se exige (no solo se pide): PDF y, en el nombre, el punto de venta y el número de una
+ * factura de la sucursal, como figura en la factura ("35-00011032"; también "35-11032"). Así no
+ * entra un archivo mal tipeado que después nadie sabe de qué factura es.
+ */
+export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /\.pdf$/i.test(nombre)): RevisionNombre {
+  const tipo = tipoPorNombre(nombre)
+  if (!esPdf) return { ok: false, tipo, error: 'No es un PDF: solo se aceptan PDF.' }
+  const base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  const encontrados = [...base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)].map((m) => ({ pv: Number(m[1]), numero: Number(m[2]), texto: m[0] }))
+  if (encontrados.length === 0) {
+    return { ok: false, tipo, error: `El nombre no tiene el número de factura. Renombralo así: ${EJEMPLO}` }
+  }
+  for (const n of encontrados) {
+    const f = facturas.find((c) => c.puntoVenta === n.pv && c.numero === n.numero)
+    if (f) return { ok: true, factura: f, tipo }
+  }
+  const dicho = `${encontrados[0].pv}-${String(encontrados[0].numero).padStart(8, '0')}`
+  return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en tu sucursal: revisá el número.` }
+}
+
 /** Las facturas a las que todavía se les puede subir documentación. */
 export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
   return comprobantes.filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada')

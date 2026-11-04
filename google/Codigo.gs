@@ -358,6 +358,14 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   if (!c) throw new Error('La factura no existe.');
   if (usuario.rol === 'sucursal' && !mismaSucursal_(c.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
 
+  // Solo PDF (las compañías no aceptan otros formatos) y con el número de esta factura en el nombre
+  if (mime !== 'application/pdf' && !/\.pdf$/i.test(nombre)) throw new Error('Solo se aceptan PDF.');
+  var numeros = [];
+  var m, re = /(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g;
+  while ((m = re.exec(String(nombre))) !== null) numeros.push(Number(m[1]) + '-' + Number(m[2]));
+  if (numeros.indexOf(Number(c.puntoVenta) + '-' + Number(c.numero)) < 0) {
+    throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ').');
+  }
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
   var carpeta = subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)),
     c.tipo + ' ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8));

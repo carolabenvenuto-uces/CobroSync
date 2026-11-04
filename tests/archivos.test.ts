@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { revisarNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import type { Comprobante } from '../src/domain/tipos'
 
 const factura = (id: string, puntoVenta: number, numero: number, siniestro: string, patente: string, ref: string): Comprobante => ({
@@ -66,5 +66,22 @@ describe('carga de varios archivos', () => {
     const s = sugerirFactura('scan0001.pdf', facturas)
     expect(s.factura).toBe(null)
     expect(s.candidatas).toHaveLength(0)
+  })
+})
+
+describe('nombres obligatorios', () => {
+  it('acepta un PDF con el número de una factura de la sucursal', () => {
+    const r = revisarNombre('35-00011032 orden.pdf', facturas)
+    expect(r.ok && r.factura.id).toBe('a')
+    expect(r.tipo).toBe('orden')
+    expect(revisarNombre('FC 35-11033.pdf', facturas).ok).toBe(true)
+  })
+  it('rechaza lo que no es PDF, lo que no tiene número y los números que no existen', () => {
+    const foto = revisarNombre('35-00011032 orden.jpg', facturas)
+    expect(!foto.ok && foto.error).toContain('PDF')
+    const sinNumero = revisarNombre('scan0001.pdf', facturas)
+    expect(!sinNumero.ok && sinNumero.error).toContain('no tiene el número')
+    const mal = revisarNombre('35-00011099 orden.pdf', facturas)
+    expect(!mal.ok && mal.error).toContain('35-00011099')
   })
 })

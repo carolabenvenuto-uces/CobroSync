@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.8] - 2026-11-04
+
+### Cambiado
+- **Sucursal · Mis facturas:** se quitó la leyenda + ! … ✓ del recuadro Importante (queda solo el plazo y la fecha estimada). Las etiquetas de cada factura se leen solas: "+ Falta la orden firmada", "✓ Factura aprobada", "… Factura en revisión", "! Orden firmada observada". Mismo criterio en Mis siniestros, donde además cada etiqueta queda junto a su explicación (no se separan al bajar de renglón) y "Con nota de crédito" lleva borde para no perderse contra el fondo.
+
 ## [0.12.7] - 2026-11-04
 
 ### Corregido

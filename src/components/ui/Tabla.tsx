@@ -462,7 +462,7 @@ export function Tabla<T>({
                 {columnas.map((col, i) => (
                   <td
                     key={col.clave}
-                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-blue-50' : ''}`}
+                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
                   >
                     {col.celda(f)}
                   </td>

@@ -17,7 +17,7 @@ const ESTILO_DOC: Record<Documento['estado'], string> = {
   faltante: 'border-amber-300 bg-amber-50 text-amber-900',
   observado: 'border-red-300 bg-red-50 text-red-800',
   en_revision: 'border-sky-200 bg-sky-50 text-sky-800',
-  ok: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  ok: 'border-teal-200 bg-teal-50 text-teal-800',
 }
 const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', observado: 'observada', en_revision: 'en revisión', ok: 'aprobada' }
 
@@ -185,7 +185,7 @@ export default function Siniestros() {
           {[
             { t: 'Facturado', v: formatoPesos(facturado), c: 'text-noche' },
             { t: 'Notas de crédito', v: acreditado ? `−${formatoPesos(acreditado)}` : '—', c: acreditado ? 'text-red-800' : 'text-slate-400' },
-            { t: 'Cobrado', v: cobrado ? formatoPesos(cobrado) : '—', c: cobrado ? 'text-emerald-700' : 'text-slate-400' },
+            { t: 'Cobrado', v: cobrado ? formatoPesos(cobrado) : '—', c: cobrado ? 'text-teal-700' : 'text-slate-400' },
             { t: 'Falta cobrar', v: g.saldo ? formatoPesos(g.saldo) : '—', c: g.saldo ? 'text-noche' : 'text-slate-400' },
           ].map((x) => (
             <div key={x.t} className="rounded-lg bg-fondo px-3 py-2">

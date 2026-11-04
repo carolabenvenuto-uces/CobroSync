@@ -49,8 +49,8 @@ export const MOTIVOS_DEMORA = [
 
 const COLOR_AREA: Record<AreaEvento, string> = {
   sucursal: 'bg-sem-amarillo/15 text-amber-900',
-  auditoria: 'bg-marca/10 text-blue-800',
-  gerencia: 'bg-etapa-compania/10 text-violet-800',
+  auditoria: 'bg-marca/10 text-indigo-800',
+  gerencia: 'bg-etapa-compania/10 text-blue-800',
   sistema: 'bg-slate-100 text-slate-600',
 }
 
@@ -68,7 +68,7 @@ const ICONO_EVENTO: Record<Evento['tipo'], ReactNode> = {
 const ESTILO_DOC: Record<Documento['estado'], string> = {
   faltante: 'text-red-700',
   en_revision: 'text-sky-700',
-  ok: 'text-emerald-700',
+  ok: 'text-teal-700',
   observado: 'text-red-700',
 }
 
@@ -452,7 +452,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   )}
                 </div>
                 {rol === 'auditoria' && paraRevisar.length > 0 && (
-                  <button type="button" onClick={() => aprobar(paraRevisar)} className={`${botonChico} bg-esmeralda text-white hover:bg-emerald-600`}>
+                  <button type="button" onClick={() => aprobar(paraRevisar)} className={`${botonChico} bg-esmeralda text-white hover:bg-teal-600`}>
                     <Check className="h-3.5 w-3.5" /> Aprobar todo
                   </button>
                 )}
@@ -526,7 +526,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                           </>
                         ) : rol === 'auditoria' && d.estado === 'en_revision' ? (
                           <>
-                            <button type="button" onClick={() => aprobar([d.tipo])} className={`${botonChico} bg-esmeralda/15 text-emerald-800 hover:bg-esmeralda/25`}>
+                            <button type="button" onClick={() => aprobar([d.tipo])} className={`${botonChico} bg-esmeralda/15 text-teal-800 hover:bg-esmeralda/25`}>
                               <Check className="h-3.5 w-3.5" /> Aprobar
                             </button>
                             <button type="button" onClick={() => setObservando(d.tipo)} className={`${botonChico} bg-sem-rojo/10 text-red-800 hover:bg-sem-rojo/20`}>
@@ -740,7 +740,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           {rol === 'auditoria' && abierta && (
             <section className="space-y-3">
               {c.fechaPresentacion === null && (
-                <button type="button" onClick={presentar} disabled={!puedePresentarse(c, hoy)} className={`${botonPrincipal} bg-esmeralda hover:bg-emerald-600`}>
+                <button type="button" onClick={presentar} disabled={!puedePresentarse(c, hoy)} className={`${botonPrincipal} bg-esmeralda hover:bg-teal-600`}>
                   <Send className="h-4 w-4" /> Marcar como presentada
                 </button>
               )}
@@ -792,7 +792,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 ))}
               {c.fechaPresentacion !== null &&
                 (formulario !== 'cobro' ? (
-                  <button type="button" onClick={() => setFormulario('cobro')} className={`${botonPrincipal} bg-esmeralda hover:bg-emerald-600`}>
+                  <button type="button" onClick={() => setFormulario('cobro')} className={`${botonPrincipal} bg-esmeralda hover:bg-teal-600`}>
                     <CircleCheck className="h-4 w-4" /> Registrar cobro
                   </button>
                 ) : (
@@ -817,7 +817,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         className={`${claseSelect} mt-1 w-full`}
                       />
                     </label>
-                    <button type="button" onClick={registrarCobro} className={`${botonPrincipal} bg-esmeralda hover:bg-emerald-600`}>
+                    <button type="button" onClick={registrarCobro} className={`${botonPrincipal} bg-esmeralda hover:bg-teal-600`}>
                       Confirmar cobro
                     </button>
                   </div>
@@ -857,7 +857,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         <span className="truncate text-xs text-slate-500">{r.nota}</span>
                       </div>
                       {r.respuesta && (
-                        <p className="ml-4 text-xs font-semibold text-violet-800">
+                        <p className="ml-4 text-xs font-semibold text-blue-800">
                           Respuesta ({formatoFecha(r.respuesta.fecha)}): {NOMBRE_RESPUESTA[r.respuesta.tipo].toLowerCase()}
                           {r.respuesta.nota ? ` · ${r.respuesta.nota}` : ''}
                         </p>

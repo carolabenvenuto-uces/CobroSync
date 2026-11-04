@@ -27,7 +27,7 @@ const ESTILO: Record<EstadoReclamo, string> = {
   volver: 'bg-sem-rojo/10 text-red-800',
   escalar: 'bg-sem-amarillo/20 text-amber-900',
   tolerancia: 'bg-slate-100 text-slate-600',
-  en_pagos: 'bg-etapa-compania/10 text-violet-800',
+  en_pagos: 'bg-etapa-compania/10 text-blue-800',
   reenviar: 'bg-sem-rojo/10 text-red-800',
   refacturar: 'bg-sem-amarillo/20 text-amber-900',
 }
@@ -166,7 +166,7 @@ export default function Reclamos() {
         sucursal
       />
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Después de cada reclamo se espera la respuesta {plazosActuales().respuestaReclamo} días; si no llega, hay que volver a reclamar.
@@ -219,7 +219,7 @@ export default function Reclamos() {
               <span className="text-slate-500">Para reclamar varias juntas: filtrar por compañía y marcar las casillas.</span>
             )}
           </span>
-          {mensaje && <span className="text-sm text-emerald-800">{mensaje}</span>}
+          {mensaje && <span className="text-sm text-teal-800">{mensaje}</span>}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button type="button" disabled={!seleccion.length} onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">
               <Mail className="h-4 w-4 text-marca" /> Armar el mail

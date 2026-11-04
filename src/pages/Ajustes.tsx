@@ -87,7 +87,7 @@ export default function Ajustes() {
       />
       {estado && (
         <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${estado.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-esmeralda/30 bg-esmeralda/5 text-emerald-900'}`}
+          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${estado.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-esmeralda/30 bg-esmeralda/5 text-teal-900'}`}
         >
           {estado.texto}
         </div>

@@ -62,7 +62,7 @@ export default function RankingSucursales() {
     const Icono = mejoro ? ArrowDownRight : ArrowUpRight
     return (
       <span
-        className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${mejoro ? 'text-emerald-700' : 'text-sem-rojo'}`}
+        className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${mejoro ? 'text-teal-700' : 'text-sem-rojo'}`}
         title={`${MESES[mesComparado - 1]}: ${a} días · ${MESES[mesComparado - 2]}: ${b} días`}
       >
         <Icono className="h-3 w-3" />

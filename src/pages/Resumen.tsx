@@ -139,7 +139,7 @@ export default function Resumen() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 2. El año: lo primero que se ve, aparte del mes. Mismo formato que los datos del mes */}
-        <div className="flex flex-col rounded-xl border border-marca/20 bg-blue-50/70 p-5 shadow-sm">
+        <div className="flex flex-col rounded-xl border border-marca/20 bg-indigo-50/70 p-5 shadow-sm">
           <div className="text-sm font-bold uppercase tracking-wide text-marca">Año {anio}</div>
           {(() => {
             const nc = Math.abs(anual.notasCredito)
@@ -147,7 +147,7 @@ export default function Resumen() {
             const falta = Math.max(0, anual.facturado - anual.cobrado - nc)
             const pct = (v: number) => `${((v / base) * 100).toLocaleString('es-AR', { maximumFractionDigits: 1 })} %`
             const partes = [
-              { titulo: 'Cobrado', valor: anual.cobrado, color: 'bg-sem-verde', texto: 'text-emerald-800' },
+              { titulo: 'Cobrado', valor: anual.cobrado, color: 'bg-sem-verde', texto: 'text-teal-800' },
               { titulo: 'Notas de crédito', valor: nc, color: 'bg-red-700', texto: 'text-red-800' },
               { titulo: 'Falta cobrar', valor: falta, color: 'bg-sem-amarillo', texto: 'text-amber-900' },
             ]
@@ -195,7 +195,7 @@ export default function Resumen() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             {selectorMes}
             {enCurso && (
-              <span className="flex items-center gap-1.5 text-xs text-blue-900">
+              <span className="flex items-center gap-1.5 text-xs text-indigo-900">
                 <CalendarDays className="h-3.5 w-3.5" /> Día {diaDe(hoy)} de {diasDelMes}: el mes todavía no terminó
               </span>
             )}
@@ -221,8 +221,8 @@ export default function Resumen() {
                 <YAxis tickFormatter={(v: number) => formatoPesosCorto(v)} tickLine={false} axisLine={false} fontSize={12} width={80} />
                 <Tooltip formatter={(v) => formatoPesos(Number(v))} cursor={{ fill: '#F1F5F9' }} />
                 <Legend iconType="circle" />
-                <Bar dataKey="previsto" name="Previsto (por vencimiento)" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="cobrado" name="Cobrado" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="previsto" name="Previsto (por vencimiento)" fill="#5B4FC7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="cobrado" name="Cobrado" fill="#0E9F8E" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

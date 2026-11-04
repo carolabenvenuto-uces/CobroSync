@@ -25,13 +25,13 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
   },
   pres_pendiente: {
     punto: 'bg-etapa-auditoria',
-    fondo: 'bg-etapa-auditoria/10 text-blue-800',
+    fondo: 'bg-etapa-auditoria/10 text-indigo-800',
     texto: 'Pres. pendiente',
     quien: 'Auditoría',
   },
-  al_dia: { punto: 'bg-etapa-compania', fondo: 'bg-etapa-compania/10 text-violet-800', texto: 'Al día', quien: 'Compañía' },
+  al_dia: { punto: 'bg-etapa-compania', fondo: 'bg-etapa-compania/10 text-blue-800', texto: 'Al día', quien: 'Compañía' },
   vencida: { punto: 'bg-red-800', fondo: 'bg-red-800/10 text-red-900', texto: 'Vencida', quien: 'Compañía' },
-  cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-emerald-800', texto: 'Cobrado', quien: '—' },
+  cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-teal-800', texto: 'Cobrado', quien: '—' },
   no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'Anulada / NC', quien: '—' },
 }
 
@@ -108,8 +108,8 @@ export function Chip({ children, tono = 'gris' }: { children: string; tono?: 'gr
     gris: 'bg-slate-100 text-slate-700',
     rojo: 'bg-sem-rojo/10 text-red-800',
     amarillo: 'bg-sem-amarillo/15 text-amber-900',
-    verde: 'bg-sem-verde/15 text-emerald-800',
-    azul: 'bg-marca/10 text-blue-800',
+    verde: 'bg-sem-verde/15 text-teal-800',
+    azul: 'bg-marca/10 text-indigo-800',
     celeste: 'bg-sky-500/10 text-sky-800',
   }[tono]
   return <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${clases}`}>{children}</span>

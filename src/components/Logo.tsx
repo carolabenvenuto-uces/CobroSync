@@ -1,16 +1,21 @@
 import { FIRMA, VERSION } from '../lib/marca'
 
 /**
- * Isologotipo (provisorio, hasta el diseño definitivo): una C abierta que gira, con una moneda
- * verde en la apertura. Sobre fondo oscuro, la C va en un azul más claro para que se lea.
+ * Isologotipo: un imán con forma de C (lila) con los polos en verde agua, que atrae puntitos
+ * (los cobros). Sobre fondo oscuro, el lila va más claro para que se lea.
  */
 export function Isologo({ className = 'h-9 w-9', claro = false }: { className?: string; claro?: boolean }) {
-  const azul = claro ? '#60A5FA' : '#2563EB'
+  const lila = claro ? '#B9AEFF' : '#5B4FC7'
+  const agua = claro ? '#3FD4C2' : '#0E9F8E'
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <path d="M90.4 34.2A40 40 0 1 0 90.4 85.8" fill="none" stroke={azul} strokeWidth="18" strokeLinecap="round" />
-      <path d="M78 22l13 12-16 6" fill="none" stroke={azul} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="96" cy="60" r="12" fill="#10B981" />
+      <path d="M86 28 H58 A32 32 0 0 0 58 92 H86" fill="none" stroke={lila} strokeWidth="22" strokeLinejoin="round" />
+      <path d="M76 28 H94" stroke={agua} strokeWidth="22" />
+      <path d="M76 92 H94" stroke={agua} strokeWidth="22" />
+      <circle cx="104" cy="60" r="5" fill={agua} />
+      <circle cx="112" cy="48" r="3.5" fill={agua} opacity="0.8" />
+      <circle cx="112" cy="72" r="3.5" fill={agua} opacity="0.8" />
+      <circle cx="117" cy="60" r="2.5" fill={agua} opacity="0.6" />
     </svg>
   )
 }
@@ -22,7 +27,7 @@ export function Marca({ oscuro = false }: { oscuro?: boolean }) {
       <Isologo claro={oscuro} />
       <div className="leading-none">
         <div className={`text-lg font-extrabold tracking-tight ${oscuro ? 'text-white' : 'text-noche'}`}>
-          Cobro<span className={oscuro ? 'text-blue-400' : 'text-marca'}>Sync</span>
+          Cobro<span className={oscuro ? 'text-[#B9AEFF]' : 'text-marca'}>Sync</span>
           {/* versión chiquita, abajo al lado del nombre */}
           <span className={`ml-1 align-baseline text-[9px] font-medium ${oscuro ? 'text-slate-500' : 'text-slate-400'}`}>v{VERSION}</span>
         </div>

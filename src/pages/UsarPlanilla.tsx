@@ -112,7 +112,7 @@ export default function UsarPlanilla() {
         subtitulo="Pendientes, alertas e informes con los datos reales de la planilla de control"
       />
 
-      <div className="mb-4 flex items-start gap-3 rounded-lg border border-esmeralda/30 bg-esmeralda/5 px-4 py-3 text-sm text-emerald-900">
+      <div className="mb-4 flex items-start gap-3 rounded-lg border border-esmeralda/30 bg-esmeralda/5 px-4 py-3 text-sm text-teal-900">
         <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           <strong>El archivo no sale de esta computadora.</strong> Se lee y se procesa en este navegador: no se sube a

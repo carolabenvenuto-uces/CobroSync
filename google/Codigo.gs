@@ -353,53 +353,41 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
 // ── Avisos por mail ─────────────────────────────────────────────────────────
 
 /**
- * Todos los días: avisa al gerente de la sucursal desde el día 8 sin documentación completa
- * y a Gerencia General desde el día 22. Cada aviso se manda una sola vez por factura
- * y queda registrado en la conversación de la factura.
+ * Todos los días a las 8 (sin mails): marca en cada factura cuándo pasó el plazo de la sucursal y
+ * cuándo pasó a crítica. Con eso, la sucursal y Gerencia lo ven en sus notificaciones de CobroSync.
+ * Los mails salen solo los lunes (resumenSemanal), con lo que quedó pendiente.
  */
 function avisosDiarios() {
-  if (config_('avisosPorMail') !== 'SI') return;
   var hoy = hoy_();
   var sucursales = indexar_(leerHoja_(HOJAS.sucursales), 'nombre');
-  var aGerentes = {}; // correo del gerente de sucursal → líneas
-
   conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     leerHoja_(HOJAS.comprobantes).forEach(function (c, i) {
+      if (!esperaALaSucursal_(c) || compromisoVigente_(c, hoy)) return;
       var eventos = c.eventos || [];
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
+      var dias = diasEntre_(c.fecha, hoy);
       var cambio = false;
-      var numero = c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8);
-      // Documentación: al gerente de la sucursal (día 8) y a Gerencia General (día 22)
-      // Si la sucursal avisó para cuándo lo sube y esa fecha no pasó, no se la reclama
-      var enPlazoComprometido = c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy;
-      if (esperaALaSucursal_(c) && !enPlazoComprometido) {
-        var dias = diasEntre_(c.fecha, hoy);
+      if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && !yaAvisado('días sin legajo completo: se')) {
         var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
-        if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && suc.correoGerente) {
-          agregar_(aGerentes, suc.correoGerente, numero + ' · ' + dias + ' días sin documentación completa');
-          eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se avisó a ' + suc.gerente });
-          cambio = true;
-        }
-        // Gerencia lo ve en sus notificaciones de CobroSync en el día; por mail le llega el lunes
-        if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
-          eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
-          cambio = true;
-        }
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
+        cambio = true;
       }
-
+      if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
+        cambio = true;
+      }
       if (cambio) {
         c.eventos = eventos;
         escribirFila_(hoja, HOJAS.comprobantes, i + 2, c);
       }
     });
   });
+}
 
-  Object.keys(aGerentes).forEach(function (correo) {
-    var lineas = aGerentes[correo];
-    enviar_(correo, 'CobroSync · ' + lineas.length + (lineas.length === 1 ? ' factura' : ' facturas') + ' de tu sucursal sin documentación completa',
-      'Estas facturas pasaron el plazo de ' + PLAZO_DOCUMENTACION + ' días para cargar la documentación. Por favor, revisá con tu equipo que se suban:\n\n- ' + lineas.join('\n- '));
-  });
+/** La sucursal avisó para cuándo lo sube y esa fecha todavía no pasó: no se la reclama. */
+function compromisoVigente_(c, hoy) {
+  return !!(c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy);
 }
 
 /**
@@ -412,17 +400,23 @@ function resumenSemanal() {
   var hoy = hoy_();
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   pendientesParaGerencia_(comprobantes, hoy);
+  var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   leerHoja_(HOJAS.sucursales).forEach(function (s) {
     if (!s.correoGerente) return;
-    var pendientes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c); });
-    var criticas = pendientes.filter(function (c) { return diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL; });
-    var atrasadas = pendientes.filter(function (c) { var d = diasEntre_(c.fecha, hoy); return d > PLAZO_DOCUMENTACION && d <= DIAS_GERENCIA_GENERAL; });
-    var importe = pendientes.reduce(function (t, c) { return t + Number(c.total || 0); }, 0);
-    enviar_(s.correoGerente, 'CobroSync · Resumen semanal de ' + s.nombre,
-      'Facturas con documentación pendiente: ' + pendientes.length + '\n' +
-      '- Atrasadas (8 a 21 días): ' + atrasadas.length + '\n' +
-      '- Críticas (más de 21 días): ' + criticas.length + '\n' +
-      'Importe retenido: $ ' + importe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    // Solo lo que pasó el plazo (sin las que tienen una fecha comprometida que todavía no llegó)
+    var atrasadas = comprobantes
+      .filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c) && !compromisoVigente_(c, hoy) && diasEntre_(c.fecha, hoy) > PLAZO_DOCUMENTACION; })
+      .sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
+    if (!atrasadas.length) return; // si no hay nada pendiente, no sale ningún mail
+    var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL; }).length;
+    var importe = atrasadas.reduce(function (t, c) { return t + Number(c.total || 0) - Number(c.acreditado || 0); }, 0);
+    var lineas = atrasadas.slice(0, 40).map(function (c) {
+      return c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ' · ' + diasEntre_(c.fecha, hoy) + ' días' + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
+    });
+    if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');
+    enviar_(s.correoGerente, 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación',
+      'Estas facturas pasaron los ' + PLAZO_DOCUMENTACION + ' días sin la documentación completa' + (criticas ? ' (' + criticas + ' con más de ' + DIAS_GERENCIA_GENERAL + ' días)' : '') +
+      '. Importe retenido: ' + pesos(importe) + '. Por favor, revisá con tu equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
   });
 }
 

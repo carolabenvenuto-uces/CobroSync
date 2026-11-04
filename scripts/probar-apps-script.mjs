@@ -311,32 +311,29 @@ prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {
   esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('Solo Auditoría'), JSON.stringify(r.errores))
   como('auditoria@svaauto.com.ar')
 })
-prueba('avisos diarios: no se reclama si la sucursal avisó una fecha que todavía no pasó', () => {
+prueba('todos los días no sale ningún mail: solo se marca en CobroSync lo atrasado y lo crítico', () => {
+  hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
+  mails.length = 0
+  gs('avisosDiarios')
+  esperar(mails.length === 0, `salieron ${mails.length} mails en el día`)
+  const eventos = hojas.Comprobantes.filas.slice(1).map((f) => f[HOJAS_COLUMNAS.indexOf('eventos')]).join(' ')
+  esperar(eventos.includes('resumen del lunes') && eventos.includes('gerencia general'), 'no quedaron los avisos para las notificaciones')
+  const antes = eventos.length
+  gs('avisosDiarios')
+  esperar(hojas.Comprobantes.filas.slice(1).map((f) => f[HOJAS_COLUMNAS.indexOf('eventos')]).join(' ').length === antes, 'se repitieron los avisos')
+})
+prueba('el lunes no se reclama una factura con fecha comprometida que todavía no pasó', () => {
   como('rocamora@svaauto.com.ar')
-  const pendiente = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && !x.fechaPresentacion && x.estado !== 'cobrada' && x.estado !== 'anulada' && !x.anulacionInformada && x.documentos.some((d) => d.estado === 'faltante'))
+  const pendiente = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && !x.fechaPresentacion && x.estado !== 'cobrada' && x.estado !== 'anulada' && !x.anulacionInformada && x.documentos.some((d) => d.estado === 'faltante') && x.fecha < '2026-10-01')
   gs('aplicarCambios', [{ id: pendiente.id, campos: { compromiso: { fecha: '2099-01-01', motivo: 'El vehículo sigue en el taller' } } }])
   como('auditoria@svaauto.com.ar')
   mails.length = 0
-  gs('avisosDiarios')
+  gs('resumenSemanal')
   const numero = `${pendiente.tipo} E ${pendiente.puntoVenta}-${String(pendiente.numero).padStart(8, '0')}`
+  esperar(mails.length > 0, 'no salió ningún resumen')
   esperar(!mails.some((m) => m.body.includes(numero)), 'se reclamó una factura con fecha comprometida vigente')
-  // Se vuelve a dejar como estaba para la prueba siguiente
-  hojas.Comprobantes.filas.forEach((f) => f.forEach((v, j) => { if (typeof v === 'string' && v.includes('se avisó a')) f[j] = v }))
 })
-prueba('avisos diarios: un mail por gerente y no se repiten', () => {
-  // Facturas sin avisos previos (la prueba anterior ya mandó los de hoy)
-  hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
-  mails.length = 0
-  gs('avisosDiarios')
-  const destinatarios = mails.map((m) => m.to)
-  esperar(destinatarios.includes('gerente.rocamora@svaauto.com.ar'), `mails a: ${destinatarios.join(', ')}`)
-  esperar(new Set(destinatarios).size === destinatarios.length, 'más de un mail por persona')
-  const antes = mails.length
-  gs('avisosDiarios')
-  esperar(mails.length === antes, 'se repitieron los avisos')
-})
-prueba('a Gerencia General no le llegan mails todos los días (lo ve en CobroSync)', () => {
-  hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
+prueba('el lunes: un resumen por sucursal con pendientes y un solo mail a Gerencia', () => {
   // Una factura vencida con 3 reclamos sin respuesta
   const iRec = hojas.Comprobantes.filas.findIndex((f, i) => i > 0 && f[HOJAS_COLUMNAS.indexOf('tipo')] === 'FC')
   const f = hojas.Comprobantes.filas[iRec]
@@ -344,21 +341,28 @@ prueba('a Gerencia General no le llegan mails todos los días (lo ve en CobroSyn
   f[HOJAS_COLUMNAS.indexOf('vencimiento')] = '2026-01-01'
   f[HOJAS_COLUMNAS.indexOf('reclamos')] = JSON.stringify([1, 2, 3].map(() => ({ fecha: '2026-02-01', medio: 'mail', autor: 'Auditoría', nota: '' })))
   mails.length = 0
-  gs('avisosDiarios')
-  esperar(!mails.some((m) => m.to === 'gerencia.general@svaauto.com.ar'), 'le llegó un mail diario a Gerencia')
-  const conAviso = hojas.Comprobantes.filas.some((x, i) => i > 0 && x[HOJAS_COLUMNAS.indexOf('eventos')].includes('gerencia general'))
-  esperar(conAviso, 'no quedó el aviso de documentación crítica para las notificaciones')
-})
-prueba('el lunes: resumen para cada gerente de sucursal y un solo mail a Gerencia con lo pendiente', () => {
-  mails.length = 0
   gs('resumenSemanal')
   const deSucursal = mails.filter((m) => m.subject.includes('Resumen semanal'))
   const aGerencia = mails.filter((m) => m.to === 'gerencia.general@svaauto.com.ar')
-  esperar(deSucursal.length === 2, `${deSucursal.length} resúmenes de sucursal`)
-  esperar(aGerencia.length === 1 && mails.length === 3, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
+  // Rocamora tiene facturas atrasadas; Warnes, solo recientes (en plazo): a Warnes no le llega
+  esperar(deSucursal.length === 1 && deSucursal[0].to === 'gerente.rocamora@svaauto.com.ar', `resúmenes a: ${deSucursal.map((m) => m.to)}`)
+  esperar(deSucursal[0].body.includes(' días'), 'el resumen de la sucursal no lista las facturas')
+  esperar(aGerencia.length === 1 && mails.length === 2, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
   const cuerpo = aGerencia[0].body
   esperar(cuerpo.includes('Auditoría necesita tu apoyo') && cuerpo.includes('Pedile a cada sucursal'), cuerpo.slice(0, 300))
   esperar(!cuerpo.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
+})
+prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () => {
+  const col = (n) => HOJAS_COLUMNAS.indexOf(n)
+  hojas.Comprobantes.filas.forEach((f, i) => {
+    if (i > 0 && f[col('sucursal')] === 'Warnes' && f[col('tipo')] === 'FC') {
+      f[col('documentos')] = JSON.stringify(['factura', 'orden', 'firma'].map((t) => ({ tipo: t, estado: 'ok' })))
+    }
+  })
+  mails.length = 0
+  gs('resumenSemanal')
+  esperar(!mails.some((m) => m.to === 'gerente.warnes@svaauto.com.ar'), 'le llegó un mail a una sucursal sin pendientes')
+  esperar(mails.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), 'no le llegó a la que sí tiene')
 })
 prueba('con los avisos desactivados no sale ningún mail', () => {
   setCfg('avisosPorMail', 'NO')

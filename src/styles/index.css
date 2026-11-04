@@ -31,15 +31,15 @@ body {
 
 /*
  * Impresión (Resumen de Gerencia → "Imprimir o guardar en PDF"): solo el contenido,
- * sin menú ni botones, en A4 apaisado.
+ * sin menú ni botones, en A4 vertical (los recuadros quedan uno debajo del otro).
  */
 .solo-impresion {
   display: none;
 }
 @media print {
   @page {
-    size: A4 landscape;
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 12mm;
   }
   aside,
   footer,

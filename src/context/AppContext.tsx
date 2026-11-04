@@ -201,8 +201,6 @@ interface EstadoApp {
   agregarComprobante: (comprobante: Comprobante) => void
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
-  /** Reemplaza facturas con la versión que devolvió el servidor (por ejemplo, al asignar un archivo del Drive) */
-  recibirDelServidor: (lista: Comprobante[]) => void
   /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
   guardarAjustes: (ajustes: Ajustes) => Promise<void>
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
@@ -466,8 +464,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [encolar],
   )
 
-  const recibirDelServidor = useCallback((lista: Comprobante[]) => aplicarDelServidor(lista, false), [aplicarDelServidor])
-
   const guardarAjustes = useCallback(async (a: Ajustes) => {
     if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
     const sinFce = new Set(a.companiasSinFce)
@@ -598,7 +594,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComprobante,
       actualizarAseguradoras,
       guardarAjustes,
-      recibirDelServidor,
       registrarEvento,
       parametros,
       setParametros,
@@ -631,7 +626,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComprobante,
       actualizarAseguradoras,
       guardarAjustes,
-      recibirDelServidor,
       registrarEvento,
       parametros,
       fuente,

@@ -44,7 +44,6 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
         guardarAseguradoras: () => 0,
         agregarAQuiter: (f) => ({ configurada: true, agregadas: f.length, completadas: 0 }),
         actualizarMiPlanilla: () => ({ completadas: 0, ahora: '2026-11-04T10:00:00.000Z' }),
-        archivosSinAsignar: () => [],
         subirArchivo: (_id, tipo, nombre) => ({ archivo: nombre, url: 'https://drive.google.com/prueba' }),
       }
       const crear = (ok, mal) =>

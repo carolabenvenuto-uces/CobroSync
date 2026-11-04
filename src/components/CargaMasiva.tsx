@@ -143,11 +143,26 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           >
             <Upload className="h-7 w-7 text-marca" />
             <span className="font-semibold">Soltá acá los PDF o fotos (todos juntos)</span>
-            <span className="text-xs text-slate-500">
-              Tip: si el archivo se llama con el número de factura (por ejemplo <code>35-00011032 orden.pdf</code>), el siniestro o la patente, se asigna solo.
-            </span>
             <input type="file" multiple accept="application/pdf,image/*" className="sr-only" onChange={(e) => agregar(e.target.files)} />
           </label>
+
+          {/* Guía corta: con el nombre bien puesto, cada archivo se asigna solo */}
+          <div className="mt-3 rounded-lg border border-marca/20 bg-marca/5 p-3 text-xs text-blue-950">
+            <div className="mb-1 font-bold">Cómo nombrar los archivos para que se asignen solos</div>
+            <ul className="list-disc space-y-0.5 pl-4">
+              <li>
+                Poné el <strong>punto de venta y el número de factura</strong>, como figura en la factura: <code>35-00011032</code> (también sirve{' '}
+                <code>35-11032</code>). Si no lo tenés, el <strong>siniestro</strong> o la <strong>patente</strong>.
+              </li>
+              <li>
+                Agregá <strong>qué es</strong>: <code>factura</code>, <code>orden</code> o <code>firma</code>. Si escaneaste todo junto en un solo PDF, no hace falta.
+              </li>
+              <li>
+                Ejemplos: <code>35-00011032 orden.pdf</code> · <code>35-00011032 firma.jpg</code> · <code>35-00011032.pdf</code> (todo junto) ·{' '}
+                <code>siniestro 051-2-335854.pdf</code>
+              </li>
+            </ul>
+          </div>
 
           {filas.length > 0 && (
             <table className="mt-4 w-full text-left text-[13px]">

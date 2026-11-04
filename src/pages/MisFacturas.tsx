@@ -2,7 +2,6 @@ import { useMemo, useState, type ComponentType } from 'react'
 import { CircleCheck, FileUp, PencilLine, Receipt, Search, Upload } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
-import { CarpetaDrive } from '../components/CarpetaDrive'
 import { Chip } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -73,6 +72,24 @@ export default function MisFacturas() {
         .filter((x) => GRUPOS.some((g) => g.etapas.includes(x.s.etapa))),
     [comprobantes, hoy],
   )
+  // Para resolver primero: atrasadas, observadas y las que vencen el plazo en 2 días (MiPyME antes)
+  const urgentes = useMemo(() => {
+    const puntaje = (x: (typeof filas)[number]) => {
+      if (x.s.etapa === 'en_revision') return null
+      const dias = diasDeEspera(x.c, hoy)
+      const plazo = plazoSucursal(x.c)
+      const mipyme = esMipyme(x.c) ? 0.5 : 0
+      if (x.s.etapa === 'doc_observada') return { orden: 3 + mipyme, motivo: 'observada: hay que reemplazar un documento' }
+      if (dias > plazo) return { orden: 2 + mipyme, motivo: `pasó el plazo hace ${dias - plazo} ${dias - plazo === 1 ? 'día' : 'días'}` }
+      if (plazo - dias <= 2) return { orden: 1 + mipyme, motivo: plazo === dias ? 'hoy vence el plazo' : `vence el plazo en ${plazo - dias} ${plazo - dias === 1 ? 'día' : 'días'}` }
+      return null
+    }
+    return filas
+      .map((x) => ({ x, p: puntaje(x) }))
+      .filter((y): y is { x: (typeof filas)[number]; p: { orden: number; motivo: string } } => y.p !== null)
+      .sort((a, b) => b.p.orden - a.p.orden || diasDeEspera(b.x.c, hoy) - diasDeEspera(a.x.c, hoy))
+  }, [filas, hoy])
+
   const cuenta = (g: Grupo) => filas.filter((x) => GRUPOS.find((gr) => gr.clave === g)!.etapas.includes(x.s.etapa)).length
   const visibles = grupo === 'todas' ? filas : filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
 
@@ -197,8 +214,6 @@ export default function MisFacturas() {
         </div>
       </div>
 
-      <CarpetaDrive />
-
       {/* Las dos acciones de todos los días, grandes y a la vista */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <button
@@ -263,6 +278,36 @@ export default function MisFacturas() {
           </ul>
         )}
       </div>
+
+      {urgentes.length > 0 && (
+        <div className="mb-4 rounded-xl border border-sem-rojo/30 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-bold">Para resolver primero</h2>
+            <span className="text-xs text-slate-500">
+              {urgentes.length} {urgentes.length === 1 ? 'factura' : 'facturas'}: observadas, fuera de plazo o por vencer (las MiPyME primero)
+            </span>
+          </div>
+          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {urgentes.slice(0, 6).map(({ x, p }) => (
+              <li key={x.c.id}>
+                <button
+                  type="button"
+                  onClick={() => abrirLegajo(x.c.id)}
+                  className="flex w-full items-start justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-marca hover:bg-marca/5"
+                >
+                  <span>
+                    <span className="font-semibold">{formatoComprobante(x.c)}</span>
+                    {esMipyme(x.c) && <span className="ml-1.5 rounded bg-marca/10 px-1 text-[11px] font-bold text-marca">MiPyME</span>}
+                    <span className="block text-xs text-slate-500">{x.c.siniestro ? `Siniestro ${x.c.siniestro}` : formatoFecha(x.c.fecha)}</span>
+                  </span>
+                  <span className={`shrink-0 text-right text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {urgentes.length > 6 && <p className="mt-2 text-xs text-slate-500">Y {urgentes.length - 6} más en la tabla de abajo (ordenada por días).</p>}
+        </div>
+      )}
 
       {/* Tres grupos grandes */}
       <div className="mb-4 grid gap-3 sm:grid-cols-3">

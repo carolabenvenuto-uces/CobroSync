@@ -115,10 +115,12 @@ export default function Siniestros() {
       g.enCurso = vigentes.some((f) => f.estado !== 'cobrada')
       g.saldo = vigentes.reduce((t, f) => t + saldoSinCobro(f), 0)
     }
-    // Ordenados por compañía; dentro de cada una, primero lo que tiene algo para hacer y lo más nuevo
+    // Ordenados por compañía; dentro de cada una, primero lo que falta refacturar, después lo que tiene algo para hacer y lo más nuevo
+    const refacturar = (g: Grupo) => g.pendientes.some((x) => x.tipo === 'refacturar')
     return [...mapa.values()].sort(
       (a, b) =>
         a.compania.localeCompare(b.compania, 'es') ||
+        Number(refacturar(b)) - Number(refacturar(a)) ||
         Number(b.pendientes.length > 0) - Number(a.pendientes.length > 0) ||
         b.ultimaFecha.localeCompare(a.ultimaFecha),
     )
@@ -223,7 +225,7 @@ export default function Siniestros() {
       </div>
       {g.pendientes.length > 0 && (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          <div className="mb-1 font-bold">Te queda pendiente:</div>
+          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Te queda pendiente:' : 'Pendiente de la sucursal:'}</div>
           <ul className="space-y-1">
             {g.pendientes.map((a) => (
               <li key={a.texto} className="flex items-start gap-1.5">

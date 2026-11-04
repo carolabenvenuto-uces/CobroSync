@@ -7,6 +7,9 @@
 - **Saldos por compañía:** sin los totales que repetían el Resumen; filtro de sucursal debajo del título; nueva columna **Reclamos hechos** (cantidad, facturas reclamadas y último reclamo).
 - **Impacto económico:** al entrar aparece un cartel "En revisión" que explica que el costo es una estimación.
 - **Detalle de facturas** reemplaza a "Buscar una factura": la tabla completa, con el buscador.
+- **Notificaciones de Gerencia** escritas como lo que hay que hacer: "Auditoría necesita tu apoyo con Sancor: no responde los reclamos de 2 facturas vencidas" o "Auditoría marcó como críticas 5 facturas de Alvarez Thomas…". Los pedidos de apoyo se agrupan por compañía.
+- **Mail diario a Gerencia General** (solo si hay algo nuevo): un único mail con las compañías que no responden 3 reclamos y las sucursales con documentación crítica, sin listar factura por factura.
+- El estado de reclamo "Escalar a gerencia" pasa a llamarse **"Sin respuesta"** (pedir apoyo a gerencia es una acción de Auditoría).
 - La fecha del día ya no se repite en cada pantalla (queda una sola vez, en el menú). El filtro de sucursal está debajo del título en todas las pantallas.
 
 ## [0.9.0] - 2026-11-04

@@ -715,7 +715,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               )}
               {reclamo === 'escalar' && (
                 <p className="mt-2 rounded-md bg-sem-amarillo/15 p-2 text-xs text-amber-900">
-                  La compañía no respondió a 3 reclamos: corresponde escalarlo a gerencia para que intervenga.
+                  La compañía no respondió a 3 reclamos: Auditoría le pide apoyo a gerencia para que intervenga.
                 </p>
               )}
               {rol === 'auditoria' &&

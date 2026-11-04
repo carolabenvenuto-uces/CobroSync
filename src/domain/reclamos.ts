@@ -18,7 +18,8 @@ export type EstadoReclamo = 'sin_reclamar' | 'reclamada' | 'escalar'
 export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = {
   sin_reclamar: 'Sin reclamar',
   reclamada: 'Reclamada',
-  escalar: 'Escalar a gerencia',
+  // La compañía no respondió 3 reclamos: Auditoría le pide apoyo a gerencia (eso es una acción, no el estado)
+  escalar: 'Sin respuesta',
 }
 
 export function ultimoReclamo(c: Comprobante): string | null {

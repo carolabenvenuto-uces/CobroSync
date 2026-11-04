@@ -46,12 +46,12 @@ export default function Saldos() {
   type Clave = 'facturado' | 'notasCredito' | 'cobrado' | 'pendiente' | 'vencido' | 'sinPresentar' | 'alDia' | 'vencidoSinReclamar' | 'vencidoParaEscalar'
   const sumar = (lista: Fila[], k: Clave) => lista.reduce((s, f) => s + f[k], 0)
   const situacionReclamos = (s: Fila) =>
-    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Para escalar' : s.vencidoSinReclamar > 0 ? 'Sin reclamar' : 'Reclamado'
+    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Sin respuesta' : s.vencidoSinReclamar > 0 ? 'Sin reclamar' : 'Reclamado'
 
   function exportar(lista: Fila[]) {
     descargarExcel(
       `saldos-por-compania-${hoy}`,
-      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido sin reclamar', 'Vencido para escalar', 'Reclamos hechos', 'Facturas reclamadas', 'Último reclamo'],
+      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido sin reclamar', 'Vencido sin respuesta', 'Reclamos hechos', 'Facturas reclamadas', 'Último reclamo'],
       [
         ...lista.map((s) => [
           s.aseguradora.nombre,
@@ -135,7 +135,7 @@ export default function Saldos() {
             className={`block space-y-0.5 text-xs ${rol === 'auditoria' ? 'hover:underline' : 'pointer-events-none'}`}
           >
             {s.vencidoSinReclamar > 0 && <div className="whitespace-nowrap font-semibold text-red-800">Sin reclamar: {formatoPesos(s.vencidoSinReclamar)}</div>}
-            {s.vencidoParaEscalar > 0 && <div className="whitespace-nowrap font-semibold text-amber-800">Para escalar: {formatoPesos(s.vencidoParaEscalar)}</div>}
+            {s.vencidoParaEscalar > 0 && <div className="whitespace-nowrap font-semibold text-amber-800">Sin respuesta: {formatoPesos(s.vencidoParaEscalar)}</div>}
             {s.vencidoSinReclamar === 0 && s.vencidoParaEscalar === 0 && <div className="text-slate-600">Reclamado</div>}
           </Link>
         ),

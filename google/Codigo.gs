@@ -55,6 +55,7 @@ var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'
 var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones']; // vacío = sin dato
 var PLAZO_DOCUMENTACION = 7; // días que tiene la sucursal
 var DIAS_GERENCIA_GENERAL = 21; // desde el día 22 se avisa también a Gerencia General
+var RECLAMOS_SIN_RESPUESTA = 3; // con 3 reclamos sin respuesta, Auditoría pide apoyo a Gerencia
 
 var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
@@ -360,33 +361,49 @@ function avisosDiarios() {
   if (config_('avisosPorMail') !== 'SI') return;
   var hoy = hoy_();
   var sucursales = indexar_(leerHoja_(HOJAS.sucursales), 'nombre');
-  var porDestinatario = {};
+  var companias = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
+  var aGerentes = {}; // correo del gerente de sucursal → líneas
+  var criticas = {}; // sucursal → { cantidad, importe }
+  var sinRespuesta = {}; // compañía → { cantidad, importe }
 
   conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     leerHoja_(HOJAS.comprobantes).forEach(function (c, i) {
-      if (!esperaALaSucursal_(c)) return;
-      // Si la sucursal avisó para cuándo lo sube y esa fecha no pasó, no se la reclama
-      if (c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy) return;
-      var dias = diasEntre_(c.fecha, hoy);
       var eventos = c.eventos || [];
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
       var cambio = false;
       var numero = c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8);
-      var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
+      var importe = Number(c.total || 0) - Number(c.acreditado || 0);
 
-      if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && suc.correoGerente) {
-        agregar_(porDestinatario, suc.correoGerente, c.sucursal + ' · ' + numero + ' · ' + dias + ' días sin documentación completa');
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se avisó a ' + suc.gerente });
+      // Documentación: al gerente de la sucursal (día 8) y a Gerencia General (día 22)
+      // Si la sucursal avisó para cuándo lo sube y esa fecha no pasó, no se la reclama
+      var enPlazoComprometido = c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy;
+      if (esperaALaSucursal_(c) && !enPlazoComprometido) {
+        var dias = diasEntre_(c.fecha, hoy);
+        var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
+        if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && suc.correoGerente) {
+          agregar_(aGerentes, suc.correoGerente, numero + ' · ' + dias + ' días sin documentación completa');
+          eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se avisó a ' + suc.gerente });
+          cambio = true;
+        }
+        if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
+          var g = criticas[c.sucursal] = criticas[c.sucursal] || { cantidad: 0, importe: 0 };
+          g.cantidad++; g.importe += importe;
+          eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
+          cambio = true;
+        }
+      }
+
+      // Cobranza: vencida y la compañía no respondió 3 reclamos → Auditoría pide apoyo a Gerencia
+      var vencida = c.tipo === 'FC' && c.estado === 'presentada' && c.vencimiento && String(c.vencimiento) < hoy;
+      if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA && !yaAvisado('se pidió apoyo a Gerencia')) {
+        var nombre = (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId;
+        var s2 = sinRespuesta[nombre] = sinRespuesta[nombre] || { cantidad: 0, importe: 0 };
+        s2.cantidad++; s2.importe += importe;
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Sin respuesta a ' + RECLAMOS_SIN_RESPUESTA + ' reclamos: se pidió apoyo a Gerencia' });
         cambio = true;
       }
-      if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
-        String(config_('correosGerencia')).split(',').map(function (s) { return s.trim(); }).filter(String).forEach(function (correo) {
-          agregar_(porDestinatario, correo, c.sucursal + ' · ' + numero + ' · ' + dias + ' días sin documentación completa');
-        });
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
-        cambio = true;
-      }
+
       if (cambio) {
         c.eventos = eventos;
         escribirFila_(hoja, HOJAS.comprobantes, i + 2, c);
@@ -394,11 +411,33 @@ function avisosDiarios() {
     });
   });
 
-  Object.keys(porDestinatario).forEach(function (correo) {
-    var lineas = porDestinatario[correo];
-    enviar_(correo, 'CobroSync · ' + lineas.length + ' facturas con documentación pendiente',
-      'Las siguientes facturas superaron el plazo para cargar la documentación:\n\n- ' + lineas.join('\n- '));
+  Object.keys(aGerentes).forEach(function (correo) {
+    var lineas = aGerentes[correo];
+    enviar_(correo, 'CobroSync · ' + lineas.length + (lineas.length === 1 ? ' factura' : ' facturas') + ' de tu sucursal sin documentación completa',
+      'Estas facturas pasaron el plazo de ' + PLAZO_DOCUMENTACION + ' días para cargar la documentación. Por favor, revisá con tu equipo que se suban:\n\n- ' + lineas.join('\n- '));
   });
+
+  // A Gerencia General, un solo mail con lo que tiene que hacer (solo si hay algo nuevo)
+  var gerencia = String(config_('correosGerencia')).split(',').map(function (x) { return x.trim(); }).filter(String);
+  var partes = [];
+  var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
+  var sinResp = Object.keys(sinRespuesta);
+  if (sinResp.length) {
+    partes.push('Auditoría necesita tu apoyo: estas compañías no responden los reclamos de facturas vencidas.\n' +
+      sinResp.map(function (n) { return '- ' + n + ': ' + facturas(sinRespuesta[n].cantidad) + ' (' + pesos(sinRespuesta[n].importe) + ')'; }).join('\n'));
+  }
+  var conCriticas = Object.keys(criticas);
+  if (conCriticas.length) {
+    partes.push('Auditoría marcó como críticas facturas que llevan más de ' + DIAS_GERENCIA_GENERAL + ' días sin documentación. Pedile a cada sucursal que la complete.\n' +
+      conCriticas.map(function (n) { return '- ' + n + ': ' + facturas(criticas[n].cantidad) + ' (' + pesos(criticas[n].importe) + ')'; }).join('\n'));
+  }
+  if (partes.length) {
+    var asunto = sinResp.length && conCriticas.length ? 'CobroSync · Necesitamos tu apoyo con compañías y sucursales'
+      : sinResp.length ? 'CobroSync · Necesitamos tu apoyo con ' + (sinResp.length === 1 ? sinResp[0] : sinResp.length + ' compañías')
+      : 'CobroSync · Documentación crítica en ' + (conCriticas.length === 1 ? conCriticas[0] : conCriticas.length + ' sucursales');
+    gerencia.forEach(function (correo) { enviar_(correo, asunto, partes.join('\n\n')); });
+  }
 }
 
 /** Cada lunes: resumen de la semana para el gerente de cada sucursal. */

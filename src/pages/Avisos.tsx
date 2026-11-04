@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWarning, Receipt, Siren, TriangleAlert } from 'lucide-react'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { estadoReclamo } from '../domain/reclamos'
+import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
@@ -130,11 +130,11 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'escalar',
-          titulo: 'Para escalar a gerencia',
+          titulo: 'Sin respuesta: pedir apoyo a gerencia',
           descripcion: 'La compañía no respondió a 3 reclamos',
           icono: Megaphone,
           facturas: comprobantes.filter((c) => estadoReclamo(c, hoy) === 'escalar'),
-          ruta: '/app/reclamos?estado=Escalar a gerencia',
+          ruta: `/app/reclamos?estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`,
         },
       ],
     },

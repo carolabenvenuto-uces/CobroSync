@@ -167,7 +167,10 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   const base = () => ({ id: `${id}|${lista.length}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
   const lista: Notificacion[] = []
   if (e.area === 'sucursal') lista.push({ ...base(), para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` })
-  if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo') {
+  // A la sucursal le llega lo que le pide algo (observaciones, mensajes); las aprobaciones no,
+  // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
+  const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)
+  if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion) {
     lista.push({ ...base(), para: c.sucursal, texto: `Auditoría · ${numero}: ${e.texto}` })
   }
   if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, texto: `${numero}: ${e.texto}` })
@@ -198,6 +201,8 @@ interface EstadoApp {
   agregarComprobante: (comprobante: Comprobante) => void
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
+  /** Reemplaza facturas con la versión que devolvió el servidor (por ejemplo, al asignar un archivo del Drive) */
+  recibirDelServidor: (lista: Comprobante[]) => void
   /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
   guardarAjustes: (ajustes: Ajustes) => Promise<void>
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
@@ -461,6 +466,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [encolar],
   )
 
+  const recibirDelServidor = useCallback((lista: Comprobante[]) => aplicarDelServidor(lista, false), [aplicarDelServidor])
+
   const guardarAjustes = useCallback(async (a: Ajustes) => {
     if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
     const sinFce = new Set(a.companiasSinFce)
@@ -591,6 +598,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComprobante,
       actualizarAseguradoras,
       guardarAjustes,
+      recibirDelServidor,
       registrarEvento,
       parametros,
       setParametros,
@@ -623,6 +631,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComprobante,
       actualizarAseguradoras,
       guardarAjustes,
+      recibirDelServidor,
       registrarEvento,
       parametros,
       fuente,

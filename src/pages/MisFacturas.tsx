@@ -1,6 +1,8 @@
 import { useMemo, useState, type ComponentType } from 'react'
 import { CircleCheck, FileUp, PencilLine, Receipt, Search, Upload } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
+import { CargaMasiva } from '../components/CargaMasiva'
+import { CarpetaDrive } from '../components/CarpetaDrive'
 import { Chip } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -59,6 +61,7 @@ export default function MisFacturas() {
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
   const [grupo, setGrupo] = useState<Grupo | 'todas'>('todas')
   const [modalNc, setModalNc] = useState(false)
+  const [cargaMasiva, setCargaMasiva] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
 
@@ -192,12 +195,39 @@ export default function MisFacturas() {
             {sinLeer > 0 && <strong className="text-marca"> ({sinLeer} sin leer, en el menú de la izquierda)</strong>}.
           </p>
         </div>
+      </div>
+
+      <CarpetaDrive />
+
+      {/* Las dos acciones de todos los días, grandes y a la vista */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setCargaMasiva(true)}
+          className="flex items-center gap-4 rounded-xl border-2 border-marca/30 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca/10">
+            <FileUp className="h-6 w-6 text-marca" />
+          </span>
+          <span>
+            <span className="block text-base font-bold">Subir varios archivos de una vez</span>
+            <span className="block text-xs text-slate-600">
+              Soltá todos los escaneos juntos: se asignan solos a cada factura por el número, el siniestro o la patente.
+            </span>
+          </span>
+        </button>
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold shadow-sm hover:bg-fondo"
+          className="flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
         >
-          <Receipt className="h-4 w-4" /> Informar nota de crédito
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sem-rojo/10">
+            <Receipt className="h-6 w-6 text-sem-rojo" />
+          </span>
+          <span>
+            <span className="block text-base font-bold">Informar una nota de crédito</span>
+            <span className="block text-xs text-slate-600">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
+          </span>
         </button>
       </div>
 
@@ -280,6 +310,7 @@ export default function MisFacturas() {
       />
 
       {modalNc && <NotaCreditoModal onCerrar={() => setModalNc(false)} />}
+      {cargaMasiva && <CargaMasiva onCerrar={() => setCargaMasiva(false)} />}
     </>
   )
 }

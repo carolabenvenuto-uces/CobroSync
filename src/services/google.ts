@@ -89,6 +89,23 @@ export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; aho
   return llamar('actualizarMiPlanilla')
 }
 
+/** Archivo que quedó en la carpeta "Para subir" del Drive sin reconocer a qué factura va. */
+export interface ArchivoSuelto {
+  id: string
+  nombre: string
+  url: string
+  sucursal: string
+  tipo: TipoDocumento | 'documentacion'
+}
+
+export function archivosSinAsignarEnGoogle(): Promise<ArchivoSuelto[]> {
+  return llamar('archivosSinAsignar')
+}
+
+export function asignarArchivoEnGoogle(archivoId: string, comprobanteId: string, tipo: TipoDocumento | 'documentacion'): Promise<Comprobante> {
+  return llamar('asignarArchivo', archivoId, comprobanteId, tipo)
+}
+
 /** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Auditoría. */
 export function guardarAjustesEnGoogle(ajustes: Ajustes): Promise<boolean> {
   return llamar('guardarAjustes', ajustes)

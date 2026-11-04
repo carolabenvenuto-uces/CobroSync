@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0] - 2026-11-04
+
+### Agregado (vista de la sucursal)
+- **Subir varios archivos de una vez:** se sueltan todos los escaneos juntos y CobroSync sugiere a qué factura va cada uno (por número de factura, siniestro, patente o referencia que tenga el nombre) y qué documento es. Se revisa y se sube todo; cada factura sigue con su legajo.
+- **Carpeta del Drive "Para subir" (con Google):** la sucursal puede seguir dejando los escaneos en su carpeta, como hoy. Cada hora se pasan solos al legajo; los que no se reconocen aparecen en Mis facturas para asignarlos.
+- **Mis siniestros:** todas las facturas de cada siniestro con sus documentos (también los aprobados, con enlace para verlos), las notas de crédito y avisos de lo que puede quedar para refacturar (NC parcial, factura anulada sin la nueva).
+- **Informar una nota de crédito** pasa a ser un botón grande, al lado de "Subir varios archivos".
+
+### Cambiado
+- A la sucursal ya no le llegan notificaciones por cada aprobación (se ve en la factura); sí las observaciones, los mensajes y los avisos de plazo.
+
 ## [0.10.1] - 2026-11-04
 
 ### Cambiado

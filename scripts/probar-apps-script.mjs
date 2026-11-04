@@ -59,20 +59,45 @@ const libro = {
 let emailActual = ''
 const mails = []
 const archivos = []
+let siguienteId = 1
 function carpeta(ruta) {
   const hijas = {}
-  return {
+  const propios = []
+  const yo = {
     ruta,
+    archivos: propios,
     getFoldersByName: (n) => {
       let dado = false
       return { hasNext: () => !!hijas[n] && !dado, next: () => ((dado = true), hijas[n]) }
     },
     createFolder: (n) => (hijas[n] = carpeta(`${ruta}/${n}`)),
+    getFiles: () => {
+      const copia = [...propios]
+      let i = 0
+      return { hasNext: () => i < copia.length, next: () => copia[i++] }
+    },
     createFile: (blob) => {
       archivos.push(`${ruta}/${blob.name}`)
-      return { getName: () => blob.name, getUrl: () => `https://drive.google.com/${ruta}/${blob.name}`, setDescription: () => {} }
+      const f = {
+        id: `archivo-${siguienteId++}`,
+        nombre: blob.name,
+        padre: yo,
+        getId: () => f.id,
+        getName: () => f.nombre,
+        getUrl: () => `https://drive.google.com/${f.padre.ruta}/${f.nombre}`,
+        setDescription: () => {},
+        moveTo: (destino) => {
+          f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1)
+          destino.archivos.push(f)
+          f.padre = destino
+          archivos.push(`${destino.ruta}/${f.nombre}`)
+        },
+      }
+      propios.push(f)
+      return f
     },
   }
+  return yo
 }
 const raizDrive = carpeta('CobroSync')
 const contexto = {
@@ -495,6 +520,37 @@ prueba('solo Auditoría actualiza la planilla desde la aplicación', () => {
   falla(() => gs('agregarAQuiter', [['1']]), 'Solo Auditoría')
   como('auditoria@svaauto.com.ar')
   esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'no respondió')
+})
+prueba('carpeta "Para subir": los escaneos con número se pasan solos al legajo; los otros quedan para asignar', () => {
+  como('auditoria@svaauto.com.ar')
+  const pendiente = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Rocamora' && x.tipo === 'FC' && x.estado === 'pendiente_drive')
+  esperar(pendiente, 'no hay una factura pendiente de Rocamora')
+  const carpetaRoca = raizDrive.createFolder('Para subir').createFolder('Rocamora')
+  const numero = `${pendiente.puntoVenta}-${String(pendiente.numero).padStart(8, '0')}`
+  carpetaRoca.createFile({ name: `${numero} orden.pdf` })
+  carpetaRoca.createFile({ name: 'scan0001.pdf' })
+  const r = gs('procesarCarpetas')
+  esperar(r.asignados === 1 && r.sinAsignar === 1, JSON.stringify(r))
+  const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === pendiente.id)
+  const orden = leido.documentos.find((d) => d.tipo === 'orden')
+  esperar(orden.estado === 'en_revision' && orden.url.includes(numero), JSON.stringify(orden))
+  esperar(leido.documentos.find((d) => d.tipo === 'factura').estado !== 'en_revision', 'marcó también la factura')
+  esperar(leido.estado === 'en_gestion' && leido.eventos.at(-1).texto.includes('carpeta del Drive'), 'no quedó registrado')
+  esperar(carpetaRoca.archivos.length === 1, 'el archivo reconocido no salió de la carpeta')
+
+  // La sucursal ve el que quedó y lo asigna; no puede asignar a otra sucursal
+  como('rocamora@svaauto.com.ar')
+  const sueltos = gs('archivosSinAsignar')
+  esperar(sueltos.length === 1 && sueltos[0].nombre === 'scan0001.pdf', JSON.stringify(sueltos))
+  const otra = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.estado === 'pendiente_drive' && x.id !== pendiente.id)
+  const asignada = gs('asignarArchivo', sueltos[0].id, otra.id, 'documentacion')
+  esperar(asignada.documentos.every((d) => d.estado === 'en_revision'), 'no se asignó como documentación completa')
+  esperar(gs('archivosSinAsignar').length === 0, 'el archivo sigue en la carpeta')
+  como('auditoria@svaauto.com.ar')
+  const ajena = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Warnes' && x.tipo === 'FC')
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('asignarArchivo', 'archivo-x', ajena.id, 'orden'), 'otra sucursal')
+  como('auditoria@svaauto.com.ar')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

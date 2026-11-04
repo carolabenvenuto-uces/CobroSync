@@ -482,14 +482,14 @@ function pendientesParaGerencia_(comprobantes, hoy) {
   };
   var partes = [];
   if (Object.keys(sinRespuesta).length) {
-    partes.push('Auditoría necesita tu apoyo: estas compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
+    partes.push('Auditoría solicita su apoyo: las siguientes compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
   }
   if (Object.keys(criticas).length) {
-    partes.push('Facturas críticas: llevan más de ' + p.criticaComun + ' días sin documentación (' + p.criticaMipyme + ' si es MiPyME). Pedile a cada sucursal que la complete esta semana.\n' + lista(criticas));
+    partes.push('Facturas críticas: llevan más de ' + p.criticaComun + ' días sin documentación (' + p.criticaMipyme + ' si es MiPyME). Se solicita su intervención para que cada sucursal complete la documentación esta semana.\n' + lista(criticas));
   }
   if (!partes.length) return;
   gerencia.forEach(function (correo) {
-    enviar_(correo, 'CobroSync · Pendientes de la semana que necesitan tu apoyo', 'Lo que quedó sin resolver al ' + hoy.split('-').reverse().join('/') + ':\n\n' + partes.join('\n\n'));
+    enviar_(correo, 'CobroSync · Pendientes de la semana que requieren su apoyo', 'Pendientes sin resolver al ' + hoy.split('-').reverse().join('/') + ':\n\n' + partes.join('\n\n'));
   });
 }
 

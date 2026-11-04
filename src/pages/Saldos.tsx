@@ -95,7 +95,13 @@ export default function Saldos() {
       celda: (s) => <span className="whitespace-nowrap font-semibold">{s.aseguradora.nombre}</span>,
     },
     { titulo: 'Facturado', ...pesos('facturado') },
-    { titulo: 'Notas de crédito', ...pesos('notasCredito', 'text-slate-500') },
+    {
+      ...pesos('notasCredito'),
+      titulo: 'Notas de crédito',
+      celda: (s: Fila) => (
+        <span className={`whitespace-nowrap ${s.notasCredito ? 'text-red-800' : 'text-slate-400'}`}>{s.notasCredito ? `−${formatoPesos(Math.abs(s.notasCredito))}` : '—'}</span>
+      ),
+    },
     { titulo: 'Cobrado', ...pesos('cobrado', 'text-emerald-700') },
     { titulo: 'Pendiente total', ...pesos('pendiente', 'font-semibold') },
     { titulo: 'Sin presentar', ...pesos('sinPresentar') },

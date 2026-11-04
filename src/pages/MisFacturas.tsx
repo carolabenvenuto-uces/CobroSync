@@ -119,7 +119,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           <div>
             <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
             {esMipyme(x.c) && (
-              <div className="mt-0.5 inline-block whitespace-nowrap rounded bg-sem-rojo px-1.5 py-0.5 text-[11px] font-bold text-white" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
+              <div className="mt-0.5 inline-block whitespace-nowrap rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
                 ! MiPyME · {plazoSucursal(x.c)} d
               </div>
             )}
@@ -220,7 +220,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         orden: (x) => (esMipyme(x.c) ? 1 : 0),
         celda: (x) =>
           esMipyme(x.c) ? (
-            <span className="whitespace-nowrap rounded-md bg-sem-rojo px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
+            <span className="whitespace-nowrap rounded-md bg-noche px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
           ) : (
             <span className="text-xs text-slate-500">Común</span>
           ),
@@ -281,7 +281,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-3xl font-extrabold">{lista.length}</span>
                     <span className="font-bold">{t.titulo}</span>
-                    {mipymes > 0 && <span className="rounded bg-sem-rojo px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
+                    {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
                   </div>
                   <p className="text-xs text-slate-600">{t.ayuda}</p>
                 </div>
@@ -362,14 +362,14 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          className="flex items-center gap-4 rounded-xl bg-noche p-4 text-left text-white shadow-md transition hover:bg-slate-800"
+          className="flex items-center gap-4 rounded-xl border-2 border-marca bg-white p-4 text-left shadow-md transition hover:bg-marca/5"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
-            <Receipt className="h-6 w-6 text-white" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca/10">
+            <Receipt className="h-6 w-6 text-marca" />
           </span>
           <span>
             <span className="block text-base font-bold">Informar una nota de crédito</span>
-            <span className="block text-xs text-white/80">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
+            <span className="block text-xs text-slate-600">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
           </span>
         </button>
       </div>
@@ -413,7 +413,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <div className="min-w-0 flex-1 text-sm text-amber-950">
           <p>
             Tenés <strong className="text-base">{plazosActuales().comun} días</strong> desde la fecha de la factura para subir la factura y la orden
-            firmada. Si es <strong className="rounded bg-sem-rojo px-1 text-white">! MiPyME</strong>, solo{' '}
+            firmada. Si es <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>, solo{' '}
             <strong className="text-base">{plazosActuales().mipyme} días</strong>: subilas primero.
           </p>
           <p className="mt-1 text-xs">

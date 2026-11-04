@@ -15,6 +15,18 @@
   --color-esmeralda: #10b981; /* verde esmeralda: operación correcta */
   --color-fondo: #f8fafc;
 
+  /*
+   * Qué significa cada color en toda la aplicación (usar siempre el mismo para lo mismo):
+   *  rojo         → rechazado, observado, atrasado: hay que hacer algo ya
+   *  rojo oscuro  → vencido o crítico (lo más grave); también los importes que restan (notas de crédito, con "−")
+   *  amarillo     → falta documentación, dentro del plazo; avisos "Importante"
+   *  celeste      → en revisión (le toca a Auditoría revisar)
+   *  azul (marca) → acciones principales, presentación pendiente, información, no leído
+   *  violeta      → presentada y al día (le toca a la compañía)
+   *  verde        → aprobado o cobrado
+   *  gris         → informativo, anulado o nota de crédito sin nada para hacer
+   *  azul noche   → atributo de la factura que no es un estado (MiPyME)
+   */
   /* Semáforo operativo */
   --color-sem-rojo: #ef4444;
   --color-sem-amarillo: #f59e0b;

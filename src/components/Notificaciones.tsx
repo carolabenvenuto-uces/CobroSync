@@ -27,8 +27,17 @@ export function Campana({ onCerrar }: { onCerrar?: () => void }) {
     >
       <Bell className="h-4 w-4" />
       <span className="flex-1 text-left">Notificaciones</span>
-      {sinLeer > 0 && <span className="rounded-full bg-sem-rojo px-2 py-0.5 text-[11px] font-bold text-white">{sinLeer}</span>}
+      {sinLeer > 0 && <span className="rounded-full bg-marca px-2 py-0.5 text-[11px] font-bold text-white">{sinLeer}</span>}
     </NavLink>
+  )
+}
+
+/** Rechazo en rojo (lo más importante: hay que reemplazar un documento); documentación en amarillo. */
+function EtiquetaTema({ tema }: { tema: 'rechazo' | 'documentacion' }) {
+  return tema === 'rechazo' ? (
+    <span className="shrink-0 rounded bg-sem-rojo px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Rechazo</span>
+  ) : (
+    <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">Documentación</span>
   )
 }
 
@@ -48,14 +57,18 @@ function cuando(fecha: string, hoy: string): string {
 export default function BandejaNotificaciones() {
   const { rol, fuente, datos, hoy, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
   const navigate = useNavigate()
-  const [ver, setVer] = useState<'sin_leer' | 'todas'>(() => (misNotificaciones.some((n) => !n.leida) ? 'sin_leer' : 'todas'))
+  const [ver, setVer] = useState<'sin_leer' | 'rechazos' | 'todas'>(() => (misNotificaciones.some((n) => !n.leida) ? 'sin_leer' : 'todas'))
   const [elegida, setElegida] = useState<string | null>(null)
 
   const porId = useMemo(() => new Map((datos?.comprobantes ?? []).map((c) => [c.id, c])), [datos])
   const nombreCompania = (id: string) => datos?.aseguradoras.find((a) => a.id === id)?.nombre ?? id
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
+  const rechazos = misNotificaciones.filter((n) => n.tema === 'rechazo').length
   const lista = useMemo(
-    () => [...misNotificaciones].filter((n) => ver === 'todas' || !n.leida || n.id === elegida).sort((a, b) => b.fecha.localeCompare(a.fecha)),
+    () =>
+      [...misNotificaciones]
+        .filter((n) => ver === 'todas' || n.id === elegida || (ver === 'rechazos' ? n.tema === 'rechazo' : !n.leida))
+        .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [misNotificaciones, ver, elegida],
   )
   const actual = misNotificaciones.find((n) => n.id === elegida) ?? null
@@ -84,6 +97,11 @@ export default function BandejaNotificaciones() {
         <button type="button" onClick={() => setElegida(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-marca lg:hidden">
           <ArrowLeft className="h-4 w-4" /> Volver a la bandeja
         </button>
+        {n.tema && n.tema !== 'mensaje' && (
+          <div className="mb-1">
+            <EtiquetaTema tema={n.tema} />
+          </div>
+        )}
         <h2 className="text-lg font-extrabold leading-snug">{partesDe(n.texto).asunto}</h2>
         <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-slate-500">
           <span>
@@ -165,6 +183,7 @@ export default function BandejaNotificaciones() {
             {(
               [
                 ['sin_leer', `Sin leer (${sinLeer})`],
+                ...(rol === 'sucursal' ? ([['rechazos', `Rechazos (${rechazos})`]] as const) : []),
                 ['todas', `Todas (${misNotificaciones.length})`],
               ] as const
             ).map(([clave, t]) => (
@@ -195,7 +214,7 @@ export default function BandejaNotificaciones() {
                 <button
                   type="button"
                   onClick={() => abrir(n)}
-                  className={`flex w-full gap-3 px-4 py-3 text-left ${n.id === elegida ? 'bg-marca/10' : 'hover:bg-fondo'} ${n.leida ? 'text-slate-500' : 'text-noche'}`}
+                  className={`flex w-full gap-3 border-l-4 px-4 py-3 text-left ${n.tema === 'rechazo' ? 'border-sem-rojo' : 'border-transparent'} ${n.id === elegida ? 'bg-marca/10' : 'hover:bg-fondo'} ${n.leida ? 'text-slate-500' : 'text-noche'}`}
                 >
                   <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${n.leida ? 'bg-transparent' : 'bg-marca'}`} />
                   <span className="min-w-0 flex-1">
@@ -203,7 +222,10 @@ export default function BandejaNotificaciones() {
                       <span className={`truncate text-sm ${n.leida ? '' : 'font-bold'}`}>{remitente(n)}</span>
                       <span className={`shrink-0 text-[11px] ${n.leida ? '' : 'font-semibold text-marca'}`}>{cuando(n.fecha, hoy)}</span>
                     </span>
-                    <span className={`block truncate text-sm ${n.leida ? '' : 'font-semibold'}`}>{partesDe(n.texto).asunto}</span>
+                    <span className={`flex items-center gap-1.5 text-sm ${n.leida ? '' : 'font-semibold'}`}>
+                      {n.tema && n.tema !== 'mensaje' && <EtiquetaTema tema={n.tema} />}
+                      <span className="truncate">{partesDe(n.texto).asunto}</span>
+                    </span>
                     <span className="block truncate text-xs text-slate-500">
                       {partesDe(n.texto).factura ? `${partesDe(n.texto).factura} · ` : ''}
                       {partesDe(n.texto).cuerpo}

@@ -36,7 +36,7 @@ export default function Ingreso() {
     <div className="flex min-h-screen items-center justify-center bg-noche px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-8 flex flex-col items-center text-center">
-          <Isologo className="h-14 w-14" />
+          <Isologo className="h-14 w-14" claro />
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">CobroSync</h1>
           <p className="mt-2 text-sm text-slate-300">Seguimiento de facturas a compañías de seguros</p>
         </div>

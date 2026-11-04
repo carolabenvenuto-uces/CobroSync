@@ -6,7 +6,7 @@ export function Cargando({ pantallaCompleta = false }: { pantallaCompleta?: bool
   if (!pantallaCompleta) return <div className="p-10 text-center text-sm text-slate-500">Cargando datos…</div>
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-noche text-center">
-      <Isologo className="h-14 w-14 animate-pulse" />
+      <Isologo className="h-14 w-14 animate-pulse" claro />
       <div className="text-2xl font-extrabold text-white">CobroSync</div>
       <div className="text-sm text-slate-300">Ingresando con tu cuenta de la empresa…</div>
     </div>

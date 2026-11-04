@@ -184,7 +184,7 @@ export default function Presentar() {
           const porPortal = a?.canal === 'portal'
           return (
             <section key={id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-fondo px-4 py-3">
+              <div className="flex flex-col gap-3 border-b border-slate-200 bg-fondo px-4 py-3 xl:flex-row xl:items-center">
                 <div className="min-w-0 flex-1">
                   <h2 className="font-bold">
                     {a?.nombre ?? id} <span className="font-normal text-slate-500">· {lista.length} {lista.length === 1 ? 'factura' : 'facturas'} · {formatoPesos(lista.reduce((t, c) => t + c.total, 0))}</span>
@@ -207,7 +207,7 @@ export default function Presentar() {
                     )}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   <span className="text-xs text-slate-500">{elegidasAca.length ? `${elegidasAca.length} elegidas` : 'Ninguna elegida'}</span>
                   <button type="button" disabled={!elegidasAca.length || descargando === id} onClick={() => descargar(id, a, elegidasAca)} className={boton}>
                     <Download className="h-4 w-4 text-marca" /> {descargando === id ? 'Preparando…' : 'Descargar documentos'}

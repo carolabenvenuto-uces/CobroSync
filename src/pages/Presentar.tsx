@@ -168,7 +168,7 @@ export default function Presentar() {
       </div>
 
       {mensaje && (
-        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${mensaje.error ? 'border-sem-amarillo/40 bg-amber-50 text-amber-950' : 'border-esmeralda/30 bg-esmeralda/5 text-emerald-900'}`}>{mensaje.texto}</div>
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${mensaje.error ? 'border-sem-amarillo/40 bg-amber-50 text-amber-950' : 'border-esmeralda/30 bg-esmeralda/5 text-teal-900'}`}>{mensaje.texto}</div>
       )}
 
       <p className="mb-3 text-sm text-slate-600">

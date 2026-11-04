@@ -2,6 +2,13 @@
 
 Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
 
+## [1.0.0] - 2026-11-04 (marca)
+
+### Cambiado
+- **Logo nuevo:** un imán en forma de C (lila) con los polos en verde agua, que atrae puntitos: los cobros. También en el ícono de la pestaña.
+- **Paleta del imán, en tonos sobrios:** tinta (menú y textos), lila (marca y botones principales) y verde agua (aprobado y cobrado). "Al día" pasa a azul para no confundirse con el lila. Mismo significado de siempre para cada color.
+- **Mis facturas:** cada tarjeta lleva una franja de color según la urgencia, de arriba hacia abajo: ámbar (para subir), celeste (en revisión), naranja (por vencer o vencidas) y rojo (rechazos y pedidos).
+
 ## [1.0.0] - 2026-11-04 (Auditoría)
 
 ### Agregado

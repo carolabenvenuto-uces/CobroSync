@@ -102,7 +102,7 @@ export default function Saldos() {
         <span className={`whitespace-nowrap ${s.notasCredito ? 'text-red-800' : 'text-slate-400'}`}>{s.notasCredito ? `−${formatoPesos(Math.abs(s.notasCredito))}` : '—'}</span>
       ),
     },
-    { titulo: 'Cobrado', ...pesos('cobrado', 'text-emerald-700') },
+    { titulo: 'Cobrado', ...pesos('cobrado', 'text-teal-700') },
     { titulo: 'Pendiente total', ...pesos('pendiente', 'font-semibold') },
     { titulo: 'Sin presentar', ...pesos('sinPresentar') },
     { titulo: 'Al día', ...pesos('alDia') },

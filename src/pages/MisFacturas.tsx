@@ -21,7 +21,7 @@ const ESTADO_DOC = {
   faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
   observado: { marca: '!', texto: 'observada', clase: 'border-red-300 bg-red-50 text-red-800' },
   en_revision: { marca: '…', texto: 'en revisión', clase: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ok: { marca: '✓', texto: 'aprobada', clase: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  ok: { marca: '✓', texto: 'aprobada', clase: 'border-teal-200 bg-teal-50 text-teal-800' },
 } as const
 
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
@@ -35,7 +35,7 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
     titulo: 'Para subir',
     ayuda: 'Falta la factura o la orden firmada',
     icono: Upload,
-    color: 'border-sem-amarillo/60 bg-white',
+    color: 'border-sem-amarillo bg-white',
     acento: 'text-amber-900',
   },
   {
@@ -43,7 +43,7 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
     titulo: 'En revisión',
     ayuda: 'Documentación enviada: sin tareas pendientes',
     icono: CircleCheck,
-    color: 'border-sky-300 bg-sky-50',
+    color: 'border-sky-400 bg-white',
     acento: 'text-sky-800',
   },
   {
@@ -51,8 +51,8 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
     titulo: 'Por vencer o vencidas',
     ayuda: 'Pasaron el plazo o vencen en 2 días o menos',
     icono: Clock,
-    color: 'border-sem-amarillo bg-sem-amarillo/15',
-    acento: 'text-amber-900',
+    color: 'border-orange-500/70 bg-orange-50',
+    acento: 'text-orange-900',
   },
   {
     clave: 'rechazos',
@@ -388,7 +388,7 @@ export default function MisFacturas() {
                 setSoloMipyme(false)
                 setAbierta(l.clave)
               }}
-              className={`group flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
+              className={`group flex w-full items-center gap-3 rounded-xl border border-l-[6px] px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
             >
               <Icono className={`h-5 w-5 shrink-0 ${l.acento}`} />
               <span className="w-12 shrink-0 text-2xl font-extrabold tabular-nums">{lista.length}</span>

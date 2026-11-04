@@ -8,12 +8,13 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 
-  --color-noche: #0f172a; /* azul noche: sidebar y textos principales */
-  --color-noche-claro: #1e293b;
-  --color-marca: #2563eb; /* azul corporativo: acciones principales */
-  --color-marca-oscuro: #1d4ed8;
-  --color-esmeralda: #10b981; /* verde esmeralda: operación correcta */
-  --color-fondo: #f8fafc;
+  /* Paleta del imán: tinta y lila (marca), verde agua (la moneda: lo cobrado), en tonos sobrios */
+  --color-noche: #1f1d3a; /* tinta: menú lateral y textos principales */
+  --color-noche-claro: #2c2950;
+  --color-marca: #5b4fc7; /* lila: marca y acciones principales */
+  --color-marca-oscuro: #483cab;
+  --color-esmeralda: #0e9f8e; /* verde agua: cobrado y aprobado */
+  --color-fondo: #f7f7fb;
 
   /*
    * Qué significa cada color en toda la aplicación (usar siempre el mismo para lo mismo):
@@ -21,20 +22,21 @@
    *  rojo oscuro  → vencido o crítico (lo más grave); también los importes que restan (notas de crédito, con "−")
    *  amarillo     → falta documentación, dentro del plazo; avisos "Importante"
    *  celeste      → en revisión (le toca a Auditoría revisar)
-   *  azul (marca) → acciones principales, presentación pendiente, información, no leído
-   *  violeta      → presentada y al día (le toca a la compañía)
-   *  verde        → aprobado o cobrado
+   *  lila (marca) → acciones principales, presentación pendiente, información, no leído
+   *  naranja      → por vencer o vencida la documentación (más urgente que el amarillo)
+   *  azul         → presentada y al día (le toca a la compañía)
+   *  verde agua   → aprobado o cobrado
    *  gris         → informativo, anulado o nota de crédito sin nada para hacer
    *  azul noche   → atributo de la factura que no es un estado (MiPyME)
    */
   /* Semáforo operativo */
   --color-sem-rojo: #ef4444;
   --color-sem-amarillo: #f59e0b;
-  --color-sem-verde: #10b981;
+  --color-sem-verde: #0e9f8e;
 
   /* Etapas del amarillo, para distinguir de quién depende el legajo */
-  --color-etapa-auditoria: #2563eb; /* para presentar: le toca a auditoría */
-  --color-etapa-compania: #7c3aed; /* esperando pago: le toca a la compañía */
+  --color-etapa-auditoria: #5b4fc7; /* para presentar: le toca a auditoría */
+  --color-etapa-compania: #3b82f6; /* esperando pago: le toca a la compañía */
 }
 
 body {

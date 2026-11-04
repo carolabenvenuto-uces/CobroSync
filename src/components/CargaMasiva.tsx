@@ -152,7 +152,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           </label>
 
           {/* La regla de los nombres: se exige, para que ningún archivo quede sin saber de qué factura es */}
-          <div className="mt-3 rounded-lg border border-marca/20 bg-marca/5 p-3 text-xs text-blue-950">
+          <div className="mt-3 rounded-lg border border-marca/20 bg-marca/5 p-3 text-xs text-indigo-950">
             <div className="mb-1 font-bold">Solo PDF, y el nombre tiene que tener el número de la factura</div>
             <ul className="list-disc space-y-0.5 pl-4">
               <li>
@@ -220,7 +220,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             </table>
           )}
           {estado && (
-            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${estado.error ? 'bg-sem-rojo/10 text-red-900' : 'bg-esmeralda/10 text-emerald-900'}`}>{estado.texto}</p>
+            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${estado.error ? 'bg-sem-rojo/10 text-red-900' : 'bg-esmeralda/10 text-teal-900'}`}>{estado.texto}</p>
           )}
         </div>
 

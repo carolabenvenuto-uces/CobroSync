@@ -150,7 +150,7 @@ export default function Companias() {
         }
       />
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
         {fuente.tipo === 'demo' ? <Info className="mt-0.5 h-4 w-4 shrink-0" /> : <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />}
         <span>
           {fuente.tipo === 'demo' ? (
@@ -168,7 +168,7 @@ export default function Companias() {
 
       {mensaje && (
         <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${mensaje.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-esmeralda/30 bg-esmeralda/5 text-emerald-900'}`}
+          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${mensaje.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-esmeralda/30 bg-esmeralda/5 text-teal-900'}`}
         >
           {mensaje.texto}
         </div>

@@ -155,7 +155,7 @@ export default function Pendientes() {
     <>
       <EncabezadoPagina titulo="Pendientes de sucursales" subtitulo="Facturas que esperan documentación de las sucursales" sucursal />
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           La sucursal tiene <strong>{plazosActuales().comun} días</strong> desde la factura (<strong>{plazosActuales().mipyme}</strong> si es

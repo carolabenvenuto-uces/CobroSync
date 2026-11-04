@@ -113,16 +113,19 @@ const SECCIONES: Seccion[] = [
             <Etiqueta clase="bg-sem-amarillo/15 text-amber-900">Amarillo</Etiqueta> falta documentación, todavía en plazo; avisos importantes.
           </li>
           <li>
+            <Etiqueta clase="bg-orange-50 text-orange-900">Naranja</Etiqueta> la documentación está por vencer o ya venció.
+          </li>
+          <li>
             <Etiqueta clase="bg-sky-500/10 text-sky-800">Celeste</Etiqueta> en revisión.
           </li>
           <li>
-            <Etiqueta clase="bg-marca/10 text-blue-800">Azul</Etiqueta> botones principales, información y mensajes sin leer.
+            <Etiqueta clase="bg-marca/10 text-indigo-800">Lila</Etiqueta> botones principales, información y mensajes sin leer.
           </li>
           <li>
-            <Etiqueta clase="bg-etapa-compania/10 text-violet-800">Violeta</Etiqueta> presentada y al día.
+            <Etiqueta clase="bg-etapa-compania/10 text-blue-800">Azul</Etiqueta> presentada y al día.
           </li>
           <li>
-            <Etiqueta clase="bg-sem-verde/15 text-emerald-800">Verde</Etiqueta> aprobado o cobrado.
+            <Etiqueta clase="bg-sem-verde/15 text-teal-800">Verde agua</Etiqueta> aprobado o cobrado.
           </li>
           <li>
             <Etiqueta clase="bg-slate-100 text-slate-700">Gris</Etiqueta> informativo; no hace falta hacer nada.
@@ -503,7 +506,7 @@ function ReportarProblema({ conGoogle }: { conGoogle: boolean }) {
         >
           <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar a la desarrolladora'}
         </button>
-        {estado.tipo === 'ok' && <span className="text-xs font-semibold text-emerald-700">Enviado. Gracias por avisar.</span>}
+        {estado.tipo === 'ok' && <span className="text-xs font-semibold text-teal-700">Enviado. Gracias por avisar.</span>}
         {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
       </div>
       <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
@@ -536,7 +539,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
             Cómo funciona {PRODUCTO} y qué hace cada pantalla, por sector.
           </p>
         </div>
-        <span className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-blue-800">
+        <span className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-indigo-800">
           v{VERSION}
         </span>
       </div>

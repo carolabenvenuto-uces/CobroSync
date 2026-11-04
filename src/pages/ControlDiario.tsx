@@ -309,7 +309,7 @@ export default function ControlDiario() {
       {mensajeErp && (
         <div
           className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${
-            mensajeErp.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-marca/20 bg-marca/5 text-blue-900'
+            mensajeErp.error ? 'border-sem-rojo/30 bg-sem-rojo/5 text-red-900' : 'border-marca/20 bg-marca/5 text-indigo-900'
           }`}
         >
           <Info className="mt-0.5 h-4 w-4 shrink-0" />

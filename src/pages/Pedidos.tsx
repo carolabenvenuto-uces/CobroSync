@@ -32,7 +32,7 @@ export default function Pedidos() {
       celda: (p) => (
         <span className="block max-w-md text-xs text-slate-700">
           {p.pedido.detalle}
-          {p.pedido.respuesta && <span className="mt-0.5 block font-semibold text-emerald-800">Respuesta: {p.pedido.respuesta.texto}</span>}
+          {p.pedido.respuesta && <span className="mt-0.5 block font-semibold text-teal-800">Respuesta: {p.pedido.respuesta.texto}</span>}
         </span>
       ),
     },
@@ -54,7 +54,7 @@ export default function Pedidos() {
         p.estado === 'esperando' ? (
           <span className="whitespace-nowrap rounded-md bg-sem-amarillo/15 px-2 py-0.5 text-xs font-semibold text-amber-900">Esperando a la sucursal</span>
         ) : (
-          <span className="whitespace-nowrap rounded-md bg-sem-verde/15 px-2 py-0.5 text-xs font-semibold text-emerald-800">Respondido: falta cerrar</span>
+          <span className="whitespace-nowrap rounded-md bg-sem-verde/15 px-2 py-0.5 text-xs font-semibold text-teal-800">Respondido: falta cerrar</span>
         ),
     },
   ]

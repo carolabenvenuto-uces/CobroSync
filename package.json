@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "datos:demo": "node scripts/generar-datos-demo.mjs",
-    "build:google": "vite build --mode google && node scripts/empaquetar-google.mjs"
+    "build:google": "vite build --mode google && node scripts/empaquetar-google.mjs",
+    "test:google": "node scripts/probar-google.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.575.0",
@@ -29,6 +30,7 @@
     "typescript": "~5.8.3",
     "vite": "^7.1.0",
     "vitest": "^3.2.0",
-    "vite-plugin-singlefile": "^2.3.0"
+    "vite-plugin-singlefile": "^2.3.0",
+    "playwright": "^1.49.0"
   }
 }

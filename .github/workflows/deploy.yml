@@ -54,6 +54,11 @@ jobs:
       - name: Compilar la versión para Google
         run: npm run build:google
 
+      - name: Probar la versión para Google (con un Google simulado)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:google
+
       - name: Guardar el paquete para Google
         uses: actions/upload-artifact@v4
         with:

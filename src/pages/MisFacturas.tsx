@@ -1,7 +1,6 @@
 import { useMemo, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EncabezadoPagina } from '../components/ui/Card'
-import { diffDias } from '../lib/fechas'
 import { CircleCheck, FileUp, PencilLine, Receipt, Search, Upload } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
@@ -59,7 +58,7 @@ const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; ic
  * Cada factura tiene un botón "Subir documentación" que abre su legajo.
  */
 export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 'resolver' }) {
-  const { sucursal, hoy, abrirLegajo, misNotificaciones, marcarLeida, marcarTodasLeidas } = useApp()
+  const { sucursal, hoy, abrirLegajo, misNotificaciones } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
@@ -91,7 +90,6 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
 
   // "Mis facturas" es para subir: lo observado y lo atrasado está en "Para resolver"
   const gruposDeLaVista = GRUPOS.filter((g) => g.clave !== 'corregir')
-  const noLeidas = misNotificaciones.filter((n) => !n.leida).sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const cuenta = (g: Grupo) => filas.filter((x) => GRUPOS.find((gr) => gr.clave === g)!.etapas.includes(x.s.etapa)).length
   const etapasDeLaVista = gruposDeLaVista.flatMap((g) => g.etapas)
@@ -218,7 +216,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         orden: (x) => (esMipyme(x.c) ? 1 : 0),
         celda: (x) =>
           esMipyme(x.c) ? (
-            <span className="whitespace-nowrap rounded-md bg-marca px-2 py-1 text-xs font-bold text-white">MiPyME · {plazoSucursal(x.c)} d</span>
+            <span className="whitespace-nowrap rounded-md bg-sem-rojo px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
           ) : (
             <span className="text-xs text-slate-500">Común</span>
           ),
@@ -235,8 +233,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       ...columnas,
     ]
     const delTema = (t: 'rechazo' | 'documentacion') => urgentes.filter((u) => u.p.tema === t)
-    const temaActivo = tema ?? (delTema('rechazo').length ? 'rechazo' : 'documentacion')
-    const listaTema = delTema(temaActivo).filter((u) => !soloMipyme || u.p.mipyme)
+    const temaActivo = tema
+    const listaTema = (temaActivo ? delTema(temaActivo) : []).filter((u) => !soloMipyme || u.p.mipyme)
     const TEMAS = [
       {
         clave: 'rechazo' as const,
@@ -257,46 +255,9 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       <>
         <EncabezadoPagina
           titulo={`Para resolver · ${sucursal}`}
-          subtitulo="Lo que necesita tu atención: documentos observados, facturas fuera de plazo o por vencer, y los mensajes de Auditoría"
+          subtitulo="Lo que necesita tu atención: documentos rechazados u observados y facturas fuera de plazo o por vencer"
         />
 
-        {/* Mensajes sin leer: para que no quede nada colgado aunque no se abra la campana */}
-        {noLeidas.length > 0 && (
-          <div className="mb-4 rounded-xl border border-marca/30 bg-white p-4 shadow-sm">
-            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-bold">
-                {noLeidas.length} {noLeidas.length === 1 ? 'mensaje sin leer' : 'mensajes sin leer'}
-              </h2>
-              <button type="button" onClick={marcarTodasLeidas} className="text-xs font-semibold text-marca hover:underline">
-                Marcar todos como leídos
-              </button>
-            </div>
-            <ul className="divide-y divide-slate-100 text-sm">
-              {noLeidas.slice(0, 8).map((n) => {
-                const dias = diffDias(n.fecha, hoy)
-                return (
-                  <li key={n.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        marcarLeida(n.id)
-                        if (n.ruta) navigate(n.ruta)
-                        else abrirLegajo(n.comprobanteId)
-                      }}
-                      className="flex w-full items-start justify-between gap-3 py-2 text-left hover:bg-fondo"
-                    >
-                      <span>{n.texto}</span>
-                      <span className={`shrink-0 text-xs ${dias >= 2 ? 'font-semibold text-sem-rojo' : 'text-slate-500'}`}>
-                        {dias === 0 ? 'hoy' : dias === 1 ? 'ayer' : `hace ${dias} días`}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-            {noLeidas.length > 8 && <p className="mt-1 text-xs text-slate-500">Y {noLeidas.length - 8} más en Notificaciones.</p>}
-          </div>
-        )}
 
         {/* Dos temas por separado, para no tener una sola lista larga */}
         <div className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -308,7 +269,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
               <button
                 key={t.clave}
                 type="button"
-                onClick={() => setTema(t.clave)}
+                onClick={() => setTema(temaActivo === t.clave ? null : t.clave)}
                 className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition ${t.color} ${temaActivo === t.clave ? 'ring-2 ring-marca' : ''}`}
               >
                 <Icono className="mt-1 h-6 w-6 shrink-0" />
@@ -325,10 +286,14 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           })}
         </div>
 
+        {!temaActivo ? (
+          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            Tocá una de las dos tarjetas para ver las facturas.
+          </p>
+        ) : (
+        <>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="text-slate-600">
-            Arriba van las <strong>MiPyME</strong> (tienen 5 días y la compañía las acepta o rechaza en pocos días); después, lo más atrasado.
-          </span>
+          <span className="text-slate-600">Ordenadas por prioridad: primero las MiPyME, después lo más atrasado.</span>
           <label className="flex items-center gap-2 font-semibold">
             <input type="checkbox" checked={soloMipyme} onChange={(e) => setSoloMipyme(e.target.checked)} />
             Ver solo las MiPyME
@@ -346,6 +311,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} · ${TEMAS.find((t) => t.clave === temaActivo)!.titulo.toLowerCase()}`}
           vacio={temaActivo === 'rechazo' ? 'No tenés rechazos ni observaciones. ¡Bien!' : 'No tenés documentación por vencer ni vencida. ¡Bien!'}
         />
+        </>
+        )}
       </>
     )
   }
@@ -357,11 +324,14 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           <h1 className="text-2xl font-extrabold tracking-tight">Mis facturas · {sucursal}</h1>
           <p className="mt-1 text-sm text-slate-600">
             Para subir la documentación de cada factura e informar notas de crédito.
-            {(urgentes.length > 0 || sinLeer > 0) && (
+            {urgentes.length > 0 && (
               <button type="button" onClick={() => navigate('/app/resolver')} className="ml-1 font-semibold text-marca hover:underline">
-                Tenés {urgentes.length > 0 ? `${urgentes.length} para resolver` : ''}
-                {urgentes.length > 0 && sinLeer > 0 ? ' y ' : ''}
-                {sinLeer > 0 ? `${sinLeer} ${sinLeer === 1 ? 'mensaje' : 'mensajes'} sin leer` : ''} →
+                Tenés {urgentes.length} para resolver →
+              </button>
+            )}
+            {sinLeer > 0 && (
+              <button type="button" onClick={() => navigate('/app/notificaciones')} className="ml-2 font-semibold text-marca hover:underline">
+                {sinLeer} {sinLeer === 1 ? 'mensaje sin leer' : 'mensajes sin leer'} →
               </button>
             )}
           </p>
@@ -373,29 +343,29 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setCargaMasiva(true)}
-          className="flex items-center gap-4 rounded-xl border-2 border-marca/30 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
+          className="flex items-center gap-4 rounded-xl bg-marca p-4 text-left text-white shadow-md transition hover:bg-marca-oscuro"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca/10">
-            <FileUp className="h-6 w-6 text-marca" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <FileUp className="h-6 w-6 text-white" />
           </span>
           <span>
             <span className="block text-base font-bold">Subir varios archivos de una vez</span>
-            <span className="block text-xs text-slate-600">
-              Soltá todos los PDF juntos: cada uno va a su factura por el número que tiene en el nombre (por ejemplo 35-00011032 orden.pdf).
+            <span className="block text-xs text-white/85">
+              Soltá todos los PDF juntos: cada uno va a su factura por el número que tiene en el nombre (por ejemplo 35-11032 orden.pdf).
             </span>
           </span>
         </button>
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          className="flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-marca hover:bg-marca/5"
+          className="flex items-center gap-4 rounded-xl bg-noche p-4 text-left text-white shadow-md transition hover:bg-slate-800"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sem-rojo/10">
-            <Receipt className="h-6 w-6 text-sem-rojo" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
+            <Receipt className="h-6 w-6 text-white" />
           </span>
           <span>
             <span className="block text-base font-bold">Informar una nota de crédito</span>
-            <span className="block text-xs text-slate-600">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
+            <span className="block text-xs text-white/80">Si una factura se anula, toda o una parte, avisalo acá para que Auditoría no la presente.</span>
           </span>
         </button>
       </div>
@@ -442,7 +412,10 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             firmada. Si es <strong className="rounded bg-marca px-1 text-white">MiPyME</strong>, solo{' '}
             <strong className="text-base">{plazosActuales().mipyme} días</strong>: subilas primero.
           </p>
-          <p className="mt-1 text-xs">Si no podés a tiempo, entrá a la factura y tocá "No lo puedo subir todavía" para avisar la fecha.</p>
+          <p className="mt-1 text-xs">
+            ¿No llegás? Entrá a la factura y tocá <strong>"Avisar fecha estimada de entrega"</strong>: elegís el motivo y el día en que vas a tener la
+            documentación. Auditoría ya sabe cuándo esperarla y la factura no te aparece en Para resolver hasta ese día.
+          </p>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             {(['faltante', 'observado', 'en_revision', 'ok'] as const).map((e) => (
               <span key={e} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-semibold ${ESTADO_DOC[e].clase}`}>

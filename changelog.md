@@ -1,10 +1,20 @@
 # Changelog
 
+## [0.12.3] - 2026-11-04
+
+### Cambiado
+- **Notificaciones como un mail, para todos los sectores:** pantalla propia con la bandeja a la izquierda (remitente, asunto, cuándo; las no leídas en negrita) y el mensaje completo a la derecha, con la factura (o la lista de facturas en los avisos agrupados) y el botón para abrirla. Filtro Sin leer / Todas. En el celular, primero la bandeja y al tocar se abre el mensaje.
+- **Sucursal:** "Para resolver" va debajo de "Mis facturas" en el menú. Se quitó el recuadro de mensajes sin leer de Para resolver (ya están en Notificaciones). La etiqueta MiPyME pasa a "! MiPyME · 5 días" en rojo.
+
 ## [0.12.2] - 2026-11-04
 
 ### Cambiado
 - **Sucursal · Para resolver:** dos tarjetas separadas, "Rechazos y observaciones" (Auditoría o la compañía no aceptó un documento) y "Documentación por vencer o vencida", cada una con su cantidad y cuántas son MiPyME. La lista muestra un tema a la vez, con las MiPyME arriba de todo y después lo más atrasado; columna "Prioridad" con filtro MiPyME/Común y casilla "Ver solo las MiPyME". El motivo dice si el rechazo vino de la compañía o de Auditoría.
 - **Sucursal · Mis facturas:** el plazo (10 días; 5 si es MiPyME) va en un recuadro "Importante" bien visible, con las marcas + ! … ✓ más grandes y en color. La lista aparece recién al tocar "Para subir" o "En revisión".
+- **Sucursal · Para resolver:** la lista aparece recién al tocar una de las dos tarjetas.
+- **Sucursal · Mis siniestros, rearmada:** primero el buscador (siniestro, patente o factura). Las compañías son desplegables, cerradas, con cuántos siniestros tienen, cuántos con documentación pendiente o por refacturar y el saldo sin cobrar. Cada siniestro es una fila que se abre para ver sus facturas, documentos y notas de crédito. Los filtros ahora son En curso / Terminados / Todos, y etiquetas explicadas ("Falta documentación", "Falta refacturar", "Con nota de crédito"). Al buscar se abre solo lo que coincide.
+- **Sucursal · Fecha estimada:** "No lo puedo subir todavía" pasa a ser "Avisar fecha estimada de entrega", y el recuadro Importante explica qué pasa al avisarla.
+- **Sucursal · Mis facturas:** los botones "Subir varios archivos de una vez" (azul) e "Informar una nota de crédito" (oscuro) van con fondo de color para que se distingan de las tarjetas.
 - **Números de factura sin ceros a la izquierda** en toda la aplicación, los mails y los Excel: "FC E 35-11032" en lugar de "FC E 35-00011032". Los nombres de archivo con ceros se siguen aceptando.
 
 ## [0.12.1] - 2026-11-04

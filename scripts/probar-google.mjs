@@ -124,14 +124,14 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
     console.log('ok   auditoría: aprobar documentos se manda a guardar en Google')
 
     // Otra persona (una sucursal) escribe en una factura: sin recargar, a Auditoría le llega la notificación
-    const contar = async () => Number((await pagina.getByRole('button', { name: /Notificaciones/ }).innerText()).replace(/\D/g, '') || 0)
+    const contar = async () => Number((await pagina.getByRole('link', { name: /Notificaciones/ }).innerText()).replace(/\D/g, '') || 0)
     const antes = await contar()
     await pagina.evaluate((c) => {
       window.__cambios = [{ ...c, eventos: [...c.eventos, { fecha: '2026-11-04', autor: 'Facturación Rocamora', area: 'sucursal', tipo: 'mensaje', texto: 'Ya subí la orden' }] }]
       document.dispatchEvent(new Event('visibilitychange'))
     }, datos.comprobantes.find((c) => c.sucursal === 'Rocamora'))
     await pagina.waitForFunction((n) => {
-      const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Notificaciones'))
+      const b = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Notificaciones'))
       return Number(b.textContent.replace(/\D/g, '') || 0) > n
     }, antes, { timeout: 5000 })
     console.log(`ok   auditoría: sin recargar, llega la notificación de un cambio de la sucursal (${antes} → ${await contar()})`)

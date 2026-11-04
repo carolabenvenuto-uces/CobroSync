@@ -558,7 +558,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   onClick={() => setFormulario('demora')}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold hover:bg-fondo"
                 >
-                  <CalendarClock className="h-4 w-4" /> No lo puedo subir todavía
+                  <CalendarClock className="h-4 w-4" /> Avisar fecha estimada de entrega
                 </button>
               ) : (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3">
@@ -571,7 +571,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     </select>
                   </label>
                   <label className="block text-xs font-semibold text-slate-500">
-                    ¿Para cuándo lo subís?
+                    ¿Qué día estimás tener la documentación?
                     <input type="date" min={hoy} value={fechaDemora} onChange={(e) => setFechaDemora(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
                   </label>
                   <button type="button" onClick={avisarDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro`}>

@@ -50,7 +50,7 @@ export default function RankingSucursales() {
         `En plazo (hasta ${PLAZO_ESCANEO_DIAS} días)`,
         `Atrasadas (${PLAZO_ESCANEO_DIAS + 1} a ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
         `Críticas (más de ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
-        'Plata retenida hoy',
+        'Importe retenido hoy',
         '% de lo retenido',
         `Facturas del período (${textoPeriodo})`,
         'Días promedio hasta subir el legajo',
@@ -81,7 +81,7 @@ export default function RankingSucursales() {
     <>
       <EncabezadoPagina
         titulo="Ranking de sucursales"
-        subtitulo={`Documentación pendiente al ${formatoFecha(hoy)}, ordenado por plata retenida. Promedios del ${textoPeriodo}.`}
+        subtitulo={`Documentación pendiente al ${formatoFecha(hoy)}, ordenado por importe retenido. Promedios del ${textoPeriodo}.`}
         acciones={
           <>
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -130,7 +130,7 @@ export default function RankingSucursales() {
               <tr>
                 <th className="px-4 py-3 font-semibold">#</th>
                 <th className="px-3 py-3 font-semibold">Sucursal</th>
-                <th className="px-3 py-3 text-right font-semibold">Plata retenida hoy</th>
+                <th className="px-3 py-3 text-right font-semibold">Importe retenido hoy</th>
                 <th className="px-3 py-3 text-right font-semibold">Doc. pendiente</th>
                 <th className="px-3 py-3 text-right font-semibold">Atrasadas</th>
                 <th className="px-3 py-3 text-right font-semibold">Críticas</th>

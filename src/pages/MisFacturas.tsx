@@ -9,6 +9,15 @@ import { diasDeEspera } from '../domain/sucursales'
 import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
+/** Las tres etiquetas de "Qué hay que hacer": qué documento falta, cuál se observó y cuál ya está. */
+const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden', firma: 'Firma' } as const
+const ESTADO_DOC = {
+  faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
+  observado: { marca: '!', texto: 'observado', clase: 'border-red-300 bg-red-50 text-red-800' },
+  en_revision: { marca: '…', texto: 'en revisión', clase: 'border-sky-200 bg-sky-50 text-sky-800' },
+  ok: { marca: '✓', texto: 'aprobado', clase: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+} as const
+
 type Grupo = 'subir' | 'corregir' | 'revision'
 
 const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; icono: ComponentType<{ className?: string }>; color: string }[] = [
@@ -99,10 +108,24 @@ export default function MisFacturas() {
       clave: 'que',
       titulo: 'Qué hay que hacer',
       celda: (x) => (
-        <div className="text-xs">
-          {(x.s.detalle.length > 1 ? x.s.detalle.slice(1) : x.s.detalle).map((d) => (
-            <div key={d}>{d}</div>
-          ))}
+        <div className="flex flex-wrap gap-1.5">
+          {(['factura', 'orden', 'firma'] as const).map((tipo) => {
+            const d = x.c.documentos.find((doc) => doc.tipo === tipo)
+            const estado = d?.estado ?? 'faltante'
+            const e = ESTADO_DOC[estado]
+            return (
+              <span
+                key={tipo}
+                title={estado === 'observado' && d?.motivo ? `${NOMBRE_DOC[tipo]}: ${d.motivo}` : `${NOMBRE_DOC[tipo]}: ${e.texto}`}
+                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`}
+              >
+                {e.marca} {NOMBRE_DOC[tipo]}
+              </span>
+            )
+          })}
+          {x.c.compromiso && (
+            <span className="w-full text-[11px] text-slate-500">Avisaste que lo subís el {formatoFecha(x.c.compromiso.fecha)}</span>
+          )}
         </div>
       ),
     },
@@ -215,6 +238,10 @@ export default function MisFacturas() {
       <p className="mb-2 text-xs text-slate-500">
         Tenés {PLAZO_ESCANEO_DIAS} días desde la factura para subir la factura, la orden de reparación o repuestos y la firma del cliente. Si no
         podés, entrá a la factura y tocá "No lo puedo subir todavía".
+        <span className="mt-1 block">
+          En cada factura: <strong>+</strong> falta subirlo · <strong>!</strong> observado, hay que reemplazarlo · <strong>…</strong> en
+          revisión · <strong>✓</strong> aprobado.
+        </span>
       </p>
 
       <Tabla

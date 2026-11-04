@@ -164,6 +164,13 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               <div className="truncate">{usuario}</div>
             </div>
           </div>
+          {fuente.tipo === 'google' ? (
+            <div className="mt-1 truncate text-[11px] text-slate-400">
+              {NOMBRE_ROL[rol]}
+              {rol === 'sucursal' && ` · ${sucursal}`}
+            </div>
+          ) : (
+            <>
           <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Ver como
             <select
@@ -192,10 +199,12 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               </select>
             </label>
           )}
+            </>
+          )}
           <div className="mt-3 space-y-1 text-[11px] text-slate-400">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-              {fuente.tipo === 'demo' ? 'Datos de ejemplo' : `Tu planilla: ${fuente.archivo}`}
+              {fuente.tipo === 'demo' ? 'Datos de ejemplo' : fuente.tipo === 'google' ? 'Datos de la empresa' : `Tu planilla: ${fuente.archivo}`}
               {hoy && ` · al ${formatoFecha(hoy)}`}
             </div>
             {fuente.tipo === 'planilla' && (
@@ -203,10 +212,12 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                 Volver a la demo
               </button>
             )}
-            <Link to="/presentacion" className="flex items-center gap-2 hover:text-white">
-              <Presentation className="h-3.5 w-3.5" />
-              Ver presentación del producto
-            </Link>
+            {fuente.tipo !== 'google' && (
+              <Link to="/presentacion" className="flex items-center gap-2 hover:text-white">
+                <Presentation className="h-3.5 w-3.5" />
+                Ver presentación del producto
+              </Link>
+            )}
           </div>
         </div>
       </aside>

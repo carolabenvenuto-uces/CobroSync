@@ -76,7 +76,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
 export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprobante; onCerrar: () => void }) {
-  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, rol, usuario, hoy, fuente, actualizarComprobante, registrarEvento, subirDocumento } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
   const documentos = documentosDelLegajo(c.documentos)
@@ -84,6 +84,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const reclamo = estadoReclamo(c, hoy)
 
   const [mensaje, setMensaje] = useState('')
+  const [subiendo, setSubiendo] = useState(false)
+  const [errorSubida, setErrorSubida] = useState<string | null>(null)
   const [observaciones, setObservaciones] = useState(c.observaciones)
   const [formulario, setFormulario] = useState<'ninguno' | 'demora' | 'rechazo' | 'reclamo'>('ninguno')
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
@@ -100,14 +102,26 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   }
 
   // ── Sucursal ──
-  function subir(tipos: TipoDocumento[], archivo: File | undefined) {
+  async function subir(tipos: TipoDocumento[], archivo: File | undefined) {
     if (!archivo) return
-    guardarDocumentos(
-      documentos.map((d): Documento => (tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'en_revision', archivo: archivo.name } : d)),
-      { fechaDrive: c.fechaDrive ?? hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
-    )
-    const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
-    registrarEvento(c.id, 'subida', `Subió ${que} (${archivo.name})`)
+    setSubiendo(true)
+    setErrorSubida(null)
+    try {
+      // Con Google el archivo se guarda en el Drive de la empresa; en la demo solo se registra el nombre
+      const subido = await subirDocumento(c.id, tipos.length > 1 ? 'documentacion' : tipos[0], archivo)
+      guardarDocumentos(
+        documentos.map((d): Documento =>
+          tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'en_revision', archivo: subido.archivo, url: subido.url } : d,
+        ),
+        { fechaDrive: c.fechaDrive ?? hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
+      )
+      const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
+      registrarEvento(c.id, 'subida', `Subió ${que} (${archivo.name})`)
+    } catch (e) {
+      setErrorSubida(e instanceof Error ? e.message : 'No se pudo subir el archivo.')
+    } finally {
+      setSubiendo(false)
+    }
   }
   const pendientesDeSubir = documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map((d) => d.tipo)
 
@@ -119,7 +133,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   // ── Auditoría: revisar y tildar ──
   function aprobar(tipos: TipoDocumento[]) {
-    guardarDocumentos(documentos.map((d): Documento => (tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'ok', archivo: d.archivo } : d)))
+    guardarDocumentos(documentos.map((d): Documento => (tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'ok', archivo: d.archivo, url: d.url } : d)))
     const todos = documentos.every((d) => d.estado === 'ok' || tipos.includes(d.tipo))
     registrarEvento(
       c.id,
@@ -262,7 +276,14 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         </span>
                         <div className="min-w-0">
                           <div className="font-medium">{NOMBRE_DOCUMENTO[d.tipo]}</div>
-                          {d.archivo && <div className="truncate text-xs text-slate-500">{d.archivo}</div>}
+                          {d.archivo &&
+                            (d.url ? (
+                              <a href={d.url} target="_blank" rel="noreferrer" className="block truncate text-xs text-marca hover:underline">
+                                {d.archivo}
+                              </a>
+                            ) : (
+                              <div className="truncate text-xs text-slate-500">{d.archivo}</div>
+                            ))}
                           {d.estado === 'observado' && d.motivo && <div className="text-xs font-semibold text-red-700">{d.motivo}</div>}
                         </div>
                       </div>
@@ -314,7 +335,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </p>
               )}
               {rol === 'sucursal' && leTocaALaSucursal && (
-                <p className="mt-1 text-xs text-slate-500">En la demo el archivo no se sube a ningún lado: solo se registra su nombre.</p>
+                <>
+                <p className="mt-1 text-xs text-slate-500">
+                  {subiendo
+                    ? 'Subiendo el archivo…'
+                    : fuente.tipo === 'google'
+                      ? 'Se guarda en el Drive de la empresa. Desde el celular podés sacarle una foto al documento.'
+                      : 'En la demo el archivo no se sube a ningún lado: solo se registra su nombre.'}
+                </p>
+                {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}
+                </>
               )}
             </section>
           )}

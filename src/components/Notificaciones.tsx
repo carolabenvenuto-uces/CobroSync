@@ -1,5 +1,6 @@
 import { Bell, X } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { formatoFecha } from '../lib/formato'
 
@@ -12,6 +13,7 @@ import { formatoFecha } from '../lib/formato'
 export function Campana() {
   const { rol, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
   const [abierta, setAbierta] = useState(false)
+  const navigate = useNavigate()
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
 
   return (
@@ -54,7 +56,8 @@ export function Campana() {
                     type="button"
                     onClick={() => {
                       marcarLeida(n.id)
-                      abrirLegajo(n.comprobanteId)
+                      if (n.ruta) navigate(n.ruta)
+                      else abrirLegajo(n.comprobanteId)
                       setAbierta(false)
                     }}
                     className={`flex w-full gap-3 px-5 py-3 text-left text-sm hover:bg-fondo ${n.leida ? 'text-slate-500' : 'text-noche'}`}

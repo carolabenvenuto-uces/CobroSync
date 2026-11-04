@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, LockKeyhole, RotateCcw, Upload } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { useApp } from '../context/AppContext'
+import { agregarEnGoogle, guardarAseguradorasEnGoogle } from '../services/google'
 import { importarPlanilla, leerArchivo, type ResultadoImportacion } from '../services/planilla'
 import { formatoFecha } from '../lib/formato'
 
@@ -18,6 +19,8 @@ function hoyLocal(): string {
  */
 export default function UsarPlanilla() {
   const { fuente, usarPlanilla, usarDemo } = useApp()
+  const conGoogle = fuente.tipo === 'google'
+  const [pasando, setPasando] = useState<string | null>(null)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -31,12 +34,34 @@ export default function UsarPlanilla() {
     try {
       const texto = await leerArchivo(archivo)
       const resultado = importarPlanilla(texto, hoyLocal())
-      usarPlanilla(resultado, archivo.name)
+      // Con Google no se reemplazan los datos de la empresa: primero se muestra qué se va a pasar
+      if (!conGoogle) usarPlanilla(resultado, archivo.name)
       setResumen(resultado)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setCargando(false)
+    }
+  }
+
+  /** Pasa la planilla a CobroSync (Google): compañías nuevas y facturas que todavía no estén. */
+  async function pasarAGoogle() {
+    if (!resumen) return
+    setError(null)
+    try {
+      setPasando('Guardando las compañías…')
+      await guardarAseguradorasEnGoogle(resumen.datos.aseguradoras)
+      const lista = resumen.datos.comprobantes
+      let nuevas = 0
+      for (let i = 0; i < lista.length; i += 300) {
+        setPasando(`Guardando facturas: ${Math.min(i + 300, lista.length).toLocaleString('es-AR')} de ${lista.length.toLocaleString('es-AR')}…`)
+        nuevas += await agregarEnGoogle(lista.slice(i, i + 300))
+      }
+      setPasando(`Listo: se agregaron ${nuevas.toLocaleString('es-AR')} facturas. Las que ya estaban no se modificaron.`)
+      usarDemo() // vuelve a leer los datos desde Google
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setPasando(null)
     }
   }
 
@@ -115,6 +140,25 @@ export default function UsarPlanilla() {
 
       {error && (
         <div className="mt-4 rounded-lg border border-sem-rojo/30 bg-sem-rojo/5 px-4 py-3 text-sm text-red-800">{error}</div>
+      )}
+
+      {conGoogle && resumen && (
+        <Card className="mt-4">
+          <CardTitulo>3. Pasar la planilla a CobroSync</CardTitulo>
+          <p className="text-sm text-slate-700">
+            Se leyeron <strong>{resumen.datos.comprobantes.length.toLocaleString('es-AR')}</strong> comprobantes. Al confirmar, se agregan
+            a CobroSync los que todavía no estén (se comparan por referencia). Los que ya están no se modifican.
+          </p>
+          <button
+            type="button"
+            disabled={pasando !== null && !pasando.startsWith('Listo')}
+            onClick={() => void pasarAGoogle()}
+            className="mt-3 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-60"
+          >
+            Guardar en CobroSync
+          </button>
+          {pasando && <p className="mt-2 text-sm text-slate-600">{pasando}</p>}
+        </Card>
       )}
 
       {fuente.tipo === 'planilla' && (

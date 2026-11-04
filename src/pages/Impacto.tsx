@@ -41,7 +41,7 @@ export default function Impacto() {
         ['Sucursal', sucursal],
         ['Tasa anual usada (%)', parametros.tasaAnualPct],
         ['Objetivo de días hasta presentar', parametros.objetivoDias],
-        ['Plata retenida hoy por legajos incompletos', impacto.retenidoHoy],
+        ['Importe retenido hoy por legajos incompletos', impacto.retenidoHoy],
         ['Legajos retenidos hoy', impacto.legajosRetenidos],
         [`Costo financiero estimado ${anio}`, impacto.costoDelAnio],
         ['Días extra promedio por factura', impacto.diasExtraPromedio],
@@ -61,7 +61,7 @@ export default function Impacto() {
     <>
       <EncabezadoPagina
         titulo="Impacto económico"
-        subtitulo={`Cuánto cuesta que los legajos lleguen tarde · ${anio} · ${sucursal === 'Todas' ? 'Todas las sucursales' : sucursal}`}
+        subtitulo={`Costo financiero de la demora en la documentación · ${anio} · ${sucursal === 'Todas' ? 'Todas las sucursales' : sucursal}`}
         acciones={
           <>
             <FiltroSucursal />
@@ -73,7 +73,7 @@ export default function Impacto() {
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-sem-amarillo/40 bg-sem-amarillo/10 px-4 py-3 text-sm text-amber-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          <strong>En revisión con Contabilidad.</strong> La plata <strong>retenida</strong> es real: son facturas emitidas que todavía
+          <strong>En revisión con Contabilidad.</strong> El importe <strong>retenido</strong> es real: son facturas emitidas que todavía
           esperan documentación. El <strong>costo de la demora</strong> es una estimación con la tasa de abajo, hasta que Contabilidad
           defina cuál usar.
         </span>
@@ -82,7 +82,7 @@ export default function Impacto() {
       <Card className="mb-4">
         <div className="flex flex-wrap items-end gap-4">
           <label className="text-xs font-semibold text-slate-500">
-            Tasa anual para valuar la plata (%)
+            Tasa anual de referencia (%)
             <input
               type="number"
               min={0}
@@ -185,7 +185,7 @@ export default function Impacto() {
             presentó, se cuentan hasta hoy).
           </li>
           <li>
-            <strong>Costo</strong> = importe × días extra × tasa anual ÷ 365. Es lo que vale tener esa plata inmovilizada.
+            <strong>Costo</strong> = importe × días extra × tasa anual ÷ 365. Es el costo financiero de tener ese importe inmovilizado.
           </li>
           <li>
             <strong>DSO posible</strong>: el promedio de días de cobro si todas las facturas cobradas se hubieran presentado

@@ -28,7 +28,7 @@ const ESTILO: Record<EstadoReclamo, string> = {
  * cuándo fue el último reclamo y cuáles hay que escalar a gerencia.
  */
 export default function Reclamos() {
-  const { datos, hoy, abrirLegajo } = useApp()
+  const { datos, hoy, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
@@ -105,7 +105,7 @@ export default function Reclamos() {
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Se escala a gerencia cuando la compañía no respondió a {RECLAMOS_PARA_ESCALAR} reclamos. Cada reclamo se registra en la
-          factura con fecha, medio y nota: tocá la fila para registrarlo.
+          factura con fecha, medio y nota{rol === 'auditoria' ? ': tocá la fila para registrarlo.' : '.'}
         </span>
       </div>
 

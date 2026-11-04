@@ -43,7 +43,7 @@ En la app, **Datos → Usar mi planilla**: se descarga la hoja *Diario* como CSV
 | Etapa | Contenido | Estado |
 |---|---|---|
 | 1 | Prototipo navegable en GitHub Pages con datos ficticios | 🚧 en curso |
-| 2 | Login por rol, importación Excel/CSV, archivos del legajo, base de datos (Supabase) | ⏳ |
+| 2 | Prueba piloto con Google: ingreso con la cuenta de la empresa, planilla de Google como base, documentos en Drive, avisos por mail ([google/LEEME.md](google/LEEME.md)) | 🧰 preparado, falta habilitar |
 | 3 | Validación con OCR, envío por correo, automatizaciones | ⏳ |
 
 Detalle en [plan.md](plan.md) y cambios en [changelog.md](changelog.md).

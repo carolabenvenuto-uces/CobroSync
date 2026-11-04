@@ -9,6 +9,12 @@
 - **Auditoría · Novedades del control diario:** botones para ver las facturas que entraron con la última carga del ERP y las que tuvieron cambios desde ayer.
 - **Sucursal · Quitar un documento subido por error,** mientras Auditoría no lo revisó (queda registrado).
 - **Gerencia · Imprimir o guardar en PDF** el Resumen, sin menú ni botones.
+- **Sucursal · Para resolver:** pestaña nueva con lo observado, lo fuera de plazo y lo que vence en 2 días (con el motivo), y los mensajes de Auditoría sin leer, con cuántos días llevan. Mis facturas queda solo para subir documentación e informar notas de crédito.
+- **Sucursal · Mis siniestros:** ordenados por compañía (con filtro), con "Te queda pendiente" en palabras (qué subir, qué reemplazar, qué refacturar) y filtros "Tengo algo para hacer" y "Anuladas o con nota de crédito". Si después se emitió otra factura del siniestro, lo anulado se da por refacturado.
+- **Nota de crédito en el legajo:** dice qué hace (anula completa o acredita una parte de tal factura, con el saldo que queda) y el motivo que informó la sucursal.
+
+### Corregido
+- Abrir una factura da por leídas sus notificaciones: si se resolvió entrando por la tabla o el buscador, el aviso no queda colgado como pendiente.
 
 ## [0.11.0] - 2026-11-04
 

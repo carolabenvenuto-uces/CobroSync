@@ -5,6 +5,7 @@ import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { saldoSinCobro } from '../domain/importes'
 import { calcularSemaforo, NOMBRE_DOCUMENTO } from '../domain/semaforo'
+import { esperaALaSucursal } from '../domain/sucursales'
 import type { Comprobante, Documento } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
@@ -23,12 +24,16 @@ const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', obse
 interface Grupo {
   clave: string
   siniestro: string
+  companiaId: string
   compania: string
   patente: string
   facturas: Comprobante[]
   notas: Comprobante[]
   ultimaFecha: string
-  avisos: string[]
+  /** lo que le queda por hacer a la sucursal en este siniestro */
+  pendientes: string[]
+  /** para que sepa en qué está (no tiene que hacer nada) */
+  info: string[]
 }
 
 /**
@@ -40,7 +45,8 @@ export default function Siniestros() {
   const { datos, hoy, sucursal, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const [busqueda, setBusqueda] = useState('')
-  const [filtro, setFiltro] = useState<'todos' | 'pendiente' | 'nc'>('todos')
+  const [filtro, setFiltro] = useState<'todos' | 'pendiente' | 'nc'>('pendiente')
+  const [companiaElegida, setCompaniaElegida] = useState('')
   const [pagina, setPagina] = useState(1)
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
@@ -50,7 +56,18 @@ export default function Siniestros() {
     for (const c of facturas) {
       const s = normalizar(c.siniestro ?? '')
       const clave = s.length >= 4 ? `${c.aseguradoraId}|${s}` : `sola|${c.id}`
-      const g = mapa.get(clave) ?? { clave, siniestro: c.siniestro, compania: nombreCompania(c.aseguradoraId), patente: c.patente, facturas: [], notas: [], ultimaFecha: '', avisos: [] }
+      const g = mapa.get(clave) ?? {
+        clave,
+        siniestro: c.siniestro,
+        companiaId: c.aseguradoraId,
+        compania: nombreCompania(c.aseguradoraId),
+        patente: c.patente,
+        facturas: [],
+        notas: [],
+        ultimaFecha: '',
+        pendientes: [],
+        info: [],
+      }
       g.facturas.push(c)
       if (c.fecha > g.ultimaFecha) g.ultimaFecha = c.fecha
       if (!g.patente && c.patente) g.patente = c.patente
@@ -64,40 +81,61 @@ export default function Siniestros() {
     for (const g of mapa.values()) {
       g.facturas.sort((a, b) => a.fecha.localeCompare(b.fecha))
       const vigentes = g.facturas.filter((f) => f.estado !== 'anulada')
-      // Lo que conviene que la sucursal sepa
+      // ¿Hay una factura del siniestro emitida después? Entonces lo anulado ya se refacturó
+      const refacturada = (f: Comprobante) => vigentes.some((v) => v.id !== f.id && v.fecha > f.fecha)
       for (const f of g.facturas) {
-        if ((f.acreditado ?? 0) > 0) {
-          g.avisos.push(`${formatoComprobante(f)}: nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}. Si corresponde, hay que refacturar esa diferencia.`)
+        const numero = formatoComprobante(f)
+        if (esperaALaSucursal(f, hoy)) {
+          for (const d of f.documentos) {
+            if (d.estado === 'faltante') g.pendientes.push(`Subir la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}`)
+            if (d.estado === 'observado') g.pendientes.push(`Reemplazar la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}${d.motivo ? ` (${d.motivo.toLowerCase()})` : ''}`)
+          }
         }
-        if (f.anulacionInformada && !f.anulacionInformada.parcial && f.estado !== 'anulada') {
-          g.avisos.push(`${formatoComprobante(f)}: informaste que se anula; falta que la nota de crédito aparezca en el ERP.`)
+        if ((f.acreditado ?? 0) > 0 && !refacturada(f)) {
+          g.pendientes.push(`${numero} tuvo una nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}: si esa parte se vuelve a facturar, falta la factura nueva`)
         }
-        if (f.anulacionInformada?.parcial && !(f.acreditado ?? 0)) {
-          g.avisos.push(`${formatoComprobante(f)}: informaste una nota de crédito parcial por ${formatoPesos(f.anulacionInformada.importe ?? 0)}; falta que aparezca en el ERP.`)
+        if (f.estado === 'anulada' && !refacturada(f) && diffDias(f.fecha, hoy) <= 60) {
+          g.pendientes.push(`${numero} se anuló con una nota de crédito: si se refactura, falta la factura nueva`)
+        }
+        if (f.anulacionInformada && f.estado !== 'anulada') {
+          g.info.push(
+            f.anulacionInformada.parcial
+              ? `Avisaste una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
+              : `Avisaste que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
+          )
         }
       }
-      // Solo si la anulación es reciente: lo viejo ya se resolvió (o no se refactura)
-      if (vigentes.length === 0 && diffDias(g.ultimaFecha, hoy) <= 60) g.avisos.push('Todas las facturas de este siniestro están anuladas: si se refactura, todavía no está la factura nueva.')
     }
-    return [...mapa.values()].sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha))
+    // Ordenados por compañía; dentro de cada una, primero lo que tiene algo para hacer y lo más nuevo
+    return [...mapa.values()].sort(
+      (a, b) =>
+        a.compania.localeCompare(b.compania, 'es') ||
+        Number(b.pendientes.length > 0) - Number(a.pendientes.length > 0) ||
+        b.ultimaFecha.localeCompare(a.ultimaFecha),
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comprobantes, datos, hoy])
 
-  const conPendiente = (g: Grupo) =>
-    g.avisos.length > 0 || g.facturas.some((f) => f.estado !== 'anulada' && f.estado !== 'cobrada' && f.documentos.some((d) => d.estado === 'faltante' || d.estado === 'observado'))
+  const conNotas = (g: Grupo) => g.notas.length > 0 || g.facturas.some((f) => f.estado === 'anulada' || (f.acreditado ?? 0) > 0 || f.anulacionInformada)
+  const companias = useMemo(() => {
+    const m = new Map<string, { nombre: string; cantidad: number }>()
+    for (const g of grupos) m.set(g.companiaId, { nombre: g.compania, cantidad: (m.get(g.companiaId)?.cantidad ?? 0) + 1 })
+    return [...m.entries()].sort((a, b) => a[1].nombre.localeCompare(b[1].nombre, 'es'))
+  }, [grupos])
 
   const visibles = useMemo(() => {
     const t = normalizar(busqueda)
     return grupos.filter((g) => {
-      if (filtro === 'pendiente' && !conPendiente(g)) return false
-      if (filtro === 'nc' && g.notas.length === 0 && !g.facturas.some((f) => f.anulacionInformada || (f.acreditado ?? 0) > 0)) return false
+      if (companiaElegida && g.companiaId !== companiaElegida) return false
+      if (filtro === 'pendiente' && g.pendientes.length === 0) return false
+      if (filtro === 'nc' && !conNotas(g)) return false
       if (t.length < 3) return true
       return [g.siniestro, g.patente, g.compania, ...g.facturas.map((f) => `${f.puntoVenta}${String(f.numero).padStart(8, '0')} ${f.numero} ${f.ref}`)]
         .map(normalizar)
         .some((x) => x.includes(t))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupos, busqueda, filtro])
+  }, [grupos, busqueda, filtro, companiaElegida])
 
   const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
   const actual = Math.min(pagina, totalPaginas)
@@ -141,11 +179,27 @@ export default function Siniestros() {
             className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
           />
         </label>
+        <select
+          aria-label="Compañía"
+          value={companiaElegida}
+          onChange={(e) => {
+            setCompaniaElegida(e.target.value)
+            setPagina(1)
+          }}
+          className="rounded-lg border border-slate-200 bg-white py-2 pl-2 pr-7 text-sm font-semibold shadow-sm"
+        >
+          <option value="">Todas las compañías</option>
+          {companias.map(([id, x]) => (
+            <option key={id} value={id}>
+              {x.nombre} ({x.cantidad})
+            </option>
+          ))}
+        </select>
         {(
           [
+            ['pendiente', 'Tengo algo para hacer'],
+            ['nc', 'Anuladas o con nota de crédito'],
             ['todos', 'Todos'],
-            ['pendiente', 'Con algo pendiente'],
-            ['nc', 'Con nota de crédito'],
           ] as const
         ).map(([clave, texto]) => (
           <button
@@ -164,10 +218,13 @@ export default function Siniestros() {
       </div>
 
       <div className="space-y-3">
-        {deLaPagina.map((g) => {
+        {deLaPagina.map((g, i) => {
+          const nuevaCompania = i === 0 || deLaPagina[i - 1].companiaId !== g.companiaId
           const total = g.facturas.filter((f) => f.estado !== 'anulada').reduce((t, f) => t + saldoSinCobro(f), 0)
           return (
-            <div key={g.clave} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div key={g.clave}>
+            {nuevaCompania && <h2 className="mb-2 mt-4 text-sm font-bold uppercase tracking-wide text-slate-500 first:mt-0">{g.compania}</h2>}
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
                 <div>
                   <span className="font-bold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</span>
@@ -198,24 +255,41 @@ export default function Siniestros() {
                       <td className="whitespace-nowrap px-4 py-2 font-medium text-red-800">{formatoComprobante(nc)}</td>
                       <td className="whitespace-nowrap px-2 py-2 text-slate-500">{formatoFecha(nc.fecha)}</td>
                       <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-red-800">{formatoPesos(nc.total)}</td>
-                      <td colSpan={2} className="px-2 py-2 text-xs text-slate-600">Nota de crédito</td>
+                      <td colSpan={2} className="px-2 py-2 text-xs text-slate-600">
+                        {(() => {
+                          const f = g.facturas.find((x) => x.id === nc.ncReferencia)
+                          if (!f) return 'Nota de crédito'
+                          return f.estado === 'anulada' ? `Anula completa ${formatoComprobante(f)}` : `Acredita una parte de ${formatoComprobante(f)}`
+                        })()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {g.avisos.length > 0 && (
-                <ul className="space-y-1 border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-                  {g.avisos.map((a) => (
-                    <li key={a} className="flex items-start gap-1.5">
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a}
-                    </li>
+              {g.pendientes.length > 0 && (
+                <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+                  <div className="mb-1 font-bold">Te queda pendiente:</div>
+                  <ul className="space-y-1">
+                    {g.pendientes.map((a) => (
+                      <li key={a} className="flex items-start gap-1.5">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {g.info.length > 0 && (
+                <ul className="space-y-1 border-t border-slate-100 bg-fondo px-4 py-2 text-xs text-slate-600">
+                  {g.info.map((a) => (
+                    <li key={a}>{a}</li>
                   ))}
                 </ul>
               )}
             </div>
+            </div>
           )
         })}
-        {deLaPagina.length === 0 && <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">No hay siniestros con esta búsqueda.</p>}
+        {deLaPagina.length === 0 && <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">{filtro === 'pendiente' && !busqueda ? 'No te queda nada pendiente en tus siniestros. ¡Todo al día!' : 'No hay siniestros con esta búsqueda.'}</p>}
       </div>
 
       {totalPaginas > 1 && (

@@ -1,4 +1,7 @@
 import { useMemo, useState, type ComponentType } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { EncabezadoPagina } from '../components/ui/Card'
+import { diffDias } from '../lib/fechas'
 import { CircleCheck, FileUp, PencilLine, Receipt, Search, Upload } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
@@ -9,6 +12,7 @@ import { calcularSemaforo } from '../domain/semaforo'
 import { esMipyme, plazosActuales, plazoSucursal } from '../domain/plazos'
 import { diasDeEspera } from '../domain/sucursales'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
+import { paraResolver } from '../domain/resolver'
 import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
@@ -54,8 +58,9 @@ const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; ic
  * Inicio de la sucursal: qué tiene que hacer hoy, en tres grupos, con un buscador grande.
  * Cada factura tiene un botón "Subir documentación" que abre su legajo.
  */
-export default function MisFacturas() {
-  const { sucursal, hoy, abrirLegajo, misNotificaciones } = useApp()
+export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 'resolver' }) {
+  const { sucursal, hoy, abrirLegajo, misNotificaciones, marcarLeida, marcarTodasLeidas } = useApp()
+  const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
   const [grupo, setGrupo] = useState<Grupo | 'todas'>('todas')
@@ -72,26 +77,23 @@ export default function MisFacturas() {
         .filter((x) => GRUPOS.some((g) => g.etapas.includes(x.s.etapa))),
     [comprobantes, hoy],
   )
-  // Para resolver primero: atrasadas, observadas y las que vencen el plazo en 2 días (MiPyME antes)
+  // Para resolver: observadas, fuera de plazo o por vencer (ver domain/resolver.ts)
   const urgentes = useMemo(() => {
-    const puntaje = (x: (typeof filas)[number]) => {
-      if (x.s.etapa === 'en_revision') return null
-      const dias = diasDeEspera(x.c, hoy)
-      const plazo = plazoSucursal(x.c)
-      const mipyme = esMipyme(x.c) ? 0.5 : 0
-      if (x.s.etapa === 'doc_observada') return { orden: 3 + mipyme, motivo: 'observada: hay que reemplazar un documento' }
-      if (dias > plazo) return { orden: 2 + mipyme, motivo: `pasó el plazo hace ${dias - plazo} ${dias - plazo === 1 ? 'día' : 'días'}` }
-      if (plazo - dias <= 2) return { orden: 1 + mipyme, motivo: plazo === dias ? 'hoy vence el plazo' : `vence el plazo en ${plazo - dias} ${plazo - dias === 1 ? 'día' : 'días'}` }
-      return null
-    }
-    return filas
-      .map((x) => ({ x, p: puntaje(x) }))
-      .filter((y): y is { x: (typeof filas)[number]; p: { orden: number; motivo: string } } => y.p !== null)
-      .sort((a, b) => b.p.orden - a.p.orden || diasDeEspera(b.x.c, hoy) - diasDeEspera(a.x.c, hoy))
-  }, [filas, hoy])
+    const porId = new Map(filas.map((x) => [x.c.id, x]))
+    return paraResolver(comprobantes, hoy)
+      .map((p) => ({ x: porId.get(p.c.id)!, p }))
+      .filter((u) => u.x)
+  }, [comprobantes, filas, hoy])
+
+  // "Mis facturas" es para subir: lo observado y lo atrasado está en "Para resolver"
+  const gruposDeLaVista = GRUPOS.filter((g) => g.clave !== 'corregir')
+  const noLeidas = misNotificaciones.filter((n) => !n.leida).sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const cuenta = (g: Grupo) => filas.filter((x) => GRUPOS.find((gr) => gr.clave === g)!.etapas.includes(x.s.etapa)).length
-  const visibles = grupo === 'todas' ? filas : filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
+  const etapasDeLaVista = gruposDeLaVista.flatMap((g) => g.etapas)
+  const visibles =
+    grupo === 'todas' ? filas.filter((x) => etapasDeLaVista.includes(x.s.etapa)) : filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
+  const motivo = new Map(urgentes.map((u) => [u.x.c.id, u.p]))
 
   // El buscador grande busca en todas las facturas de la sucursal, no solo en las pendientes
   const encontradas = useMemo(() => {
@@ -202,14 +204,92 @@ export default function MisFacturas() {
     },
   ]
 
+  if (vista === 'resolver') {
+    const columnasResolver: Columna<Fila>[] = [
+      {
+        clave: 'motivo',
+        titulo: 'Por qué',
+        orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
+        celda: (x) => {
+          const p = motivo.get(x.c.id)
+          return p ? <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span> : null
+        },
+      },
+      ...columnas,
+    ]
+    return (
+      <>
+        <EncabezadoPagina
+          titulo={`Para resolver · ${sucursal}`}
+          subtitulo="Lo que necesita tu atención: documentos observados, facturas fuera de plazo o por vencer, y los mensajes de Auditoría"
+        />
+
+        {/* Mensajes sin leer: para que no quede nada colgado aunque no se abra la campana */}
+        {noLeidas.length > 0 && (
+          <div className="mb-4 rounded-xl border border-marca/30 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-bold">
+                {noLeidas.length} {noLeidas.length === 1 ? 'mensaje sin leer' : 'mensajes sin leer'}
+              </h2>
+              <button type="button" onClick={marcarTodasLeidas} className="text-xs font-semibold text-marca hover:underline">
+                Marcar todos como leídos
+              </button>
+            </div>
+            <ul className="divide-y divide-slate-100 text-sm">
+              {noLeidas.slice(0, 8).map((n) => {
+                const dias = diffDias(n.fecha, hoy)
+                return (
+                  <li key={n.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        marcarLeida(n.id)
+                        if (n.ruta) navigate(n.ruta)
+                        else abrirLegajo(n.comprobanteId)
+                      }}
+                      className="flex w-full items-start justify-between gap-3 py-2 text-left hover:bg-fondo"
+                    >
+                      <span>{n.texto}</span>
+                      <span className={`shrink-0 text-xs ${dias >= 2 ? 'font-semibold text-sem-rojo' : 'text-slate-500'}`}>
+                        {dias === 0 ? 'hoy' : dias === 1 ? 'ayer' : `hace ${dias} días`}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            {noLeidas.length > 8 && <p className="mt-1 text-xs text-slate-500">Y {noLeidas.length - 8} más en Notificaciones.</p>}
+          </div>
+        )}
+
+        <Tabla
+          id="para-resolver"
+          filas={urgentes.map((u) => u.x)}
+          columnas={columnasResolver}
+          clave={(x) => x.c.id}
+          onFila={(x) => abrirLegajo(x.c.id)}
+          ordenInicial={{ clave: 'motivo', dir: 'desc' }}
+          resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} para resolver (las MiPyME primero)`}
+          vacio="No tenés nada para resolver. ¡Todo al día!"
+        />
+      </>
+    )
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Mis facturas · {sucursal}</h1>
           <p className="mt-1 text-sm text-slate-600">
-            <strong>¿Qué tengo que hacer hoy?</strong> Subir lo que falta, corregir lo observado y mirar las notificaciones
-            {sinLeer > 0 && <strong className="text-marca"> ({sinLeer} sin leer, en Notificaciones del menú)</strong>}.
+            Para subir la documentación de cada factura e informar notas de crédito.
+            {(urgentes.length > 0 || sinLeer > 0) && (
+              <button type="button" onClick={() => navigate('/app/resolver')} className="ml-1 font-semibold text-marca hover:underline">
+                Tenés {urgentes.length > 0 ? `${urgentes.length} para resolver` : ''}
+                {urgentes.length > 0 && sinLeer > 0 ? ' y ' : ''}
+                {sinLeer > 0 ? `${sinLeer} ${sinLeer === 1 ? 'mensaje' : 'mensajes'} sin leer` : ''} →
+              </button>
+            )}
           </p>
         </div>
       </div>
@@ -279,39 +359,9 @@ export default function MisFacturas() {
         )}
       </div>
 
-      {urgentes.length > 0 && (
-        <div className="mb-4 rounded-xl border border-sem-rojo/30 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-bold">Para resolver primero</h2>
-            <span className="text-xs text-slate-500">
-              {urgentes.length} {urgentes.length === 1 ? 'factura' : 'facturas'}: observadas, fuera de plazo o por vencer (las MiPyME primero)
-            </span>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {urgentes.slice(0, 6).map(({ x, p }) => (
-              <li key={x.c.id}>
-                <button
-                  type="button"
-                  onClick={() => abrirLegajo(x.c.id)}
-                  className="flex w-full items-start justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-marca hover:bg-marca/5"
-                >
-                  <span>
-                    <span className="font-semibold">{formatoComprobante(x.c)}</span>
-                    {esMipyme(x.c) && <span className="ml-1.5 rounded bg-marca/10 px-1 text-[11px] font-bold text-marca">MiPyME</span>}
-                    <span className="block text-xs text-slate-500">{x.c.siniestro ? `Siniestro ${x.c.siniestro}` : formatoFecha(x.c.fecha)}</span>
-                  </span>
-                  <span className={`max-w-[45%] text-right text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {urgentes.length > 6 && <p className="mt-2 text-xs text-slate-500">Y {urgentes.length - 6} más en la tabla de abajo (ordenada por días).</p>}
-        </div>
-      )}
-
-      {/* Tres grupos grandes */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        {GRUPOS.map((g) => {
+      {/* Dos grupos grandes: para subir y en revisión */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        {gruposDeLaVista.map((g) => {
           const Icono = g.icono
           const activo = grupo === g.clave
           return (
@@ -350,7 +400,7 @@ export default function MisFacturas() {
         clave={(x) => x.c.id}
         onFila={(x) => abrirLegajo(x.c.id)}
         ordenInicial={{ clave: 'dias', dir: 'desc' }}
-        resumen={(l) => `${l.length} facturas ${grupo === 'todas' ? 'con algo pendiente' : `· ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}`}
+        resumen={(l) => `${l.length} facturas ${grupo === 'todas' ? 'para subir o en revisión' : `· ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}`}
         vacio="No tenés nada pendiente. ¡Todo al día!"
       />
 

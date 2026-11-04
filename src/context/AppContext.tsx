@@ -162,7 +162,7 @@ function huella(texto: string): string {
  * y facturas vencidas con 3 reclamos sin respuesta.
  */
 function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
-  const numero = `${c.tipo} E ${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+  const numero = `${c.tipo} E ${c.puntoVenta}-${c.numero}`
   const id = `${c.id}|${e.fecha}|${e.tipo}|${huella(e.texto)}`
   const base = () => ({ id: `${id}|${lista.length}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
   const lista: Notificacion[] = []

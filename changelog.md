@@ -1,10 +1,17 @@
 # Changelog
 
+## [0.12.2] - 2026-11-04
+
+### Cambiado
+- **Sucursal · Para resolver:** dos tarjetas separadas, "Rechazos y observaciones" (Auditoría o la compañía no aceptó un documento) y "Documentación por vencer o vencida", cada una con su cantidad y cuántas son MiPyME. La lista muestra un tema a la vez, con las MiPyME arriba de todo y después lo más atrasado; columna "Prioridad" con filtro MiPyME/Común y casilla "Ver solo las MiPyME". El motivo dice si el rechazo vino de la compañía o de Auditoría.
+- **Sucursal · Mis facturas:** el plazo (10 días; 5 si es MiPyME) va en un recuadro "Importante" bien visible, con las marcas + ! … ✓ más grandes y en color. La lista aparece recién al tocar "Para subir" o "En revisión".
+- **Números de factura sin ceros a la izquierda** en toda la aplicación, los mails y los Excel: "FC E 35-11032" en lugar de "FC E 35-00011032". Los nombres de archivo con ceros se siguen aceptando.
+
 ## [0.12.1] - 2026-11-04
 
 ### Cambiado
 - **Solo PDF:** los documentos tienen que ser PDF (las compañías no aceptan fotos ni otros formatos). Lo controlan la pantalla y el servidor.
-- **El nombre del archivo se exige, no solo se pide:** tiene que tener el punto de venta y el número de la factura ("35-00011032 orden.pdf"). En la carga de varios archivos, uno sin número o con un número que no es de una factura pendiente de la sucursal queda en rojo y no se sube. En el legajo, el archivo tiene que tener el número de esa factura. El legajo le muestra a la sucursal cómo tiene que llamarse.
+- **El nombre del archivo se exige, no solo se pide:** tiene que tener el punto de venta y el número de la factura ("35-11032 orden.pdf"). En la carga de varios archivos, uno sin número o con un número que no es de una factura pendiente de la sucursal queda en rojo y no se sube. En el legajo, el archivo tiene que tener el número de esa factura. El legajo le muestra a la sucursal cómo tiene que llamarse.
 
 ## [0.12.0] - 2026-11-04
 

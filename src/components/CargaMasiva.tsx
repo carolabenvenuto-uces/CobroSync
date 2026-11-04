@@ -156,16 +156,14 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             <div className="mb-1 font-bold">Solo PDF, y el nombre tiene que tener el número de la factura</div>
             <ul className="list-disc space-y-0.5 pl-4">
               <li>
-                El <strong>punto de venta y el número de factura</strong>, como figura en la factura: <code>35-00011032</code> (también sirve{' '}
-                <code>35-11032</code>). Un archivo sin ese número, o con un número que no es de una factura pendiente de tu sucursal, no se sube:
+                El <strong>punto de venta y el número de factura</strong>: <code>35-11032</code> (los ceros de adelante no hacen falta). Un archivo sin ese número, o con un número que no es de una factura pendiente de tu sucursal, no se sube:
                 renombralo y volvé a soltarlo.
               </li>
               <li>
                 Agregá <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si escaneaste las dos juntas en un solo PDF, no hace falta.
               </li>
               <li>
-                Ejemplos: <code>35-00011032 orden.pdf</code> · <code>35-00011032 factura.pdf</code> · <code>35-00011032.pdf</code> (las dos juntas) ·{' '}
-                <code>35-11032 factura.pdf</code>
+                Ejemplos: <code>35-11032 orden.pdf</code> · <code>35-11032 factura.pdf</code> · <code>35-11032.pdf</code> (las dos juntas)
               </li>
               <li>Solo <strong>PDF</strong>: las compañías no aceptan fotos. Desde el celular, escaneá con la cámara o con Google Drive, que guardan en PDF.</li>
             </ul>

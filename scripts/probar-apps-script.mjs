@@ -336,7 +336,7 @@ prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura
   como('rocamora@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
   const datos = Buffer.from('hola').toString('base64')
-  const numero = `${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+  const numero = `${c.puntoVenta}-${c.numero}`
   falla(() => gs('subirArchivo', c.id, 'orden', `${numero} orden.jpg`, 'image/jpeg', datos), 'Solo se aceptan PDF')
   falla(() => gs('subirArchivo', c.id, 'orden', 'scan0001.pdf', 'application/pdf', datos), 'número de la factura')
   const r = gs('subirArchivo', c.id, 'orden', `${numero} orden.pdf`, 'application/pdf', datos)
@@ -373,7 +373,7 @@ prueba('el lunes no se reclama una factura con fecha comprometida que todavía n
   como('auditoria@svaauto.com.ar')
   mails.length = 0
   gs('resumenSemanal')
-  const numero = `${pendiente.tipo} E ${pendiente.puntoVenta}-${String(pendiente.numero).padStart(8, '0')}`
+  const numero = `${pendiente.tipo} E ${pendiente.puntoVenta}-${pendiente.numero}`
   esperar(mails.length > 0, 'no salió ningún resumen')
   esperar(!mails.some((m) => m.body.includes(numero)), 'se reclamó una factura con fecha comprometida vigente')
 })
@@ -457,7 +457,7 @@ prueba('una factura MiPyME entra en el resumen del lunes a los 6 días; una com�
   mails.length = 0
   gs('resumenSemanal')
   const cuerpo = mails.find((m) => m.to === 'gerente.rocamora@svaauto.com.ar')?.body ?? ''
-  const nro = (f) => `FC E ${f[col('puntoVenta')]}-${String(f[col('numero')]).padStart(8, '0')}`
+  const nro = (f) => `FC E ${f[col('puntoVenta')]}-${f[col('numero')]}`
   esperar(cuerpo.includes(nro(fMipyme)) && cuerpo.includes('MiPyME'), 'la MiPyME de 6 días no está en el resumen')
   esperar(!cuerpo.includes(nro(fComun)), 'la común de 6 días está en el resumen (todavía está en plazo)')
 })

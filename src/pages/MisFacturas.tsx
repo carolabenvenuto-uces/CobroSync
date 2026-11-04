@@ -63,7 +63,11 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
-  const [grupo, setGrupo] = useState<Grupo | 'todas'>('todas')
+  // Mis facturas: la lista aparece recién al tocar una tarjeta (para subir o en revisión)
+  const [grupo, setGrupo] = useState<Grupo | null>(null)
+  // Para resolver: un tema a la vez y, si se quiere, solo las MiPyME
+  const [tema, setTema] = useState<'rechazo' | 'documentacion' | null>(null)
+  const [soloMipyme, setSoloMipyme] = useState(false)
   const [modalNc, setModalNc] = useState(false)
   const [cargaMasiva, setCargaMasiva] = useState(false)
   const [busqueda, setBusqueda] = useState('')
@@ -91,8 +95,9 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
 
   const cuenta = (g: Grupo) => filas.filter((x) => GRUPOS.find((gr) => gr.clave === g)!.etapas.includes(x.s.etapa)).length
   const etapasDeLaVista = gruposDeLaVista.flatMap((g) => g.etapas)
-  const visibles =
-    grupo === 'todas' ? filas.filter((x) => etapasDeLaVista.includes(x.s.etapa)) : filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
+  const visibles = grupo
+    ? filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
+    : filas.filter((x) => etapasDeLaVista.includes(x.s.etapa))
   const motivo = new Map(urgentes.map((u) => [u.x.c.id, u.p]))
 
   // El buscador grande busca en todas las facturas de la sucursal, no solo en las pendientes
@@ -207,6 +212,18 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
   if (vista === 'resolver') {
     const columnasResolver: Columna<Fila>[] = [
       {
+        clave: 'prioridad',
+        titulo: 'Prioridad',
+        filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
+        orden: (x) => (esMipyme(x.c) ? 1 : 0),
+        celda: (x) =>
+          esMipyme(x.c) ? (
+            <span className="whitespace-nowrap rounded-md bg-marca px-2 py-1 text-xs font-bold text-white">MiPyME · {plazoSucursal(x.c)} d</span>
+          ) : (
+            <span className="text-xs text-slate-500">Común</span>
+          ),
+      },
+      {
         clave: 'motivo',
         titulo: 'Por qué',
         orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
@@ -216,6 +233,25 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         },
       },
       ...columnas,
+    ]
+    const delTema = (t: 'rechazo' | 'documentacion') => urgentes.filter((u) => u.p.tema === t)
+    const temaActivo = tema ?? (delTema('rechazo').length ? 'rechazo' : 'documentacion')
+    const listaTema = delTema(temaActivo).filter((u) => !soloMipyme || u.p.mipyme)
+    const TEMAS = [
+      {
+        clave: 'rechazo' as const,
+        titulo: 'Rechazos y observaciones',
+        ayuda: 'Un documento que Auditoría o la compañía no aceptó: hay que reemplazarlo',
+        icono: PencilLine,
+        color: 'border-sem-rojo bg-sem-rojo/5',
+      },
+      {
+        clave: 'documentacion' as const,
+        titulo: 'Documentación por vencer o vencida',
+        ayuda: 'Facturas que pasaron el plazo o a las que les quedan 2 días o menos',
+        icono: Upload,
+        color: 'border-sem-amarillo bg-sem-amarillo/10',
+      },
     ]
     return (
       <>
@@ -262,15 +298,53 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           </div>
         )}
 
+        {/* Dos temas por separado, para no tener una sola lista larga */}
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          {TEMAS.map((t) => {
+            const Icono = t.icono
+            const lista = delTema(t.clave)
+            const mipymes = lista.filter((u) => u.p.mipyme).length
+            return (
+              <button
+                key={t.clave}
+                type="button"
+                onClick={() => setTema(t.clave)}
+                className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition ${t.color} ${temaActivo === t.clave ? 'ring-2 ring-marca' : ''}`}
+              >
+                <Icono className="mt-1 h-6 w-6 shrink-0" />
+                <div>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-3xl font-extrabold">{lista.length}</span>
+                    <span className="font-bold">{t.titulo}</span>
+                    {mipymes > 0 && <span className="rounded bg-marca px-1.5 py-0.5 text-[11px] font-bold text-white">{mipymes} MiPyME</span>}
+                  </div>
+                  <p className="text-xs text-slate-600">{t.ayuda}</p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-slate-600">
+            Arriba van las <strong>MiPyME</strong> (tienen 5 días y la compañía las acepta o rechaza en pocos días); después, lo más atrasado.
+          </span>
+          <label className="flex items-center gap-2 font-semibold">
+            <input type="checkbox" checked={soloMipyme} onChange={(e) => setSoloMipyme(e.target.checked)} />
+            Ver solo las MiPyME
+          </label>
+        </div>
+
         <Tabla
           id="para-resolver"
-          filas={urgentes.map((u) => u.x)}
+          key={`${temaActivo}-${soloMipyme}`}
+          filas={listaTema.map((u) => u.x)}
           columnas={columnasResolver}
           clave={(x) => x.c.id}
           onFila={(x) => abrirLegajo(x.c.id)}
-          ordenInicial={{ clave: 'motivo', dir: 'desc' }}
-          resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} para resolver (las MiPyME primero)`}
-          vacio="No tenés nada para resolver. ¡Todo al día!"
+          porPagina={15}
+          resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} · ${TEMAS.find((t) => t.clave === temaActivo)!.titulo.toLowerCase()}`}
+          vacio={temaActivo === 'rechazo' ? 'No tenés rechazos ni observaciones. ¡Bien!' : 'No tenés documentación por vencer ni vencida. ¡Bien!'}
         />
       </>
     )
@@ -359,6 +433,26 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         )}
       </div>
 
+      {/* El plazo, bien a la vista: es lo que más importa que tengan en cuenta */}
+      <div className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border-2 border-sem-amarillo bg-amber-50 p-4">
+        <span className="rounded-md bg-sem-amarillo px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-noche">Importante</span>
+        <div className="min-w-0 flex-1 text-sm text-amber-950">
+          <p>
+            Tenés <strong className="text-base">{plazosActuales().comun} días</strong> desde la fecha de la factura para subir la factura y la orden
+            firmada. Si es <strong className="rounded bg-marca px-1 text-white">MiPyME</strong>, solo{' '}
+            <strong className="text-base">{plazosActuales().mipyme} días</strong>: subilas primero.
+          </p>
+          <p className="mt-1 text-xs">Si no podés a tiempo, entrá a la factura y tocá "No lo puedo subir todavía" para avisar la fecha.</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            {(['faltante', 'observado', 'en_revision', 'ok'] as const).map((e) => (
+              <span key={e} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-semibold ${ESTADO_DOC[e].clase}`}>
+                <span className="text-sm font-extrabold">{ESTADO_DOC[e].marca}</span> {ESTADO_DOC[e].texto}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Dos grupos grandes: para subir y en revisión */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         {gruposDeLaVista.map((g) => {
@@ -368,7 +462,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             <button
               key={g.clave}
               type="button"
-              onClick={() => setGrupo(activo ? 'todas' : g.clave)}
+              onClick={() => setGrupo(activo ? null : g.clave)}
               className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition ${g.color} ${activo ? 'ring-2 ring-marca' : ''}`}
             >
               <Icono className="mt-1 h-6 w-6 shrink-0" />
@@ -384,15 +478,12 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         })}
       </div>
 
-      <p className="mb-2 text-xs text-slate-500">
-        Tenés {plazosActuales().comun} días desde la factura ({plazosActuales().mipyme} si es <strong>MiPyME</strong>, priorizalas) para subir la factura y la orden de reparación o repuestos firmada por el cliente. Si no
-        podés, entrá a la factura y tocá "No lo puedo subir todavía".
-        <span className="mt-1 block">
-          En cada factura: <strong>+</strong> falta subirlo · <strong>!</strong> observado, hay que reemplazarlo · <strong>…</strong> en
-          revisión · <strong>✓</strong> aprobado.
-        </span>
-      </p>
-
+      {!grupo ? (
+        <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+          Tocá <strong>Para subir</strong> para ver las facturas a las que les falta documentación y subirla una por una, o <strong>En revisión</strong> para ver
+          lo que ya subiste. Para subir muchas juntas, usá <strong>Subir varios archivos de una vez</strong>.
+        </p>
+      ) : (
       <Tabla
         id="mis-facturas"
         filas={visibles}
@@ -400,9 +491,10 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         clave={(x) => x.c.id}
         onFila={(x) => abrirLegajo(x.c.id)}
         ordenInicial={{ clave: 'dias', dir: 'desc' }}
-        resumen={(l) => `${l.length} facturas ${grupo === 'todas' ? 'para subir o en revisión' : `· ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}`}
-        vacio="No tenés nada pendiente. ¡Todo al día!"
+        resumen={(l) => `${l.length} facturas · ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}
+        vacio={grupo === 'subir' ? 'No te falta subir nada. ¡Todo al día!' : 'No tenés nada en revisión.'}
       />
+      )}
 
       {modalNc && <NotaCreditoModal onCerrar={() => setModalNc(false)} />}
       {cargaMasiva && <CargaMasiva onCerrar={() => setCargaMasiva(false)} />}

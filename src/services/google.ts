@@ -7,7 +7,7 @@
  *
  * En la demo de GitHub Pages no existe: todo sigue funcionando en memoria, como hasta ahora.
  */
-import type { Aseguradora, Comprobante, DatosApp, Rol, TipoDocumento } from '../domain/tipos'
+import type { Aseguradora, Comprobante, DatosApp, Documento, Evento, Rol, TipoDocumento } from '../domain/tipos'
 
 export interface UsuarioGoogle {
   email: string
@@ -41,12 +41,36 @@ function llamar<T>(funcion: string, ...args: unknown[]): Promise<T> {
   })
 }
 
-export function cargarDesdeGoogle(): Promise<{ usuario: UsuarioGoogle; datos: DatosApp }> {
+export function cargarDesdeGoogle(): Promise<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }> {
   return llamar('obtenerDatos')
 }
 
-export function guardarEnGoogle(c: Comprobante): Promise<boolean> {
-  return llamar('guardarComprobante', c)
+/**
+ * Un cambio sobre una factura. Se guarda sobre lo que hay en ese momento en Google, así dos
+ * personas trabajando en la misma factura no se pisan.
+ */
+export interface Cambio {
+  id: string
+  campos?: Partial<Comprobante>
+  /** solo los documentos que cambiaron */
+  documentos?: Documento[]
+  /** mensaje nuevo para la conversación (lo firma el servidor) */
+  evento?: Pick<Evento, 'tipo' | 'texto'>
+  /** factura nueva completa (solo Auditoría) */
+  nuevo?: Comprobante
+}
+
+export function aplicarCambiosEnGoogle(cambios: Cambio[]): Promise<{ comprobantes: Comprobante[]; ahora: string }> {
+  return llamar('aplicarCambios', cambios)
+}
+
+/** Lo que cambiaron los demás desde la última consulta. */
+export function obtenerCambiosDeGoogle(desde: string): Promise<{ comprobantes: Comprobante[]; ahora: string }> {
+  return llamar('obtenerCambios', desde)
+}
+
+export function marcarLeidasEnGoogle(ids: string[]): Promise<boolean> {
+  return llamar('marcarLeidas', ids)
 }
 
 export function agregarEnGoogle(lista: Comprobante[]): Promise<number> {

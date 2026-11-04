@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0] - 2026-11-04
+
+### Agregado
+- **Actualización automática (con Google):** cada minuto y al volver a la pestaña, la aplicación trae los cambios de los demás y avisa con una notificación, sin recargar.
+- **Trabajo simultáneo sin pisarse:** cada cambio (campos, documento, mensaje) se guarda por separado sobre lo que hay en ese momento. El servidor firma cada mensaje con la cuenta de quien lo escribió.
+- **Notificaciones leídas en la cuenta:** valen en cualquier computadora o celular (pestaña Lecturas).
+
 ## [0.7.2] - 2026-11-04
 
 ### Agregado

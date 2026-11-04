@@ -212,8 +212,10 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          En <Pantalla>Mis facturas</Pantalla> hay dos tarjetas: <strong>Para subir</strong> (falta la factura o la orden firmada) y{' '}
-          <strong>En revisión</strong> (ya subiste todo y Auditoría lo está revisando). Tocá una para ver la lista.
+          En <Pantalla>Mis facturas</Pantalla>, la tarjeta <strong>Para subir</strong> abre la lista de facturas a las que les falta la factura o
+          la orden firmada (tocala otra vez para cerrarla). Debajo dice cuántas están <strong>en revisión</strong>, por si las querés ver. El buscador
+          encuentra cualquier factura de la sucursal y muestra el resultado justo abajo. El botón <strong>Plazos</strong>, arriba a la derecha,
+          vuelve a mostrar el aviso de los plazos.
         </p>
         <h4 className="mt-4 font-bold">Subir los documentos de una factura</h4>
         <Pasos>
@@ -226,7 +228,7 @@ const SECCIONES: Seccion[] = [
         <h4 className="mt-4 font-bold">Subir muchos archivos de una vez</h4>
         <Pasos>
           <Paso n={1}>
-            Tocá <strong>Subir varios archivos de una vez</strong> (el botón azul de arriba).
+            Tocá <strong>Subir varios PDF de una vez</strong> (el botón azul de arriba).
           </Paso>
           <Paso n={2}>
             Soltá todos los PDF juntos. Cada uno va a su factura por el número que tiene en el nombre: el punto de venta y el número, por

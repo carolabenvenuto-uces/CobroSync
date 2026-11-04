@@ -8,6 +8,10 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 - **Manual de uso** (en el menú, abajo, y en la pantalla de ingreso): qué es CobroSync, el camino de una factura, qué significa cada color, notificaciones, listas y Excel, y una guía por sector (Sucursal y Gerencia completas; Auditoría, base para completar). Reemplaza a la presentación del producto.
 - **Marca y autoría:** CobroSync 1.0, un desarrollo de Benvenuto Desarrollos · Carola Benvenuto. La firma va debajo del logo, en el ingreso, en el pie de cada pantalla y en el manual. Todo sale de un solo archivo (src/lib/marca.ts).
 
+### Cambiado
+- **Sucursal · Mis facturas, más liviana:** el aviso de plazos aparece grande la primera vez, con "Entendido", y después queda en un botón chico "Plazos" arriba a la derecha. Los dos botones de acción son finos y van arriba. Queda una sola tarjeta, "Para subir", que se abre y se cierra tocándola. Lo que está en revisión pasa a una línea con "Verlas". El buscador va pegado a la lista, con el resultado justo debajo.
+- **Sucursal · Para resolver:** tarjetas más chicas, con flecha para abrir y cerrar.
+
 ## [0.12.9] - 2026-11-04
 
 ### Corregido

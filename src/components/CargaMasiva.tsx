@@ -124,7 +124,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       <div className="fixed inset-x-0 top-6 z-50 mx-auto flex max-h-[90vh] w-[min(64rem,95vw)] flex-col rounded-xl bg-white shadow-2xl" role="dialog" aria-label="Subir varios archivos">
         <div className="flex items-start justify-between border-b border-slate-200 p-5">
           <div>
-            <h2 className="text-lg font-extrabold">Subir varios archivos de una vez</h2>
+            <h2 className="text-lg font-extrabold">Subir varios PDF de una vez</h2>
             <p className="mt-1 text-sm text-slate-600">
               Soltá todos los PDF juntos. Cada uno va a la factura del número que tiene en el nombre; revisá y tocá <strong>Subir todo</strong>.
             </p>

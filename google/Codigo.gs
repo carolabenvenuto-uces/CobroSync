@@ -61,6 +61,7 @@ var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
   ['carpetaDriveId', '', 'Id de la carpeta de la unidad compartida donde se guardan los documentos'],
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
+  ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde el Manual de uso'],
   ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
   ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
   ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
@@ -109,7 +110,7 @@ function obtenerDatos() {
         sucursales: sucursales,
         plazos: plazos_(),
         textos: { apoyo: String(config_('textoAvisoApoyo') || ''), critica: String(config_('textoAvisoCritica') || '') },
-        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || '') } : undefined,
+        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || '') } : undefined,
       },
     },
   };
@@ -524,6 +525,34 @@ function esMipyme_(c, p, sinFce) {
 function plazoDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.mipyme : p.comun; }
 function criticaDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.criticaMipyme : p.criticaComun; }
 
+/**
+ * Manual de uso → "Reportar un problema técnico": le llega un mail solo a la desarrolladora
+ * (el correo de soporte de la pestaña Config), con quién lo manda y desde qué pantalla.
+ */
+function reportarProblema(texto, contexto) {
+  var usuario = usuarioActual_();
+  var correo = String(config_('correoSoporte') || '').trim();
+  if (!correo) throw new Error('Todavía no hay un correo de soporte cargado (Ajustes).');
+  var detalle = String(texto || '').trim().slice(0, 4000);
+  if (!detalle) throw new Error('Falta la descripción del problema.');
+  var c = contexto || {};
+  MailApp.sendEmail({
+    to: correo,
+    replyTo: usuario.email,
+    subject: 'CobroSync · Problema técnico informado por ' + (usuario.nombre || usuario.email),
+    body:
+      detalle +
+      '\n\n— Datos del reporte —' +
+      '\nUsuario: ' + (usuario.nombre || '') + ' <' + usuario.email + '>' +
+      '\nSector: ' + usuario.rol + (usuario.sucursal ? ' · ' + usuario.sucursal : '') +
+      '\nPantalla: ' + String(c.pantalla || '') +
+      '\nNavegador: ' + String(c.navegador || '') +
+      '\nFecha: ' + new Date().toISOString(),
+    name: 'CobroSync · Soporte',
+  });
+  return true;
+}
+
 /** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Auditoría. */
 function guardarAjustes(a) {
   if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede cambiar los ajustes.');
@@ -538,6 +567,7 @@ function guardarAjustes(a) {
       diasRespuestaReclamo: a.plazos.respuestaReclamo || 7,
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
+      correoSoporte: String(a.avisos.correoSoporte || ''),
       textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
       textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
     };

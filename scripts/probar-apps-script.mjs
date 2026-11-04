@@ -409,6 +409,16 @@ prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () =
   esperar(!mails.some((m) => m.to === 'gerente.warnes@svaauto.com.ar'), 'le llegó un mail a una sucursal sin pendientes')
   esperar(mails.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), 'no le llegó a la que sí tiene')
 })
+prueba('un reporte técnico le llega solo a la desarrolladora', () => {
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('reportarProblema', 'No carga', {}), 'correo de soporte')
+  setCfg('correoSoporte', 'desarrolladora@svaauto.com.ar')
+  mails.length = 0
+  esperar(gs('reportarProblema', 'No me deja subir un PDF', { pantalla: '#/app', navegador: 'Chrome' }) === true, 'no devolvió true')
+  esperar(mails.length === 1 && mails[0].to === 'desarrolladora@svaauto.com.ar', `mails: ${mails.map((m) => m.to)}`)
+  esperar(mails[0].body.includes('No me deja subir un PDF') && mails[0].body.includes('rocamora@svaauto.com.ar'), mails[0].body.slice(0, 200))
+  esperar(mails[0].replyTo === 'rocamora@svaauto.com.ar', 'sin responder a')
+})
 prueba('Ajustes: Auditoría cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
   como('rocamora@svaauto.com.ar')
   falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Auditoría')

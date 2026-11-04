@@ -3,7 +3,7 @@ import { BellRing, CalendarClock, Mail, RotateCcw, Save, Timer } from 'lucide-re
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
-import { AVISOS_INICIALES, PLAZOS_INICIALES, type Plazos } from '../domain/plazos'
+import { AVISOS_INICIALES, PLAZOS_INICIALES, type Ajustes as AjustesGuardados, type Plazos } from '../domain/plazos'
 import { esperaALaSucursal } from '../domain/sucursales'
 import { armarTexto, DATOS_DE_TEXTO, TEXTOS_INICIALES, type TextosAvisos } from '../domain/textos'
 import { formatoPesos } from '../lib/formato'
@@ -17,7 +17,7 @@ export default function Ajustes() {
   const { aseguradoras, meta, comprobantes } = datos!
   const [plazos, setPlazos] = useState<Plazos>({ ...PLAZOS_INICIALES, ...(meta.plazos ?? {}) })
   const [sinFce, setSinFce] = useState<Set<string>>(new Set(aseguradoras.filter((a) => a.recibeFce === false).map((a) => a.id)))
-  const [avisos, setAvisos] = useState(meta.avisos ?? AVISOS_INICIALES)
+  const [avisos, setAvisos] = useState<AjustesGuardados['avisos']>(meta.avisos ?? AVISOS_INICIALES)
   const [textos, setTextos] = useState<TextosAvisos>({ ...TEXTOS_INICIALES, ...(meta.textos ?? {}) })
   const [puntos, setPuntos] = useState(plazos.puntosVentaMipyme.join(', '))
   const [estado, setEstado] = useState<{ texto: string; error?: boolean } | null>(null)
@@ -235,6 +235,17 @@ export default function Ajustes() {
               />
             </label>
           </div>
+          <label className="mt-4 block text-xs font-semibold text-slate-500">
+            Correo para los reportes de problemas técnicos (solo la desarrolladora)
+            <input
+              type="email"
+              value={avisos.correoSoporte ?? ''}
+              onChange={(e) => setAvisos({ ...avisos, correoSoporte: e.target.value })}
+              placeholder="nombre@empresa.com.ar"
+              className={`${claseSelect} mt-1 block w-full max-w-md`}
+            />
+            <span className="mt-1 block font-normal text-slate-500">Los reportes del Manual de uso llegan solo a este correo, no al resto del sector.</span>
+          </label>
         </Card>
       </div>
     </>

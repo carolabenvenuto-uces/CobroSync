@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
+import { reportarProblemaEnGoogle } from '../services/google'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Building2, ClipboardCheck, Store } from 'lucide-react'
+import { ArrowLeft, BookOpen, Building2, ClipboardCheck, LifeBuoy, Send, Store } from 'lucide-react'
 import { Isologo } from '../components/Logo'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
@@ -219,17 +220,17 @@ const SECCIONES: Seccion[] = [
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <strong>Rechazos y observaciones:</strong> documentos que Auditoría o la compañía no aceptaron. El motivo dice quién lo rechazó y
-            qué hay que cambiar.
+            <strong>Para subir:</strong> todas las facturas a las que les falta la factura o la orden firmada.
+          </li>
+          <li>
+            <strong>En revisión:</strong> documentación ya enviada, que Auditoría está revisando. Sin tareas pendientes.
           </li>
           <li>
             <strong>Por vencer o vencidas:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
           </li>
           <li>
-            <strong>Para subir:</strong> todas las facturas a las que les falta la factura o la orden firmada.
-          </li>
-          <li>
-            <strong>En revisión:</strong> documentación ya enviada, que Auditoría está revisando. Sin tareas pendientes.
+            <strong>Rechazos y observaciones:</strong> documentos que Auditoría o la compañía no aceptaron. El motivo dice quién lo rechazó y
+            qué hay que cambiar.
           </li>
         </ul>
         <p className="mt-2">
@@ -300,18 +301,14 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          <Pantalla>Mis siniestros</Pantalla> reúne todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y sus
-          notas de crédito.
+          <Pantalla>Mis siniestros</Pantalla> funciona como una bandeja: a la izquierda la lista de siniestros (lo más reciente primero) y a la
+          derecha el siniestro elegido, con sus importes y cada factura con sus documentos (también los ya aprobados).
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Lo más rápido es buscar por número de siniestro, patente o número de factura.</li>
-          <li>Las compañías se despliegan; cada siniestro se abre con un clic.</li>
-          <li>"En curso": con alguna factura sin cobrar. "Terminados": cobrados o anulados.</li>
-          <li>
-            Etiquetas: <Etiqueta clase="bg-amber-100 text-amber-900">Falta documentación</Etiqueta>{' '}
-            <Etiqueta clase="bg-red-100 text-red-800">Falta refacturar</Etiqueta>{' '}
-            <Etiqueta clase="bg-slate-200 text-slate-800">Con nota de crédito</Etiqueta> (esta última, solo informativa).
-          </li>
+          <li>Búsqueda por número de siniestro, patente o número de factura; si hay un solo resultado, se abre solo.</li>
+          <li>Filtros por compañía y por estado: en curso (algo sin cobrar) o terminados (cobrados o anulados).</li>
+          <li>Las notas de crédito aparecen debajo de la factura que acreditan, con el importe en rojo y si anulan todo o una parte.</li>
+          <li>Si una nota de crédito deja algo por volver a facturar, se indica como pendiente.</li>
         </ul>
       </>
     ),
@@ -456,6 +453,58 @@ const SECCIONES: Seccion[] = [
   },
 ]
 
+/** "¿Algo no funciona?": un mensaje que le llega por mail solo a la desarrolladora. */
+function ReportarProblema({ conGoogle }: { conGoogle: boolean }) {
+  const [texto, setTexto] = useState('')
+  const [estado, setEstado] = useState<{ tipo: 'nada' | 'enviando' | 'ok' | 'error'; mensaje?: string }>({ tipo: 'nada' })
+  const enviar = async () => {
+    if (!texto.trim()) return
+    if (!conGoogle) {
+      setEstado({ tipo: 'error', mensaje: 'El envío funciona en la versión conectada a la cuenta de la empresa.' })
+      return
+    }
+    setEstado({ tipo: 'enviando' })
+    try {
+      await reportarProblemaEnGoogle(texto, { pantalla: window.location.hash, navegador: navigator.userAgent })
+      setTexto('')
+      setEstado({ tipo: 'ok' })
+    } catch (e) {
+      setEstado({ tipo: 'error', mensaje: e instanceof Error ? e.message : 'No se pudo enviar.' })
+    }
+  }
+  return (
+    <section id="soporte" className="scroll-mt-6 rounded-xl border border-marca/30 bg-white p-5 text-sm text-slate-700 shadow-sm">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-extrabold text-noche">
+        <LifeBuoy className="h-5 w-5 text-marca" /> ¿Algo no funciona?
+      </h2>
+      <p>
+        Para un error técnico (una pantalla que no carga, un botón que no responde, un dato que se ve mal), el mensaje le llega directamente a la
+        desarrolladora de {PRODUCTO}. Para dudas sobre una factura, el canal es Auditoría.
+      </p>
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={3}
+        placeholder="Qué pasó, en qué pantalla y, si corresponde, con qué factura"
+        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={enviar}
+          disabled={!texto.trim() || estado.tipo === 'enviando'}
+          className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar a la desarrolladora'}
+        </button>
+        {estado.tipo === 'ok' && <span className="text-xs font-semibold text-emerald-700">Enviado. Gracias por avisar.</span>}
+        {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
+    </section>
+  )
+}
+
 const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
   { clave: 'todos', titulo: 'Para todos', icono: BookOpen },
   { clave: 'sucursal', titulo: 'Sucursal', icono: Store },
@@ -464,7 +513,9 @@ const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
 ]
 
 export default function Manual({ suelto = false }: { suelto?: boolean }) {
-  const { rol } = useApp()
+  const { rol, fuente } = useApp()
+  // Cada usuario ve lo general y lo de su sector. Auditoría (y quien entra sin usuario) ve todo, por pestañas.
+  const conPestanas = !rol || rol === 'auditoria' || suelto
   const [sector, setSector] = useState<Sector>(rol ?? 'todos')
   const visibles = SECCIONES.filter((s) => s.sector === 'todos' || s.sector === sector || sector === 'todos')
   // "Para todos" muestra lo general; cada sector, lo general primero y después lo suyo
@@ -484,6 +535,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
         </span>
       </div>
 
+      {conPestanas && (
       <div className="mb-6 flex flex-wrap gap-2">
         {PESTANAS.map((p) => (
           <button
@@ -496,12 +548,18 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
           </button>
         ))}
       </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
         {/* Índice */}
         <nav className="hidden lg:block">
           <div className="sticky top-6 space-y-1 text-sm">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">En esta guía</div>
+            {rol && (
+              <a href="#soporte" onClick={(e) => { e.preventDefault(); document.getElementById('soporte')?.scrollIntoView({ behavior: 'smooth' }) }} className="block rounded px-2 py-1 font-semibold text-marca hover:bg-white">
+                ¿Algo no funciona?
+              </a>
+            )}
             {lista.map((s) => (
               <a key={s.id} href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' }) }} className="block rounded px-2 py-1 text-slate-600 hover:bg-white hover:text-noche">
                 {s.titulo}
@@ -517,6 +575,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
               {s.contenido()}
             </section>
           ))}
+          {rol && <ReportarProblema conGoogle={fuente.tipo === 'google'} />}
           <p className="pt-2 text-center text-xs text-slate-500">
             {AUTORIA} · © {new Date().getFullYear()} {AUTORA}
           </p>

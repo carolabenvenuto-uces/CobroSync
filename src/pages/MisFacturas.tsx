@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
@@ -25,26 +25,10 @@ const ESTADO_DOC = {
 
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
-/** Los cuatro estados de las facturas de la sucursal, de lo más urgente a lo que ya está en manos de Auditoría. */
+/** Los cuatro estados de las facturas de la sucursal, en el orden en que se ven (de arriba hacia abajo). */
 type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision'
 
 const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentType<{ className?: string }>; color: string; acento: string }[] = [
-  {
-    clave: 'rechazos',
-    titulo: 'Rechazos y observaciones',
-    ayuda: 'Documentos que Auditoría o la compañía no aceptaron: hay que reemplazarlos',
-    icono: PencilLine,
-    color: 'border-sem-rojo/60 bg-sem-rojo/5',
-    acento: 'text-red-800',
-  },
-  {
-    clave: 'vencer',
-    titulo: 'Por vencer o vencidas',
-    ayuda: 'Pasaron el plazo o vencen en 2 días o menos',
-    icono: Clock,
-    color: 'border-sem-amarillo bg-sem-amarillo/15',
-    acento: 'text-amber-900',
-  },
   {
     clave: 'subir',
     titulo: 'Para subir',
@@ -60,6 +44,22 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
     icono: CircleCheck,
     color: 'border-sky-300 bg-sky-50',
     acento: 'text-sky-800',
+  },
+  {
+    clave: 'vencer',
+    titulo: 'Por vencer o vencidas',
+    ayuda: 'Pasaron el plazo o vencen en 2 días o menos',
+    icono: Clock,
+    color: 'border-sem-amarillo bg-sem-amarillo/15',
+    acento: 'text-amber-900',
+  },
+  {
+    clave: 'rechazos',
+    titulo: 'Rechazos y observaciones',
+    ayuda: 'Documentos que Auditoría o la compañía no aceptaron: hay que reemplazarlos',
+    icono: PencilLine,
+    color: 'border-sem-rojo/60 bg-sem-rojo/5',
+    acento: 'text-red-800',
   },
 ]
 
@@ -113,6 +113,23 @@ export default function MisFacturas() {
       window.setTimeout(() => setResaltar(false), 1600)
     }, 550)
   }
+
+  // Al abrirlo, el cartel sale del botón Plazos y se agranda (el mismo movimiento que al cerrarlo, al revés).
+  // La primera vez, que se abre solo, aparece con un leve acercamiento.
+  useLayoutEffect(() => {
+    const el = cartel.current
+    if (!avisoPlazos || !el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const b = botonPlazos.current?.getBoundingClientRect()
+    const c = el.getBoundingClientRect()
+    const desde = b && b.width > 0 ? `translate(${b.left + b.width / 2 - (c.left + c.width / 2)}px, ${b.top + b.height / 2 - (c.top + c.height / 2)}px) scale(0.06)` : 'scale(0.92)'
+    el.style.transition = 'none'
+    el.style.transform = desde
+    el.style.opacity = '0.2'
+    void el.offsetWidth // aplica el punto de partida antes de animar
+    el.style.transition = ''
+    el.style.transform = ''
+    el.style.opacity = ''
+  }, [avisoPlazos])
 
   // La pantalla del listado se cierra también con Escape
   useEffect(() => {
@@ -335,8 +352,8 @@ export default function MisFacturas() {
         </button>
       </div>
 
-      {/* Los cuatro estados juntos; cada uno abre su listado */}
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Los cuatro estados, uno debajo del otro y a lo ancho; cada uno abre su listado */}
+      <div className="mb-5 space-y-2">
         {LISTAS.map((l) => {
           const lista = listaDe(l.clave)
           const mipymes = l.clave === 'revision' ? 0 : lista.filter((x) => esMipyme(x.c)).length
@@ -349,20 +366,21 @@ export default function MisFacturas() {
                 setSoloMipyme(false)
                 setAbierta(l.clave)
               }}
-              className={`group flex flex-col rounded-xl border px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
+              className={`group flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
             >
-              <span className="flex items-center gap-2">
-                <Icono className={`h-4 w-4 shrink-0 ${l.acento}`} />
-                <span className={`text-sm font-bold ${l.acento}`}>{l.titulo}</span>
+              <Icono className={`h-5 w-5 shrink-0 ${l.acento}`} />
+              <span className="w-12 shrink-0 text-2xl font-extrabold tabular-nums">{lista.length}</span>
+              <span className="min-w-0 flex-1">
+                <span className={`flex flex-wrap items-center gap-2 font-bold ${l.acento}`}>
+                  {l.titulo}
+                  {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
+                </span>
+                <span className="block text-xs text-slate-600">{l.ayuda}</span>
               </span>
-              <span className="mt-1 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold">{lista.length}</span>
-                {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
+              <span className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-marca group-hover:underline sm:inline-flex">
+                Ver listado <ChevronRight className="h-4 w-4" />
               </span>
-              <span className="mt-1 flex-1 text-xs text-slate-600">{l.ayuda}</span>
-              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-marca group-hover:underline">
-                Ver listado <ChevronRight className="h-3.5 w-3.5" />
-              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-marca sm:hidden" />
             </button>
           )
         })}
@@ -455,7 +473,7 @@ export default function MisFacturas() {
         >
           <div
             ref={cartel}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all duration-500 ease-in"
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all duration-500 ${saliendo ? 'ease-in' : 'ease-out'}`}
             style={saliendo ? { transform: `translate(${saliendo.x}px, ${saliendo.y}px) scale(0.06)`, opacity: 0.2 } : undefined}
           >
             <div className="mb-3 flex items-start justify-between gap-3">

@@ -106,8 +106,8 @@ export default function Siniestros() {
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
             f.anulacionInformada.parcial
-              ? `Avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
-              : `Avisó que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
+              ? `Se avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
+              : `Se avisó que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
           )
         }
       }
@@ -227,7 +227,7 @@ export default function Siniestros() {
       </ul>
       {g.pendientes.length > 0 && (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Le queda pendiente:' : 'Pendiente de la sucursal:'}</div>
+          <div className="mb-1 font-bold">{rol === 'sucursal' ? 'Pendiente:' : 'Pendiente de la sucursal:'}</div>
           <ul className="space-y-1">
             {g.pendientes.map((a) => (
               <li key={a.texto} className="flex items-start gap-1.5">
@@ -244,7 +244,7 @@ export default function Siniestros() {
           ))}
         </ul>
       )}
-      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Toque una factura para abrirla, ver sus documentos o subir lo que falta.</p>
+      <p className="border-t border-slate-100 px-4 py-1.5 text-[11px] text-slate-500">Cada factura se abre con sus documentos y lo que falta subir.</p>
     </div>
   )
 
@@ -252,7 +252,7 @@ export default function Siniestros() {
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo="Busque un siniestro para ver todas sus facturas, sus documentos (también los ya aprobados) y las notas de crédito"
+        subtitulo="Todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y las notas de crédito"
         sucursal={rol !== 'sucursal'}
       />
 
@@ -263,7 +263,7 @@ export default function Siniestros() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Busque por número de siniestro, patente o número de factura"
+          placeholder="Buscar por número de siniestro, patente o número de factura"
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-base shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
@@ -379,7 +379,7 @@ export default function Siniestros() {
         })}
         {totalVisibles === 0 && (
           <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-            {buscando ? 'No hay siniestros con esta búsqueda. Pruebe con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
+            {buscando ? 'No hay siniestros con esta búsqueda. Conviene probar con menos números o con la patente.' : 'No hay siniestros para mostrar.'}
           </p>
         )}
       </div>

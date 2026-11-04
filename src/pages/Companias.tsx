@@ -103,7 +103,7 @@ export default function Companias() {
         <span>
           {fuente.tipo === 'demo' ? (
             <>
-              Para completar los correos, cargue la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este navegador y
+              Para completar los correos, se carga la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este navegador y
               no se guarda.
             </>
           ) : fuente.tipo === 'google' ? (

@@ -8,7 +8,7 @@ export function Cargando({ pantallaCompleta = false }: { pantallaCompleta?: bool
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-noche text-center">
       <Isologo className="h-14 w-14 animate-pulse" claro />
       <div className="text-2xl font-extrabold text-white">CobroSync</div>
-      <div className="text-sm text-slate-300">Ingresando con su cuenta de la empresa…</div>
+      <div className="text-sm text-slate-300">Ingresando con la cuenta de la empresa…</div>
     </div>
   )
 }
@@ -21,11 +21,11 @@ export function SinAcceso({ mensaje }: { mensaje: string }) {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sem-rojo/10 text-sem-rojo">
           <LockKeyhole className="h-6 w-6" />
         </div>
-        <h1 className="mt-4 text-xl font-extrabold text-noche">No puede ingresar todavía</h1>
+        <h1 className="mt-4 text-xl font-extrabold text-noche">Todavía sin acceso</h1>
         <p className="mt-2 text-sm text-slate-600">{mensaje}</p>
         <p className="mt-4 text-xs text-slate-500">
-          Si su cuenta debería tener acceso, pídale a Auditoría que la agregue. Si ingresó con una cuenta personal, cierre sesión en
-          Google y vuelva a entrar con la de la empresa.
+          Si la cuenta debería tener acceso, Auditoría puede agregarla. Si se ingresó con una cuenta personal, hay que cerrar sesión en
+          Google y volver a entrar con la de la empresa.
         </p>
       </div>
     </div>

@@ -420,7 +420,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // Sin conexión o Google no respondió: se reintenta solo
         cola.current.unshift(...lote)
-        setGuardado({ estado: 'error', mensaje: 'Sin conexión. Se reintenta solo en unos segundos; no cierre la página.' })
+        setGuardado({ estado: 'error', mensaje: 'Sin conexión. Se reintenta solo en unos segundos; conviene no cerrar la página.' })
         temporizador.current = setTimeout(enviarCambios, 15_000)
       })
       .finally(() => {

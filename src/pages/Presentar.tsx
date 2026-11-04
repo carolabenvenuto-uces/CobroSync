@@ -90,7 +90,7 @@ export default function Presentar() {
     <>
       <EncabezadoPagina
         titulo="Presentar a las compañías"
-        subtitulo="Facturas con la documentación aprobada. Elija varias, arme el mail y márquelas como presentadas de una vez."
+        subtitulo="Facturas con la documentación aprobada, para armar el mail y marcarlas como presentadas de una vez."
         sucursal
       />
 
@@ -105,7 +105,7 @@ export default function Presentar() {
               {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
             </>
           ) : (
-            <span className="text-slate-500">Elija las facturas con la casilla (o todas las filtradas con la de arriba).</span>
+            <span className="text-slate-500">Facturas a elegir con la casilla (o todas las filtradas con la de arriba).</span>
           )}
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">

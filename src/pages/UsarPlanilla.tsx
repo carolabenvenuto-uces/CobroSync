@@ -109,26 +109,26 @@ export default function UsarPlanilla() {
     <>
       <EncabezadoPagina
         titulo="Usar mi planilla"
-        subtitulo="Mire los pendientes, alertas e informes con los datos reales de la planilla de control"
+        subtitulo="Pendientes, alertas e informes con los datos reales de la planilla de control"
       />
 
       <div className="mb-4 flex items-start gap-3 rounded-lg border border-esmeralda/30 bg-esmeralda/5 px-4 py-3 text-sm text-emerald-900">
         <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          <strong>El archivo no sale de su computadora.</strong> Se lee y se procesa en este navegador: no se sube a
+          <strong>El archivo no sale de esta computadora.</strong> Se lee y se procesa en este navegador: no se sube a
           ningún servidor ni se guarda. Al recargar la página o cerrarla, los datos desaparecen y vuelve la demo.
         </span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardTitulo>1. Descargue la planilla</CardTitulo>
+          <CardTitulo>1. Descargar la planilla</CardTitulo>
           <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
-            <li>Abra la planilla de control en Google Sheets.</li>
+            <li>Abrir la planilla de control en Google Sheets.</li>
             <li>
               Menú <strong>Archivo → Descargar → Microsoft Excel (.xlsx)</strong>. Se toma sola la pestaña <strong>Diario</strong>.
             </li>
-            <li>Arrastre el archivo acá al lado (o toque para elegirlo).</li>
+            <li>Arrastrar el archivo acá al lado (o hacer clic para elegirlo).</li>
           </ol>
           <p className="mt-4 text-xs text-slate-500">
             También sirve un CSV de la hoja Diario. Se espera el mismo orden de columnas que la planilla (C = Sucursal, O = Estado).
@@ -152,8 +152,8 @@ export default function UsarPlanilla() {
           }`}
         >
           <Upload className="h-8 w-8 text-marca" />
-          <span className="font-semibold">{cargando ? 'Leyendo…' : '2. Suelte acá el Excel de la planilla'}</span>
-          <span className="text-xs text-slate-500">o toque para elegirlo</span>
+          <span className="font-semibold">{cargando ? 'Leyendo…' : '2. Soltar acá el Excel de la planilla'}</span>
+          <span className="text-xs text-slate-500">o hacer clic para elegirlo</span>
           <input
             type="file"
             accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -164,11 +164,11 @@ export default function UsarPlanilla() {
       </div>
 
       <Card className="mt-4">
-        <CardTitulo>Durante la prueba: su planilla se sigue llenando sola</CardTitulo>
+        <CardTitulo>Durante la prueba: la planilla se sigue llenando sola</CardTitulo>
         <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
           <li>
             Al cargar el Excel del ERP en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
-            <strong>Quiter</strong> de su planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
+            <strong>Quiter</strong> de la planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
           </li>
           <li>
             Cada hora, en la hoja <strong>Diario</strong>, se completan para las sucursales del piloto las columnas que hoy se escriben a

@@ -81,7 +81,7 @@ describe('importarErp', () => {
   })
 
   it('avisa si el archivo no es la exportación del ERP', () => {
-    expect(() => importarErp('a;b;c\n1;2;3', [], aseguradoras, sucursales, '2026-10-31')).toThrow(/formato/)
+    expect(() => importarErp('a;b;c\n1;2;3', [], aseguradoras, sucursales, '2026-10-31')).toThrow(/formato/i)
   })
 })
 

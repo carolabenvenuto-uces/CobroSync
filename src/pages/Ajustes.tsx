@@ -58,7 +58,7 @@ export default function Ajustes() {
     if (plazos.criticaComun <= plazos.comun) errores.push('las críticas tienen que ser más días que el plazo común')
     if (plazos.criticaMipyme <= plazos.mipyme) errores.push('las críticas MiPyME tienen que ser más días que su plazo')
     if (errores.length) {
-      setEstado({ texto: `Revise: ${errores.join('; ')}.`, error: true })
+      setEstado({ texto: `Falta corregir: ${errores.join('; ')}.`, error: true })
       return
     }
     try {

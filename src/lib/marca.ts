@@ -2,16 +2,16 @@
  * Marca y autoría, en un solo lugar: si cambia el nombre del estudio o sale una versión nueva,
  * se cambia acá y se actualiza en toda la aplicación (menú, ingreso, pie, manual).
  *
- * CobroSync es un producto del estudio; el estudio es el de Carola Benvenuto y puede tener otros
- * productos más adelante.
+ * CobroSync es un producto de CBenvenuto, el estudio de Carola Benvenuto, que puede tener otros
+ * productos más adelante. Hasta el lanzamiento se mantiene la versión 1.0.
  */
 export const PRODUCTO = 'CobroSync'
 /** Versión del producto que ven las personas. Subirla cuando se publiquen cambios importantes (1.1, 1.2… 2.0). */
 export const VERSION = '1.0'
 export const AUTORA = 'Carola Benvenuto'
-export const ESTUDIO = 'Benvenuto Desarrollos'
+export const ESTUDIO = 'CBenvenuto'
 /** Firma corta, debajo del logo */
-export const FIRMA = `por ${AUTORA}`
+export const FIRMA = `Desarrollo ${ESTUDIO}`
 /** Línea de autoría completa (pie, ingreso, manual) */
-export const AUTORIA = `${PRODUCTO} ${VERSION} · un desarrollo de ${ESTUDIO} · ${AUTORA}`
+export const AUTORIA = `${PRODUCTO} v${VERSION} · ${FIRMA}`
 export const ANIO = 2026

@@ -1,7 +1,6 @@
-import { useMemo, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EncabezadoPagina } from '../components/ui/Card'
-import { ChevronDown, ChevronRight, CircleCheck, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
 import { Chip } from '../components/ui/Badges'
@@ -15,7 +14,7 @@ import { paraResolver } from '../domain/resolver'
 import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
-/** Las tres etiquetas de "Qué hay que hacer": qué documento falta, cuál se observó y cuál ya está. */
+/** Las etiquetas de "Qué hay que hacer": qué documento falta, cuál se observó y cuál ya está. */
 const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden firmada' } as const
 const ESTADO_DOC = {
   faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
@@ -26,47 +25,63 @@ const ESTADO_DOC = {
 
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
-type Grupo = 'subir' | 'corregir' | 'revision'
+/** Los cuatro estados de las facturas de la sucursal, de lo más urgente a lo que ya está en manos de Auditoría. */
+type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision'
 
-const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; icono: ComponentType<{ className?: string }>; color: string }[] = [
+const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentType<{ className?: string }>; color: string; acento: string }[] = [
+  {
+    clave: 'rechazos',
+    titulo: 'Rechazos y observaciones',
+    ayuda: 'Documentos que Auditoría o la compañía no aceptaron: hay que reemplazarlos',
+    icono: PencilLine,
+    color: 'border-sem-rojo/60 bg-sem-rojo/5',
+    acento: 'text-red-800',
+  },
+  {
+    clave: 'vencer',
+    titulo: 'Por vencer o vencidas',
+    ayuda: 'Pasaron el plazo o vencen en 2 días o menos',
+    icono: Clock,
+    color: 'border-sem-amarillo bg-sem-amarillo/15',
+    acento: 'text-amber-900',
+  },
   {
     clave: 'subir',
     titulo: 'Para subir',
     ayuda: 'Falta la factura o la orden firmada',
-    etapas: ['doc_pendiente', 'doc_atrasada'],
     icono: Upload,
-    color: 'border-sem-amarillo bg-sem-amarillo/10',
-  },
-  {
-    clave: 'corregir',
-    titulo: 'Para corregir',
-    ayuda: 'Auditoría observó un documento: hay que reemplazarlo',
-    etapas: ['doc_observada'],
-    icono: PencilLine,
-    color: 'border-sem-rojo bg-sem-rojo/5',
+    color: 'border-sem-amarillo/60 bg-white',
+    acento: 'text-amber-900',
   },
   {
     clave: 'revision',
     titulo: 'En revisión',
-    ayuda: 'Ya subió todo: Auditoría lo está revisando. No tiene que hacer nada',
-    etapas: ['en_revision'],
+    ayuda: 'Documentación enviada: sin tareas pendientes',
     icono: CircleCheck,
-    color: 'border-sky-400 bg-sky-50',
+    color: 'border-sky-300 bg-sky-50',
+    acento: 'text-sky-800',
   },
 ]
 
+const ETAPAS: Record<'subir' | 'revision', Etapa[]> = { subir: ['doc_pendiente', 'doc_atrasada'], revision: ['en_revision'] }
+
 /**
- * Inicio de la sucursal: qué tiene que hacer hoy, en tres grupos, con un buscador grande.
- * Cada factura tiene un botón "Subir documentación" que abre su legajo.
+ * Inicio de la sucursal: los cuatro estados de sus facturas en tarjetas. Cada tarjeta abre su
+ * listado en una pantalla encima, que se cierra para volver acá.
  */
-export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 'resolver' }) {
+export default function MisFacturas() {
   const { sucursal, hoy, abrirLegajo, misNotificaciones } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
-  // Mis facturas: la lista aparece recién al tocar una tarjeta (para subir o en revisión)
-  const [grupo, setGrupo] = useState<Grupo | null>(null)
-  // El aviso de plazos se muestra grande la primera vez; después queda en el botón "Plazos"
+  const [abierta, setAbierta] = useState<Lista | null>(null)
+  const [soloMipyme, setSoloMipyme] = useState(false)
+  const [modalNc, setModalNc] = useState(false)
+  const [cargaMasiva, setCargaMasiva] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const sinLeer = misNotificaciones.filter((n) => !n.leida).length
+
+  // Aviso de plazos: grande la primera vez; al cerrarlo "vuela" hasta el botón Plazos, para que se vea dónde queda
   const [avisoPlazos, setAvisoPlazos] = useState(() => {
     try {
       return localStorage.getItem(CLAVE_AVISO) !== 'visto'
@@ -74,49 +89,63 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       return false
     }
   })
+  const [saliendo, setSaliendo] = useState<{ x: number; y: number } | null>(null)
+  const [resaltar, setResaltar] = useState(false)
+  const botonPlazos = useRef<HTMLButtonElement>(null)
+  const cartel = useRef<HTMLDivElement>(null)
   const cerrarAviso = () => {
-    setAvisoPlazos(false)
     try {
       localStorage.setItem(CLAVE_AVISO, 'visto')
     } catch {
-      /* se vuelve a mostrar la próxima vez, nada grave */
+      /* se vuelve a mostrar la próxima vez */
     }
+    const b = botonPlazos.current?.getBoundingClientRect()
+    const c = cartel.current?.getBoundingClientRect()
+    if (!b || !c || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setAvisoPlazos(false)
+      return
+    }
+    setSaliendo({ x: b.left + b.width / 2 - (c.left + c.width / 2), y: b.top + b.height / 2 - (c.top + c.height / 2) })
+    window.setTimeout(() => {
+      setAvisoPlazos(false)
+      setSaliendo(null)
+      setResaltar(true)
+      window.setTimeout(() => setResaltar(false), 1600)
+    }, 550)
   }
-  // Para resolver: un tema a la vez y, si se quiere, solo las MiPyME
-  const [tema, setTema] = useState<'rechazo' | 'documentacion' | null>(null)
-  const [soloMipyme, setSoloMipyme] = useState(false)
-  const [modalNc, setModalNc] = useState(false)
-  const [cargaMasiva, setCargaMasiva] = useState(false)
-  const [busqueda, setBusqueda] = useState('')
-  const sinLeer = misNotificaciones.filter((n) => !n.leida).length
+
+  // La pantalla del listado se cierra también con Escape
+  useEffect(() => {
+    if (!abierta) return
+    const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && setAbierta(null)
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [abierta])
 
   const filas = useMemo(
     () =>
       comprobantes
         .filter((c) => c.tipo === 'FC')
         .map((c) => ({ c, s: calcularSemaforo(c, hoy) }))
-        .filter((x) => GRUPOS.some((g) => g.etapas.includes(x.s.etapa))),
+        .filter((x) => ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision'].includes(x.s.etapa)),
     [comprobantes, hoy],
   )
-  // Para resolver: observadas, fuera de plazo o por vencer (ver domain/resolver.ts)
+  // Rechazos y por vencer, con su motivo y en orden de prioridad (MiPyME primero; ver domain/resolver.ts)
   const urgentes = useMemo(() => {
     const porId = new Map(filas.map((x) => [x.c.id, x]))
     return paraResolver(comprobantes, hoy)
       .map((p) => ({ x: porId.get(p.c.id)!, p }))
       .filter((u) => u.x)
   }, [comprobantes, filas, hoy])
-
-  // "Mis facturas" es para subir: lo observado y lo atrasado está en "Para resolver"
-  const gruposDeLaVista = GRUPOS.filter((g) => g.clave !== 'corregir')
-
-  const cuenta = (g: Grupo) => filas.filter((x) => GRUPOS.find((gr) => gr.clave === g)!.etapas.includes(x.s.etapa)).length
-  const etapasDeLaVista = gruposDeLaVista.flatMap((g) => g.etapas)
-  const visibles = grupo
-    ? filas.filter((x) => GRUPOS.find((g) => g.clave === grupo)!.etapas.includes(x.s.etapa))
-    : filas.filter((x) => etapasDeLaVista.includes(x.s.etapa))
   const motivo = new Map(urgentes.map((u) => [u.x.c.id, u.p]))
 
-  // El buscador grande busca en todas las facturas de la sucursal, no solo en las pendientes
+  const listaDe = (l: Lista) => {
+    if (l === 'rechazos') return urgentes.filter((u) => u.p.tema === 'rechazo').map((u) => u.x)
+    if (l === 'vencer') return urgentes.filter((u) => u.p.tema === 'documentacion').map((u) => u.x)
+    return filas.filter((x) => ETAPAS[l].includes(x.s.etapa))
+  }
+
+  // El buscador busca en todas las facturas de la sucursal, no solo en las pendientes
   const encontradas = useMemo(() => {
     const t = busqueda.trim().toLowerCase()
     if (t.length < 3) return []
@@ -195,9 +224,9 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           })}
           {x.c.compromiso && (
             x.c.compromiso.fecha >= hoy ? (
-              <span className="w-full text-[11px] text-slate-500">Fecha estimada que avisó: {formatoFecha(x.c.compromiso.fecha)}</span>
+              <span className="w-full text-[11px] text-slate-500">Fecha estimada de entrega: {formatoFecha(x.c.compromiso.fecha)}</span>
             ) : (
-              <span className="w-full text-[11px] font-semibold text-sem-rojo">La fecha estimada que avisó ({formatoFecha(x.c.compromiso.fecha)}) ya pasó</span>
+              <span className="w-full text-[11px] font-semibold text-sem-rojo">La fecha estimada de entrega ({formatoFecha(x.c.compromiso.fecha)}) ya pasó</span>
             )
           )}
         </div>
@@ -233,169 +262,54 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
     },
   ]
 
-  if (vista === 'resolver') {
-    const columnasResolver: Columna<Fila>[] = [
-      {
-        clave: 'prioridad',
-        titulo: 'Prioridad',
-        filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
-        orden: (x) => (esMipyme(x.c) ? 1 : 0),
-        celda: (x) =>
-          esMipyme(x.c) ? (
-            <span className="whitespace-nowrap rounded-md bg-noche px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
-          ) : (
-            <span className="text-xs text-slate-500">Común</span>
-          ),
-      },
-      {
-        clave: 'motivo',
-        movil: 'ancha',
-        titulo: 'Por qué',
-        orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
-        celda: (x) => {
-          const p = motivo.get(x.c.id)
-          return p ? <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span> : null
-        },
-      },
-      ...columnas,
-    ]
-    const delTema = (t: 'rechazo' | 'documentacion') => urgentes.filter((u) => u.p.tema === t)
-    const temaActivo = tema
-    const listaTema = (temaActivo ? delTema(temaActivo) : []).filter((u) => !soloMipyme || u.p.mipyme)
-    const TEMAS = [
-      {
-        clave: 'rechazo' as const,
-        titulo: 'Rechazos y observaciones',
-        ayuda: 'Un documento que Auditoría o la compañía no aceptó: hay que reemplazarlo',
-        icono: PencilLine,
-        color: 'border-sem-rojo bg-sem-rojo/5',
-      },
-      {
-        clave: 'documentacion' as const,
-        titulo: 'Documentación por vencer o vencida',
-        ayuda: 'Facturas que pasaron el plazo o a las que les quedan 2 días o menos',
-        icono: Upload,
-        color: 'border-sem-amarillo bg-sem-amarillo/10',
-      },
-    ]
-    return (
-      <>
-        <EncabezadoPagina
-          titulo={`Para resolver · ${sucursal}`}
-          subtitulo="Lo que necesita su atención: documentos rechazados u observados y facturas fuera de plazo o por vencer"
-        />
-
-
-        {/* Dos temas por separado, para no tener una sola lista larga */}
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-          {TEMAS.map((t) => {
-            const Icono = t.icono
-            const lista = delTema(t.clave)
-            const mipymes = lista.filter((u) => u.p.mipyme).length
-            return (
-              <button
-                key={t.clave}
-                type="button"
-                onClick={() => setTema(temaActivo === t.clave ? null : t.clave)}
-                aria-expanded={temaActivo === t.clave}
-                className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition ${t.color} ${temaActivo === t.clave ? 'ring-2 ring-marca' : ''}`}
-              >
-                <Icono className="mt-0.5 h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-extrabold">{lista.length}</span>
-                    <span className="font-bold">{t.titulo}</span>
-                    {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
-                  </div>
-                  <p className="text-xs text-slate-600">{t.ayuda}</p>
-                </div>
-                {temaActivo === t.clave ? <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-slate-500" /> : <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-500" />}
-              </button>
-            )
-          })}
-        </div>
-
-        {!temaActivo ? (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-            Toque una de las dos tarjetas para ver las facturas (y otra vez para cerrarla).
-          </p>
+  const columnasResolver: Columna<Fila>[] = [
+    {
+      clave: 'prioridad',
+      titulo: 'Prioridad',
+      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
+      orden: (x) => (esMipyme(x.c) ? 1 : 0),
+      celda: (x) =>
+        esMipyme(x.c) ? (
+          <span className="whitespace-nowrap rounded-md bg-noche px-2 py-1 text-xs font-bold text-white">! MiPyME · {plazoSucursal(x.c)} días</span>
         ) : (
-        <>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="text-slate-600">Ordenadas por prioridad: primero las MiPyME, después lo más atrasado.</span>
-          <label className="flex items-center gap-2 font-semibold">
-            <input type="checkbox" checked={soloMipyme} onChange={(e) => setSoloMipyme(e.target.checked)} />
-            Ver solo las MiPyME
-          </label>
-        </div>
-
-        <Tabla
-          id="para-resolver"
-          key={`${temaActivo}-${soloMipyme}`}
-          filas={listaTema.map((u) => u.x)}
-          columnas={columnasResolver}
-          clave={(x) => x.c.id}
-          onFila={(x) => abrirLegajo(x.c.id)}
-          porPagina={15}
-          resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} · ${TEMAS.find((t) => t.clave === temaActivo)!.titulo.toLowerCase()}`}
-          vacio={temaActivo === 'rechazo' ? 'No tiene rechazos ni observaciones. ¡Bien!' : 'No tiene documentación por vencer ni vencida. ¡Bien!'}
-        />
-        </>
-        )}
-      </>
-    )
-  }
+          <span className="text-xs text-slate-500">Común</span>
+        ),
+    },
+    {
+      clave: 'motivo',
+      movil: 'ancha',
+      titulo: 'Por qué',
+      orden: (x) => motivo.get(x.c.id)?.orden ?? 0,
+      celda: (x) => {
+        const p = motivo.get(x.c.id)
+        return p ? <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span> : null
+      },
+    },
+    ...columnas,
+  ]
 
   const p = plazosActuales()
-  const tarjeta = (g: (typeof GRUPOS)[number]) => {
-    const Icono = g.icono
-    const activo = grupo === g.clave
-    return (
-      <button
-        type="button"
-        onClick={() => setGrupo(activo ? null : g.clave)}
-        aria-expanded={activo}
-        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${g.color} ${activo ? 'ring-2 ring-marca' : ''}`}
-      >
-        <Icono className="h-5 w-5 shrink-0" />
-        <span className="text-2xl font-extrabold">{cuenta(g.clave)}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">{g.titulo}</span>
-          <span className="block text-xs text-slate-600">{g.ayuda}</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-600">
-          {activo ? 'Cerrar' : 'Ver'}
-          {activo ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </span>
-      </button>
-    )
-  }
-  const subir = GRUPOS.find((g) => g.clave === 'subir')!
-  const enRevision = cuenta('revision')
+  const actual = abierta ? LISTAS.find((l) => l.clave === abierta)! : null
+  const conPrioridad = abierta === 'rechazos' || abierta === 'vencer'
+  const filasAbiertas = abierta ? listaDe(abierta).filter((x) => !soloMipyme || esMipyme(x.c)) : []
 
   return (
     <>
-      {/* Encabezado: título, accesos y las dos acciones, en botones finos */}
+      {/* Encabezado: título, mensajes y el acceso a los plazos */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight">Mis facturas · {sucursal}</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {urgentes.length > 0 && (
-              <button type="button" onClick={() => navigate('/app/resolver')} className="mr-3 font-semibold text-marca hover:underline">
-                Tiene {urgentes.length} para resolver →
-              </button>
-            )}
-            {sinLeer > 0 && (
-              <button type="button" onClick={() => navigate('/app/notificaciones')} className="font-semibold text-marca hover:underline">
-                {sinLeer} {sinLeer === 1 ? 'mensaje sin leer' : 'mensajes sin leer'} →
-              </button>
-            )}
-          </p>
+          {sinLeer > 0 && (
+            <button type="button" onClick={() => navigate('/app/notificaciones')} className="mt-1 text-sm font-semibold text-marca hover:underline">
+              {sinLeer} {sinLeer === 1 ? 'mensaje sin leer' : 'mensajes sin leer'} →
+            </button>
+          )}
         </div>
         <button
+          ref={botonPlazos}
           type="button"
           onClick={() => setAvisoPlazos(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-sem-amarillo/60 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+          className={`inline-flex items-center gap-1.5 rounded-full border border-sem-amarillo/60 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 ${resaltar ? 'scale-110 ring-4 ring-sem-amarillo/50' : ''}`}
           title="Volver a leer los plazos"
         >
           <Info className="h-3.5 w-3.5" /> Plazos
@@ -406,7 +320,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setCargaMasiva(true)}
-          title="Suelte todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 orden.pdf)"
+          title="Todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 orden.pdf)"
           className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
         >
           <FileUp className="h-4 w-4" /> Subir varios PDF de una vez
@@ -414,39 +328,60 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          title="Si una factura se anula, toda o una parte"
+          title="Para una factura que se anula, toda o una parte"
           className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-4 py-2 text-sm font-semibold text-marca shadow-sm hover:bg-marca/5"
         >
           <Receipt className="h-4 w-4" /> Informar una nota de crédito
         </button>
       </div>
 
-      {/* Lo que hay que hacer: una sola tarjeta; lo que está en revisión, en una línea */}
-      <div className="mb-2">{tarjeta(subir)}</div>
-      {enRevision > 0 && (
-        <p className="mb-4 px-1 text-xs text-slate-600">
-          Además, <strong>{enRevision}</strong> {enRevision === 1 ? 'factura está' : 'facturas están'} en revisión: Auditoría las está revisando, no
-          tiene que hacer nada.{' '}
-          <button type="button" onClick={() => setGrupo(grupo === 'revision' ? null : 'revision')} className="font-semibold text-marca hover:underline">
-            {grupo === 'revision' ? 'Ocultarlas' : 'Verlas'}
-          </button>
-        </p>
-      )}
+      {/* Los cuatro estados juntos; cada uno abre su listado */}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {LISTAS.map((l) => {
+          const lista = listaDe(l.clave)
+          const mipymes = l.clave === 'revision' ? 0 : lista.filter((x) => esMipyme(x.c)).length
+          const Icono = l.icono
+          return (
+            <button
+              key={l.clave}
+              type="button"
+              onClick={() => {
+                setSoloMipyme(false)
+                setAbierta(l.clave)
+              }}
+              className={`group flex flex-col rounded-xl border px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
+            >
+              <span className="flex items-center gap-2">
+                <Icono className={`h-4 w-4 shrink-0 ${l.acento}`} />
+                <span className={`text-sm font-bold ${l.acento}`}>{l.titulo}</span>
+              </span>
+              <span className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold">{lista.length}</span>
+                {mipymes > 0 && <span className="rounded bg-noche px-1.5 py-0.5 text-[11px] font-bold text-white">! {mipymes} MiPyME</span>}
+              </span>
+              <span className="mt-1 flex-1 text-xs text-slate-600">{l.ayuda}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-marca group-hover:underline">
+                Ver listado <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-      {/* El buscador va pegado a la lista: lo que encuentra aparece justo abajo */}
-      <div className="relative mb-3 mt-4">
+      {/* Buscador, con el resultado justo abajo */}
+      <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Busque cualquier factura por número, siniestro o patente"
+          placeholder="Buscar cualquier factura por número, siniestro o patente"
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
       {busqueda.trim().length >= 3 && (
-        <ul className="mb-4 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">No hay facturas con ese número, siniestro o patente.</li>}
+        <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, siniestro o patente.</li>}
           {encontradas.map((c) => (
             <li key={c.id}>
               <button
@@ -467,45 +402,83 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         </ul>
       )}
 
-      {grupo && (
-        <Tabla
-          id="mis-facturas"
-          key={grupo}
-          filas={visibles}
-          columnas={columnas}
-          clave={(x) => x.c.id}
-          onFila={(x) => abrirLegajo(x.c.id)}
-          ordenInicial={{ clave: 'dias', dir: 'desc' }}
-          resumen={(l) => `${l.length} facturas · ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}
-          vacio={grupo === 'subir' ? 'No le falta subir nada. ¡Todo al día!' : 'No tiene nada en revisión.'}
-        />
+      {/* Listado de una tarjeta: pantalla encima, se cierra para volver a Mis facturas */}
+      {actual && (
+        <div className="fixed inset-0 z-40 flex items-stretch justify-center bg-noche/40 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-listado">
+          <div className="flex w-full max-w-6xl flex-col overflow-hidden bg-fondo shadow-2xl sm:rounded-2xl">
+            <div className={`flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 sm:px-6 ${actual.color}`}>
+              <button type="button" onClick={() => setAbierta(null)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-marca hover:bg-white/70">
+                <ArrowLeft className="h-4 w-4" /> Mis facturas
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 id="titulo-listado" className={`font-extrabold ${actual.acento}`}>
+                  {actual.titulo} · {listaDe(actual.clave).length}
+                </h2>
+                <p className="text-xs text-slate-600">{actual.ayuda}</p>
+              </div>
+              {conPrioridad && (
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input type="checkbox" checked={soloMipyme} onChange={(e) => setSoloMipyme(e.target.checked)} />
+                  Solo MiPyME
+                </label>
+              )}
+              <button type="button" onClick={() => setAbierta(null)} aria-label="Cerrar" className="rounded-lg p-1.5 hover:bg-white/70">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+              {conPrioridad && <p className="mb-2 text-xs text-slate-500">Orden de prioridad: primero las MiPyME, después lo más atrasado.</p>}
+              <Tabla
+                id={conPrioridad ? 'para-resolver' : 'mis-facturas'}
+                key={`${abierta}-${soloMipyme}`}
+                filas={filasAbiertas}
+                columnas={conPrioridad ? columnasResolver : columnas}
+                clave={(x) => x.c.id}
+                onFila={(x) => abrirLegajo(x.c.id)}
+                ordenInicial={conPrioridad ? undefined : { clave: 'dias', dir: 'desc' }}
+                porPagina={20}
+                resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'}`}
+                vacio={abierta === 'revision' ? 'Sin facturas en revisión.' : 'Sin facturas en esta lista. Todo al día.'}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Aviso de plazos: grande la primera vez, después desde el botón "Plazos" */}
       {avisoPlazos && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-noche/50 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-plazos">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-500 ${saliendo ? 'bg-transparent' : 'bg-noche/50'}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-plazos"
+        >
+          <div
+            ref={cartel}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all duration-500 ease-in"
+            style={saliendo ? { transform: `translate(${saliendo.x}px, ${saliendo.y}px) scale(0.06)`, opacity: 0.2 } : undefined}
+          >
             <div className="mb-3 flex items-start justify-between gap-3">
               <span className="rounded-md bg-sem-amarillo px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-noche">Importante</span>
               <button type="button" onClick={cerrarAviso} aria-label="Cerrar" className="rounded-lg p-1 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <h2 id="titulo-plazos" className="text-lg font-extrabold">Los plazos para subir la documentación</h2>
+            <h2 id="titulo-plazos" className="text-lg font-extrabold">Plazos para subir la documentación</h2>
             <p className="mt-3 text-sm text-slate-700">
-              Tiene <strong>{p.comun} días</strong> desde la fecha de la factura para subir la <strong>factura</strong> y la <strong>orden firmada</strong>.
+              <strong>{p.comun} días</strong> desde la fecha de la factura para subir la <strong>factura</strong> y la <strong>orden firmada</strong>.
             </p>
             <p className="mt-2 text-sm text-slate-700">
-              Si es <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>, solo <strong>{p.mipyme} días</strong>: súbalas primero.
+              Facturas <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>: <strong>{p.mipyme} días</strong>. Conviene subirlas primero.
             </p>
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              ¿No llega? Ingrese a la factura y toque <strong>"Avisar fecha estimada de entrega"</strong>: elige el motivo y el día en que va a tener la
-              documentación. Auditoría sabe cuándo esperarla y la factura no le aparece en Para resolver hasta ese día.
+              Si no es posible a tiempo: dentro de la factura, el botón <strong>"Avisar fecha estimada de entrega"</strong> permite indicar el motivo y
+              el día previsto. Así Auditoría sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha.
             </p>
             <button type="button" onClick={cerrarAviso} className="mt-5 w-full rounded-lg bg-marca px-4 py-2.5 text-sm font-semibold text-white hover:bg-marca-oscuro">
               Entendido
             </button>
-            <p className="mt-2 text-center text-[11px] text-slate-500">Lo puede volver a leer cuando quiera con el botón "Plazos", arriba a la derecha.</p>
+            <p className="mt-2 text-center text-[11px] text-slate-500">Este aviso queda en el botón "Plazos", arriba a la derecha.</p>
           </div>
         </div>
       )}

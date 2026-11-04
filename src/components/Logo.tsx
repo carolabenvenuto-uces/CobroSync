@@ -23,9 +23,10 @@ export function Marca({ oscuro = false }: { oscuro?: boolean }) {
       <div className="leading-none">
         <div className={`text-lg font-extrabold tracking-tight ${oscuro ? 'text-white' : 'text-noche'}`}>
           Cobro<span className={oscuro ? 'text-blue-400' : 'text-marca'}>Sync</span>
-          <span className={`ml-1.5 align-top text-[10px] font-semibold ${oscuro ? 'text-slate-400' : 'text-slate-500'}`}>{VERSION}</span>
+          {/* versión chiquita, abajo al lado del nombre */}
+          <span className={`ml-1 align-baseline text-[9px] font-medium ${oscuro ? 'text-slate-500' : 'text-slate-400'}`}>v{VERSION}</span>
         </div>
-        <div className={`mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${oscuro ? 'text-slate-400' : 'text-slate-500'}`}>{FIRMA}</div>
+        <div className={`mt-1 text-[10px] font-semibold tracking-wide ${oscuro ? 'text-slate-400' : 'text-slate-500'}`}>{FIRMA}</div>
       </div>
     </div>
   )

@@ -2,6 +2,15 @@
 
 Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
 
+## [1.0.0] - 2026-11-04 (ajustes previos al lanzamiento)
+
+### Cambiado
+- **Sucursal · Mis facturas con los cuatro estados juntos:** Rechazos y observaciones, Por vencer o vencidas, Para subir y En revisión. Cada tarjeta abre su listado en una pantalla encima, que se cierra para volver (también con Escape). Se quita la pestaña "Para resolver": sus dos listas son ahora las dos primeras tarjetas.
+- **Aviso de plazos:** al cerrarlo, el cartel se achica y viaja hasta el botón "Plazos", que se resalta un momento; así se ve dónde queda.
+- **Notificaciones:** en la sucursal, filtros Todas / Rechazos / Documentación faltante (lo no leído ya va en negrita); en Auditoría y Gerencia, Todas / Sin leer. Buscador por número de factura o siniestro.
+- **Marca:** "CobroSync v1.0" con la versión chica al lado del nombre y la firma "Desarrollo CBenvenuto", igual en el pie de cada pantalla.
+- **Tono:** se reemplazan las formas de "usted" que sonaban forzadas por frases sin verbo o impersonales ("Sin tareas pendientes", "Buscar por número…", "Hay que cambiarle el nombre"), con trato formal.
+
 ## [1.0.0] - 2026-11-04
 
 ### Agregado

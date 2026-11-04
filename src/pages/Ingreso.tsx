@@ -40,7 +40,7 @@ export default function Ingreso() {
         <div className="mb-8 flex flex-col items-center text-center">
           <Isologo className="h-14 w-14" claro />
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
-            CobroSync <span className="align-top text-sm font-semibold text-slate-400">{VERSION}</span>
+            CobroSync <span className="align-baseline text-xs font-medium text-slate-500">v{VERSION}</span>
           </h1>
           <p className="mt-2 text-sm text-slate-300">Seguimiento de facturas a compañías de seguros</p>
         </div>
@@ -48,7 +48,7 @@ export default function Ingreso() {
         <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           <h2 className="text-xl font-extrabold text-noche">Ingresar</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Cada persona entra con su cuenta de la empresa y ve solamente lo que le corresponde a su área.
+            Cada persona entra con la cuenta de la empresa y ve solamente lo que corresponde a su área.
           </p>
 
 

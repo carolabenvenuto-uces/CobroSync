@@ -103,14 +103,14 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
   const encontrados = [...base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)].map((m) => ({ pv: Number(m[1]), numero: Number(m[2]), texto: m[0] }))
   if (encontrados.length === 0) {
-    return { ok: false, tipo, error: `El nombre no tiene el número de factura. Renómbrelo así: ${EJEMPLO}` }
+    return { ok: false, tipo, error: `El nombre no tiene el número de factura. Por ejemplo: ${EJEMPLO}` }
   }
   for (const n of encontrados) {
     const f = facturas.find((c) => c.puntoVenta === n.pv && c.numero === n.numero)
     if (f) return { ok: true, factura: f, tipo }
   }
   const dicho = `${encontrados[0].pv}-${encontrados[0].numero}`
-  return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en su sucursal: revise el número.` }
+  return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en la sucursal: conviene revisar el número.` }
 }
 
 /** Las facturas a las que todavía se les puede subir documentación. */

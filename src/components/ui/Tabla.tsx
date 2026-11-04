@@ -241,7 +241,7 @@ export function Tabla<T>({
                 {ocultas.size > 0 && <span className="text-xs font-normal text-slate-500">({ocultas.size} ocultas)</span>}
               </summary>
               <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-                <p className="px-2 pb-1 text-[11px] text-slate-500">Elija qué columnas ver. Se recuerda en esta computadora.</p>
+                <p className="px-2 pb-1 text-[11px] text-slate-500">Columnas a la vista. La elección se recuerda en esta computadora.</p>
                 {todasLasColumnas.map((c) => (
                   <label key={c.clave} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-fondo">
                     <input type="checkbox" checked={!ocultas.has(c.clave)} onChange={() => alternarColumna(c.clave)} />
@@ -389,7 +389,7 @@ export function Tabla<T>({
                       type="button"
                       onClick={() => ordenar(col)}
                       className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
-                      title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Toque para ordenar de menor a mayor' : 'Toque para volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
+                      title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Ordenar de menor a mayor' : 'Volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
                     >
                       {col.titulo}
                       {orden?.clave === col.clave ? (

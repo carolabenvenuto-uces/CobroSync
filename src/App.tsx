@@ -61,7 +61,8 @@ export default function App() {
         <Route path="ajustes" element={auditoria(<Ajustes />)} />
         <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="siniestros" element={<Siniestros />} />
-        <Route path="resolver" element={<MisFacturas vista="resolver" />} />
+        {/* "Para resolver" quedó dentro de Mis facturas (tarjetas de rechazos y por vencer) */}
+        <Route path="resolver" element={<Navigate to="/app" replace />} />
         <Route path="notificaciones" element={<BandejaNotificaciones />} />
         <Route path="manual" element={<Manual />} />
       </Route>

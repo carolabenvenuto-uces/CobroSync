@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, ExternalLink, Inbox, MailOpen } from 'lucide-react'
+import { ArrowLeft, Bell, ExternalLink, Inbox, MailOpen, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useApp, type Notificacion } from '../context/AppContext'
@@ -57,19 +57,38 @@ function cuando(fecha: string, hoy: string): string {
 export default function BandejaNotificaciones() {
   const { rol, fuente, datos, hoy, misNotificaciones, marcarLeida, marcarTodasLeidas, abrirLegajo } = useApp()
   const navigate = useNavigate()
-  const [ver, setVer] = useState<'sin_leer' | 'rechazos' | 'todas'>(() => (misNotificaciones.some((n) => !n.leida) ? 'sin_leer' : 'todas'))
+  // Sucursal: todas, rechazos o documentación faltante (lo no leído ya se distingue en negrita).
+  // Auditoría y Gerencia: todas o sin leer.
+  const [ver, setVer] = useState<'todas' | 'sin_leer' | 'rechazos' | 'documentacion'>('todas')
+  const [buscar, setBuscar] = useState('')
   const [elegida, setElegida] = useState<string | null>(null)
 
   const porId = useMemo(() => new Map((datos?.comprobantes ?? []).map((c) => [c.id, c])), [datos])
   const nombreCompania = (id: string) => datos?.aseguradoras.find((a) => a.id === id)?.nombre ?? id
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
   const rechazos = misNotificaciones.filter((n) => n.tema === 'rechazo').length
+  const documentacion = misNotificaciones.filter((n) => n.tema === 'documentacion').length
+  const normal = (t: string) => t.toLowerCase().replace(/[^0-9a-z]/g, '')
   const lista = useMemo(
     () =>
       [...misNotificaciones]
-        .filter((n) => ver === 'todas' || n.id === elegida || (ver === 'rechazos' ? n.tema === 'rechazo' : !n.leida))
+        .filter((n) => {
+          if (n.id === elegida) return true
+          if (ver === 'rechazos' && n.tema !== 'rechazo') return false
+          if (ver === 'documentacion' && n.tema !== 'documentacion') return false
+          if (ver === 'sin_leer' && n.leida) return false
+          // Búsqueda por número de factura (o cualquier texto del mensaje)
+          const t = normal(buscar)
+          if (t.length >= 2) {
+            const c = porId.get(n.comprobanteId)
+            const textos = [n.texto, c ? formatoComprobante(c) : '', c?.siniestro ?? '', c ? `${c.puntoVenta}${c.numero}` : '']
+            if (!textos.some((x) => normal(x).includes(t))) return false
+          }
+          return true
+        })
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
-    [misNotificaciones, ver, elegida],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [misNotificaciones, ver, elegida, buscar, porId],
   )
   const actual = misNotificaciones.find((n) => n.id === elegida) ?? null
 
@@ -169,7 +188,7 @@ export default function BandejaNotificaciones() {
         titulo="Notificaciones"
         subtitulo={
           rol === 'sucursal'
-            ? 'Lo que le respondió o pidió Auditoría. Toque un mensaje para leerlo y abrir la factura.'
+            ? 'Respuestas y pedidos de Auditoría. Cada mensaje se abre con su factura.'
             : rol === 'gerencia'
               ? 'Escalamientos: documentación crítica y reclamos sin respuesta'
               : 'Lo que hicieron las sucursales: subidas, respuestas, fechas estimadas y notas de crédito'
@@ -182,9 +201,13 @@ export default function BandejaNotificaciones() {
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2">
             {(
               [
-                ['sin_leer', `Sin leer (${sinLeer})`],
-                ...(rol === 'sucursal' ? ([['rechazos', `Rechazos (${rechazos})`]] as const) : []),
                 ['todas', `Todas (${misNotificaciones.length})`],
+                ...(rol === 'sucursal'
+                  ? ([
+                      ['rechazos', `Rechazos (${rechazos})`],
+                      ['documentacion', `Documentación faltante (${documentacion})`],
+                    ] as const)
+                  : ([['sin_leer', `Sin leer (${sinLeer})`]] as const)),
               ] as const
             ).map(([clave, t]) => (
               <button
@@ -202,11 +225,21 @@ export default function BandejaNotificaciones() {
               </button>
             )}
           </div>
+          <div className="relative border-b border-slate-200 px-3 py-2">
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={buscar}
+              onChange={(e) => setBuscar(e.target.value)}
+              placeholder="Buscar por número de factura o siniestro"
+              className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+            />
+          </div>
           <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
             {lista.length === 0 && (
               <li className="flex flex-col items-center gap-2 px-5 py-12 text-center text-sm text-slate-500">
                 <Inbox className="h-8 w-8 text-slate-300" />
-                {ver === 'sin_leer' ? 'No tiene mensajes sin leer.' : 'No hay notificaciones.'}
+                {buscar.trim() ? 'Sin mensajes con esa búsqueda.' : ver === 'sin_leer' ? 'Sin mensajes por leer.' : 'Sin notificaciones.'}
               </li>
             )}
             {lista.map((n) => (
@@ -237,7 +270,7 @@ export default function BandejaNotificaciones() {
           </ul>
           {fuente.tipo === 'google' && <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
             {fuente.tipo === 'google'
-              ? 'Se actualiza sola cada minuto. Lo que lee queda marcado en su cuenta, en cualquier computadora o celular.'
+              ? 'Se actualiza sola cada minuto. Lo leído queda marcado en la cuenta, en cualquier computadora o celular.'
               : ''}
           </p>}
         </div>
@@ -249,7 +282,7 @@ export default function BandejaNotificaciones() {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-slate-400">
               <MailOpen className="h-10 w-10 text-slate-300" />
-              Elija un mensaje de la lista para leerlo.
+              Ningún mensaje seleccionado.
             </div>
           )}
         </div>

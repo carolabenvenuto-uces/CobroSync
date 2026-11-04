@@ -60,7 +60,7 @@ export function importarErp(
   const filas = parsearCsv(texto)
   const inicio = filas.findIndex((f) => /refer/i.test(f[COL.ref] ?? '') && /cuit/i.test(f[COL.cuit] ?? ''))
   if (inicio === -1) {
-    throw new Error('No reconozco el formato. Tiene que ser la exportación de facturas del ERP: columna A "Refer." y columna I "CUIT".')
+    throw new Error('Formato no reconocido. Tiene que ser la exportación de facturas del ERP: columna A "Refer." y columna I "CUIT".')
   }
 
   const porCuit = new Map(aseguradoras.filter((a) => a.cuit).map((a) => [soloDigitos(a.cuit), a]))

@@ -2,7 +2,6 @@ import { useMemo, type ComponentType } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   LogOut,
-  AlertTriangle,
   BarChart3,
   BookUser,
   Bell,
@@ -89,7 +88,6 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Mi sucursal',
       items: [
         { ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' },
-        { ruta: '/app/resolver', etiqueta: 'Para resolver', icono: AlertTriangle, contador: 'resolver' },
         { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
       ],
     },
@@ -105,10 +103,10 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
     if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0 }
     const sectores = calcularAvisos(comprobantes, hoy)
     return {
-      // En la sucursal, "Mis facturas" cuenta lo mismo que la tarjeta Para subir (lo observado va en Para resolver)
+      // En la sucursal, "Mis facturas" cuenta lo que tiene tareas: para subir y rechazos u observaciones
       pendientes:
         rol === 'sucursal'
-          ? comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada'].includes(calcularSemaforo(c, hoy).etapa)).length
+          ? comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada', 'doc_observada'].includes(calcularSemaforo(c, hoy).etapa)).length
           : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
       alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {

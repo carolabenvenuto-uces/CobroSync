@@ -5,7 +5,7 @@ import { Isologo } from '../components/Logo'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
 import { plazosActuales } from '../domain/plazos'
-import { AUTORA, AUTORIA, ESTUDIO, PRODUCTO, VERSION } from '../lib/marca'
+import { AUTORA, AUTORIA, PRODUCTO, VERSION } from '../lib/marca'
 
 /**
  * Manual de uso: qué hace CobroSync y cómo se usa cada pantalla, por sector.
@@ -49,7 +49,7 @@ const SECCIONES: Seccion[] = [
           CobroSync ordena el camino de cada factura a una compañía de seguros, desde que se emite hasta que se cobra: la sucursal sube la
           documentación, Auditoría la revisa y la presenta a la compañía, y Gerencia ve en qué estado está todo y cuánto falta cobrar.
         </p>
-        <p className="mt-2">Cada persona entra con su cuenta de la empresa y ve solo lo que le corresponde a su sector:</p>
+        <p className="mt-2">Cada persona entra con la cuenta de la empresa y ve solo lo que corresponde a su sector:</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             <strong>Sucursal:</strong> sube la factura y la orden firmada, corrige lo que se rechaza e informa las notas de crédito.
@@ -146,7 +146,8 @@ const SECCIONES: Seccion[] = [
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>El número al lado de "Notificaciones" es lo que falta leer.</li>
           <li>Al abrir un mensaje, o la factura de la que habla, queda marcado como leído.</li>
-          <li>En la sucursal, los rechazos llevan una franja roja y tienen su propio filtro, para no pasarlos por alto.</li>
+          <li>En la sucursal, los rechazos llevan una franja roja; los filtros separan rechazos y documentación faltante.</li>
+          <li>El buscador de la bandeja encuentra un mensaje por número de factura o de siniestro.</li>
           <li>Se actualizan solas cada minuto; no hace falta recargar la página.</li>
         </ul>
       </>
@@ -163,11 +164,11 @@ const SECCIONES: Seccion[] = [
           facturas tiene cada una. Se pueden combinar varios filtros; "Limpiar filtros" los saca a todos.
         </li>
         <li>
-          <strong>Ordenar:</strong> toque el título de la columna. Primer toque, de mayor a menor; segundo, de menor a mayor; tercero, vuelve
-          al orden original. Las filas sin dato (por ejemplo, sin fecha) quedan siempre al final.
+          <strong>Ordenar:</strong> con un clic en el título de la columna. Primer clic, de mayor a menor; segundo, de menor a mayor; tercero,
+          vuelve al orden original. Las filas sin dato (por ejemplo, sin fecha) quedan siempre al final.
         </li>
         <li>
-          <strong>Abrir una factura:</strong> toque la fila. Se abre el legajo con sus documentos, su historial y lo que se puede hacer.
+          <strong>Abrir una factura:</strong> con un clic en la fila. Se abre el legajo con sus documentos, su historial y lo que se puede hacer.
         </li>
         <li>
           <strong>Exportar a Excel:</strong> baja la lista tal como está filtrada, con cada dato en su columna.
@@ -197,10 +198,11 @@ const SECCIONES: Seccion[] = [
             Después de {p.criticaComun} días ({p.criticaMipyme} si es MiPyME), la factura pasa a crítica y se avisa a Gerencia General.
           </p>
           <Nota>
-            ¿No llega? Abra la factura y toque <strong>"Avisar fecha estimada de entrega"</strong>: elige el motivo y el día en que va a
-            tener la documentación. Auditoría sabe cuándo esperarla y la factura no aparece en Para resolver hasta ese día. Si la fecha pasa y
-            no se subió, se marca en rojo.
+            Si no es posible subirla a tiempo: dentro de la factura, el botón <strong>"Avisar fecha estimada de entrega"</strong> permite indicar
+            el motivo y el día previsto. Auditoría sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha. Si la fecha pasa
+            sin la documentación, se marca en rojo.
           </Nota>
+          <p>Este aviso aparece la primera vez que se entra a Mis facturas y queda en el botón <strong>Plazos</strong>, arriba a la derecha.</p>
         </>
       )
     },
@@ -208,41 +210,66 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-mis-facturas',
     sector: 'sucursal',
-    titulo: 'Mis facturas: subir la documentación',
+    titulo: 'Mis facturas: los cuatro estados',
     contenido: () => (
       <>
         <p>
-          En <Pantalla>Mis facturas</Pantalla>, la tarjeta <strong>Para subir</strong> abre la lista de facturas a las que les falta la factura o
-          la orden firmada (tóquela otra vez para cerrarla). Debajo dice cuántas están <strong>en revisión</strong>, por si las quiere ver. El buscador
-          encuentra cualquier factura de la sucursal y muestra el resultado justo abajo. El botón <strong>Plazos</strong>, arriba a la derecha,
-          vuelve a mostrar el aviso de los plazos.
+          <Pantalla>Mis facturas</Pantalla> muestra en cuatro tarjetas en qué estado están las facturas de la sucursal. Cada tarjeta abre su
+          listado en una pantalla aparte; con <strong>← Mis facturas</strong> o la cruz se vuelve.
         </p>
-        <h4 className="mt-4 font-bold">Subir los documentos de una factura</h4>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>
+            <strong>Rechazos y observaciones:</strong> documentos que Auditoría o la compañía no aceptaron. El motivo dice quién lo rechazó y
+            qué hay que cambiar.
+          </li>
+          <li>
+            <strong>Por vencer o vencidas:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
+          </li>
+          <li>
+            <strong>Para subir:</strong> todas las facturas a las que les falta la factura o la orden firmada.
+          </li>
+          <li>
+            <strong>En revisión:</strong> documentación ya enviada, que Auditoría está revisando. Sin tareas pendientes.
+          </li>
+        </ul>
+        <p className="mt-2">
+          En los rechazos y en las que están por vencer, primero van las <strong>MiPyME</strong> y después lo más atrasado; la casilla "Solo
+          MiPyME" deja solo esas. Debajo de las tarjetas, el buscador encuentra cualquier factura de la sucursal.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'suc-subir',
+    sector: 'sucursal',
+    titulo: 'Subir la documentación',
+    contenido: () => (
+      <>
+        <h4 className="font-bold">De a una factura</h4>
         <Pasos>
           <Paso n={1}>
-            Toque <strong>Para subir</strong> y, en la factura, el botón <strong>Subir</strong>.
+            En la tarjeta <strong>Para subir</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
           </Paso>
-          <Paso n={2}>Elija el PDF de la factura y el de la orden firmada (o uno solo si las escaneó juntas).</Paso>
-          <Paso n={3}>La factura pasa a "En revisión". Si Auditoría la observa, le llega una notificación y aparece en Para resolver.</Paso>
+          <Paso n={2}>El PDF de la factura y el de la orden firmada (o uno solo, si están escaneadas juntas).</Paso>
+          <Paso n={3}>La factura pasa a "En revisión". Si Auditoría la observa, llega una notificación y aparece en Rechazos y observaciones.</Paso>
         </Pasos>
-        <h4 className="mt-4 font-bold">Subir muchos archivos de una vez</h4>
+        <h4 className="mt-4 font-bold">Muchos archivos de una vez</h4>
         <Pasos>
           <Paso n={1}>
-            Toque <strong>Subir varios PDF de una vez</strong> (el botón azul de arriba).
+            El botón <strong>Subir varios PDF de una vez</strong>, arriba.
           </Paso>
           <Paso n={2}>
-            Suelte todos los PDF juntos. Cada uno va a su factura por el número que tiene en el nombre: el punto de venta y el número, por
-            ejemplo <code className="rounded bg-slate-100 px-1">35-11032 orden.pdf</code> o{' '}
-            <code className="rounded bg-slate-100 px-1">35-11032 factura.pdf</code>.
+            Todos los PDF juntos. Cada uno va a su factura por el número del nombre: el punto de venta y el número, por ejemplo{' '}
+            <code className="rounded bg-slate-100 px-1">35-11032 orden.pdf</code> o <code className="rounded bg-slate-100 px-1">35-11032 factura.pdf</code>.
           </Paso>
           <Paso n={3}>
-            Revise la lista: lo que está en rojo no se sube (no es PDF, o el número no es de una factura pendiente de su sucursal). Renómbrelo y
-            vuelva a soltarlo. Después toque <strong>Subir todo</strong>.
+            Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y
+            volver a soltarlo. Al final, <strong>Subir todo</strong>.
           </Paso>
         </Pasos>
         <Nota>
-          Solo se aceptan <strong>PDF</strong>: las compañías no reciben fotos. Desde el celular, escanee con la cámara o con Google Drive, que
-          guardan en PDF. Mientras un documento está en revisión, lo puede quitar si se equivocó.
+          Solo se aceptan <strong>PDF</strong>: las compañías no reciben fotos. Desde el celular, la cámara o Google Drive permiten escanear en
+          PDF. Mientras un documento está en revisión, se puede quitar si hubo un error.
         </Nota>
         <p>Cada factura dice qué le falta: "+ Falta la orden firmada", "… Factura en revisión", "✓ Factura aprobada".</p>
       </>
@@ -254,39 +281,15 @@ const SECCIONES: Seccion[] = [
     titulo: 'Informar una nota de crédito',
     contenido: () => (
       <>
-        <p>Si una factura se anula, toda o una parte, avíselo para que Auditoría no la presente:</p>
+        <p>Cuando una factura se anula, toda o una parte, hay que avisarlo para que Auditoría no la presente:</p>
         <Pasos>
           <Paso n={1}>
-            En <Pantalla>Mis facturas</Pantalla>, toque <strong>Informar una nota de crédito</strong>.
+            En <Pantalla>Mis facturas</Pantalla>, el botón <strong>Informar una nota de crédito</strong>.
           </Paso>
-          <Paso n={2}>Busque la factura, elija si se anula completa o una parte (con el importe) y el motivo.</Paso>
+          <Paso n={2}>La factura, si se anula completa o una parte (con el importe) y el motivo.</Paso>
           <Paso n={3}>Auditoría espera que la nota de crédito aparezca en el sistema y la asocia a la factura.</Paso>
         </Pasos>
-        <p>Si después se vuelve a facturar, en Mis siniestros aparece "Falta refacturar" hasta que esté la factura nueva.</p>
-      </>
-    ),
-  },
-  {
-    id: 'suc-resolver',
-    sector: 'sucursal',
-    titulo: 'Para resolver',
-    contenido: () => (
-      <>
-        <p>
-          <Pantalla>Para resolver</Pantalla> junta lo que necesita su atención primero, en dos tarjetas:
-        </p>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>
-            <strong>Rechazos y observaciones:</strong> un documento que Auditoría o la compañía no aceptó. El motivo dice quién lo rechazó y
-            qué hay que cambiar. Abra la factura y suba el documento nuevo.
-          </li>
-          <li>
-            <strong>Documentación por vencer o vencida:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
-          </li>
-        </ul>
-        <p className="mt-2">
-          Arriba de todo van las <strong>MiPyME</strong>; después, lo más atrasado. Con "Ver solo las MiPyME" quedan solo esas.
-        </p>
+        <p>Si después se vuelve a facturar, en Mis siniestros figura "Falta refacturar" hasta que esté la factura nueva.</p>
       </>
     ),
   },
@@ -297,17 +300,17 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          <Pantalla>Mis siniestros</Pantalla> muestra todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y
-          sus notas de crédito.
+          <Pantalla>Mis siniestros</Pantalla> reúne todas las facturas de cada siniestro, con sus documentos (también los ya aprobados) y sus
+          notas de crédito.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Lo más rápido es buscar por número de siniestro, patente o número de factura.</li>
-          <li>Las compañías se despliegan; cada siniestro se abre tocándolo.</li>
-          <li>"En curso" son los que tienen alguna factura sin cobrar; "Terminados", los cobrados o anulados.</li>
+          <li>Las compañías se despliegan; cada siniestro se abre con un clic.</li>
+          <li>"En curso": con alguna factura sin cobrar. "Terminados": cobrados o anulados.</li>
           <li>
             Etiquetas: <Etiqueta clase="bg-amber-100 text-amber-900">Falta documentación</Etiqueta>{' '}
             <Etiqueta clase="bg-red-100 text-red-800">Falta refacturar</Etiqueta>{' '}
-            <Etiqueta clase="bg-slate-200 text-slate-800">Con nota de crédito</Etiqueta> (esta última es solo informativa).
+            <Etiqueta clase="bg-slate-200 text-slate-800">Con nota de crédito</Etiqueta> (esta última, solo informativa).
           </li>
         </ul>
       </>
@@ -433,19 +436,19 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <dl className="space-y-3">
         <div>
-          <dt className="font-bold">¿Tengo que recargar la página para ver lo nuevo?</dt>
+          <dt className="font-bold">¿Hace falta recargar la página para ver lo nuevo?</dt>
           <dd>No: los datos y las notificaciones se actualizan solos cada minuto.</dd>
         </div>
         <div>
           <dt className="font-bold">Se subió un archivo equivocado, ¿se puede quitar?</dt>
-          <dd>Sí, mientras está en revisión: abra la factura y toque "Quitar" en ese documento. Una vez aprobado, avísele a Auditoría.</dd>
+          <dd>Sí, mientras está en revisión: dentro de la factura, "Quitar" en ese documento. Una vez aprobado, hay que avisarle a Auditoría.</dd>
         </div>
         <div>
-          <dt className="font-bold">¿Por qué no me deja subir un archivo?</dt>
+          <dt className="font-bold">¿Por qué no se puede subir un archivo?</dt>
           <dd>Tiene que ser PDF y tener en el nombre el punto de venta y el número de la factura (por ejemplo, 35-11032).</dd>
         </div>
         <div>
-          <dt className="font-bold">¿Lo puedo usar desde el celular?</dt>
+          <dt className="font-bold">¿Se puede usar desde el celular?</dt>
           <dd>Sí. Las listas se ven como tarjetas y se puede subir un PDF escaneado con la cámara.</dd>
         </div>
       </dl>
@@ -473,11 +476,11 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Manual de uso</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Cómo funciona {PRODUCTO} y qué hace cada pantalla. Elija su sector para ver lo que le corresponde.
+            Cómo funciona {PRODUCTO} y qué hace cada pantalla, por sector.
           </p>
         </div>
         <span className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-blue-800">
-          Versión {VERSION}
+          v{VERSION}
         </span>
       </div>
 
@@ -515,7 +518,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
             </section>
           ))}
           <p className="pt-2 text-center text-xs text-slate-500">
-            {AUTORIA}. © {new Date().getFullYear()} {AUTORA}. {ESTUDIO}.
+            {AUTORIA} · © {new Date().getFullYear()} {AUTORA}
           </p>
         </div>
       </div>

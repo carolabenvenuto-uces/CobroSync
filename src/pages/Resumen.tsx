@@ -129,7 +129,7 @@ export default function Resumen() {
               type="button"
               onClick={() => window.print()}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo"
-              title="Abre la ventana de impresión: elija la impresora o «Guardar como PDF»"
+              title="Abre la ventana de impresión: impresora o «Guardar como PDF»"
             >
               <Printer className="h-4 w-4 text-marca" /> Imprimir o guardar en PDF
             </button>

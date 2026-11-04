@@ -27,7 +27,7 @@ export function importarCompanias(texto: string, actuales: Aseguradora[]): Resul
   const filas = parsearCsv(texto)
   const iEncabezado = filas.slice(0, 15).findIndex((f) => f.some((c) => /cuit/i.test(c)) || f.some((c) => /mail/i.test(c)))
   if (iEncabezado === -1) {
-    throw new Error('No reconozco el formato. Tiene que ser la pestaña "CP" o "Info. Compañías", con una columna CUIT o Mail.')
+    throw new Error('Formato no reconocido. Tiene que ser la pestaña "CP" o "Info. Compañías", con una columna CUIT o Mail.')
   }
   const encabezado = filas[iEncabezado].map((c) => c.trim())
   const buscar = (re: RegExp) => encabezado.findIndex((c) => re.test(c))

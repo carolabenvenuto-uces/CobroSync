@@ -67,6 +67,6 @@ describe('lectura de la planilla', () => {
     } catch (e) {
       mensaje = (e as Error).message
     }
-    expect(mensaje.includes('No reconozco el formato')).toBe(true)
+    expect(mensaje.includes('Formato no reconocido')).toBe(true)
   })
 })

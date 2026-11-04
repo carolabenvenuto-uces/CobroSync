@@ -115,9 +115,9 @@ export default function ControlDiario() {
       if (conectadoAGoogle()) {
         try {
           const q = await agregarAQuiterEnGoogle(filasDeDatosErp(texto))
-          if (q.configurada) enPlanilla = ` En su planilla: ${q.agregadas} filas nuevas en Quiter.`
+          if (q.configurada) enPlanilla = ` En la planilla: ${q.agregadas} filas nuevas en Quiter.`
         } catch (e) {
-          enPlanilla = ` No se pudo agregar a la pestaña Quiter de su planilla (${e instanceof Error ? e.message : 'error'}): péguelas a mano como siempre.`
+          enPlanilla = ` No se pudo agregar a la pestaña Quiter de la planilla (${e instanceof Error ? e.message : 'error'}): hay que pegarlas a mano como siempre.`
         }
       }
       setMensajeErp({
@@ -283,7 +283,7 @@ export default function ControlDiario() {
         titulo={soloConsulta ? 'Detalle de facturas' : 'Control diario'}
         subtitulo={
           soloConsulta
-            ? 'Todas las facturas y notas de crédito. Busque por número, siniestro o patente y toque la fila para ver en qué está.'
+            ? 'Todas las facturas y notas de crédito. Búsqueda por número, siniestro o patente; cada fila abre el detalle.'
             : 'Todas las facturas y notas de crédito, como la hoja "Diario" de la planilla'
         }
         sucursal={!soloConsulta}
@@ -296,7 +296,7 @@ export default function ControlDiario() {
                   type="button"
                   onClick={() => entradaErp.current?.click()}
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche hover:bg-fondo"
-                  title="Elija el Excel de facturas exportado del ERP (.xlsx o CSV)"
+                  title="Excel de facturas exportado del ERP (.xlsx o CSV)"
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
                 </button>
@@ -352,7 +352,7 @@ export default function ControlDiario() {
               <X className="h-3.5 w-3.5" />
             </button>
           </span>
-          <span className="text-xs text-slate-500">Puede sumar los filtros de cada columna (estado, compañía, mes…).</span>
+          <span className="text-xs text-slate-500">Se pueden sumar los filtros de cada columna (estado, compañía, mes…).</span>
         </div>
       )}
 

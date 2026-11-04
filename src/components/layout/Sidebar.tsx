@@ -1,6 +1,7 @@
 import { useMemo, type ComponentType } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
+  LogOut,
   BarChart3,
   BookUser,
   Search,
@@ -80,7 +81,8 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo } = useApp()
+  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, cuenta } = useApp()
+  const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
   const contadores = useMemo(() => {
@@ -162,6 +164,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             </div>
             <div className="min-w-0 text-sm font-semibold text-white">
               <div className="truncate">{usuario}</div>
+              {cuenta && <div className="truncate text-[11px] font-normal text-slate-400">{cuenta.email}</div>}
             </div>
           </div>
           {fuente.tipo === 'google' ? (
@@ -210,6 +213,19 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             {fuente.tipo === 'planilla' && (
               <button type="button" onClick={usarDemo} className="underline hover:text-white">
                 Volver a la demo
+              </button>
+            )}
+            {fuente.tipo !== 'google' && (
+              <button
+                type="button"
+                onClick={() => {
+                  cerrarSesion()
+                  navigate('/')
+                }}
+                className="flex items-center gap-2 hover:text-white"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Cambiar de usuario
               </button>
             )}
             {fuente.tipo !== 'google' && (

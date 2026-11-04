@@ -1,17 +1,23 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
 import { Marca } from '../Logo'
-import { Cargando, ErrorCarga } from '../ui/Estados'
+import { Cargando, ErrorCarga, SinAcceso } from '../ui/Estados'
+import { conectadoAGoogle } from '../../services/google'
 import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo } = useApp()
+  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada } = useApp()
   const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
+
+  // Con Google: mientras se reconoce la cuenta, una pantalla de bienvenida; si no tiene acceso, un aviso claro
+  if (conectadoAGoogle() && !datos) return error ? <SinAcceso mensaje={error} /> : <Cargando pantallaCompleta />
+  // Demo: si todavía no se eligió usuario, a la pantalla de inicio
+  if (!conectadoAGoogle() && !sesionIniciada) return <Navigate to="/" replace />
 
   return (
     <div className="flex min-h-screen">

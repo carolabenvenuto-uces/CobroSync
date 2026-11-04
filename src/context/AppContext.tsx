@@ -174,6 +174,31 @@ interface EstadoApp {
   subirDocumento: (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => Promise<{ archivo: string; url?: string }>
   usarPlanilla: (resultado: ResultadoImportacion, archivo: string) => void
   usarDemo: () => void
+  /** demo: si ya se eligió con qué usuario entrar (con Google siempre es true) */
+  sesionIniciada: boolean
+  iniciarSesion: (rol: Rol, sucursal?: string) => void
+  cerrarSesion: () => void
+  /** con Google: la cuenta con la que se entró */
+  cuenta: UsuarioGoogle | null
+}
+
+const CLAVE_SESION = 'cobrosync-sesion-demo'
+/** La sesión de la demo se recuerda mientras la pestaña está abierta (si el navegador lo permite). */
+function leerSesion(): { rol: Rol; sucursal: string } | null {
+  try {
+    const v = sessionStorage.getItem(CLAVE_SESION)
+    return v ? (JSON.parse(v) as { rol: Rol; sucursal: string }) : null
+  } catch {
+    return null
+  }
+}
+function guardarSesion(v: { rol: Rol; sucursal: string } | null) {
+  try {
+    if (v) sessionStorage.setItem(CLAVE_SESION, JSON.stringify(v))
+    else sessionStorage.removeItem(CLAVE_SESION)
+  } catch {
+    // sin almacenamiento disponible: la sesión dura hasta recargar
+  }
 }
 
 const AppContext = createContext<EstadoApp | null>(null)
@@ -190,6 +215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [legajoAbierto, abrirLegajo] = useState<string | null>(null)
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [usuarioGoogle, setUsuarioGoogle] = useState<UsuarioGoogle | null>(null)
+  const [sesionDemo, setSesionDemo] = useState(() => leerSesion() !== null)
   const [guardado, setGuardado] = useState<EstadoApp['guardado']>({ estado: 'ok' })
   // Facturas cambiadas que falta guardar en Google
   const pendientesDeGuardar = useRef(new Set<string>())
@@ -218,7 +244,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setMes(mesDe(d.meta.fechaCorte))
         setFuente({ tipo: 'demo' })
         setNotificaciones(notificacionesIniciales(d))
-        setSucursal(TODAS_LAS_SUCURSALES)
+        const sesion = leerSesion()
+        if (sesion) {
+          setRolInterno(sesion.rol)
+          setSucursal(sesion.rol === 'sucursal' ? sesion.sucursal : TODAS_LAS_SUCURSALES)
+        } else setSucursal(TODAS_LAS_SUCURSALES)
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [])
@@ -243,6 +273,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Con Google el rol lo define la cuenta de la empresa: no se puede cambiar
       if (usuarioGoogle) return
       setRolInterno(nuevo)
+      guardarSesion({ rol: nuevo, sucursal: nuevo === 'sucursal' ? (sucursal === TODAS_LAS_SUCURSALES ? (datos?.meta.sucursales[0]?.nombre ?? '') : sucursal) : TODAS_LAS_SUCURSALES })
       if (nuevo === 'sucursal' && sucursal === TODAS_LAS_SUCURSALES && datos) {
         setSucursal(datos.meta.sucursales[0].nombre)
       } else if (nuevo !== 'sucursal' && rol === 'sucursal') {
@@ -251,6 +282,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [sucursal, datos, rol, usuarioGoogle],
   )
+
+  const iniciarSesion = useCallback(
+    (nuevo: Rol, suc?: string) => {
+      const sucursalElegida = nuevo === 'sucursal' ? (suc ?? datos?.meta.sucursales[0]?.nombre ?? TODAS_LAS_SUCURSALES) : TODAS_LAS_SUCURSALES
+      setRolInterno(nuevo)
+      setSucursal(sucursalElegida)
+      setSesionDemo(true)
+      guardarSesion({ rol: nuevo, sucursal: sucursalElegida })
+    },
+    [datos],
+  )
+  const cerrarSesion = useCallback(() => {
+    setSesionDemo(false)
+    guardarSesion(null)
+    abrirLegajo(null)
+  }, [])
 
   const sucursalActual: Sucursal | undefined = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
   const usuario = usuarioGoogle
@@ -354,6 +401,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subirDocumento,
       usarPlanilla,
       usarDemo: cargarDemo,
+      sesionIniciada: usuarioGoogle !== null || sesionDemo,
+      iniciarSesion,
+      cerrarSesion,
+      cuenta: usuarioGoogle,
       legajoAbierto,
       abrirLegajo,
       misNotificaciones,
@@ -380,6 +431,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subirDocumento,
       usarPlanilla,
       cargarDemo,
+      sesionDemo,
+      usuarioGoogle,
+      iniciarSesion,
+      cerrarSesion,
       legajoAbierto,
       misNotificaciones,
       marcarLeida,

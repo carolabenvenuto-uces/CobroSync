@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.5] - 2026-11-04
+
+### Cambiado
+- **Gerencia · textos más formales:** "Auditoría solicita su apoyo con…" y "Se solicita su intervención para que la sucursal la regularice", en las notificaciones y en el mail de los lunes. Si en Ajustes se había guardado un texto propio, se sigue usando ese.
+- **Sucursal · Notificaciones:** los rechazos llevan la etiqueta roja "Rechazo" y una franja roja en la bandeja, y tienen su propio filtro. Lo de documentación faltante lleva la etiqueta amarilla "Documentación".
+- **Sucursal · Mis facturas:** "Informar una nota de crédito" pasa a blanco con borde azul (menos pesado).
+- **Colores con el mismo significado en toda la aplicación** (anotados en los estilos): rojo = rechazado/atrasado, rojo oscuro = vencido o crítico y lo que resta, amarillo = falta documentación, celeste = en revisión, azul = acciones e información, violeta = al día, verde = aprobado/cobrado, gris = informativo. Cambios: en el Resumen, "Al día" es violeta y "Vencido" rojo oscuro, como en las etiquetas de las facturas; en Saldos, las notas de crédito en rojo con "−"; el contador de notificaciones en azul (no es un error); MiPyME es una pastilla oscura, porque es un dato de la factura y no un estado.
+
 ## [0.12.4] - 2026-11-04
 
 ### Cambiado

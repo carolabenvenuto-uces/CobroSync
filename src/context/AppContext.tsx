@@ -60,6 +60,8 @@ export interface Notificacion {
   facturas?: string[]
   /** si está, al tocar el aviso se abre esta pantalla en vez de una factura */
   ruta?: string
+  /** para la sucursal: rechazo (hay que reemplazar algo), documentación (falta o vence) o mensaje */
+  tema?: 'rechazo' | 'documentacion' | 'mensaje'
 }
 
 /**
@@ -171,9 +173,10 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
   const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)
   if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion) {
-    lista.push({ ...base(), para: c.sucursal, texto: `Auditoría · ${numero}: ${e.texto}` })
+    const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz)/i.test(e.texto)
+    lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Auditoría · ${numero}: ${e.texto}` })
   }
-  if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, texto: `${numero}: ${e.texto}` })
+  if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', texto: `${numero}: ${e.texto}` })
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
     lista.push({ ...base(), para: 'gerencia', clase: 'critica', sucursal: c.sucursal, texto: `Documentación crítica · ${c.sucursal} · ${numero}` })
   }

@@ -394,7 +394,7 @@ prueba('el lunes: un resumen por sucursal con pendientes y un solo mail a Gerenc
   esperar(deSucursal[0].body.includes(' días'), 'el resumen de la sucursal no lista las facturas')
   esperar(aGerencia.length === 1 && mails.length === deSucursal.length + 1, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
   const cuerpo = aGerencia[0].body
-  esperar(cuerpo.includes('Auditoría necesita tu apoyo') && cuerpo.includes('Pedile a cada sucursal'), cuerpo.slice(0, 300))
+  esperar(cuerpo.includes('Auditoría solicita su apoyo') && cuerpo.includes('Se solicita su intervención'), cuerpo.slice(0, 300))
   esperar(!cuerpo.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
 })
 prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () => {

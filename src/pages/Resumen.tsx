@@ -209,13 +209,13 @@ export default function Resumen() {
       {/* La barra muestra cuánto es cada parte del total */}
       <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
         <div className="bg-sem-amarillo" style={{ width: `${pct(situacion.sinPresentar)}%` }} />
-        <div className="bg-marca" style={{ width: `${pct(situacion.alDia)}%` }} />
-        <div className="bg-sem-rojo" style={{ width: `${pct(situacion.vencido)}%` }} />
+        <div className="bg-etapa-compania" style={{ width: `${pct(situacion.alDia)}%` }} />
+        <div className="bg-red-800" style={{ width: `${pct(situacion.vencido)}%` }} />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" punto="bg-sem-amarillo" valor={formatoPesos(situacion.sinPresentar)} ayuda={`${pct(situacion.sinPresentar)} % · esperando documentación o presentación`} />
-        <Indicador to={verFacturas('al_dia')} titulo="Al día" punto="bg-marca" valor={formatoPesos(situacion.alDia)} ayuda={`${pct(situacion.alDia)} % · presentado, todavía no vence`} />
-        <Indicador to={verFacturas('vencido')} titulo="Vencido" punto="bg-sem-rojo" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda={`${pct(situacion.vencido)} % · presentado, vencido y sin cobrar`} />
+        <Indicador to={verFacturas('al_dia')} titulo="Al día" punto="bg-etapa-compania" valor={formatoPesos(situacion.alDia)} ayuda={`${pct(situacion.alDia)} % · presentado, todavía no vence`} />
+        <Indicador to={verFacturas('vencido')} titulo="Vencido" punto="bg-red-800" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda={`${pct(situacion.vencido)} % · presentado, vencido y sin cobrar`} />
       </div>
 
       {/* 4. Dónde está la plata pendiente. Con una sucursal elegida, los datos de esa sucursal */}

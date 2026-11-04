@@ -4,7 +4,7 @@ import { armarTexto, configurarTextos, textoAviso, TEXTOS_INICIALES } from '../s
 describe('textos de las notificaciones a Gerencia', () => {
   it('completa los datos entre llaves', () => {
     expect(armarTexto(TEXTOS_INICIALES.apoyo, { compania: 'Sancor', cantidad: 2 })).toBe(
-      'Auditoría necesita tu apoyo con Sancor: no responde los reclamos de 2 facturas vencidas.',
+      'Auditoría solicita su apoyo con Sancor: la compañía no responde los reclamos de 2 facturas vencidas.',
     )
     expect(armarTexto('{facturas} de {sucursal}', { sucursal: 'Warnes', cantidad: 1 })).toBe('una factura de Warnes')
   })

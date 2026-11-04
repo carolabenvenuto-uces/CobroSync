@@ -11,8 +11,8 @@ export interface TextosAvisos {
 }
 
 export const TEXTOS_INICIALES: TextosAvisos = {
-  apoyo: 'Auditoría necesita tu apoyo con {compania}: no responde los reclamos de {facturas} vencidas.',
-  critica: 'Auditoría marcó como críticas {facturas} de {sucursal}: falta la documentación hace más de {dias} días. Pedile a la sucursal que la complete.',
+  apoyo: 'Auditoría solicita su apoyo con {compania}: la compañía no responde los reclamos de {facturas} vencidas.',
+  critica: 'Auditoría marcó como críticas {facturas} de {sucursal}: la documentación está pendiente hace más de {dias} días. Se solicita su intervención para que la sucursal la regularice.',
 }
 
 export const DATOS_DE_TEXTO = ['{compania}', '{sucursal}', '{facturas}', '{dias}']

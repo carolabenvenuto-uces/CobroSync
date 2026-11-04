@@ -115,7 +115,7 @@ export default function Resumen() {
           <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
             {[
               { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: '' },
-              { titulo: 'Notas de crédito', valor: Math.abs(anual.notasCredito), ayuda: 'Anulaciones y descuentos del año', clase: 'text-slate-200' },
+              { titulo: 'Notas de crédito', valor: -Math.abs(anual.notasCredito), ayuda: 'Anulaciones y descuentos del año (restan)', clase: 'text-red-300' },
               { titulo: 'Cobrado', valor: anual.cobrado, ayuda: 'Lo que ya pagaron las compañías', clase: 'text-emerald-300' },
             ].map((x) => (
               <div key={x.titulo}>
@@ -140,7 +140,7 @@ export default function Resumen() {
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `Notas de crédito: ${formatoPesos(Math.abs(delMes.notasCredito))}`)}
+            {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `Notas de crédito: ${formatoPesos(-Math.abs(delMes.notasCredito))}`)}
             {dato('Cobro previsto', previsto.previsto, 'Facturas presentadas que vencen en el mes', 'text-marca')}
             {dato(
               'Cobrado en el mes',
@@ -166,15 +166,13 @@ export default function Resumen() {
       </div>
 
       {/* 3. Lo pendiente de hoy, una sola vez: el total y en qué etapa está */}
-      <div className="mb-2 mt-6 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy</h2>
-          <p className="text-xs text-slate-500">Todo lo facturado que falta cobrar, según en qué etapa está: sin presentar + al día + vencido.</p>
-        </div>
-        <Link to={verFacturas('pendiente')} className="group inline-flex items-baseline gap-2 text-marca hover:underline">
-          <span className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(situacion.pendiente)}</span>
-          <span className="text-xs font-semibold">Ver facturas →</span>
+      <div className="mb-2 mt-6">
+        <Link to={verFacturas('pendiente')} className="group inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy:</h2>
+          <span className="whitespace-nowrap font-extrabold tabular-nums text-marca" style={GRANDE}>{formatoPesos(situacion.pendiente)}</span>
+          <span className="text-xs font-semibold text-marca group-hover:underline">Ver facturas →</span>
         </Link>
+        <p className="text-xs text-slate-500">Todo lo facturado que falta cobrar, según en qué etapa está: sin presentar + al día + vencido.</p>
       </div>
       {/* La barra muestra cuánto es cada parte del total */}
       <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">

@@ -209,7 +209,7 @@ export default function MisFacturas() {
           <h1 className="text-2xl font-extrabold tracking-tight">Mis facturas · {sucursal}</h1>
           <p className="mt-1 text-sm text-slate-600">
             <strong>¿Qué tengo que hacer hoy?</strong> Subir lo que falta, corregir lo observado y mirar las notificaciones
-            {sinLeer > 0 && <strong className="text-marca"> ({sinLeer} sin leer, en el menú de la izquierda)</strong>}.
+            {sinLeer > 0 && <strong className="text-marca"> ({sinLeer} sin leer, en Notificaciones del menú)</strong>}.
           </p>
         </div>
       </div>
@@ -300,7 +300,7 @@ export default function MisFacturas() {
                     {esMipyme(x.c) && <span className="ml-1.5 rounded bg-marca/10 px-1 text-[11px] font-bold text-marca">MiPyME</span>}
                     <span className="block text-xs text-slate-500">{x.c.siniestro ? `Siniestro ${x.c.siniestro}` : formatoFecha(x.c.fecha)}</span>
                   </span>
-                  <span className={`shrink-0 text-right text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>
+                  <span className={`max-w-[45%] text-right text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>
                 </button>
               </li>
             ))}

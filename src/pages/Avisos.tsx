@@ -4,7 +4,7 @@ import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWar
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
-import { plazosActuales } from '../domain/plazos'
+import { plazosActuales, textoCritica } from '../domain/plazos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
@@ -46,7 +46,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         {
           clave: 'criticas',
           titulo: 'Documentación crítica',
-          descripcion: 'Más de 21 días sin la documentación completa (avisado a gerencia general)',
+          descripcion: `Sin la documentación completa: ${textoCritica()} (avisado a gerencia general)`,
           icono: Siren,
           facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'critico'),
           ruta: '/app/pendientes?estado=Crítica',
@@ -54,7 +54,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         {
           clave: 'atrasadas',
           titulo: 'Documentación atrasada',
-          descripcion: 'Entre 8 y 21 días (avisado al gerente de la sucursal)',
+          descripcion: 'Pasó el plazo de la sucursal (va en el resumen de los lunes al gerente)',
           icono: TriangleAlert,
           facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'atrasado'),
           ruta: '/app/pendientes?estado=Atrasada',

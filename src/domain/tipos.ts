@@ -56,8 +56,8 @@ export type Responsable = 'sucursal' | 'auditoria' | 'compania'
  * (D. Pend., P. Pend., Al día, Vencida, Cobrado), un poco más detallado:
  */
 export type Etapa =
-  | 'doc_pendiente' // D. Pend. dentro de los 7 días: le toca a la sucursal
-  | 'doc_atrasada' // D. Pend. con más de 7 días: la sucursal está atrasada
+  | 'doc_pendiente' // D. Pend. dentro del plazo: le toca a la sucursal
+  | 'doc_atrasada' // D. Pend. fuera de plazo: la sucursal está atrasada
   | 'doc_observada' // Auditoría observó un documento (ilegible, sin firma…): la sucursal tiene que reemplazarlo
   | 'en_revision' // la sucursal subió todo: Auditoría tiene que revisarlo y tildarlo
   | 'pres_pendiente' // P. Pend.: legajo completo, le toca a Auditoría presentarlo

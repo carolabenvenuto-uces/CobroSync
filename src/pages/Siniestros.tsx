@@ -7,6 +7,7 @@ import { saldoSinCobro } from '../domain/importes'
 import { calcularSemaforo, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Comprobante, Documento } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
+import { diffDias } from '../lib/fechas'
 
 const POR_PAGINA = 20
 const normalizar = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
@@ -75,11 +76,12 @@ export default function Siniestros() {
           g.avisos.push(`${formatoComprobante(f)}: informaste una nota de crédito parcial por ${formatoPesos(f.anulacionInformada.importe ?? 0)}; falta que aparezca en el ERP.`)
         }
       }
-      if (vigentes.length === 0) g.avisos.push('Todas las facturas de este siniestro están anuladas: si se refactura, todavía no está la factura nueva.')
+      // Solo si la anulación es reciente: lo viejo ya se resolvió (o no se refactura)
+      if (vigentes.length === 0 && diffDias(g.ultimaFecha, hoy) <= 60) g.avisos.push('Todas las facturas de este siniestro están anuladas: si se refactura, todavía no está la factura nueva.')
     }
     return [...mapa.values()].sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comprobantes, datos])
+  }, [comprobantes, datos, hoy])
 
   const conPendiente = (g: Grupo) =>
     g.avisos.length > 0 || g.facturas.some((f) => f.estado !== 'anulada' && f.estado !== 'cobrada' && f.documentos.some((d) => d.estado === 'faltante' || d.estado === 'observado'))

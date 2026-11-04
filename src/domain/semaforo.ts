@@ -2,8 +2,8 @@
  * Reglas del semáforo operativo.
  *
  * Etapas, con el vocabulario de la planilla de control:
- *  Doc. pendiente → falta documentación y la sucursal está dentro de los 7 días
- *  Doc. atrasada  → falta documentación y pasaron más de 7 días (D. Pend. atrasada)
+ *  Doc. pendiente → falta documentación y la sucursal está dentro de su plazo (ver plazos.ts)
+ *  Doc. atrasada  → falta documentación y pasó el plazo (D. Pend. atrasada)
  *  Doc. observada → Auditoría observó un documento (ilegible, sin firma…)
  *  En revisión    → la sucursal subió todo y Auditoría tiene que tildarlo
  *  Pres. pendiente→ legajo completo, falta presentarlo (P. Pend.)

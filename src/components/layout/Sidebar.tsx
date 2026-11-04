@@ -88,8 +88,8 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
     {
       titulo: 'Mi sucursal',
       items: [
-        { ruta: '/app/resolver', etiqueta: 'Para resolver', icono: AlertTriangle, contador: 'resolver' },
         { ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' },
+        { ruta: '/app/resolver', etiqueta: 'Para resolver', icono: AlertTriangle, contador: 'resolver' },
         { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
       ],
     },
@@ -134,7 +134,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
-          <Campana />
+          <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion) => {
             const items = seccion.items
             return (

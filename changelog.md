@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.3] - 2026-11-04
+
+### Cambiado
+- **Notificaciones como un mail, para todos los sectores:** pantalla propia con la bandeja a la izquierda (remitente, asunto, cuándo; las no leídas en negrita) y el mensaje completo a la derecha, con la factura (o la lista de facturas en los avisos agrupados) y el botón para abrirla. Filtro Sin leer / Todas. En el celular, primero la bandeja y al tocar se abre el mensaje.
+- **Sucursal:** "Para resolver" va debajo de "Mis facturas" en el menú. Se quitó el recuadro de mensajes sin leer de Para resolver (ya están en Notificaciones). La etiqueta MiPyME pasa a "! MiPyME · 5 días" en rojo.
+
 ## [0.12.2] - 2026-11-04
 
 ### Cambiado

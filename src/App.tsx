@@ -1,3 +1,4 @@
+import BandejaNotificaciones from './components/Notificaciones'
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="siniestros" element={<Siniestros />} />
         <Route path="resolver" element={<MisFacturas vista="resolver" />} />
+        <Route path="notificaciones" element={<BandejaNotificaciones />} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

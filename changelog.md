@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.2] - 2026-11-04
+
+### Agregado
+- **Registrar cobro** desde el legajo (Auditoría), con la fecha de cobro.
+- **Prueba del servidor de Google** (`npm run test:apps-script`): recorre un día completo con planilla, Drive y mails simulados. Corre en cada cambio.
+- Guía de instalación: qué revisar el primer día y qué hacer si algo falla.
+
+### Corregido
+- Pasar la planilla a CobroSync se puede repetir: agrega las nuevas y completa presentación y cobro de las que ya están, sin duplicar (antes dependía del número de fila).
+- Las compañías que llegan de la planilla toman razón social, CUIT y plazo de la pestaña CP, así la carga del ERP las reconoce.
+- Una factura repetida dentro de la misma carga del ERP ya no se duplica.
+- Los nombres de sucursal se comparan sin importar mayúsculas, tildes ni espacios.
+
 ## [0.7.1] - 2026-11-04
 
 ### Agregado

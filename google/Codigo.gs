@@ -72,7 +72,7 @@ function obtenerDatos() {
   var usuario = usuarioActual_();
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   if (usuario.rol === 'sucursal') {
-    comprobantes = comprobantes.filter(function (c) { return c.sucursal === usuario.sucursal; });
+    comprobantes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
   }
   var sucursales = leerHoja_(HOJAS.sucursales).map(function (s) {
     var pvs = String(s.puntosVenta || '').split(/[^0-9]+/).filter(String).map(Number);
@@ -100,7 +100,7 @@ function guardarComprobante(c) {
       // Una sucursal solo puede tocar facturas suyas que ya existan
       if (!fila) throw new Error('La factura no existe.');
       var actual = filaAObjeto_(HOJAS.comprobantes, hoja.getRange(fila, 1, 1, HOJAS.comprobantes.columnas.length).getValues()[0]);
-      if (actual.sucursal !== usuario.sucursal) throw new Error('Esta factura es de otra sucursal.');
+      if (!mismaSucursal_(actual.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
       // La sucursal solo cambia lo suyo: documentos, aviso de demora, conversación y aviso de NC.
       // Importes, fechas de presentación y cobro quedan como estaban.
       ['documentos', 'fechaDrive', 'subidoPor', 'compromiso', 'eventos', 'ncInformada'].forEach(function (k) {
@@ -126,9 +126,65 @@ function agregarComprobantes(lista) {
     lista.forEach(function (c) {
       if (existentes[c.id] || existentes['ref:' + c.ref]) return;
       escribirFila_(hoja, HOJAS.comprobantes, null, c);
+      existentes[c.id] = true;
+      if (c.ref) existentes['ref:' + c.ref] = true;
       nuevas++;
     });
     return nuevas;
+  });
+}
+
+/**
+ * Pasa la planilla de control a CobroSync. Se puede repetir durante la prueba (cuando se usa
+ * la planilla en paralelo):
+ * - las facturas nuevas (por referencia) se agregan;
+ * - en las que ya están, solo se completa lo que la planilla tenga más avanzado:
+ *   fecha de presentación, vencimiento y cobro. Nunca se borra ni se vuelve atrás nada,
+ *   y no se tocan documentos, conversación ni reclamos.
+ * Solo Auditoría.
+ */
+function sincronizarDesdePlanilla(lista) {
+  var usuario = usuarioActual_();
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar la planilla.');
+  return conBloqueo_(function () {
+    var hoja = hoja_(HOJAS.comprobantes);
+    var actuales = leerHoja_(HOJAS.comprobantes);
+    var filaPorRef = {};
+    actuales.forEach(function (c, i) { if (c.ref) filaPorRef[String(c.ref)] = { c: c, fila: i + 2 }; });
+    var resultado = { nuevas: 0, actualizadas: 0 };
+    lista.forEach(function (p) {
+      var ref = String(p.ref || '');
+      var existente = ref ? filaPorRef[ref] : null;
+      if (!existente) {
+        escribirFila_(hoja, HOJAS.comprobantes, null, p);
+        if (ref) filaPorRef[ref] = { c: p, fila: hoja.getLastRow() };
+        resultado.nuevas++;
+        return;
+      }
+      var c = existente.c;
+      var cambio = false;
+      if (!c.fechaPresentacion && p.fechaPresentacion) {
+        c.fechaPresentacion = p.fechaPresentacion;
+        c.vencimiento = p.vencimiento;
+        if (c.estado !== 'cobrada' && c.estado !== 'anulada') c.estado = 'presentada';
+        cambio = true;
+      }
+      if (c.estado !== 'cobrada' && p.estado === 'cobrada') {
+        c.estado = 'cobrada';
+        c.fechaCobro = p.fechaCobro;
+        cambio = true;
+      }
+      if (c.estado !== 'anulada' && p.estado === 'anulada') {
+        c.estado = 'anulada';
+        cambio = true;
+      }
+      if (cambio) {
+        (c.eventos = c.eventos || []).push({ fecha: hoy_(), autor: usuario.nombre, area: 'auditoria', tipo: 'mensaje', texto: 'Actualizado desde la planilla de control' });
+        escribirFila_(hoja, HOJAS.comprobantes, existente.fila, c);
+        resultado.actualizadas++;
+      }
+    });
+    return resultado;
   });
 }
 
@@ -161,7 +217,7 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
   var c = leerHoja_(HOJAS.comprobantes).filter(function (x) { return x.id === comprobanteId; })[0];
   if (!c) throw new Error('La factura no existe.');
-  if (usuario.rol === 'sucursal' && c.sucursal !== usuario.sucursal) throw new Error('Esta factura es de otra sucursal.');
+  if (usuario.rol === 'sucursal' && !mismaSucursal_(c.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
 
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
   var carpeta = subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)),
@@ -194,7 +250,7 @@ function avisosDiarios() {
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
       var cambio = false;
       var numero = c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8);
-      var suc = sucursales[c.sucursal] || {};
+      var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
 
       if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && suc.correoGerente) {
         agregar_(porDestinatario, suc.correoGerente, c.sucursal + ' · ' + numero + ' · ' + dias + ' días sin documentación completa');
@@ -229,7 +285,7 @@ function resumenSemanal() {
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   leerHoja_(HOJAS.sucursales).forEach(function (s) {
     if (!s.correoGerente) return;
-    var pendientes = comprobantes.filter(function (c) { return c.sucursal === s.nombre && esperaALaSucursal_(c); });
+    var pendientes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c); });
     var criticas = pendientes.filter(function (c) { return diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL; });
     var atrasadas = pendientes.filter(function (c) { var d = diasEntre_(c.fecha, hoy); return d > PLAZO_DOCUMENTACION && d <= DIAS_GERENCIA_GENERAL; });
     var importe = pendientes.reduce(function (t, c) { return t + Number(c.total || 0); }, 0);
@@ -345,6 +401,12 @@ function subcarpeta_(padre, nombre) {
   return it.hasNext() ? it.next() : padre.createFolder(nombre);
 }
 
+/** Compara nombres de sucursal sin importar mayúsculas, tildes ni espacios de más. */
+function mismaSucursal_(a, b) {
+  var n = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' '); };
+  return n(a) !== '' && n(a) === n(b);
+}
+
 function esperaALaSucursal_(c) {
   if (c.tipo !== 'FC' || c.estado === 'anulada' || c.estado === 'cobrada' || c.fechaPresentacion) return false;
   var docs = c.documentos || [];
@@ -357,6 +419,12 @@ function hoy_() {
 
 function diasEntre_(desde, hasta) {
   return Math.round((new Date(hasta + 'T00:00:00Z') - new Date(String(desde) + 'T00:00:00Z')) / 86400000);
+}
+
+function buscarSucursal_(indice, nombre) {
+  var claves = Object.keys(indice);
+  for (var i = 0; i < claves.length; i++) if (mismaSucursal_(claves[i], nombre)) return indice[claves[i]];
+  return {};
 }
 
 function indexar_(lista, clave) {

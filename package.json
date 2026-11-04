@@ -11,7 +11,8 @@
     "test": "vitest run",
     "datos:demo": "node scripts/generar-datos-demo.mjs",
     "build:google": "vite build --mode google && node scripts/empaquetar-google.mjs",
-    "test:google": "node scripts/probar-google.mjs"
+    "test:google": "node scripts/probar-google.mjs",
+    "test:apps-script": "node scripts/probar-apps-script.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.575.0",

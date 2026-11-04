@@ -35,15 +35,15 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 5. Completar la planilla:
    - **Config:** el id de la carpeta de Drive, los correos de Gerencia General y el dominio (ya viene `svaauto.com.ar`).
    - **Usuarios:** una fila por persona, con email, nombre, rol (`Gerencia`, `Auditoría` o `Sucursal`) y sucursal (solo para el rol Sucursal, con el mismo nombre que en la pestaña Sucursales).
-   - **Sucursales:** nombre, puntos de venta separados por coma (por ejemplo `21, 30`), nombre del gerente y su correo.
-   - **Aseguradoras:** se completa sola al pasar la planilla de control (paso 8). Después se pueden agregar CUIT, razón social y correos.
+   - **Sucursales:** nombre, puntos de venta separados por coma (por ejemplo `21, 30`), nombre del gerente y su correo. **El nombre tiene que ser el mismo que aparece en la columna Sucursal de la planilla de control** (no importan mayúsculas ni espacios).
+   - **Aseguradoras:** se completa sola al pasar la planilla de control (paso 8), con razón social, CUIT y plazo de la pestaña CP. Después se pueden agregar los correos.
 6. **Implementar → Nueva implementación → Aplicación web**:
    - Ejecutar como: **Yo** (la cuenta del sector).
    - Quién tiene acceso: **Cualquier persona de** la empresa.
    - Copiar el link de la aplicación y pegarlo en **Config → urlAplicacion**.
 7. Elegir la función `instalarDisparadores` y tocar **Ejecutar**. Programa los avisos diarios y el resumen de los lunes, a las 8.
-8. Abrir la aplicación con una cuenta de Auditoría → **Usar mi planilla** → cargar la hoja Diario en CSV → **Guardar en CobroSync**. Así se pasan las facturas actuales. Se puede repetir: las facturas que ya están no se duplican.
-9. Cuando todo esté bien, poner **Config → avisosPorMail** en `SI`. Desde ese momento salen los mails.
+8. Abrir la aplicación con una cuenta de Auditoría → **Usar mi planilla** → cargar la hoja Diario en CSV → **Guardar en CobroSync**. Así se pasan las facturas actuales. Se puede repetir durante la prueba: agrega las facturas nuevas y, en las que ya están, completa presentación y cobro. No duplica ni borra nada.
+9. Cuando todo esté bien, poner **Config → avisosPorMail** en `SI`. Desde ese momento salen los mails. El primer día cada gerente recibe un solo mail con todas sus facturas atrasadas; después, solo las nuevas.
 
 ## Actualizar a una versión nueva
 
@@ -53,6 +53,28 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 
 Los datos de la planilla no se tocan al actualizar.
 
+## Primer día de la prueba: qué revisar
+
+1. Entrar con una cuenta de cada rol (Gerencia, Auditoría y una de cada sucursal de la prueba) y verificar que cada una ve lo suyo.
+2. Desde una sucursal, subir un PDF y una foto desde el celular. Verificar que aparezcan en la carpeta de Drive.
+3. Desde Auditoría, aprobar ese documento, presentar la factura y registrar un cobro de prueba.
+4. Medir cuánto tarda en abrir la aplicación con Auditoría (es la que más datos carga). Si tarda más de 15 segundos, avisar: se puede hacer que cargue primero las facturas abiertas.
+5. Con **avisosPorMail** en `SI`, ejecutar `avisosDiarios` a mano desde el editor y revisar que el gerente reciba el mail.
+
+## Si algo no funciona
+
+| Qué pasa | Qué hacer |
+|---|---|
+| "Tu cuenta no tiene acceso" | Agregar el correo en la pestaña Usuarios (tal cual, con @svaauto.com.ar). |
+| "Ingresá con tu cuenta de la empresa" | La persona entró con una cuenta personal: cerrar sesión en Google y entrar con la de la empresa. |
+| Una sucursal no ve ninguna factura | El nombre de su sucursal en Usuarios no coincide con el de la planilla. Corregirlo. |
+| "Falta la pestaña…" | Ejecutar `configurarPlanilla` desde el editor. |
+| No se pueden subir archivos | Revisar que **Config → carpetaDriveId** tenga el id correcto y que la cuenta del sector sea administradora de la unidad compartida. |
+| No llegan los mails | Revisar **Config → avisosPorMail** (`SI`) y que los correos de los gerentes estén en Sucursales. En el editor: **Activadores** tiene que mostrar `avisosDiarios` y `resumenSemanal`. |
+| Cualquier otro error | En el editor de Apps Script: **Ejecuciones** muestra cada error con su mensaje. Copiarlo y pasárselo a quien mantiene CobroSync. |
+
+Mientras dure la prueba, la planilla de control sigue funcionando como siempre. Si algo falla, no se pierde nada: se sigue trabajando con la planilla y CobroSync se corrige.
+
 ## Preguntas frecuentes
 
 **¿Quién ve la planilla?** Solo la cuenta del sector y quien ella comparta. Para trabajar, nadie más la necesita.
@@ -60,5 +82,7 @@ Los datos de la planilla no se tocan al actualizar.
 **¿Qué pasa si alguien que no está en Usuarios abre el link?** Ve un mensaje: "Tu cuenta no tiene acceso. Pedíselo a Auditoría."
 
 **¿Se puede seguir usando la planilla de control?** Sí. Durante la prueba se usa en paralelo, y las facturas nuevas se pueden cargar desde la exportación del ERP (Control diario → Cargar Excel del ERP).
+
+**¿Hay respaldo de los datos?** Sí. La planilla guarda su historial de versiones (Archivo → Historial de versiones) y los archivos borrados de Drive quedan 30 días en la papelera.
 
 **Límites de Google.** Con cuentas de Google Workspace, Apps Script permite enviar unos 1.500 mails por día y archivos de hasta 50 MB. Para el volumen de la prueba sobra.

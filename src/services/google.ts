@@ -53,6 +53,10 @@ export function agregarEnGoogle(lista: Comprobante[]): Promise<number> {
   return llamar('agregarComprobantes', lista)
 }
 
+export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nuevas: number; actualizadas: number }> {
+  return llamar('sincronizarDesdePlanilla', lista)
+}
+
 export function guardarAseguradorasEnGoogle(lista: Aseguradora[]): Promise<number> {
   return llamar('guardarAseguradoras', lista)
 }

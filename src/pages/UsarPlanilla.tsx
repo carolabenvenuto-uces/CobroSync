@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, LockKeyhole, RotateCcw, Upload } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { useApp } from '../context/AppContext'
-import { agregarEnGoogle, guardarAseguradorasEnGoogle } from '../services/google'
+import { guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle } from '../services/google'
 import { importarPlanilla, leerArchivo, type ResultadoImportacion } from '../services/planilla'
 import { formatoFecha } from '../lib/formato'
 
@@ -44,20 +44,32 @@ export default function UsarPlanilla() {
     }
   }
 
-  /** Pasa la planilla a CobroSync (Google): compañías nuevas y facturas que todavía no estén. */
+  /**
+   * Pasa la planilla a CobroSync (Google). Se puede repetir: agrega las facturas nuevas y, en las
+   * que ya están, completa presentación y cobro. El id sale de la referencia, para que no cambie
+   * de una carga a otra.
+   */
   async function pasarAGoogle() {
     if (!resumen) return
     setError(null)
     try {
       setPasando('Guardando las compañías…')
       await guardarAseguradorasEnGoogle(resumen.datos.aseguradoras)
-      const lista = resumen.datos.comprobantes
+      const lista = resumen.datos.comprobantes.map((c) => ({
+        ...c,
+        id: c.ref ? `ref-${c.ref}` : `pl-${c.tipo}-${c.puntoVenta}-${c.numero}`,
+      }))
       let nuevas = 0
+      let actualizadas = 0
       for (let i = 0; i < lista.length; i += 300) {
         setPasando(`Guardando facturas: ${Math.min(i + 300, lista.length).toLocaleString('es-AR')} de ${lista.length.toLocaleString('es-AR')}…`)
-        nuevas += await agregarEnGoogle(lista.slice(i, i + 300))
+        const r = await sincronizarPlanillaEnGoogle(lista.slice(i, i + 300))
+        nuevas += r.nuevas
+        actualizadas += r.actualizadas
       }
-      setPasando(`Listo: se agregaron ${nuevas.toLocaleString('es-AR')} facturas. Las que ya estaban no se modificaron.`)
+      setPasando(
+        `Listo: ${nuevas.toLocaleString('es-AR')} facturas nuevas y ${actualizadas.toLocaleString('es-AR')} actualizadas (presentación o cobro). No se borró nada.`,
+      )
       usarDemo() // vuelve a leer los datos desde Google
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -147,7 +159,8 @@ export default function UsarPlanilla() {
           <CardTitulo>3. Pasar la planilla a CobroSync</CardTitulo>
           <p className="text-sm text-slate-700">
             Se leyeron <strong>{resumen.datos.comprobantes.length.toLocaleString('es-AR')}</strong> comprobantes. Al confirmar, se agregan
-            a CobroSync los que todavía no estén (se comparan por referencia). Los que ya están no se modifican.
+            a CobroSync los que todavía no estén (se comparan por referencia). En los que ya están, solo se completan la presentación y
+            el cobro si la planilla los tiene. Se puede repetir durante la prueba; no se borra nada.
           </p>
           <button
             type="button"

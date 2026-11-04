@@ -11,6 +11,7 @@
  *  O Estado · P NC Anula · Q NC Ref. · R Observaciones
  *  Opcionales: S Reclamado (x / ✓ / sí) · T Cant. reclamos · U Fecha del último reclamo
  */
+import { datosCompania } from '../domain/companias'
 import type {
   Aseguradora,
   Reclamo,
@@ -177,12 +178,16 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
     const [pv, nro] = (f[COL.numero] ?? '').split('-').map((x) => Number(x.replace(/\D/g, '')) || 0)
 
     if (!aseguradoras.has(compania)) {
+      // Razón social y CUIT de la pestaña CP: así la carga del ERP reconoce la compañía
+      const cp = datosCompania(compania)
       aseguradoras.set(compania, {
         id: slug(compania) || 'sin-compania',
         nombre: compania || 'Sin compañía',
+        razonSocial: cp?.razonSocial,
+        cuit: cp?.cuit,
         email: '',
         // Plazo de pago desde la presentación: 30 días, salvo Federación Patronal (7)
-        plazoPagoDias: /patronal/i.test(compania) ? 7 : 30,
+        plazoPagoDias: cp?.plazo ?? (/patronal/i.test(compania) ? 7 : 30),
       })
     }
     if (!sucursales.has(sucursal)) {

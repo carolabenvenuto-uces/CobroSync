@@ -87,7 +87,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [subiendo, setSubiendo] = useState(false)
   const [errorSubida, setErrorSubida] = useState<string | null>(null)
   const [observaciones, setObservaciones] = useState(c.observaciones)
-  const [formulario, setFormulario] = useState<'ninguno' | 'demora' | 'rechazo' | 'reclamo'>('ninguno')
+  const [formulario, setFormulario] = useState<'ninguno' | 'demora' | 'rechazo' | 'reclamo' | 'cobro'>('ninguno')
+  const [fechaCobro, setFechaCobro] = useState(hoy)
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
   const [motivo, setMotivo] = useState<string>(MOTIVOS_OBSERVACION[0])
   const [motivoDemora, setMotivoDemora] = useState(MOTIVOS_DEMORA[0])
@@ -128,6 +129,13 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   function avisarDemora() {
     actualizarComprobante(c.id, { compromiso: { fecha: fechaDemora, motivo: motivoDemora } })
     registrarEvento(c.id, 'compromiso', `${motivoDemora}. Se compromete a subirlo el ${formatoFecha(fechaDemora)}.`)
+    setFormulario('ninguno')
+  }
+
+  // ── Auditoría: registrar el cobro ──
+  function registrarCobro() {
+    actualizarComprobante(c.id, { estado: 'cobrada', fechaCobro })
+    registrarEvento(c.id, 'mensaje', `Cobro registrado el ${formatoFecha(fechaCobro)}`)
     setFormulario('ninguno')
   }
 
@@ -433,6 +441,28 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     />
                     <button type="button" onClick={registrarRechazo} className={`${botonPrincipal} bg-sem-rojo hover:bg-red-600`}>
                       Devolver a la sucursal
+                    </button>
+                  </div>
+                ))}
+              {c.fechaPresentacion !== null &&
+                (formulario !== 'cobro' ? (
+                  <button type="button" onClick={() => setFormulario('cobro')} className={`${botonPrincipal} bg-esmeralda hover:bg-emerald-600`}>
+                    <CircleCheck className="h-4 w-4" /> Registrar cobro
+                  </button>
+                ) : (
+                  <div className="space-y-3 rounded-lg border border-esmeralda/40 p-3">
+                    <label className="block text-xs font-semibold text-slate-500">
+                      Fecha en que se cobró
+                      <input
+                        type="date"
+                        max={hoy}
+                        value={fechaCobro}
+                        onChange={(e) => setFechaCobro(e.target.value)}
+                        className={`${claseSelect} mt-1 w-full`}
+                      />
+                    </label>
+                    <button type="button" onClick={registrarCobro} className={`${botonPrincipal} bg-esmeralda hover:bg-emerald-600`}>
+                      Confirmar cobro
                     </button>
                   </div>
                 ))}

@@ -212,7 +212,7 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
     const estadoTexto = (f[COL.estado] ?? '').trim().toLowerCase()
 
     // La planilla no detalla cada documento: si se recibió en el Drive (o figura "P. Pend."),
-    // se considera revisado y aprobado; si no, faltan la factura, la orden y la firma.
+    // se considera revisado y aprobado; si no, faltan la factura y la orden firmada.
     const completo = drive !== null || estadoTexto.startsWith('p. pend') || presentacion !== null
     const documentos: Documento[] =
       tipo === 'NC'

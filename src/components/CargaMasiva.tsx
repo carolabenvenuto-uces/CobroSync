@@ -2,18 +2,17 @@ import { useMemo, useState, type DragEvent } from 'react'
 import { FileUp, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { facturasParaCargar, sugerirFactura, type TipoArchivo } from '../domain/archivos'
-import { NOMBRE_DOCUMENTO } from '../domain/semaforo'
+import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
 import { prepararArchivo } from '../lib/imagenes'
 import { formatoComprobante } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
 
-const TODOS: TipoDocumento[] = ['factura', 'orden', 'firma']
+const TODOS: TipoDocumento[] = DOCUMENTOS_REQUERIDOS
 const NOMBRE_TIPO: Record<TipoArchivo, string> = {
-  documentacion: 'Todo junto (factura, orden y firma)',
+  documentacion: 'Las dos juntas (factura y orden firmada)',
   factura: NOMBRE_DOCUMENTO.factura,
   orden: NOMBRE_DOCUMENTO.orden,
-  firma: NOMBRE_DOCUMENTO.firma,
 }
 
 interface Fila {
@@ -159,10 +158,10 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                 <code>35-11032</code>). Si no lo tenés, el <strong>siniestro</strong> o la <strong>patente</strong>.
               </li>
               <li>
-                Agregá <strong>qué es</strong>: <code>factura</code>, <code>orden</code> o <code>firma</code>. Si escaneaste todo junto en un solo PDF, no hace falta.
+                Agregá <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si escaneaste las dos juntas en un solo PDF, no hace falta.
               </li>
               <li>
-                Ejemplos: <code>35-00011032 orden.pdf</code> · <code>35-00011032 firma.jpg</code> · <code>35-00011032.pdf</code> (todo junto) ·{' '}
+                Ejemplos: <code>35-00011032 orden.pdf</code> · <code>35-00011032 factura.pdf</code> · <code>35-00011032.pdf</code> (las dos juntas) ·{' '}
                 <code>siniestro 051-2-335854.pdf</code>
               </li>
             </ul>

@@ -13,7 +13,7 @@ import type { Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /** Las tres etiquetas de "Qué hay que hacer": qué documento falta, cuál se observó y cuál ya está. */
-const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden', firma: 'Firma' } as const
+const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden firmada' } as const
 const ESTADO_DOC = {
   faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
   observado: { marca: '!', texto: 'observado', clase: 'border-red-300 bg-red-50 text-red-800' },
@@ -27,7 +27,7 @@ const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; ic
   {
     clave: 'subir',
     titulo: 'Para subir',
-    ayuda: 'Falta la factura, la orden o la firma',
+    ayuda: 'Falta la factura o la orden firmada',
     etapas: ['doc_pendiente', 'doc_atrasada'],
     icono: Upload,
     color: 'border-sem-amarillo bg-sem-amarillo/10',
@@ -153,7 +153,7 @@ export default function MisFacturas() {
       titulo: 'Qué hay que hacer',
       celda: (x) => (
         <div className="flex flex-wrap gap-1.5">
-          {(['factura', 'orden', 'firma'] as const).map((tipo) => {
+          {(['factura', 'orden'] as const).map((tipo) => {
             const d = x.c.documentos.find((doc) => doc.tipo === tipo)
             const estado = d?.estado ?? 'faltante'
             const e = ESTADO_DOC[estado]
@@ -335,7 +335,7 @@ export default function MisFacturas() {
       </div>
 
       <p className="mb-2 text-xs text-slate-500">
-        Tenés {plazosActuales().comun} días desde la factura ({plazosActuales().mipyme} si es <strong>MiPyME</strong>, priorizalas) para subir la factura, la orden de reparación o repuestos y la firma del cliente. Si no
+        Tenés {plazosActuales().comun} días desde la factura ({plazosActuales().mipyme} si es <strong>MiPyME</strong>, priorizalas) para subir la factura y la orden de reparación o repuestos firmada por el cliente. Si no
         podés, entrá a la factura y tocá "No lo puedo subir todavía".
         <span className="mt-1 block">
           En cada factura: <strong>+</strong> falta subirlo · <strong>!</strong> observado, hay que reemplazarlo · <strong>…</strong> en

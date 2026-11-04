@@ -19,6 +19,7 @@ import { estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO } from '../domain/rec
 import {
   calcularSemaforo,
   documentosDelLegajo,
+  DOCUMENTOS_REQUERIDOS,
   MOTIVOS_OBSERVACION,
   NOMBRE_DOCUMENTO,
   NOMBRE_ESTADO_DOCUMENTO,
@@ -74,7 +75,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
 
 /**
  * Panel lateral con el legajo de una factura.
- * - La sucursal sube la factura, la orden y la firma (o un PDF con todo).
+ * - La sucursal sube la factura y la orden firmada (o un PDF con las dos).
  * - Auditoría revisa cada una y la tilda (aprobar) u observa con un motivo.
  * - Cuando las tres están aprobadas, la factura queda para presentar.
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
@@ -108,7 +109,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   }
 
   // ── Sucursal ──
-  // Otras facturas del mismo siniestro (facturación parcial de repuestos): comparten orden y firma
+  // Otras facturas del mismo siniestro (facturación parcial de repuestos): comparten la orden firmada
   const hermanas = c.tipo === 'FC' ? facturasDelSiniestro(c, datos?.comprobantes ?? []) : []
   const [compartirConHermanas, setCompartirConHermanas] = useState(true)
 
@@ -143,11 +144,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       const nombres = archivos.length > 1 ? `${archivos.length} archivos` : archivos[0].name
       registrarEvento(c.id, 'subida', `Subió ${que} (${nombres})`)
 
-      // La orden y la firma sirven también para las otras facturas del siniestro que no las tengan
+      // La orden firmada sirve también para las otras facturas del siniestro que no la tengan
       const compartibles: TipoDocumento[] = tipos.filter((t) => t !== 'factura')
       if (compartirConHermanas && compartibles.length) {
         for (const h of hermanas) {
-          const docsH = h.documentos.length ? h.documentos : (['factura', 'orden', 'firma'] as TipoDocumento[]).map((t) => ({ tipo: t, estado: 'faltante' as const }))
+          const docsH = h.documentos.length ? h.documentos : DOCUMENTOS_REQUERIDOS.map((t) => ({ tipo: t, estado: 'faltante' as const }))
           const aCompletar = compartibles.filter((t) => docsH.find((d) => d.tipo === t && (d.estado === 'faltante' || d.estado === 'observado')))
           if (aCompletar.length === 0) continue
           actualizarComprobante(h.id, {
@@ -532,7 +533,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               {rol === 'sucursal' && (
                 <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
                   <input type="checkbox" checked={compartirConHermanas} onChange={(e) => setCompartirConHermanas(e.target.checked)} />
-                  Al subir la orden o la firma, usarla también para estas facturas (si les falta)
+                  Al subir la orden firmada, usarla también para estas facturas (si les falta)
                 </label>
               )}
             </section>
@@ -617,7 +618,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </button>
               )}
               {c.fechaPresentacion === null && !puedePresentarse(c, hoy) && (
-                <p className="text-center text-xs text-slate-500">Se puede presentar cuando la factura, la orden y la firma están aprobadas.</p>
+                <p className="text-center text-xs text-slate-500">Se puede presentar cuando la factura y la orden firmada están aprobadas.</p>
               )}
               {c.fechaPresentacion !== null &&
                 (formulario !== 'rechazo' ? (

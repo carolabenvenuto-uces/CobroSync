@@ -33,7 +33,8 @@ function normalizar(c: Comprobante): Comprobante {
     ...c,
     reclamos: c.reclamos ?? [],
     eventos: c.eventos ?? [],
-    documentos: c.documentos ?? [],
+    // La firma ya no es un documento aparte (va en la orden firmada)
+    documentos: (c.documentos ?? []).filter((d) => d.tipo === 'factura' || d.tipo === 'orden'),
     compromiso: c.compromiso ?? null,
   }
 }

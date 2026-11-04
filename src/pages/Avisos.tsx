@@ -93,7 +93,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         {
           clave: 'revisar',
           titulo: 'Para revisar y tildar',
-          descripcion: 'La sucursal subió la factura, la orden y la firma',
+          descripcion: 'La sucursal subió la factura y la orden firmada',
           icono: FileCheck,
           facturas: comprobantes.filter((c) => etapa(c) === 'en_revision'),
           ruta: '/app/control-diario?estado=En revisión',

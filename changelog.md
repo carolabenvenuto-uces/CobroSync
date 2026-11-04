@@ -3,6 +3,7 @@
 ## [0.11.0] - 2026-11-04
 
 ### Agregado (vista de la sucursal)
+- **Dos documentos por factura: la factura y la orden firmada.** La firma del cliente ya no se pide aparte (va en la orden). Los datos que tenían la firma como documento separado se leen sin ella.
 - **Subir varios archivos de una vez:** se sueltan todos los escaneos juntos y CobroSync sugiere a qué factura va cada uno (por número de factura, siniestro, patente o referencia que tenga el nombre) y qué documento es. Se revisa y se sube todo; cada factura sigue con su legajo.
 - **Mis siniestros:** todas las facturas de cada siniestro con sus documentos (también los aprobados, con enlace para verlos), las notas de crédito y avisos de lo que puede quedar para refacturar (NC parcial, factura anulada sin la nueva).
 - **Cada documento muestra quién lo subió y cuándo**, también en la carga de varios archivos. Si CobroSync lo asignó solo por el nombre, Auditoría lo ve marcado para revisar que corresponda; se observa igual que siempre ("No corresponde a esta factura").

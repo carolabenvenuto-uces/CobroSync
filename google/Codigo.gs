@@ -118,11 +118,11 @@ function obtenerDatos() {
 /**
  * Guarda los cambios hechos en la aplicación, uno por uno, sobre lo que hay guardado en ese momento.
  * Así, si dos personas trabajan en la misma factura a la vez, no se pisan: por ejemplo, la sucursal
- * sube la firma mientras Auditoría escribe una observación, y quedan las dos cosas.
+ * sube la orden mientras Auditoría escribe una observación, y quedan las dos cosas.
  *
  * Cada cambio es { id, campos?, documentos?, evento?, nuevo? }:
  * - campos: datos de la factura que cambian (estado, fechas, observaciones, reclamos…)
- * - documentos: solo los documentos que cambiaron (se reemplazan por tipo: factura, orden, firma)
+ * - documentos: solo los documentos que cambiaron (se reemplazan por tipo: factura u orden)
  * - evento: un mensaje nuevo para la conversación (se agrega, nunca reemplaza)
  * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Auditoría.
  */
@@ -387,7 +387,7 @@ function avisosDiarios() {
       var plazo = plazoDe_(c, p, sinFce);
       var critica = criticaDe_(c, p, sinFce);
       var cambio = false;
-      if (dias > plazo && !yaAvisado('se avisó a') && !yaAvisado('días sin legajo completo: se')) {
+      if (dias > plazo && !yaAvisado('se avisó a') && !yaAvisado('resumen del lunes')) {
         var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
         eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
         cambio = true;
@@ -747,6 +747,8 @@ function filaAObjeto_(h, fila) {
     var v = fila[i];
     if (v instanceof Date) v = Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
     if (COLUMNAS_JSON.indexOf(col) >= 0) v = v ? JSON.parse(v) : (col === 'compromiso' || col === 'anulacionInformada' ? null : []);
+    // La firma ya no es un documento aparte (va en la orden firmada)
+    if (col === 'documentos' && Array.isArray(v)) v = v.filter(function (d) { return d && d.tipo !== 'firma'; });
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);
     else if (COLUMNAS_NUMERO_OPCIONAL.indexOf(col) >= 0) v = v === '' ? null : Number(v);
     else if (col === 'ncInformada') v = v === '' ? null : v === true || v === 'TRUE' || v === 'SI';

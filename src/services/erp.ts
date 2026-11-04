@@ -121,7 +121,7 @@ export function importarErp(
       documentos:
         tipo === 'NC'
           ? []
-          : (['factura', 'orden', 'firma'] as const).map((t) => ({ tipo: t, estado: 'faltante' as const })),
+          : (['factura', 'orden'] as const).map((t) => ({ tipo: t, estado: 'faltante' as const })),
       eventos: [{ fecha: hoy, autor: 'Sistema', area: 'sistema', tipo: 'aviso', texto: 'Factura cargada desde el Excel del ERP' }],
     })
   }

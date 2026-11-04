@@ -38,7 +38,8 @@ const facturas = [
 describe('carga de varios archivos', () => {
   it('reconoce qué documento es por el nombre', () => {
     expect(tipoPorNombre('Orden 11032.pdf')).toBe('orden')
-    expect(tipoPorNombre('firma_cliente.jpg')).toBe('firma')
+    expect(tipoPorNombre('firma_cliente.jpg')).toBe('orden')
+    expect(tipoPorNombre('orden firmada 11032.pdf')).toBe('orden')
     expect(tipoPorNombre('FC 35-11032.pdf')).toBe('factura')
     expect(tipoPorNombre('scan0001.pdf')).toBe('documentacion')
     expect(tipoPorNombre('FC y orden 11032.pdf')).toBe('documentacion')

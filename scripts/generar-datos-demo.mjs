@@ -127,8 +127,7 @@ const MOTIVOS_COMPROMISO = [
 
 // Motivos con los que Auditoría (o la compañía) observa un documento
 const MOTIVOS_OBSERVACION = {
-  orden: ['Ilegible o cortado', 'No corresponde a esta factura', 'Incompleto'],
-  firma: ['Sin firma del cliente', 'Ilegible o cortado'],
+  orden: ['Sin firma del cliente', 'Ilegible o cortado', 'No corresponde a esta factura', 'Incompleto'],
   factura: ['Ilegible o cortado'],
 }
 const MOTIVOS_RECHAZO_CIA = ['la compañía no puede leer el escaneo', 'falta la firma del cliente en la orden', 'la orden no coincide con el siniestro']
@@ -148,8 +147,9 @@ const patente = () =>
 // Siniestro con el formato de cada compañía (9 = dígito, A = letra) y números al azar
 const siniestroCon = (formato) => formato.replace(/9/g, () => String(entre(0, 9))).replace(/A/g, letra)
 // Lo que Auditoría tilda en cada legajo
-const TIPOS_DOC = ['factura', 'orden', 'firma']
-const NOMBRE_DOC = { factura: 'factura', orden: 'orden de reparación o repuestos', firma: 'firma del cliente' }
+// La firma del cliente va en la orden: se suben dos documentos
+const TIPOS_DOC = ['factura', 'orden']
+const NOMBRE_DOC = { factura: 'factura', orden: 'orden firmada' }
 
 // ── Generación de comprobantes ───────────────────────────────────────────────
 const comprobantes = []
@@ -196,7 +196,7 @@ function crearFactura(fecha) {
       if (azar() >= sucursal.errores * 1.5 * factor) return { tipo, estado: 'ok', archivo }
       return { tipo, estado: 'observado', archivo, motivo: elegir(MOTIVOS_OBSERVACION[tipo]) }
     })
-    eventos.push({ fecha: fechaDrive, autor: persona, area: 'sucursal', tipo: 'subida', texto: 'Subió la factura, la orden y la firma' })
+    eventos.push({ fecha: fechaDrive, autor: persona, area: 'sucursal', tipo: 'subida', texto: 'Subió la factura y la orden firmada' })
   }
   let completo = documentos.every((d) => d.estado === 'ok')
 
@@ -222,7 +222,7 @@ function crearFactura(fecha) {
     let rechazadoSinResolver = false
     // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
     if (p <= FECHA_CORTE && azar() < (edad < 30 ? 0.05 : 0.04)) {
-      const tipo = elegir(['orden', 'firma'])
+      const tipo = 'orden'
       const motivo = elegir(MOTIVOS_OBSERVACION[tipo])
       eventos.push({
         fecha: p,
@@ -502,7 +502,7 @@ for (const c of comprobantes) {
     const fechaPresentacion = original.estado === 'anulada' ? null : mover(original.fechaPresentacion)
     const fechaCobro = mover(original.fechaCobro)
     const estado = fechaCobro ? 'cobrada' : fechaPresentacion ? 'presentada' : fechaDrive ? 'en_gestion' : 'pendiente_drive'
-    // La orden y la firma son las mismas de la original; la factura es propia
+    // La orden firmada es la misma de la original; la factura es propia
     const documentos = original.documentos.map((doc) =>
       doc.tipo === 'factura' ? (fechaDrive ? { ...doc } : { tipo: 'factura', estado: 'faltante' }) : { ...doc },
     )

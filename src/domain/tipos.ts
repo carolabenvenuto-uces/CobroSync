@@ -34,8 +34,11 @@ export type EstadoComprobante =
   | 'anulada' // anulada con una nota de crédito
   | 'nota_credito' // estado propio de las NC
 
-/** Lo que Auditoría tiene que ver de cada factura: la factura, la orden (de reparación o de repuestos) y la firma del cliente. */
-export type TipoDocumento = 'factura' | 'orden' | 'firma'
+/**
+ * Lo que Auditoría tiene que ver de cada factura: la factura y la orden (de reparación o de repuestos)
+ * firmada por el cliente. La firma no se sube aparte: va en la orden.
+ */
+export type TipoDocumento = 'factura' | 'orden'
 
 /**
  * faltante → la sucursal no lo subió · en_revision → subido, Auditoría tiene que revisarlo

@@ -6,7 +6,7 @@
  * Nombres que se reconocen (cualquiera sirve, en cualquier orden):
  *  - número de factura: "21-00011032", "21-11032", "FC 21 11032" o solo "11032"
  *  - siniestro, patente o referencia del ERP
- *  - qué es: "factura"/"FC", "orden"/"OR"/"repuestos", "firma"/"conformidad"; si no dice, es todo junto
+ *  - qué es: "factura"/"FC" u "orden"/"OR"/"repuestos"/"firma" (la orden firmada); si no dice, son las dos juntas
  */
 import type { Comprobante, TipoDocumento } from './tipos'
 
@@ -26,12 +26,11 @@ const alfanumerico = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 /** Qué documento es, por el nombre. */
 export function tipoPorNombre(nombre: string): TipoArchivo {
   const n = ` ${nombre.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[_\-.]+/g, ' ')} `
-  const esFirma = /firma|conformidad|conforme|dni/.test(n)
-  const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto/.test(n)
+  // La firma del cliente va en la orden: "orden firmada", "firma" o "conformidad" son la orden
+  const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto|firma|conformidad|conforme/.test(n)
   const esFactura = /factura|\bfc\b|\bfce\b/.test(n)
-  const cuantos = [esFirma, esOrden, esFactura].filter(Boolean).length
-  if (cuantos !== 1) return 'documentacion'
-  return esFirma ? 'firma' : esOrden ? 'orden' : 'factura'
+  if (esOrden === esFactura) return 'documentacion'
+  return esOrden ? 'orden' : 'factura'
 }
 
 /** A qué factura va, por el nombre. Solo entre las facturas que se le pasan (las de la sucursal). */

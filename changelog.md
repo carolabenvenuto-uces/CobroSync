@@ -1,5 +1,13 @@
 # Changelog
 
+Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
+
+## [1.0.0] - 2026-11-04
+
+### Agregado
+- **Manual de uso** (en el menú, abajo, y en la pantalla de ingreso): qué es CobroSync, el camino de una factura, qué significa cada color, notificaciones, listas y Excel, y una guía por sector (Sucursal y Gerencia completas; Auditoría, base para completar). Reemplaza a la presentación del producto.
+- **Marca y autoría:** CobroSync 1.0, un desarrollo de Benvenuto Desarrollos · Carola Benvenuto. La firma va debajo del logo, en el ingreso, en el pie de cada pantalla y en el manual. Todo sale de un solo archivo (src/lib/marca.ts).
+
 ## [0.12.7] - 2026-11-04
 
 ### Corregido

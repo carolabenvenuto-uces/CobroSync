@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Building2, ChevronRight, ClipboardCheck, LineChart, LockKeyhole } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Isologo } from '../components/Logo'
+import { AUTORIA, VERSION } from '../lib/marca'
 import { useApp } from '../context/AppContext'
 import type { Rol } from '../domain/tipos'
 import { conectadoAGoogle } from '../services/google'
@@ -37,7 +39,9 @@ export default function Ingreso() {
       <div className="w-full max-w-xl">
         <div className="mb-8 flex flex-col items-center text-center">
           <Isologo className="h-14 w-14" claro />
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">CobroSync</h1>
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
+            CobroSync <span className="align-top text-sm font-semibold text-slate-400">{VERSION}</span>
+          </h1>
           <p className="mt-2 text-sm text-slate-300">Seguimiento de facturas a compañías de seguros</p>
         </div>
 
@@ -96,6 +100,12 @@ export default function Ingreso() {
             La demostración usa datos ficticios. Lo que hagas se borra al recargar la página.
           </p>
         </div>
+        <p className="mt-6 text-center text-xs text-slate-400">
+          <Link to="/manual" className="font-semibold text-slate-200 hover:underline">
+            Manual de uso
+          </Link>{' '}
+          · {AUTORIA}
+        </p>
       </div>
     </div>
   )

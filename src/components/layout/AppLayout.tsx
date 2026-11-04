@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
 import { Marca } from '../Logo'
+import { AUTORIA } from '../../lib/marca'
 import { Cargando, ErrorCarga, SinAcceso } from '../ui/Estados'
 import { conectadoAGoogle } from '../../services/google'
 import { Sidebar } from './Sidebar'
@@ -47,7 +48,7 @@ export function AppLayout() {
             : fuente.tipo === 'google'
               ? `Conectado como ${fuente.email} · ${guardado.estado === 'guardando' ? 'Guardando…' : guardado.estado === 'error' ? `No se pudo guardar: ${guardado.mensaje}` : 'Cambios guardados'}`
               : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
-          · CobroSync
+          · {AUTORIA}
         </footer>
       </div>
 

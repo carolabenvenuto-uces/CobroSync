@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FileSpreadsheet, Info, X } from 'lucide-react'
-import { BadgeEtapa, nombreEtapa, quienEtapa } from '../components/ui/Badges'
+import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -9,7 +9,7 @@ import { ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo, enGrupo, GRUPOS_SALDO, type GrupoSaldo } from '../domain/semaforo'
 import { saldoFactura } from '../domain/importes'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
-import type { Comprobante } from '../domain/tipos'
+import type { Comprobante, Etapa } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
@@ -18,6 +18,7 @@ import { agregarAQuiterEnGoogle, conectadoAGoogle } from '../services/google'
 import { leerArchivo } from '../services/planilla'
 
 /** "2026-10 · Octubre": así el filtro de mes queda ordenado. */
+const ORDEN_ETAPAS: Etapa[] = [...ETAPAS_ACTIVAS, 'cobrado', 'no_aplica']
 const mesDeFecha = (iso: string) => `${iso.slice(0, 7)} · ${MESES[Number(iso.slice(5, 7)) - 1]}`
 
 function avisoNc(c: Comprobante): string {
@@ -129,7 +130,7 @@ export default function ControlDiario() {
   }
 
   const diasHasta = (desde: string, hasta: string | null) =>
-    hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} días</span> : null
+    hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} {diffDias(desde, hasta) === 1 ? 'día' : 'días'}</span> : null
 
   const columnas: Columna<Fila>[] = [
     {
@@ -224,6 +225,8 @@ export default function ControlDiario() {
       clave: 'estado', movil: 'accion',
       titulo: 'Estado',
       filtro: (x) => nombreEtapa(x.s.etapa),
+      // en el orden en que avanza una factura (también para las opciones del filtro)
+      orden: (x) => ORDEN_ETAPAS.indexOf(x.s.etapa),
       celda: (x) => (
         <div title={x.s.detalle.join(' · ')}>
           <BadgeEtapa etapa={x.s.etapa} />

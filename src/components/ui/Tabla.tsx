@@ -112,20 +112,43 @@ export function Tabla<T>({
     }
   }
 
-  // Valores posibles de cada filtro, a partir de las filas
+  // Valores posibles de cada filtro: solo los que existen con los demás filtros puestos (así no
+  // se ofrece algo que deja la lista vacía), con cuántas filas hay de cada uno
   const opciones = useMemo(() => {
-    const r: Record<string, string[]> = {}
+    const texto = busqueda.trim().toLowerCase()
+    const r: Record<string, { valor: string; cantidad: number }[]> = {}
     for (const col of todasLasColumnas) {
       if (!col.filtro) continue
-      const valores = new Set<string>()
+      const valores = new Map<string, { cantidad: number; orden: string | number | null }>()
       for (const f of filas) {
+        const pasaLosDemas = todasLasColumnas.every((otra) => {
+          if (otra === col || !otra.filtro) return true
+          const elegido = filtros[otra.clave]
+          return !elegido || elegido === TODOS || otra.filtro(f) === elegido
+        })
+        if (!pasaLosDemas || (texto && buscar && !buscar(f).toLowerCase().includes(texto))) continue
         const v = col.filtro(f)
-        if (v) valores.add(v)
+        if (!v) continue
+        const x = valores.get(v)
+        if (x) x.cantidad++
+        else valores.set(v, { cantidad: 1, orden: col.orden ? col.orden(f) : null })
       }
-      r[col.clave] = [...valores].sort((a, b) => a.localeCompare(b, 'es'))
+      // Si la columna se ordena (fechas, números), las opciones siguen ese orden; si no, alfabético
+      r[col.clave] = [...valores.entries()]
+        .sort(([a, x], [b, y]) =>
+          col.orden && typeof x.orden === typeof y.orden && x.orden !== null && y.orden !== null && x.orden !== y.orden
+            ? x.orden < y.orden
+              ? -1
+              : 1
+            : a.localeCompare(b, 'es'),
+        )
+        .map(([valor, x]) => ({ valor, cantidad: x.cantidad }))
     }
     return r
-  }, [filas, todasLasColumnas])
+  }, [filas, todasLasColumnas, filtros, busqueda, buscar])
+  /** Un filtro con una sola opción no sirve para nada: no se muestra (salvo que ya esté puesto) */
+  const conFiltro = (col: Columna<T>) =>
+    !!col.filtro && ((opciones[col.clave]?.length ?? 0) > 1 || (!!filtros[col.clave] && filtros[col.clave] !== TODOS))
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
@@ -140,12 +163,14 @@ export function Tabla<T>({
     if (orden && col?.orden) {
       const valor = col.orden
       const signo = orden.dir === 'asc' ? 1 : -1
+      const vacio = (v: string | number | null | undefined) => v === null || v === undefined || v === ''
       lista = [...lista].sort((a, b) => {
         const va = valor(a)
         const vb = valor(b)
         if (va === vb) return 0
-        if (va === null) return 1
-        if (vb === null) return -1
+        // Las que no tienen dato (por ejemplo, sin fecha de subida) van siempre al final, nunca se pierden
+        if (vacio(va)) return vacio(vb) ? 0 : 1
+        if (vacio(vb)) return -1
         return (va < vb ? -1 : 1) * signo
       })
     }
@@ -165,7 +190,13 @@ export function Tabla<T>({
 
   function ordenar(col: Columna<T>) {
     if (!col.orden) return
-    setOrden((o) => (o?.clave === col.clave ? { clave: col.clave, dir: o.dir === 'asc' ? 'desc' : 'asc' } : { clave: col.clave, dir: 'desc' }))
+    // Mayor primero → menor primero → como venía (tercer toque, para volver al orden original)
+    setOrden((o) => {
+      if (o?.clave !== col.clave) return { clave: col.clave, dir: 'desc' }
+      if (o.dir === 'desc') return { clave: col.clave, dir: 'asc' }
+      return ordenInicial && ordenInicial.clave !== col.clave ? ordenInicial : null
+    })
+    setPagina(1)
   }
 
   return (
@@ -173,7 +204,7 @@ export function Tabla<T>({
       {/* Barra: lupa, resumen y exportar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
         {buscar && (
-          <label className="relative min-w-0 flex-1 sm:min-w-64">
+          <label className="relative w-full sm:w-auto sm:min-w-64 sm:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
@@ -232,7 +263,7 @@ export function Tabla<T>({
               <summary className="cursor-pointer list-none text-sm font-semibold text-marca">Filtrar y ordenar</summary>
               <div className="mt-2 grid gap-2">
                 {todasLasColumnas
-                  .filter((c) => c.filtro)
+                  .filter((c) => conFiltro(c))
                   .map((col) => (
                     <label key={col.clave} className="flex items-center justify-between gap-2 text-xs text-slate-600">
                       {col.titulo}
@@ -245,9 +276,9 @@ export function Tabla<T>({
                         className="w-44 rounded-md border border-slate-200 bg-white px-1 py-1.5 text-xs"
                       >
                         <option value={TODOS}>Todos</option>
-                        {(opciones[col.clave] ?? []).map((v) => (
-                          <option key={v} value={v}>
-                            {v}
+                        {(opciones[col.clave] ?? []).map((o) => (
+                          <option key={o.valor} value={o.valor}>
+                            {o.valor} ({o.cantidad.toLocaleString('es-AR')})
                           </option>
                         ))}
                       </select>
@@ -358,7 +389,7 @@ export function Tabla<T>({
                       type="button"
                       onClick={() => ordenar(col)}
                       className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
-                      title="Ordenar"
+                      title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Tocá para ordenar de menor a mayor' : 'Tocá para volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
                     >
                       {col.titulo}
                       {orden?.clave === col.clave ? (
@@ -380,7 +411,7 @@ export function Tabla<T>({
             <tr>
               {columnas.map((col, i) => (
                 <th key={col.clave} className={`px-2 pb-2 font-normal ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}>
-                  {col.filtro && (
+                  {conFiltro(col) && (
                     <select
                       value={filtros[col.clave] ?? TODOS}
                       onChange={(e) => {
@@ -395,9 +426,9 @@ export function Tabla<T>({
                       aria-label={`Filtrar ${col.titulo}`}
                     >
                       <option value={TODOS}>Todos</option>
-                      {(opciones[col.clave] ?? []).map((v) => (
-                        <option key={v} value={v}>
-                          {v}
+                      {(opciones[col.clave] ?? []).map((o) => (
+                        <option key={o.valor} value={o.valor}>
+                          {o.valor} ({o.cantidad.toLocaleString('es-AR')})
                         </option>
                       ))}
                     </select>

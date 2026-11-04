@@ -24,6 +24,7 @@ import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { calcularSemaforo } from '../../domain/semaforo'
 import { paraResolver } from '../../domain/resolver'
+import { esAdministradora } from '../../domain/administracion'
 import { pedidosAbiertos, pedidosParaSucursal } from '../../domain/pedidos'
 import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
@@ -37,6 +38,8 @@ interface ItemMenu {
   etiqueta: string
   icono: ComponentType<{ className?: string }>
   contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver' | 'pedidos'
+  /** solo la ve la administradora (Ajustes) */
+  soloAdministradora?: boolean
 }
 
 /**
@@ -57,15 +60,22 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
     { titulo: 'Detalle', items: [{ ruta: '/app/control-diario', etiqueta: 'Detalle de facturas', icono: FileText }] },
   ],
   auditoria: [
+    // Junto a Notificaciones: lo que hay que mirar primero
+    { titulo: '', items: [{ ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' }] },
     {
       titulo: 'Trabajo diario',
       items: [
-        { ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' },
-        { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
+        { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
         { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
+        { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
+      ],
+    },
+    {
+      titulo: 'Seguimiento y reclamos',
+      items: [
+        { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
         { ruta: '/app/pedidos', etiqueta: 'Pedidos a sucursales', icono: ListTodo, contador: 'pedidos' },
         { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
-        { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
       ],
     },
     {
@@ -78,11 +88,10 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       ],
     },
     {
-      titulo: 'Datos',
+      titulo: 'Configuración',
       items: [
-        { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
         { ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload },
-        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
+        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings, soloAdministradora: true },
       ],
     },
   ],
@@ -101,6 +110,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, cuenta } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
+
+  const administradora = esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte)
 
   const contadores = useMemo(() => {
     if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0, pedidos: 0 }
@@ -144,13 +155,16 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
           <Campana onCerrar={onCerrar} />
-          {MENUS[rol].map((seccion) => {
-            const items = seccion.items
+          {MENUS[rol].map((seccion, n) => {
+            const items = seccion.items.filter((it) => !it.soloAdministradora || administradora)
+            if (!items.length) return null
             return (
-              <div key={seccion.titulo}>
-                <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  {seccion.titulo}
-                </div>
+              <div key={seccion.titulo || n} className={seccion.titulo ? '' : '-mt-4'}>
+                {seccion.titulo && (
+                  <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {seccion.titulo}
+                  </div>
+                )}
                 <div className="space-y-1">
                   {items.map(({ ruta, etiqueta, icono: Icono, contador }) => (
                     <NavLink

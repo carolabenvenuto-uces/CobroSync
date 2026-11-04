@@ -44,7 +44,7 @@ export function pedidosAbiertos(comprobantes: Comprobante[], hoy: string): Pedid
         id: `nc-${c.id}`,
         fecha: c.fecha,
         tipo: 'aviso_nc',
-        detalle: 'Entró del sistema una nota de crédito que la sucursal no avisó: falta confirmar el motivo.',
+        detalle: 'Entró sin aviso de la sucursal: falta que confirme el motivo.',
         autor: 'CobroSync',
       }
       lista.push({ c, pedido, automatico: true, estado: 'esperando', dias: diffDias(c.fecha, hoy) })

@@ -30,7 +30,7 @@ export default function Pedidos() {
       movil: 'ancha',
       titulo: 'Detalle',
       celda: (p) => (
-        <span className="block max-w-md text-xs text-slate-700">
+        <span className="block min-w-[16rem] max-w-md text-xs text-slate-700">
           {p.pedido.detalle}
           {p.pedido.respuesta && <span className="mt-0.5 block font-semibold text-teal-800">Respuesta: {p.pedido.respuesta.texto}</span>}
         </span>

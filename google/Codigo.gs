@@ -634,7 +634,10 @@ function reportarProblema(texto, contexto) {
 
 /** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Auditoría. */
 function guardarAjustes(a) {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede cambiar los ajustes.');
+  var quien = usuarioActual_();
+  if (quien.rol !== 'auditoria') throw new Error('Solo Auditoría puede cambiar los ajustes.');
+  var soporte = String(config_('correoSoporte') || '').trim().toLowerCase();
+  if (soporte && quien.email !== soporte) throw new Error('Los ajustes los cambia solo la administradora.');
   return conBloqueo_(function () {
     var valores = {
       plazoDocumentacion: a.plazos.comun,

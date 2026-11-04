@@ -181,7 +181,7 @@ export default function Siniestros() {
           {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
         </p>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-3 2xl:grid-cols-4">
           {[
             { t: 'Facturado', v: formatoPesos(facturado), c: 'text-noche' },
             { t: 'Notas de crédito', v: acreditado ? `−${formatoPesos(acreditado)}` : '—', c: acreditado ? 'text-red-800' : 'text-slate-400' },
@@ -272,7 +272,7 @@ export default function Siniestros() {
               setBusqueda(e.target.value)
               setElegido(null)
             }}
-            placeholder="Buscar por siniestro, patente o número de factura"
+            placeholder="Siniestro, patente o número de factura"
             className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
           />
         </label>

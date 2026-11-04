@@ -293,18 +293,6 @@ export default function MisFacturas() {
 
   const columnasResolver: Columna<Fila>[] = [
     {
-      clave: 'prioridad',
-      titulo: 'Prioridad',
-      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
-      orden: (x) => (esMipyme(x.c) ? 1 : 0),
-      celda: (x) =>
-        esMipyme(x.c) ? (
-          <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} días`} />
-        ) : (
-          <span className="text-xs text-slate-500">Común</span>
-        ),
-    },
-    {
       clave: 'motivo',
       movil: 'ancha',
       titulo: 'Por qué',
@@ -313,11 +301,11 @@ export default function MisFacturas() {
         const p = motivo.get(x.c.id)
         const pedido = pedidoDe.get(x.c.id)
         return (
-          <span className="flex flex-col gap-0.5">
+          <span className="flex min-w-[14rem] flex-col gap-0.5">
             {p && <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>}
             {pedido && (
               <span className="text-xs font-semibold text-red-800">
-                Pedido de Auditoría · {NOMBRE_PEDIDO[pedido.pedido.tipo]}: {pedido.pedido.detalle}
+                {NOMBRE_PEDIDO[pedido.pedido.tipo]}: {pedido.pedido.detalle}
               </span>
             )}
           </span>

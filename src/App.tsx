@@ -11,6 +11,7 @@ import ControlDiario from './pages/ControlDiario'
 import Impacto from './pages/Impacto'
 import Ingreso from './pages/Ingreso'
 import Manual from './pages/Manual'
+import { esAdministradora } from './domain/administracion'
 import Pedidos from './pages/Pedidos'
 import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
@@ -31,6 +32,12 @@ function SoloPara({ roles, children }: { roles: Rol[]; children: ReactNode }) {
 const OFICINA: Rol[] = ['auditoria', 'gerencia']
 const oficina = (pagina: ReactNode) => <SoloPara roles={OFICINA}>{pagina}</SoloPara>
 const auditoria = (pagina: ReactNode) => <SoloPara roles={['auditoria']}>{pagina}</SoloPara>
+
+/** Ajustes: solo la administradora (ver domain/administracion.ts). */
+function SoloAdministradora({ children }: { children: ReactNode }) {
+  const { rol, cuenta, datos } = useApp()
+  return esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte) ? children : <Navigate to={INICIO_ROL[rol]} replace />
+}
 
 /** Cada rol entra a su propia pantalla de inicio. */
 function Inicio() {
@@ -59,7 +66,7 @@ export default function App() {
         <Route path="saldos" element={oficina(<Saldos />)} />
         <Route path="companias" element={auditoria(<Companias />)} />
         <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
-        <Route path="ajustes" element={auditoria(<Ajustes />)} />
+        <Route path="ajustes" element={<SoloAdministradora><Ajustes /></SoloAdministradora>} />
         <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="pedidos" element={auditoria(<Pedidos />)} />
         <Route path="siniestros" element={<Siniestros />} />

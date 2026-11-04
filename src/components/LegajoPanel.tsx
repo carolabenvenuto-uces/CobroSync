@@ -378,7 +378,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               }
             />
             <Dato titulo="Siniestro / patente" valor={[c.siniestro, c.patente].filter(Boolean).join(' · ')} />
-            <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} días`} />
+            <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} ${diffDias(c.fecha, hoy) === 1 ? 'día' : 'días'}`} />
           </dl>
 
           {/* Qué pasa con la factura */}

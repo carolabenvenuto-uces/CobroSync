@@ -142,7 +142,7 @@ export default function BandejaNotificaciones() {
                         {f.sucursal} · {formatoPesos(f.total)}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs font-semibold text-sem-rojo">{diffDias(f.fecha, hoy)} días</span>
+                    <span className="shrink-0 text-xs font-semibold text-sem-rojo">{diffDias(f.fecha, hoy)} {diffDias(f.fecha, hoy) === 1 ? 'día' : 'días'}</span>
                   </button>
                 </li>
               ))}

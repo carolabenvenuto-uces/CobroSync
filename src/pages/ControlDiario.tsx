@@ -130,7 +130,7 @@ export default function ControlDiario() {
   }
 
   const diasHasta = (desde: string, hasta: string | null) =>
-    hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} días</span> : null
+    hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} {diffDias(desde, hasta) === 1 ? 'día' : 'días'}</span> : null
 
   const columnas: Columna<Fila>[] = [
     {

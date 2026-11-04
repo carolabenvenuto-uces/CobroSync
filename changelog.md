@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.1] - 2026-11-04
+
+### Agregado
+- **Pantalla de inicio.** En la demo se elige con qué usuario de ejemplo entrar (Gerencia, Auditoría o una sucursal) y se puede volver con "Cambiar de usuario". Con Google, la persona entra directo con su cuenta: se ve una pantalla de bienvenida mientras carga, o un aviso claro si su cuenta no tiene acceso.
+
 ## [0.7.0] - 2026-11-04
 
 ### Agregado

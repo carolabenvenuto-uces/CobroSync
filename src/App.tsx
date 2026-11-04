@@ -7,6 +7,7 @@ import Avisos from './pages/Avisos'
 import Companias from './pages/Companias'
 import ControlDiario from './pages/ControlDiario'
 import Impacto from './pages/Impacto'
+import Ingreso from './pages/Ingreso'
 import Landing from './pages/Landing'
 import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
@@ -37,8 +38,8 @@ function Inicio() {
 export default function App() {
   return (
     <Routes>
-      {/* La demo abre directo en la app; la presentación queda como página aparte. */}
-      <Route path="/" element={<Navigate to="/app" replace />} />
+      {/* Pantalla de inicio: en la demo se elige el usuario; con Google se pasa directo a /app */}
+      <Route path="/" element={<Ingreso />} />
       <Route path="/presentacion" element={<Landing />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<Inicio />} />

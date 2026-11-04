@@ -176,8 +176,10 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
         var docs = c.documentos || [];
         op.documentos.forEach(function (d) {
           var i = docs.map(function (x) { return x.tipo; }).indexOf(d.tipo);
-          // La sucursal sube para revisar: aprobar u observar es de Auditoría
-          if (usuario.rol === 'sucursal' && d.estado !== 'en_revision' && !(i >= 0 && docs[i].estado === d.estado)) return;
+          // La sucursal sube para revisar: aprobar u observar es de Auditoría. Sí puede quitar lo que
+          // subió por error mientras Auditoría no lo revisó (vuelve a "falta")
+          var quita = d.estado === 'faltante' && i >= 0 && docs[i].estado === 'en_revision';
+          if (usuario.rol === 'sucursal' && d.estado !== 'en_revision' && !quita && !(i >= 0 && docs[i].estado === d.estado)) return;
           if (i >= 0) docs[i] = d; else docs.push(d);
         });
         c.documentos = docs;

@@ -47,6 +47,8 @@ interface Props<T> {
   resumen?: (filas: T[]) => ReactNode
   /** fila de totales al pie */
   pie?: (filas: T[]) => ReactNode
+  /** con esto aparece una casilla por fila (y una para elegir todas las filtradas) */
+  seleccion?: { elegidas: Set<string>; alCambiar: (elegidas: Set<string>) => void }
 }
 
 const TODOS = '__todos__'
@@ -80,6 +82,7 @@ export function Tabla<T>({
   exportar,
   resumen,
   pie,
+  seleccion,
 }: Props<T>) {
   const [busqueda, setBusqueda] = useState('')
   const [filtros, setFiltros] = useState<Record<string, string>>(filtrosIniciales)
@@ -218,10 +221,27 @@ export function Tabla<T>({
         <table className="w-full text-left text-[13px]">
           <thead className="sticky top-0 z-20 bg-fondo shadow-[0_1px_0_0_#E2E8F0]">
             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+              {seleccion && (
+                <th rowSpan={2} className="w-8 px-2 align-middle">
+                  <input
+                    type="checkbox"
+                    aria-label="Elegir todas las filas filtradas"
+                    checked={visibles.length > 0 && visibles.every((f) => seleccion.elegidas.has(clave(f)))}
+                    onChange={(e) => {
+                      const n = new Set(seleccion.elegidas)
+                      for (const f of visibles) {
+                        if (e.target.checked) n.add(clave(f))
+                        else n.delete(clave(f))
+                      }
+                      seleccion.alCambiar(n)
+                    }}
+                  />
+                </th>
+              )}
               {columnas.map((col, i) => (
                 <th
                   key={col.clave}
-                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${i === 0 ? FIJA + ' bg-fondo' : ''}`}
+                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
                 >
                   {col.orden ? (
                     <button
@@ -249,7 +269,7 @@ export function Tabla<T>({
             </tr>
             <tr>
               {columnas.map((col, i) => (
-                <th key={col.clave} className={`px-2 pb-2 font-normal ${i === 0 ? FIJA + ' bg-fondo' : ''}`}>
+                <th key={col.clave} className={`px-2 pb-2 font-normal ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}>
                   {col.filtro && (
                     <select
                       value={filtros[col.clave] ?? TODOS}
@@ -283,10 +303,25 @@ export function Tabla<T>({
                 onClick={onFila ? () => onFila(f) : undefined}
                 className={`group even:bg-slate-50/70 ${onFila ? 'cursor-pointer hover:bg-marca/5' : ''}`}
               >
+                {seleccion && (
+                  <td className="w-8 px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label="Elegir esta fila"
+                      checked={seleccion.elegidas.has(clave(f))}
+                      onChange={(e) => {
+                        const n = new Set(seleccion.elegidas)
+                        if (e.target.checked) n.add(clave(f))
+                        else n.delete(clave(f))
+                        seleccion.alCambiar(n)
+                      }}
+                    />
+                  </td>
+                )}
                 {columnas.map((col, i) => (
                   <td
                     key={col.clave}
-                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-blue-50' : ''}`}
+                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-blue-50' : ''}`}
                   >
                     {col.celda(f)}
                   </td>
@@ -295,7 +330,7 @@ export function Tabla<T>({
             ))}
             {pagina_.length === 0 && (
               <tr>
-                <td colSpan={columnas.length} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={columnas.length + (seleccion ? 1 : 0)} className="px-4 py-10 text-center text-slate-500">
                   {fueraDeFiltros > 0 ? (
                     <>
                       No aparece con los filtros elegidos, pero hay {fueraDeFiltros} {fueraDeFiltros === 1 ? 'resultado' : 'resultados'} en

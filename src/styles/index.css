@@ -28,3 +28,39 @@
 body {
   @apply bg-fondo text-noche antialiased;
 }
+
+/*
+ * Impresión (Resumen de Gerencia → "Imprimir o guardar en PDF"): solo el contenido,
+ * sin menú ni botones, en A4 apaisado.
+ */
+.solo-impresion {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  aside,
+  footer,
+  .no-imprimir {
+    display: none !important;
+  }
+  .solo-impresion {
+    display: block !important;
+  }
+  body {
+    background: white;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .rounded-xl {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

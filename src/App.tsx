@@ -12,6 +12,7 @@ import Ingreso from './pages/Ingreso'
 import Landing from './pages/Landing'
 import MisFacturas from './pages/MisFacturas'
 import Pendientes from './pages/Pendientes'
+import Presentar from './pages/Presentar'
 import RankingSucursales from './pages/RankingSucursales'
 import Reclamos from './pages/Reclamos'
 import Resumen from './pages/Resumen'
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="companias" element={auditoria(<Companias />)} />
         <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
         <Route path="ajustes" element={auditoria(<Ajustes />)} />
+        <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="siniestros" element={<Siniestros />} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />

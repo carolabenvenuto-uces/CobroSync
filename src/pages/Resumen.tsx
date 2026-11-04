@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Printer } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { TODAS_LAS_SUCURSALES, useApp, useComprobantes } from '../context/AppContext'
 import { calcularTotales, previstoVsCobrado, saldosPorAseguradora, totalesDelMes } from '../domain/finanzas'
@@ -9,7 +9,7 @@ import { calcularSemaforo, enGrupo, type GrupoSaldo } from '../domain/semaforo'
 import { rankingSucursales } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
 import { anioDe, diaDe, enMes, mesDe } from '../lib/fechas'
-import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
+import { formatoFecha, formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
 import { saldoFactura } from '../domain/importes'
 
 /**
@@ -113,7 +113,29 @@ export default function Resumen() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Resumen" sucursal />
+      {/* Encabezado que sale solo al imprimir */}
+      <div className="solo-impresion mb-4 border-b border-slate-300 pb-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">CobroSync · Resumen para Gerencia</div>
+        <div className="text-lg font-extrabold">
+          {sucursal === TODAS_LAS_SUCURSALES ? 'Todas las sucursales' : `Sucursal ${sucursal}`} · al {formatoFecha(hoy)}
+        </div>
+      </div>
+      <div className="no-imprimir">
+        <EncabezadoPagina
+          titulo="Resumen"
+          sucursal
+          acciones={
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo"
+              title="Abre la ventana de impresión: elegí la impresora o «Guardar como PDF»"
+            >
+              <Printer className="h-4 w-4 text-marca" /> Imprimir o guardar en PDF
+            </button>
+          }
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 2. El año: lo primero que se ve, aparte del mes. Mismo formato que los datos del mes */}

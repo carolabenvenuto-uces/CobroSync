@@ -65,6 +65,24 @@ export default function ControlDiario() {
 
   // Auditoría arranca en el mes en curso (si no viene un filtro desde un aviso).
   // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
+  // Novedades: lo que entró con la última carga del ERP y lo que se movió desde ayer
+  const ERP = 'Factura cargada desde el Excel del ERP'
+  const ultimaCarga = useMemo(
+    () => comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (e.texto === ERP && e.fecha > n ? e.fecha : n), m), ''),
+    [comprobantes],
+  )
+  const ayer = useMemo(() => {
+    const d = new Date(`${hoy}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - 1)
+    return d.toISOString().slice(0, 10)
+  }, [hoy])
+  const novedad = (c: Comprobante): string => {
+    if (ultimaCarga && c.eventos.some((e) => e.texto === ERP && e.fecha === ultimaCarga)) return 'Nueva (último ERP)'
+    if (c.eventos.some((e) => e.fecha >= ayer && e.texto !== ERP)) return 'Con cambios desde ayer'
+    return ''
+  }
+  const cuentaNovedad = (n: string) => comprobantes.filter((c) => novedad(c) === n).length
+
   const filtrosIniciales =
     [...params.keys()].length > 0
       ? Object.fromEntries([...params.entries()].filter(([k]) => k !== 'grupo'))
@@ -114,6 +132,16 @@ export default function ControlDiario() {
     hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} días</span> : null
 
   const columnas: Columna<Fila>[] = [
+    {
+      clave: 'novedad',
+      titulo: 'Novedad',
+      oculta: true,
+      filtro: (x) => novedad(x.c),
+      celda: (x) => {
+        const n = novedad(x.c)
+        return n ? <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${n.startsWith('Nueva') ? 'bg-marca/10 text-marca' : 'bg-amber-100 text-amber-900'}`}>{n}</span> : null
+      },
+    },
     {
       clave: 'mes',
       titulo: 'Fecha',
@@ -293,6 +321,22 @@ export default function ControlDiario() {
           <button type="button" onClick={() => setMensajeErp(null)} aria-label="Cerrar" className="text-slate-500 hover:text-noche">
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {!soloConsulta && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Novedades:</span>
+          {(['Nueva (último ERP)', 'Con cambios desde ayer'] as const).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setParams(params.get('novedad') === n ? {} : { novedad: n })}
+              className={`rounded-full border px-3 py-1 font-semibold ${params.get('novedad') === n ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}
+            >
+              {n === 'Nueva (último ERP)' ? `Nuevas del último ERP${ultimaCarga ? ` (${formatoFecha(ultimaCarga)})` : ''}` : 'Con cambios desde ayer'}: {cuentaNovedad(n)}
+            </button>
+          ))}
         </div>
       )}
 

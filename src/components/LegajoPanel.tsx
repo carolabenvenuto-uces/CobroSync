@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   Bell,
   CalendarClock,
@@ -87,6 +87,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const documentos = documentosDelLegajo(c.documentos)
   const leTocaALaSucursal = semaforo.responsable === 'sucursal'
   const reclamo = estadoReclamo(c, hoy)
+  // Revisión en serie: las otras facturas que esperan la revisión de Auditoría, de la más vieja a la más nueva
+  const paraRevisarDespues = useMemo(
+    () =>
+      rol === 'auditoria'
+        ? datos!.comprobantes
+            .filter((x) => x.id !== c.id && x.tipo === 'FC' && calcularSemaforo(x, hoy).etapa === 'en_revision')
+            .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        : [],
+    [datos, rol, c.id, hoy],
+  )
 
   const [mensaje, setMensaje] = useState('')
   const [subiendo, setSubiendo] = useState(false)
@@ -223,6 +233,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     }
   }
 
+  // La sucursal se equivocó de archivo: lo quita mientras Auditoría todavía no lo revisó
+  function quitar(tipo: TipoDocumento) {
+    const anterior = documentos.find((d) => d.tipo === tipo)
+    const nuevos = documentos.map((d): Documento => (d.tipo === tipo ? { tipo, estado: 'faltante' } : d))
+    const quedaAlgo = nuevos.some((d) => d.estado !== 'faltante')
+    guardarDocumentos(nuevos, quedaAlgo ? {} : { fechaDrive: null })
+    registrarEvento(c.id, 'mensaje', `Quitó ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} subida por error${anterior?.archivo ? ` (${anterior.archivo})` : ''}`)
+  }
+
   // ── Auditoría: revisar y tildar ──
   function aprobar(tipos: TipoDocumento[]) {
     const todos = documentos.every((d) => d.estado === 'ok' || tipos.includes(d.tipo))
@@ -314,6 +333,22 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {rol === 'auditoria' && paraRevisarDespues.length > 0 && (
+          <div className="flex items-center justify-between gap-3 border-b border-sky-200 bg-sky-50 px-5 py-2 text-xs text-sky-900">
+            <span>
+              {semaforo.etapa === 'en_revision' ? 'Cuando termines con esta, ' : ''}
+              {paraRevisarDespues.length === 1 ? 'queda 1 factura' : `quedan ${paraRevisarDespues.length} facturas`} para revisar
+            </span>
+            <button
+              type="button"
+              onClick={() => abrirLegajo(paraRevisarDespues[0].id)}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 font-semibold text-white hover:bg-sky-700"
+            >
+              Siguiente: {formatoComprobante(paraRevisarDespues[0])} →
+            </button>
+          </div>
+        )}
 
         <div className="space-y-6 p-5 text-sm">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -425,6 +460,18 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             {d.estado === 'faltante' ? 'Subir' : 'Reemplazar'}
                             <input type="file" multiple accept=".pdf,image/*" className="sr-only" onChange={(e) => void subir([d.tipo], e.target.files)} />
                           </label>
+                        ) : rol === 'sucursal' && abierta && d.estado === 'en_revision' ? (
+                          <>
+                            <span className={`text-xs font-semibold ${ESTILO_DOC[d.estado]}`}>{NOMBRE_ESTADO_DOCUMENTO[d.estado]}</span>
+                            <button
+                              type="button"
+                              onClick={() => quitar(d.tipo)}
+                              className={`${botonChico} border border-slate-200 bg-white text-slate-700 hover:border-sem-rojo hover:text-sem-rojo`}
+                              title="Si te equivocaste de archivo, quitalo y subí el correcto. Se puede mientras Auditoría no lo revisó."
+                            >
+                              Quitar
+                            </button>
+                          </>
                         ) : rol === 'auditoria' && d.estado === 'en_revision' ? (
                           <>
                             <button type="button" onClick={() => aprobar([d.tipo])} className={`${botonChico} bg-esmeralda/15 text-emerald-800 hover:bg-esmeralda/25`}>

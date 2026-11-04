@@ -1,6 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Info } from 'lucide-react'
+import { Info, Mail, Megaphone } from 'lucide-react'
+import { claseSelect } from '../components/ui/Estados'
+import { listaParaMail, TextoMail } from '../components/TextoMail'
 import { EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -11,7 +13,7 @@ import {
   ultimoReclamo,
   type EstadoReclamo,
 } from '../domain/reclamos'
-import type { Comprobante } from '../domain/tipos'
+import type { Comprobante, Reclamo } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { plazosActuales } from '../domain/plazos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
@@ -29,7 +31,13 @@ const ESTILO: Record<EstadoReclamo, string> = {
  * cuándo fue el último reclamo y cuáles hay que escalar a gerencia.
  */
 export default function Reclamos() {
-  const { datos, hoy, rol, abrirLegajo } = useApp()
+  const { datos, hoy, rol, usuario, abrirLegajo, actualizarComprobante, registrarEvento } = useApp()
+  // Reclamos en lote: Auditoría elige varias vencidas, arma el mail y registra el reclamo en todas
+  const [elegidas, setElegidas] = useState<Set<string>>(new Set())
+  const [medio, setMedio] = useState<Reclamo['medio']>('mail')
+  const [nota, setNota] = useState('')
+  const [mail, setMail] = useState<{ asunto: string; texto: string; para?: string } | null>(null)
+  const [mensaje, setMensaje] = useState<string | null>(null)
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
@@ -55,6 +63,41 @@ export default function Reclamos() {
     [...params.entries()].map(([k, v]) => (k === 'compania' ? [k, nombreCompania(v)] : [k, v])),
   )
   const estadoActivo = params.get('estado')
+
+  const seleccion = vencidas.filter((x) => elegidas.has(x.c.id))
+  const companiasElegidas = [...new Set(seleccion.map((x) => x.c.aseguradoraId))]
+
+  function registrarReclamos() {
+    for (const { c } of seleccion) {
+      const nuevo: Reclamo = { fecha: hoy, medio, autor: usuario, nota }
+      actualizarComprobante(c.id, { reclamos: [...c.reclamos, nuevo] })
+      registrarEvento(c.id, 'reclamo', `Reclamo ${c.reclamos.length + 1} a ${nombreCompania(c.aseguradoraId)} por ${medio}${nota ? `: ${nota}` : ''} (en lote)`)
+    }
+    setMensaje(`Listo: se registró el reclamo en ${seleccion.length} facturas. Quedan esperando respuesta ${plazosActuales().respuestaReclamo} días.`)
+    setElegidas(new Set())
+    setNota('')
+  }
+
+  function armarMail() {
+    const partes = companiasElegidas.map((id) => {
+      const lista = seleccion.filter((x) => x.c.aseguradoraId === id)
+      return `${companiasElegidas.length > 1 ? `${nombreCompania(id)}\n` : ''}${listaParaMail(
+        lista.map(({ c, dias }) => ({
+          numero: formatoComprobante(c),
+          siniestro: c.siniestro,
+          total: c.total,
+          extra: `venció el ${formatoFecha(c.vencimiento)} (${dias} días)${c.reclamos.length ? ` · ${c.reclamos.length + 1}.º reclamo` : ''}`,
+        })),
+        formatoPesos,
+      )}`
+    })
+    const una = companiasElegidas.length === 1 ? aseguradoras.find((a) => a.id === companiasElegidas[0]) : undefined
+    setMail({
+      asunto: `Reclamo de pago de facturas vencidas${una ? ` · ${una.razonSocial ?? una.nombre}` : ''}`,
+      texto: `Buenos días:\n\nLes escribimos por las siguientes facturas presentadas, que ya vencieron y figuran sin pago:\n\n${partes.join('\n\n')}\n\nLes pedimos que nos informen la fecha de pago o, si hay algún inconveniente, qué documentación necesitan.\nSaludos,\nAuditoría`,
+      para: una?.emailReclamos || una?.email || undefined,
+    })
+  }
 
   const columnas: Columna<Fila>[] = [
     { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
@@ -127,6 +170,41 @@ export default function Reclamos() {
         ))}
       </div>
 
+      {rol === 'auditoria' && (
+        <div className={`mb-4 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${seleccion.length ? 'border-marca/40 bg-marca/5' : 'border-slate-200 bg-white'}`}>
+          <span className="text-sm">
+            {seleccion.length ? (
+              <>
+                <strong>{seleccion.length}</strong> elegidas · <strong>{formatoPesos(seleccion.reduce((t, x) => t + x.c.total, 0))}</strong>
+                {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
+              </>
+            ) : (
+              <span className="text-slate-500">Para reclamar varias juntas: filtrá por compañía y elegí con la casilla.</span>
+            )}
+          </span>
+          {mensaje && <span className="text-sm text-emerald-800">{mensaje}</span>}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button type="button" disabled={!seleccion.length} onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">
+              <Mail className="h-4 w-4 text-marca" /> Armar el mail
+            </button>
+            <select value={medio} onChange={(e) => setMedio(e.target.value as Reclamo['medio'])} className={claseSelect} aria-label="Medio del reclamo">
+              <option value="mail">Por mail</option>
+              <option value="portal">Por el portal</option>
+              <option value="telefono">Por teléfono</option>
+            </select>
+            <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={`${claseSelect} w-40`} />
+            <button
+              type="button"
+              disabled={!seleccion.length}
+              onClick={registrarReclamos}
+              className="inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
+            >
+              <Megaphone className="h-4 w-4" /> Registrar el reclamo
+            </button>
+          </div>
+        </div>
+      )}
+
       <Tabla
         id="reclamos"
         key={params.toString()}
@@ -139,6 +217,7 @@ export default function Reclamos() {
         filtrosIniciales={filtrosIniciales}
         ordenInicial={{ clave: 'dias', dir: 'desc' }}
         exportar={exportar}
+        seleccion={rol === 'auditoria' ? { elegidas, alCambiar: setElegidas } : undefined}
         resumen={(l) => (
           <>
             <strong>{l.length.toLocaleString('es-AR')}</strong> facturas · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong>
@@ -146,6 +225,7 @@ export default function Reclamos() {
         )}
         vacio="No hay facturas vencidas con estos filtros."
       />
+      {mail && <TextoMail titulo="Mail de reclamo" {...mail} onCerrar={() => setMail(null)} />}
     </>
   )
 }

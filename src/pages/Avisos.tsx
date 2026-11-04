@@ -104,7 +104,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           descripcion: 'Documentación aprobada, falta presentarla a la compañía',
           icono: FileClock,
           facturas: comprobantes.filter((c) => etapa(c) === 'pres_pendiente'),
-          ruta: '/app/control-diario?estado=Pres. pendiente',
+          ruta: '/app/presentar',
         },
         {
           clave: 'anulaciones',

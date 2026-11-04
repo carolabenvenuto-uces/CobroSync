@@ -356,13 +356,16 @@ prueba('sin id de planilla de control no se toca nada', () => {
 // Planilla de control como la del sector: Quiter con el ERP pegado y Diario que lo toma por referencia
 const comprobantesGuardados = () => (como('auditoria@svaauto.com.ar'), gs('obtenerDatos').datos.comprobantes)
 const diario = hojasControl.Diario
-diario.appendRow(['', '', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', '', 'Presentación', '', 'Vto.', 'Cobro', 'Estado'])
-const enDiario = comprobantesGuardados().filter((c) => c.tipo === 'FC').slice(0, 120)
+diario.appendRow(['', '', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', '', 'Presentación', '', 'Vto.', 'Cobro', 'Estado', 'Anula'])
+const facturasGuardadas = comprobantesGuardados().filter((c) => c.tipo === 'FC')
+const anuladaGuardada = facturasGuardadas.find((c) => c.estado === 'anulada')
+const enDiario = [...facturasGuardadas.filter((c) => c.estado !== 'anulada').slice(0, 119), anuladaGuardada]
+esperar(anuladaGuardada, 'los datos de prueba no tienen una factura anulada')
 enDiario.forEach((c, i) => {
-  diario.appendRow([c.fecha, Number(c.ref), c.sucursal, 'FC E', '', '', '', c.total, '', '', '', '', '', '', ''])
-  if (i % 2 === 0) diario.formulas[`${i + 2},15`] = '=SI(N2<>"";"Cobrado";"")' // Estado con fórmula en algunas filas
+  diario.appendRow([c.fecha, Number(c.ref), c.sucursal, 'FC E', '', '', '', c.total, '', '', '', '', '', '', '', ''])
+  diario.formulas[`${i + 2},15`] = `=SI(P${i + 2}="X";"Anulada";SI(N${i + 2}<>"";"Cobrado";""))` // Estado lo calcula la planilla
 })
-diario.appendRow(['01/11/2026', 8888888, 'Triunvirato', 'FC E', '', '', '', 1, '', '', '', '', '', '', 'D. Pend.']) // otra sucursal
+diario.appendRow(['01/11/2026', 8888888, 'Triunvirato', 'FC E', '', '', '', 1, '', '', '', '', '', '', '', '']) // otra sucursal
 hojasControl.Quiter.appendRow(['Refer.', 'Fecha', 'TC', 'Clase', 'BOCA', 'Número', 'Nombre', 'TIVA', 'CUIT'])
 hojasControl.Quiter.appendRow([7990001, vm.runInContext('new Date(2026, 9, 30, 12)', contexto), 'FC E'])
 
@@ -383,7 +386,7 @@ prueba('al cargar el ERP, las filas nuevas se agregan al final de Quiter tal cua
   esperar(q[2][5] === 'De 00004571 a 00004571' && q[2][14] === '12345.67' && q[3][16] === '-1210000', `valores: ${q[2][14]} ${q[3][16]}`)
   esperar(gs('agregarAQuiter', [['7990002', '31/10/2026']]).agregadas === 0, 'duplicó al cargar otra vez')
 })
-prueba('cada hora se completan Drive, Presentación, Cobro y Estado en Diario, sin pisar fórmulas', () => {
+prueba('cada hora se completan Drive, Presentación, Cobro y la X de Anula en Diario, sin tocar Estado', () => {
   const guardados = Object.fromEntries(comprobantesGuardados().map((c) => [c.ref, c]))
   gs('actualizarPlanillaDeControl')
   const f = diario.filas
@@ -396,12 +399,12 @@ prueba('cada hora se completan Drive, Presentación, Cobro y Estado en Diario, s
     else esperar(fila[8] === '', `Drive puesto sin aprobación en ${c.ref}`)
     if (c.fechaPresentacion) esperar(dia(fila[10]) === c.fechaPresentacion, `Presentación de ${c.ref}`)
     if (c.fechaCobro) esperar(dia(fila[13]) === c.fechaCobro, `Cobro de ${c.ref}`)
-    if (i % 2 === 1) esperar(fila[14] !== '', `Estado vacío en ${c.ref}`)
-    else esperar(fila[14] === '', 'escribió sobre una fórmula')
+    esperar(fila[14] === '', 'escribió en Estado')
+    esperar(fila[15] === (c.estado === 'anulada' ? 'X' : ''), `Anula de ${c.ref}: "${fila[15]}"`)
     revisadas++
   })
   esperar(revisadas === enDiario.length, 'faltaron filas')
-  esperar(f.at(-1)[8] === '' && f.at(-1)[14] === 'D. Pend.', 'tocó una fila de otra sucursal')
+  esperar(f.at(-1).slice(8).every((v) => v === ''), 'tocó una fila de otra sucursal')
   esperar(gs('actualizarPlanillaDeControl') === 0, 'la segunda vez volvió a escribir')
 })
 prueba('nunca se borra un dato de la planilla', () => {

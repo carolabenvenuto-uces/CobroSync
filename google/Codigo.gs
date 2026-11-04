@@ -64,7 +64,7 @@ var CONFIG_INICIAL = [
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
   ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync le agrega el ERP en Quiter y completa Diario'],
   ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
-  ['pestanaDiario', 'Diario', 'Pestaña de la planilla de control con Drive (I), Presentación (K), Cobro (N) y Estado (O)'],
+  ['pestanaDiario', 'Diario', 'Pestaña de la planilla de control con Drive (I), Presentación (K), Cobro (N) y Anula (P)'],
 ];
 
 // ── Aplicación web ──────────────────────────────────────────────────────────
@@ -428,11 +428,12 @@ function resumenSemanal() {
  * 1. Al cargar el Excel del ERP en CobroSync, las filas nuevas se agregan al final de la pestaña
  *    Quiter, tal cual (de todas las sucursales). La hoja Diario las toma como siempre.
  * 2. Cada hora, en la hoja Diario, se completan las columnas que hoy se escriben a mano para las
- *    facturas de las sucursales del piloto: Drive (documentación aprobada), Presentación, Cobro y,
- *    si no es una fórmula, Estado. Se busca cada factura por la referencia (columna B).
+ *    facturas de las sucursales del piloto: Drive (documentación aprobada), Presentación, Cobro y la
+ *    X de "Anula" si la factura se anuló con una nota de crédito. Se busca por la referencia (columna B).
+ *    El Estado (columna O) no se toca: lo calcula la planilla con esas fechas.
  * Nunca se borra un dato, nunca se pisa una fórmula y no se mueve ninguna fila.
  */
-var COLUMNAS_DIARIO = { ref: 2, drive: 9, presentacion: 11, cobro: 14, estado: 15 }; // B, I, K, N, O
+var COLUMNAS_DIARIO = { ref: 2, drive: 9, presentacion: 11, cobro: 14, anula: 16 }; // B, I, K, N, P
 
 function planillaDeControl_() {
   var id = config_('planillaControlId');
@@ -486,13 +487,12 @@ function completarDiario_(libro) {
   if (!hoja || hoja.getLastRow() < 2) return 0;
   var ultima = hoja.getLastRow();
   var refs = hoja.getRange(1, COLUMNAS_DIARIO.ref, ultima, 1).getValues();
-  var bloque = hoja.getRange(1, COLUMNAS_DIARIO.drive, ultima, COLUMNAS_DIARIO.estado - COLUMNAS_DIARIO.drive + 1);
+  var bloque = hoja.getRange(1, COLUMNAS_DIARIO.drive, ultima, COLUMNAS_DIARIO.anula - COLUMNAS_DIARIO.drive + 1);
   var valores = bloque.getValues();
   var formulas = bloque.getFormulas();
   var filaDeRef = {};
   refs.forEach(function (f, i) { var r = refTexto_(f[0]); if (/^\d+$/.test(r) && !filaDeRef[r]) filaDeRef[r] = i; });
 
-  var hoy = hoy_();
   var cambios = 0;
   leerHoja_(HOJAS.comprobantes).forEach(function (c) {
     if (c.tipo !== 'FC') return;
@@ -503,7 +503,7 @@ function completarDiario_(libro) {
       var j = columna - COLUMNAS_DIARIO.drive;
       if (formulas[i][j]) return; // nunca se pisa una fórmula
       var actual = valores[i][j];
-      var igual = esFecha ? fechaDeCelda_(actual) === valor : String(actual).trim() === valor;
+      var igual = esFecha ? fechaDeCelda_(actual) === valor : String(actual).trim().toUpperCase() === valor;
       if (igual) return;
       hoja.getRange(i + 1, columna).setValue(esFecha ? fechaParaCelda_(valor) : valor);
       cambios++;
@@ -511,17 +511,9 @@ function completarDiario_(libro) {
     poner(COLUMNAS_DIARIO.drive, c.fechaAprobacion, true);
     poner(COLUMNAS_DIARIO.presentacion, c.fechaPresentacion, true);
     poner(COLUMNAS_DIARIO.cobro, c.fechaCobro, true);
-    poner(COLUMNAS_DIARIO.estado, estadoParaPlanilla_(c, hoy), false);
+    poner(COLUMNAS_DIARIO.anula, c.estado === 'anulada' ? 'X' : null, false);
   });
   return cambios;
-}
-
-/** El estado con las palabras de la planilla: D. Pend., P. Pend., Al día, Vencido, Cobrado, Anulada. */
-function estadoParaPlanilla_(c, hoy) {
-  if (c.estado === 'anulada') return 'Anulada';
-  if (c.estado === 'cobrada') return 'Cobrado';
-  if (c.fechaPresentacion) return c.vencimiento && c.vencimiento < hoy ? 'Vencido' : 'Al día';
-  return c.fechaAprobacion ? 'P. Pend.' : 'D. Pend.';
 }
 
 function refTexto_(v) {

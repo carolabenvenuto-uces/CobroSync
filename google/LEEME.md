@@ -34,6 +34,8 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 4. Elegir la función `configurarPlanilla` y tocar **Ejecutar**. Google pide permisos la primera vez: aceptarlos con la cuenta del sector. Se crean las pestañas.
 5. Completar la planilla:
    - **Config:** el id de la carpeta de Drive, los correos de Gerencia General y el dominio (ya viene `svaauto.com.ar`).
+   - **Config → planillaControlId:** el id de la planilla de control de Auditoría (el texto largo del link, entre `/d/` y `/edit`). La cuenta del sector tiene que poder editarla. Con esto, al cargar el ERP en CobroSync las filas nuevas se agregan al final de la pestaña **Quiter** (tal cual, de todas las sucursales), y cada hora se completan en **Diario** las columnas Drive (I), Presentación (K), Cobro (N) y la X de Anula (P) de las facturas del piloto. El Estado (O) lo sigue calculando la planilla. No se borra nada, no se pisan fórmulas y no se mueven filas. Si las pestañas tienen otro nombre, cambiarlo en **pestanaQuiter** y **pestanaDiario**.
+   - **Sucursales:** cargar **solo las sucursales de la prueba**. Las facturas de las demás no se pasan a CobroSync y siguen en la planilla.
    - **Usuarios:** una fila por persona, con email, nombre, rol (`Gerencia`, `Auditoría` o `Sucursal`) y sucursal (solo para el rol Sucursal, con el mismo nombre que en la pestaña Sucursales).
    - **Sucursales:** nombre, puntos de venta separados por coma (por ejemplo `21, 30`), nombre del gerente y su correo. **El nombre tiene que ser el mismo que aparece en la columna Sucursal de la planilla de control** (no importan mayúsculas ni espacios).
    - **Aseguradoras:** se completa sola al pasar la planilla de control (paso 8), con razón social, CUIT y plazo de la pestaña CP. Después se pueden agregar los correos.
@@ -41,14 +43,14 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
    - Ejecutar como: **Yo** (la cuenta del sector).
    - Quién tiene acceso: **Cualquier persona de** la empresa.
    - Copiar el link de la aplicación y pegarlo en **Config → urlAplicacion**.
-7. Elegir la función `instalarDisparadores` y tocar **Ejecutar**. Programa los avisos diarios y el resumen de los lunes, a las 8.
+7. Elegir la función `instalarDisparadores` y tocar **Ejecutar**. Programa los avisos diarios y el resumen de los lunes (a las 8) y la copia a la planilla de control (cada hora).
 8. Abrir la aplicación con una cuenta de Auditoría → **Usar mi planilla** → cargar la planilla en Excel (.xlsx) o la hoja Diario en CSV → **Guardar en CobroSync**. Así se pasan las facturas actuales. Se puede repetir durante la prueba: agrega las facturas nuevas y, en las que ya están, completa presentación y cobro. No duplica ni borra nada.
 9. Cuando todo esté bien, poner **Config → avisosPorMail** en `SI`. Desde ese momento salen los mails. El primer día cada gerente recibe un solo mail con todas sus facturas atrasadas; después, solo las nuevas.
 
 ## Actualizar a una versión nueva
 
 1. Descargar el paquete nuevo desde GitHub (paso 3 de "Antes de empezar").
-2. Reemplazar `Index.html` y `Codigo.gs` en el editor.
+2. Reemplazar `Index.html` y `Codigo.gs` en el editor. Ejecutar `configurarPlanilla` (agrega las columnas y opciones nuevas sin tocar los datos) e `instalarDisparadores`.
 3. **Implementar → Administrar implementaciones → editar (lápiz) → Versión: nueva → Implementar.** El link no cambia.
 
 Los datos de la planilla no se tocan al actualizar.
@@ -59,7 +61,8 @@ Los datos de la planilla no se tocan al actualizar.
 2. Desde una sucursal, subir un PDF y una foto desde el celular. Verificar que aparezcan en la carpeta de Drive.
 3. Desde Auditoría, aprobar ese documento, presentar la factura y registrar un cobro de prueba.
 4. Medir cuánto tarda en abrir la aplicación con Auditoría (es la que más datos carga). Si tarda más de 15 segundos, avisar: se puede hacer que cargue primero las facturas abiertas.
-5. Con **avisosPorMail** en `SI`, ejecutar `avisosDiarios` a mano desde el editor y revisar que el gerente reciba el mail.
+5. **Antes de empezar, hacer una copia de la planilla de control** (Archivo → Hacer una copia). Cargar el ERP del día en CobroSync y verificar que las filas aparezcan al final de Quiter y que Diario las tome. Después, en **Usar mi planilla → Actualizar mi planilla ahora**, verificar que se completen Drive, Presentación y Cobro de una factura del piloto.
+6. Con **avisosPorMail** en `SI`, ejecutar `avisosDiarios` a mano desde el editor y revisar que el gerente reciba el mail.
 
 ## Si algo no funciona
 

@@ -13,9 +13,11 @@ const codigo = readFileSync(join(raiz, 'google', 'Codigo.gs'), 'utf8')
 const demo = JSON.parse(readFileSync(join(raiz, 'public', 'datos-demo', 'comprobantes.json'), 'utf8'))
 
 // ── Google simulado ──────────────────────────────────────────────────────────
-const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : v instanceof Date ? v : String(v)) // celdas con formato texto
+const esFecha = (v) => Object.prototype.toString.call(v) === '[object Date]' // sirve para fechas de Node y del script
+const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : esFecha(v) ? v : String(v)) // celdas con formato texto
 function crearHoja(nombre) {
   const filas = []
+  const formulas = {} // "fila,columna" → fórmula
   const hoja = {
     nombre,
     filas,
@@ -34,11 +36,22 @@ function crearHoja(nombre) {
       },
       setNumberFormat: () => {},
       setFontWeight: () => {},
+      getFormulas: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => formulas[`${r + i},${c + j}`] ?? '')),
+      setValue: (v) => {
+        if (formulas[`${r},${c}`]) throw new Error('se pisó una fórmula')
+        filas[r - 1] ??= []
+        filas[r - 1][c - 1] = comoTexto(v)
+      },
     }),
+    formulas,
+    getLastColumn: () => Math.max(0, ...filas.map((f) => f.length)),
+    clearContents: () => (filas.length = 0),
   }
   return hoja
 }
 const hojas = {}
+const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Auditoría
+const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
 const libro = {
   getSheetByName: (n) => hojas[n] ?? null,
   insertSheet: (n) => (hojas[n] = crearHoja(n)),
@@ -63,7 +76,7 @@ function carpeta(ruta) {
 }
 const raizDrive = carpeta('CobroSync')
 const contexto = {
-  SpreadsheetApp: { getActive: () => libro },
+  SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
   DriveApp: { getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive } },
@@ -73,7 +86,7 @@ const contexto = {
     base64Decode: (b) => Buffer.from(b, 'base64'),
   },
   MailApp: { sendEmail: (m) => mails.push(m) },
-  ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
+  ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create: () => {} }), everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
   HtmlService: { createHtmlOutputFromFile: () => ({ setTitle: () => ({ addMetaTag: () => ({}) }) }) },
   console,
 }
@@ -135,6 +148,11 @@ prueba('Auditoría pasa la planilla y se guardan las facturas', () => {
   const r = gs('sincronizarDesdePlanilla', lote)
   esperar(r.nuevas === lote.length && r.actualizadas === 0, JSON.stringify(r))
 })
+prueba('pasar la planilla deja afuera las sucursales que no están en la prueba', () => {
+  const otra = demo.find((c) => c.sucursal !== 'Rocamora' && c.sucursal !== 'Warnes')
+  const r = gs('sincronizarDesdePlanilla', [{ ...otra, id: `ref-${otra.ref}` }])
+  esperar(r.nuevas === 0 && r.omitidas === 1, JSON.stringify(r))
+})
 prueba('pasar la planilla otra vez no duplica y actualiza cobros', () => {
   const sinCobrar = lote.find((c) => c.tipo === 'FC' && c.estado === 'presentada')
   const otraVez = lote.map((c) => (c.id === sinCobrar.id ? { ...c, estado: 'cobrada', fechaCobro: '2026-11-03' } : c))
@@ -166,6 +184,28 @@ prueba('la sucursal carga documentos pero no puede cambiar el importe', () => {
   const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.total === c.total, 'la sucursal pudo cambiar el importe')
   esperar(leido.documentos.every((d) => d.estado === 'en_revision'), 'no se guardaron los documentos')
+})
+prueba('la sucursal no puede aprobar sus propios documentos', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'faltante'))
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.map((d) => ({ ...d, estado: 'ok', archivo: 'x.pdf' })) }])
+  como('auditoria@svaauto.com.ar')
+  const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(!leido.documentos.some((d) => d.estado === 'ok' && c.documentos.find((o) => o.tipo === d.tipo).estado !== 'ok'), 'la sucursal aprobó documentos')
+  esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
+})
+prueba('la fecha de aprobación se pone al aprobar todo y se vacía si se observa algo', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'en_revision'))
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.slice(0, 2).map((d) => ({ ...d, estado: 'ok' })) }])
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(!leido.fechaAprobacion, 'se puso la fecha con documentos sin aprobar')
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.map((d) => ({ ...d, estado: 'ok' })) }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(/^\d{4}-\d{2}-\d{2}$/.test(leido.fechaAprobacion ?? ''), `fecha: ${leido.fechaAprobacion}`)
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...c.documentos[2], estado: 'observado', motivo: 'Ilegible' }] }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.fechaAprobacion === null, 'no se vació al observar')
 })
 prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
   como('auditoria@svaauto.com.ar')
@@ -306,6 +346,79 @@ prueba('con los avisos desactivados no sale ningún mail', () => {
   gs('avisosDiarios')
   gs('resumenSemanal')
   esperar(mails.length === 0, 'salieron mails')
+})
+prueba('sin id de planilla de control no se toca nada', () => {
+  esperar(gs('actualizarPlanillaDeControl') === 0, 'completó sin id')
+  como('auditoria@svaauto.com.ar')
+  esperar(gs('agregarAQuiter', [['123']]).configurada === false, 'agregó sin id')
+  falla(() => gs('actualizarMiPlanilla'), 'planillaControlId')
+})
+// Planilla de control como la del sector: Quiter con el ERP pegado y Diario que lo toma por referencia
+const comprobantesGuardados = () => (como('auditoria@svaauto.com.ar'), gs('obtenerDatos').datos.comprobantes)
+const diario = hojasControl.Diario
+diario.appendRow(['', '', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', '', 'Presentación', '', 'Vto.', 'Cobro', 'Estado', 'Anula'])
+const facturasGuardadas = comprobantesGuardados().filter((c) => c.tipo === 'FC')
+const anuladaGuardada = facturasGuardadas.find((c) => c.estado === 'anulada')
+const enDiario = [...facturasGuardadas.filter((c) => c.estado !== 'anulada').slice(0, 119), anuladaGuardada]
+esperar(anuladaGuardada, 'los datos de prueba no tienen una factura anulada')
+enDiario.forEach((c, i) => {
+  diario.appendRow([c.fecha, Number(c.ref), c.sucursal, 'FC E', '', '', '', c.total, '', '', '', '', '', '', '', ''])
+  diario.formulas[`${i + 2},15`] = `=SI(P${i + 2}="X";"Anulada";SI(N${i + 2}<>"";"Cobrado";""))` // Estado lo calcula la planilla
+})
+diario.appendRow(['01/11/2026', 8888888, 'Triunvirato', 'FC E', '', '', '', 1, '', '', '', '', '', '', '', '']) // otra sucursal
+hojasControl.Quiter.appendRow(['Refer.', 'Fecha', 'TC', 'Clase', 'BOCA', 'Número', 'Nombre', 'TIVA', 'CUIT'])
+hojasControl.Quiter.appendRow([7990001, vm.runInContext('new Date(2026, 9, 30, 12)', contexto), 'FC E'])
+
+prueba('al cargar el ERP, las filas nuevas se agregan al final de Quiter tal cual', () => {
+  setCfg('planillaControlId', 'planilla-control')
+  como('auditoria@svaauto.com.ar')
+  const r = gs('agregarAQuiter', [
+    ['7990001', '30/10/2026', 'FC E'], // ya estaba
+    ['7990002', '31/10/2026', 'FC E', 'A', '21', 'De 00004571 a 00004571', 'ALLIANZ', 'RI', '30500037217', '0', '1000000', '210000', '0', '0', '12345,67', '0', '1222345,67'],
+    ['7990003', '31/10/2026', 'NC E', 'A', '21', 'De 00000101 a 00000101', 'ALLIANZ', 'RI', '30500037217', '0', '-1000000', '-210000', '0', '0', '0', '0', '-1210000,00'],
+    ['7990002', '31/10/2026', 'FC E'], // repetida en el mismo archivo
+  ])
+  const q = hojasControl.Quiter.filas
+  esperar(r.completadas > 0, 'después de cargar el ERP no completó Diario')
+  esperar(r.agregadas === 2 && q.length === 4, `${r.agregadas} agregadas, ${q.length} filas`)
+  esperar(q[2][0] === '7990002' && q[3][0] === '7990003', 'no respetó el orden')
+  esperar(esFecha(q[2][1]) && q[2][1].getDate() === 31, 'la fecha no quedó como fecha')
+  esperar(q[2][5] === 'De 00004571 a 00004571' && q[2][14] === '12345.67' && q[3][16] === '-1210000', `valores: ${q[2][14]} ${q[3][16]}`)
+  esperar(gs('agregarAQuiter', [['7990002', '31/10/2026']]).agregadas === 0, 'duplicó al cargar otra vez')
+})
+prueba('cada hora se completan Drive, Presentación, Cobro y la X de Anula en Diario, sin tocar Estado', () => {
+  const guardados = Object.fromEntries(comprobantesGuardados().map((c) => [c.ref, c]))
+  gs('actualizarPlanillaDeControl')
+  const f = diario.filas
+  let revisadas = 0
+  enDiario.forEach((c0, i) => {
+    const c = guardados[c0.ref]
+    const fila = f[i + 1]
+    const dia = (v) => (esFecha(v) ? `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}` : v)
+    if (c.fechaAprobacion) esperar(dia(fila[8]) === c.fechaAprobacion, `Drive de ${c.ref}: ${fila[8]} / ${c.fechaAprobacion}`)
+    else esperar(fila[8] === '', `Drive puesto sin aprobación en ${c.ref}`)
+    if (c.fechaPresentacion) esperar(dia(fila[10]) === c.fechaPresentacion, `Presentación de ${c.ref}`)
+    if (c.fechaCobro) esperar(dia(fila[13]) === c.fechaCobro, `Cobro de ${c.ref}`)
+    esperar(fila[14] === '', 'escribió en Estado')
+    esperar(fila[15] === (c.estado === 'anulada' ? 'X' : ''), `Anula de ${c.ref}: "${fila[15]}"`)
+    revisadas++
+  })
+  esperar(revisadas === enDiario.length, 'faltaron filas')
+  esperar(f.at(-1).slice(8).every((v) => v === ''), 'tocó una fila de otra sucursal')
+  esperar(gs('actualizarPlanillaDeControl') === 0, 'la segunda vez volvió a escribir')
+})
+prueba('nunca se borra un dato de la planilla', () => {
+  const i = enDiario.findIndex((c) => !c.fechaCobro)
+  diario.filas[i + 1][13] = vm.runInContext('new Date(2026, 10, 1, 12)', contexto) // alguien lo cargó a mano
+  gs('actualizarPlanillaDeControl')
+  esperar(esFecha(diario.filas[i + 1][13]), 'se borró un dato cargado a mano')
+})
+prueba('solo Auditoría actualiza la planilla desde la aplicación', () => {
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('actualizarMiPlanilla'), 'Solo Auditoría')
+  falla(() => gs('agregarAQuiter', [['1']]), 'Solo Auditoría')
+  como('auditoria@svaauto.com.ar')
+  esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'no respondió')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

@@ -234,6 +234,8 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
       total: tipo === 'NC' ? -Math.abs(total) : total,
       fechaDrive: drive,
       subidoPor: null,
+      // En la planilla, la fecha de la columna Drive es la de la documentación completa
+      fechaAprobacion: tipo === 'NC' || !completo ? null : (drive ?? presentacion),
       fechaPresentacion: estado === 'anulada' ? null : presentacion,
       vencimiento:
         estado === 'anulada' || !presentacion

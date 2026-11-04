@@ -134,7 +134,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       })
       guardarDocumentos(
         documentos.map((d): Documento => (tipos.includes(d.tipo) ? documento(d.tipo) : d)),
-        { fechaDrive: c.fechaDrive ?? hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
+        { fechaDrive: hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
       )
       const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
       const nombres = archivos.length > 1 ? `${archivos.length} archivos` : archivos[0].name
@@ -149,7 +149,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           if (aCompletar.length === 0) continue
           actualizarComprobante(h.id, {
             documentos: docsH.map((d) => (aCompletar.includes(d.tipo) ? documento(d.tipo) : d)),
-            fechaDrive: h.fechaDrive ?? hoy,
+            fechaDrive: hoy,
             subidoPor: usuario,
             estado: h.estado === 'pendiente_drive' ? 'en_gestion' : h.estado,
           })
@@ -221,8 +221,12 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   // ── Auditoría: revisar y tildar ──
   function aprobar(tipos: TipoDocumento[]) {
-    guardarDocumentos(documentos.map((d): Documento => (tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'ok', archivo: d.archivo, url: d.url } : d)))
     const todos = documentos.every((d) => d.estado === 'ok' || tipos.includes(d.tipo))
+    guardarDocumentos(
+      documentos.map((d): Documento => (tipos.includes(d.tipo) ? { ...d, estado: 'ok', motivo: undefined } : d)),
+      // La fecha que va a la columna "Drive" de la planilla: cuando Auditoría aprueba todo
+      todos ? { fechaAprobacion: hoy } : {},
+    )
     registrarEvento(
       c.id,
       'mensaje',
@@ -230,7 +234,10 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     )
   }
   function observar(tipo: TipoDocumento) {
-    guardarDocumentos(documentos.map((d): Documento => (d.tipo === tipo ? { ...d, estado: 'observado', motivo } : d)))
+    guardarDocumentos(
+      documentos.map((d): Documento => (d.tipo === tipo ? { ...d, estado: 'observado', motivo } : d)),
+      { fechaAprobacion: null },
+    )
     registrarEvento(c.id, 'rechazo', `Observado: ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} (${motivo.toLowerCase()}). Por favor, volver a subir.`)
     setObservando(null)
   }
@@ -249,7 +256,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   function registrarRechazo() {
     guardarDocumentos(
       documentos.map((d): Documento => (d.tipo === docRechazo ? { ...d, estado: 'observado', motivo } : d)),
-      { estado: 'en_gestion', fechaPresentacion: null, vencimiento: null },
+      { estado: 'en_gestion', fechaPresentacion: null, vencimiento: null, fechaAprobacion: null },
     )
     registrarEvento(c.id, 'rechazo', `Rechazo de ${aseguradora?.nombre}: ${NOMBRE_DOCUMENTO[docRechazo].toLowerCase()} (${motivo.toLowerCase()}). ${comentarioRechazo}`.trim())
     setFormulario('ninguno')
@@ -273,6 +280,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const recorrido = [
     { etiqueta: 'Factura', fecha: c.fecha, desde: null },
     { etiqueta: 'Subida de la documentación', fecha: c.fechaDrive, desde: c.fecha },
+    { etiqueta: 'Documentación aprobada', fecha: c.fechaAprobacion ?? null, desde: c.fecha },
     { etiqueta: 'Presentación', fecha: c.fechaPresentacion, desde: c.fecha },
     { etiqueta: 'Vencimiento', fecha: c.vencimiento, desde: null },
     { etiqueta: 'Cobro', fecha: c.fechaCobro, desde: c.fecha },

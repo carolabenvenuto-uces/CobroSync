@@ -13,7 +13,8 @@ import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos, MESES } from '../lib/formato'
-import { importarErp } from '../services/erp'
+import { filasDeDatosErp, importarErp } from '../services/erp'
+import { agregarAQuiterEnGoogle, conectadoAGoogle } from '../services/google'
 import { leerArchivo } from '../services/planilla'
 
 /** "2026-10 · Octubre": así el filtro de mes queda ordenado. */
@@ -72,8 +73,18 @@ export default function ControlDiario() {
           registrarEvento(facturaId, 'nota_credito', `Nota de crédito parcial ${numero} por ${formatoPesos(importe)} (vinculada al cargar el ERP)`)
         }
       })
+      // Con Google, las mismas filas van también al final de la pestaña Quiter de la planilla de control
+      let enPlanilla = ''
+      if (conectadoAGoogle()) {
+        try {
+          const q = await agregarAQuiterEnGoogle(filasDeDatosErp(texto))
+          if (q.configurada) enPlanilla = ` En tu planilla: ${q.agregadas} filas nuevas en Quiter.`
+        } catch (e) {
+          enPlanilla = ` No se pudo agregar a la pestaña Quiter de tu planilla (${e instanceof Error ? e.message : 'error'}): pegalas a mano como siempre.`
+        }
+      }
       setMensajeErp({
-        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.`,
+        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.${enPlanilla}`,
       })
     } catch (e) {
       setMensajeErp({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
@@ -139,6 +150,17 @@ export default function ControlDiario() {
       ),
     },
     {
+      clave: 'aprobada',
+      titulo: 'Doc. aprobada',
+      orden: (x) => x.c.fechaAprobacion ?? null,
+      celda: (x) => (
+        <span className="whitespace-nowrap">
+          {formatoFecha(x.c.fechaAprobacion ?? null)}
+          {diasHasta(x.c.fecha, x.c.fechaAprobacion ?? null)}
+        </span>
+      ),
+    },
+    {
       clave: 'presentacion',
       titulo: 'Presentación',
       orden: (x) => x.c.fechaPresentacion,
@@ -177,7 +199,7 @@ export default function ControlDiario() {
   function exportar(lista: Fila[]) {
     descargarExcel(
       `control-diario-${hoy}`,
-      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Subida', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Aviso de NC', 'Reclamos', 'Último reclamo', 'Observaciones'],
+      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Subida', 'Doc. aprobada', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Aviso de NC', 'Reclamos', 'Último reclamo', 'Observaciones'],
       lista.map(({ c, s }) => [
         fechaExcel(c.fecha),
         c.ref,
@@ -189,7 +211,8 @@ export default function ControlDiario() {
         c.patente || null,
         c.total,
         fechaExcel(c.fechaDrive),
-        c.fechaDrive ? diffDias(c.fecha, c.fechaDrive) : null,
+        fechaExcel(c.fechaAprobacion ?? null),
+        c.fechaAprobacion ? diffDias(c.fecha, c.fechaAprobacion) : null,
         fechaExcel(c.fechaPresentacion),
         c.fechaPresentacion ? diffDias(c.fecha, c.fechaPresentacion) : null,
         fechaExcel(c.vencimiento),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Aseguradora, Comprobante, Sucursal } from '../src/domain/tipos'
 import { importarCompanias } from '../src/services/companias'
-import { importarErp, numeroDesde } from '../src/services/erp'
+import { filasDeDatosErp, importarErp, numeroDesde } from '../src/services/erp'
 
 // Filas inventadas con el formato de la exportación de facturas del ERP (hoja "Quiter")
 const CSV = [
@@ -82,6 +82,14 @@ describe('importarErp', () => {
 
   it('avisa si el archivo no es la exportación del ERP', () => {
     expect(() => importarErp('a;b;c\n1;2;3', [], aseguradoras, sucursales, '2026-10-31')).toThrow(/formato/)
+  })
+})
+
+describe('filasDeDatosErp', () => {
+  it('devuelve todas las filas debajo del encabezado, tal cual, para la pestaña Quiter', () => {
+    const filas = filasDeDatosErp(CSV + '\n;;;;;;Total;;;;;;;;;;1.343.013,10')
+    expect(filas.map((f) => f[0])).toEqual(['7990001', '7990002', '7990003', '7990004'])
+    expect(filas[0][16]).toBe('1.210.000,00')
   })
 })
 

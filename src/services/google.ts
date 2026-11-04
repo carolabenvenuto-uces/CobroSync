@@ -79,8 +79,18 @@ export function agregarEnGoogle(lista: Comprobante[]): Promise<number> {
   return llamar('agregarComprobantes', lista)
 }
 
-export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nuevas: number; actualizadas: number }> {
+export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nuevas: number; actualizadas: number; omitidas?: number }> {
   return llamar('sincronizarDesdePlanilla', lista)
+}
+
+/** Completa ya mismo Drive, Presentación, Cobro y Estado en la hoja Diario de la planilla de control. */
+export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; ahora: string }> {
+  return llamar('actualizarMiPlanilla')
+}
+
+/** Agrega al final de la pestaña Quiter de la planilla de control las filas del ERP que no estén. */
+export function agregarAQuiterEnGoogle(filas: string[][]): Promise<{ configurada: boolean; agregadas: number; completadas?: number }> {
+  return llamar('agregarAQuiter', filas)
 }
 
 /** Agrega compañías nuevas; con completarExistentes, también completa CUIT, razón social, plazo y correos. */

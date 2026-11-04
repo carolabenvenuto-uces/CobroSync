@@ -4,7 +4,10 @@
 
 ### Agregado
 - **Plazos distintos para facturas MiPyME:** 10 días para la documentación de una factura común y 5 para una MiPyME; críticas a los 21 y 12 días. Una factura es MiPyME si va a una compañía que recibe factura de crédito y su total llega al monto mínimo vigente ($ 5.549.862), o si sale de un punto de venta marcado como MiPyME. La sucursal la ve marcada "MiPyME · 5 d".
-- **Ajustes (Auditoría):** pantalla para cambiar los plazos, el monto mínimo, las compañías que reciben FCE y los avisos por mail (activarlos y los correos de Gerencia General). Con Google se guarda en la pestaña Config.
+- **Ajustes (Auditoría):** pantalla para cambiar los plazos, el monto mínimo, las compañías que reciben FCE, **los textos de las notificaciones a Gerencia** (con vista previa) y los avisos por mail (activarlos y los correos de Gerencia General). Con Google se guarda en la pestaña Config.
+
+### Cambiado
+- **Resumen:** el recuadro del año tiene el mismo formato que el del mes (títulos legibles, notas de crédito aparte, todo nivelado). Con una sucursal elegida, abajo se ven los datos de esa sucursal en lugar del ranking.
 
 ## [0.9.2] - 2026-11-04
 

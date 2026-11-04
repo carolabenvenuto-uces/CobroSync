@@ -1,4 +1,5 @@
 import type { Plazos } from './plazos'
+import type { TextosAvisos } from './textos'
 
 /**
  * Modelo de datos de CobroSync.
@@ -201,6 +202,8 @@ export interface MetaDemo {
   plazos?: Plazos
   /** avisos por mail (solo lo ve Auditoría) */
   avisos?: { porMail: boolean; correosGerencia: string }
+  /** textos de las notificaciones a Gerencia (Ajustes) */
+  textos?: Partial<TextosAvisos>
 }
 
 export interface DatosApp {

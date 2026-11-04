@@ -68,6 +68,8 @@ var CONFIG_INICIAL = [
   ['diasCriticaMipyme', '12', 'Ídem para una factura MiPyME'],
   ['montoMinimoMipyme', '5549862', 'Monto mínimo de la factura de crédito MiPyME (total). Se actualiza una vez por año'],
   ['puntosVentaMipyme', '', 'Puntos de venta que se usan solo para MiPyME, separados por coma (opcional)'],
+  ['textoAvisoApoyo', '', 'Notificación a Gerencia cuando una compañía no responde 3 reclamos (vacío = texto original). Se cambia en Ajustes'],
+  ['textoAvisoCritica', '', 'Notificación a Gerencia por facturas críticas (vacío = texto original). Se cambia en Ajustes'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
   ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync le agrega el ERP en Quiter y completa Diario'],
   ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
@@ -105,6 +107,7 @@ function obtenerDatos() {
         fechaCorte: hoy_(),
         sucursales: sucursales,
         plazos: plazos_(),
+        textos: { apoyo: String(config_('textoAvisoApoyo') || ''), critica: String(config_('textoAvisoCritica') || '') },
         avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || '') } : undefined,
       },
     },
@@ -519,6 +522,8 @@ function guardarAjustes(a) {
       puntosVentaMipyme: (a.plazos.puntosVentaMipyme || []).join(', '),
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
+      textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
+      textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
     };
     var cfg = hoja_(HOJAS.config);
     var claves = cfg.getLastRow() > 1 ? cfg.getRange(2, 1, cfg.getLastRow() - 1, 1).getValues().map(function (f) { return f[0]; }) : [];

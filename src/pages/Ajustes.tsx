@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { CalendarClock, Mail, Save, Timer } from 'lucide-react'
+import { BellRing, CalendarClock, Mail, RotateCcw, Save, Timer } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
 import { AVISOS_INICIALES, PLAZOS_INICIALES, type Plazos } from '../domain/plazos'
 import { esperaALaSucursal } from '../domain/sucursales'
+import { armarTexto, DATOS_DE_TEXTO, TEXTOS_INICIALES, type TextosAvisos } from '../domain/textos'
 import { formatoPesos } from '../lib/formato'
 
 /**
@@ -17,6 +18,7 @@ export default function Ajustes() {
   const [plazos, setPlazos] = useState<Plazos>({ ...PLAZOS_INICIALES, ...(meta.plazos ?? {}) })
   const [sinFce, setSinFce] = useState<Set<string>>(new Set(aseguradoras.filter((a) => a.recibeFce === false).map((a) => a.id)))
   const [avisos, setAvisos] = useState(meta.avisos ?? AVISOS_INICIALES)
+  const [textos, setTextos] = useState<TextosAvisos>({ ...TEXTOS_INICIALES, ...(meta.textos ?? {}) })
   const [puntos, setPuntos] = useState(plazos.puntosVentaMipyme.join(', '))
   const [estado, setEstado] = useState<{ texto: string; error?: boolean } | null>(null)
   const conGoogle = fuente.tipo === 'google'
@@ -61,7 +63,7 @@ export default function Ajustes() {
     }
     try {
       setEstado({ texto: 'Guardando…' })
-      await guardarAjustes({ plazos: plazosAGuardar, companiasSinFce: [...sinFce], avisos })
+      await guardarAjustes({ plazos: plazosAGuardar, companiasSinFce: [...sinFce], avisos, textos })
       setEstado({ texto: conGoogle ? 'Listo: se guardó en la pestaña Config. Ya rige para todos.' : 'Listo. En la demo se guarda solo mientras no recargues la página.' })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })
@@ -72,7 +74,7 @@ export default function Ajustes() {
     <>
       <EncabezadoPagina
         titulo="Ajustes"
-        subtitulo="Plazos de la documentación, facturas MiPyME y avisos por mail"
+        subtitulo="Plazos de la documentación, facturas MiPyME, notificaciones y mails. Solo lo ve Auditoría."
         acciones={
           <button
             type="button"
@@ -155,6 +157,52 @@ export default function Ajustes() {
           <p className="mt-3 rounded-lg bg-fondo px-3 py-2 text-xs text-slate-600">
             Con estos ajustes, <strong>{vistaPrevia.mipyme}</strong> de las {vistaPrevia.pendientes} facturas que hoy esperan documentación son MiPyME.
           </p>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardTitulo>
+            <span className="inline-flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-marca" /> Textos de las notificaciones a Gerencia
+            </span>
+          </CardTitulo>
+          <p className="-mt-2 mb-4 text-xs text-slate-500">
+            Entre llaves van los datos que completa CobroSync: {DATOS_DE_TEXTO.map((d) => (
+              <code key={d} className="mx-0.5 rounded bg-fondo px-1 py-0.5 text-[11px] text-noche">{d}</code>
+            ))}
+            . Abajo de cada uno se ve cómo queda.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {(
+              [
+                { clave: 'apoyo', titulo: 'La compañía no responde 3 reclamos', ejemplo: { compania: 'Sancor', cantidad: 2 } },
+                { clave: 'critica', titulo: 'Facturas críticas por falta de documentación', ejemplo: { sucursal: 'Alvarez Thomas', cantidad: 5, dias: plazos.criticaComun } },
+              ] as const
+            ).map((t) => (
+              <label key={t.clave} className="block text-xs font-semibold text-slate-500">
+                <span className="flex items-center justify-between">
+                  {t.titulo}
+                  {textos[t.clave] !== TEXTOS_INICIALES[t.clave] && (
+                    <button
+                      type="button"
+                      onClick={() => setTextos({ ...textos, [t.clave]: TEXTOS_INICIALES[t.clave] })}
+                      className="inline-flex items-center gap-1 font-normal text-marca hover:underline"
+                    >
+                      <RotateCcw className="h-3 w-3" /> Texto original
+                    </button>
+                  )}
+                </span>
+                <textarea
+                  rows={3}
+                  value={textos[t.clave]}
+                  onChange={(e) => setTextos({ ...textos, [t.clave]: e.target.value })}
+                  className="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-noche focus:border-marca focus:outline-none"
+                />
+                <span className="mt-1 block rounded-lg bg-fondo px-3 py-2 font-normal text-slate-700">
+                  {armarTexto(textos[t.clave] || TEXTOS_INICIALES[t.clave], t.ejemplo)}
+                </span>
+              </label>
+            ))}
+          </div>
         </Card>
 
         <Card className="lg:col-span-2">

@@ -11,6 +11,7 @@
  * pestaña Config de Google.
  */
 import type { Aseguradora, Comprobante } from './tipos'
+import type { TextosAvisos } from './textos'
 
 export interface Plazos {
   /** días que tiene la sucursal para subir la documentación de una factura común */
@@ -81,6 +82,7 @@ export interface Ajustes {
   /** ids de las compañías que NO reciben factura de crédito MiPyME */
   companiasSinFce: string[]
   avisos: { porMail: boolean; correosGerencia: string }
+  textos: TextosAvisos
 }
 
 export const AVISOS_INICIALES = { porMail: false, correosGerencia: '' }

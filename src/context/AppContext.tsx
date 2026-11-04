@@ -24,7 +24,8 @@ import {
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
 import { NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
-import { configurarPlazos, type Ajustes } from '../domain/plazos'
+import { configurarPlazos, plazosActuales, type Ajustes } from '../domain/plazos'
+import { configurarTextos, textoAviso } from '../domain/textos'
 
 export const TODAS_LAS_SUCURSALES = 'Todas'
 
@@ -81,11 +82,11 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
     const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
     const cant = facturas.length
     const compania = nombresCompanias[n.compania ?? ''] ?? 'una compañía'
-    // Escrito como lo que Gerencia tiene que hacer, no como un listado
+    // Escrito como lo que Gerencia tiene que hacer (el texto se cambia en Ajustes)
     const texto =
       n.clase === 'critica'
-        ? `Auditoría marcó como críticas ${cant === 1 ? 'una factura' : `${cant} facturas`} de ${n.sucursal}: falta la documentación hace más de 21 días. Pedile a la sucursal que la complete.`
-        : `Auditoría necesita tu apoyo con ${compania}: no responde los reclamos de ${cant === 1 ? 'una factura vencida' : `${cant} facturas vencidas`}.`
+        ? textoAviso('critica', { sucursal: n.sucursal, cantidad: cant, dias: plazosActuales().criticaComun })
+        : textoAviso('apoyo', { compania, cantidad: cant })
     const ruta =
       n.clase === 'critica'
         ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal ?? '')}&estado=Cr%C3%ADtica`
@@ -110,6 +111,9 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
  * 3 días para Auditoría y sucursales; 14 para Gerencia, que recibe menos avisos.
  */
 function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): Notificacion[] {
+  // Los textos y plazos de estos datos (todavía no se guardaron en el estado)
+  configurarPlazos(d.meta.plazos, d.aseguradoras)
+  configurarTextos(d.meta.textos)
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
     for (const e of c.eventos) {
@@ -244,6 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [datos, setDatos] = useState<DatosApp | null>(null)
   // Los plazos se aplican antes de que cualquier pantalla calcule el semáforo
   configurarPlazos(datos?.meta.plazos, datos?.aseguradoras ?? [])
+  configurarTextos(datos?.meta.textos)
   const [error, setError] = useState<string | null>(null)
   const [rol, setRolInterno] = useState<Rol>('auditoria')
   const [sucursal, setSucursal] = useState(TODAS_LAS_SUCURSALES)
@@ -454,6 +459,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const guardarAjustes = useCallback(async (a: Ajustes) => {
     if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
     const sinFce = new Set(a.companiasSinFce)
+    // Las notificaciones de Gerencia se vuelven a escribir con los textos nuevos
+    configurarTextos(a.textos)
+    configurarPlazos(a.plazos, (datosRef.current?.aseguradoras ?? []).map((x) => ({ ...x, recibeFce: !sinFce.has(x.id) })))
+    setNotificaciones((l) => agruparGerencia(l, nombresDe(datosRef.current)))
     setDatos((actual) =>
       actual
         ? {
@@ -461,7 +470,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // copia nueva de las facturas: así todas las pantallas recalculan con los plazos nuevos
             comprobantes: [...actual.comprobantes],
             aseguradoras: actual.aseguradoras.map((x) => ({ ...x, recibeFce: !sinFce.has(x.id) })),
-            meta: { ...actual.meta, plazos: a.plazos, avisos: a.avisos },
+            meta: { ...actual.meta, plazos: a.plazos, avisos: a.avisos, textos: a.textos },
           }
         : actual,
     )

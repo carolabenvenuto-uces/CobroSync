@@ -376,7 +376,14 @@ prueba('Ajustes: Auditoría cambia los plazos y las compañías con FCE; la sucu
     companiasSinFce: ['allianz'],
     avisos: { porMail: true, correosGerencia: 'gerencia.general@svaauto.com.ar' },
   })
+  gs('guardarAjustes', {
+    plazos: { comun: 12, mipyme: 6, criticaComun: 25, criticaMipyme: 14, montoMinimoMipyme: 6000000, puntosVentaMipyme: [50] },
+    companiasSinFce: ['allianz'],
+    avisos: { porMail: true, correosGerencia: 'gerencia.general@svaauto.com.ar' },
+    textos: { apoyo: 'Necesitamos ayuda con {compania}', critica: '' },
+  })
   const d = gs('obtenerDatos').datos
+  esperar(d.meta.textos.apoyo === 'Necesitamos ayuda con {compania}' && d.meta.textos.critica === '', JSON.stringify(d.meta.textos))
   esperar(d.meta.plazos.comun === 12 && d.meta.plazos.puntosVentaMipyme[0] === 50, JSON.stringify(d.meta.plazos))
   const allianz = d.aseguradoras.find((x) => x.id === 'allianz')
   if (allianz) esperar(allianz.recibeFce === false, 'no se guardó que Allianz no recibe FCE')

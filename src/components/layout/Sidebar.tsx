@@ -13,7 +13,7 @@ import {
   HandCoins,
   LayoutDashboard,
   Megaphone,
-  Presentation,
+  BookOpen,
   Trophy,
   Send,
   Settings,
@@ -250,12 +250,10 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                 Cambiar de usuario
               </button>
             )}
-            {fuente.tipo !== 'google' && (
-              <Link to="/presentacion" className="flex items-center gap-2 hover:text-white">
-                <Presentation className="h-3.5 w-3.5" />
-                Ver presentación del producto
-              </Link>
-            )}
+            <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 hover:text-white">
+              <BookOpen className="h-3.5 w-3.5" />
+              Manual de uso
+            </Link>
           </div>
         </div>
       </aside>

@@ -1,4 +1,6 @@
-# CobroSync by CAROLA
+# CobroSync 1.0
+
+Un desarrollo de **Benvenuto Desarrollos** · Carola Benvenuto.
 
 **Gestión documental y cobranzas para empresas B2B.** CobroSync centraliza facturas, legajos, validación documental y seguimiento de cobranzas, para que la documentación llegue correcta, se presente a tiempo y se cobre sin perder trazabilidad.
 

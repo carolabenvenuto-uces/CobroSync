@@ -45,7 +45,9 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
    - Copiar el link de la aplicación y pegarlo en **Config → urlAplicacion**.
 7. Elegir la función `instalarDisparadores` y tocar **Ejecutar**. Programa los avisos diarios y el resumen de los lunes (a las 8) y la copia a la planilla de control (cada hora).
 8. Abrir la aplicación con una cuenta de Auditoría → **Usar mi planilla** → cargar la planilla en Excel (.xlsx) o la hoja Diario en CSV → **Guardar en CobroSync**. Así se pasan las facturas actuales. Se puede repetir durante la prueba: agrega las facturas nuevas y, en las que ya están, completa presentación y cobro. No duplica ni borra nada.
-9. Cuando todo esté bien, poner **Config → avisosPorMail** en `SI`. Desde ese momento salen los mails. El primer día cada gerente recibe un solo mail con todas sus facturas atrasadas; después, solo las nuevas.
+9. Cuando todo esté bien, poner **Config → avisosPorMail** en `SI`. Desde ese momento salen los mails. El primer día cada gerente recibe un solo mail con todas sus facturas atrasadas; después, solo las nuevas. Qué mails salen:
+   - **Todos los días a las 8**, al gerente de cada sucursal: sus facturas que pasaron los 7 días sin documentación (solo las nuevas).
+   - **Los lunes a las 8**: el resumen semanal de cada sucursal y **un solo mail a Gerencia General** con lo que quedó sin resolver (compañías que no respondieron 3 reclamos y documentación crítica de más de 21 días). Durante la semana, Gerencia lo ve en sus notificaciones de CobroSync, sin mails diarios.
 
 ## Actualizar a una versión nueva
 

@@ -335,7 +335,7 @@ prueba('avisos diarios: un mail por gerente y no se repiten', () => {
   gs('avisosDiarios')
   esperar(mails.length === antes, 'se repitieron los avisos')
 })
-prueba('a Gerencia General le llega un solo mail que dice qué tiene que hacer', () => {
+prueba('a Gerencia General no le llegan mails todos los días (lo ve en CobroSync)', () => {
   hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
   // Una factura vencida con 3 reclamos sin respuesta
   const iRec = hojas.Comprobantes.filas.findIndex((f, i) => i > 0 && f[HOJAS_COLUMNAS.indexOf('tipo')] === 'FC')
@@ -345,18 +345,20 @@ prueba('a Gerencia General le llega un solo mail que dice qué tiene que hacer',
   f[HOJAS_COLUMNAS.indexOf('reclamos')] = JSON.stringify([1, 2, 3].map(() => ({ fecha: '2026-02-01', medio: 'mail', autor: 'Auditoría', nota: '' })))
   mails.length = 0
   gs('avisosDiarios')
-  const aGerencia = mails.filter((m) => m.to === 'gerencia.general@svaauto.com.ar')
-  esperar(aGerencia.length === 1, `${aGerencia.length} mails a Gerencia`)
-  esperar(aGerencia[0].body.includes('Auditoría necesita tu apoyo') && aGerencia[0].body.includes('Pedile a cada sucursal'), aGerencia[0].body.slice(0, 300))
-  esperar(!aGerencia[0].body.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
-  mails.length = 0
-  gs('avisosDiarios')
-  esperar(!mails.some((m) => m.to === 'gerencia.general@svaauto.com.ar'), 'se repitió el pedido de apoyo')
+  esperar(!mails.some((m) => m.to === 'gerencia.general@svaauto.com.ar'), 'le llegó un mail diario a Gerencia')
+  const conAviso = hojas.Comprobantes.filas.some((x, i) => i > 0 && x[HOJAS_COLUMNAS.indexOf('eventos')].includes('gerencia general'))
+  esperar(conAviso, 'no quedó el aviso de documentación crítica para las notificaciones')
 })
-prueba('resumen semanal para cada gerente de sucursal', () => {
+prueba('el lunes: resumen para cada gerente de sucursal y un solo mail a Gerencia con lo pendiente', () => {
   mails.length = 0
   gs('resumenSemanal')
-  esperar(mails.length === 2 && mails.every((m) => m.subject.includes('Resumen semanal')), `${mails.length} mails`)
+  const deSucursal = mails.filter((m) => m.subject.includes('Resumen semanal'))
+  const aGerencia = mails.filter((m) => m.to === 'gerencia.general@svaauto.com.ar')
+  esperar(deSucursal.length === 2, `${deSucursal.length} resúmenes de sucursal`)
+  esperar(aGerencia.length === 1 && mails.length === 3, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
+  const cuerpo = aGerencia[0].body
+  esperar(cuerpo.includes('Auditoría necesita tu apoyo') && cuerpo.includes('Pedile a cada sucursal'), cuerpo.slice(0, 300))
+  esperar(!cuerpo.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
 })
 prueba('con los avisos desactivados no sale ningún mail', () => {
   setCfg('avisosPorMail', 'NO')

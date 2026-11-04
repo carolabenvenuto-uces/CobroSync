@@ -361,10 +361,7 @@ function avisosDiarios() {
   if (config_('avisosPorMail') !== 'SI') return;
   var hoy = hoy_();
   var sucursales = indexar_(leerHoja_(HOJAS.sucursales), 'nombre');
-  var companias = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
   var aGerentes = {}; // correo del gerente de sucursal → líneas
-  var criticas = {}; // sucursal → { cantidad, importe }
-  var sinRespuesta = {}; // compañía → { cantidad, importe }
 
   conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
@@ -373,8 +370,6 @@ function avisosDiarios() {
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
       var cambio = false;
       var numero = c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8);
-      var importe = Number(c.total || 0) - Number(c.acreditado || 0);
-
       // Documentación: al gerente de la sucursal (día 8) y a Gerencia General (día 22)
       // Si la sucursal avisó para cuándo lo sube y esa fecha no pasó, no se la reclama
       var enPlazoComprometido = c.compromiso && c.compromiso.fecha && String(c.compromiso.fecha) >= hoy;
@@ -386,22 +381,11 @@ function avisosDiarios() {
           eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se avisó a ' + suc.gerente });
           cambio = true;
         }
+        // Gerencia lo ve en sus notificaciones de CobroSync en el día; por mail le llega el lunes
         if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
-          var g = criticas[c.sucursal] = criticas[c.sucursal] || { cantidad: 0, importe: 0 };
-          g.cantidad++; g.importe += importe;
           eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
           cambio = true;
         }
-      }
-
-      // Cobranza: vencida y la compañía no respondió 3 reclamos → Auditoría pide apoyo a Gerencia
-      var vencida = c.tipo === 'FC' && c.estado === 'presentada' && c.vencimiento && String(c.vencimiento) < hoy;
-      if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA && !yaAvisado('se pidió apoyo a Gerencia')) {
-        var nombre = (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId;
-        var s2 = sinRespuesta[nombre] = sinRespuesta[nombre] || { cantidad: 0, importe: 0 };
-        s2.cantidad++; s2.importe += importe;
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Sin respuesta a ' + RECLAMOS_SIN_RESPUESTA + ' reclamos: se pidió apoyo a Gerencia' });
-        cambio = true;
       }
 
       if (cambio) {
@@ -416,35 +400,18 @@ function avisosDiarios() {
     enviar_(correo, 'CobroSync · ' + lineas.length + (lineas.length === 1 ? ' factura' : ' facturas') + ' de tu sucursal sin documentación completa',
       'Estas facturas pasaron el plazo de ' + PLAZO_DOCUMENTACION + ' días para cargar la documentación. Por favor, revisá con tu equipo que se suban:\n\n- ' + lineas.join('\n- '));
   });
-
-  // A Gerencia General, un solo mail con lo que tiene que hacer (solo si hay algo nuevo)
-  var gerencia = String(config_('correosGerencia')).split(',').map(function (x) { return x.trim(); }).filter(String);
-  var partes = [];
-  var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
-  var sinResp = Object.keys(sinRespuesta);
-  if (sinResp.length) {
-    partes.push('Auditoría necesita tu apoyo: estas compañías no responden los reclamos de facturas vencidas.\n' +
-      sinResp.map(function (n) { return '- ' + n + ': ' + facturas(sinRespuesta[n].cantidad) + ' (' + pesos(sinRespuesta[n].importe) + ')'; }).join('\n'));
-  }
-  var conCriticas = Object.keys(criticas);
-  if (conCriticas.length) {
-    partes.push('Auditoría marcó como críticas facturas que llevan más de ' + DIAS_GERENCIA_GENERAL + ' días sin documentación. Pedile a cada sucursal que la complete.\n' +
-      conCriticas.map(function (n) { return '- ' + n + ': ' + facturas(criticas[n].cantidad) + ' (' + pesos(criticas[n].importe) + ')'; }).join('\n'));
-  }
-  if (partes.length) {
-    var asunto = sinResp.length && conCriticas.length ? 'CobroSync · Necesitamos tu apoyo con compañías y sucursales'
-      : sinResp.length ? 'CobroSync · Necesitamos tu apoyo con ' + (sinResp.length === 1 ? sinResp[0] : sinResp.length + ' compañías')
-      : 'CobroSync · Documentación crítica en ' + (conCriticas.length === 1 ? conCriticas[0] : conCriticas.length + ' sucursales');
-    gerencia.forEach(function (correo) { enviar_(correo, asunto, partes.join('\n\n')); });
-  }
 }
 
-/** Cada lunes: resumen de la semana para el gerente de cada sucursal. */
+/**
+ * Cada lunes: el resumen de la semana para el gerente de cada sucursal y, para Gerencia General,
+ * un solo mail con lo que quedó pendiente y necesita su intervención. Durante la semana, Gerencia
+ * lo ve en las notificaciones de CobroSync.
+ */
 function resumenSemanal() {
   if (config_('avisosPorMail') !== 'SI') return;
   var hoy = hoy_();
   var comprobantes = leerHoja_(HOJAS.comprobantes);
+  pendientesParaGerencia_(comprobantes, hoy);
   leerHoja_(HOJAS.sucursales).forEach(function (s) {
     if (!s.correoGerente) return;
     var pendientes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c); });
@@ -456,6 +423,42 @@ function resumenSemanal() {
       '- Atrasadas (8 a 21 días): ' + atrasadas.length + '\n' +
       '- Críticas (más de 21 días): ' + criticas.length + '\n' +
       'Importe retenido: $ ' + importe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  });
+}
+
+/** Lo que sigue sin resolver al lunes: compañías que no responden 3 reclamos y documentación crítica. */
+function pendientesParaGerencia_(comprobantes, hoy) {
+  var gerencia = String(config_('correosGerencia')).split(',').map(function (x) { return x.trim(); }).filter(String);
+  if (!gerencia.length) return;
+  var companias = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
+  var criticas = {};
+  var sinRespuesta = {};
+  var sumar = function (mapa, clave, c) {
+    var g = mapa[clave] = mapa[clave] || { cantidad: 0, importe: 0 };
+    g.cantidad++;
+    g.importe += Number(c.total || 0) - Number(c.acreditado || 0);
+  };
+  comprobantes.forEach(function (c) {
+    if (esperaALaSucursal_(c) && diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL) sumar(criticas, c.sucursal, c);
+    var vencida = c.tipo === 'FC' && c.estado === 'presentada' && c.vencimiento && String(c.vencimiento) < hoy;
+    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
+  });
+  var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
+  var lista = function (mapa) {
+    return Object.keys(mapa).sort(function (a, b) { return mapa[b].importe - mapa[a].importe; })
+      .map(function (n) { return '- ' + n + ': ' + facturas(mapa[n].cantidad) + ' (' + pesos(mapa[n].importe) + ')'; }).join('\n');
+  };
+  var partes = [];
+  if (Object.keys(sinRespuesta).length) {
+    partes.push('Auditoría necesita tu apoyo: estas compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
+  }
+  if (Object.keys(criticas).length) {
+    partes.push('Facturas con más de ' + DIAS_GERENCIA_GENERAL + ' días sin documentación. Pedile a cada sucursal que la complete esta semana.\n' + lista(criticas));
+  }
+  if (!partes.length) return;
+  gerencia.forEach(function (correo) {
+    enviar_(correo, 'CobroSync · Pendientes de la semana que necesitan tu apoyo', 'Lo que quedó sin resolver al ' + hoy.split('-').reverse().join('/') + ':\n\n' + partes.join('\n\n'));
   });
 }
 

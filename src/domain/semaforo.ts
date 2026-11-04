@@ -173,3 +173,25 @@ export function puedePresentarse(c: Comprobante, fechaCorte: string): boolean {
 
 /** Etapas en las que la factura espera algo de la sucursal. */
 export const ETAPAS_SUCURSAL = ['doc_pendiente', 'doc_atrasada', 'doc_observada'] as const
+
+/**
+ * Los grupos de las tarjetas del Resumen. Al tocar una tarjeta se abre el Detalle de facturas
+ * con ese grupo (y se pueden sumar todos los filtros de la tabla).
+ */
+export const GRUPOS_SALDO = {
+  pendiente: 'Pendiente de cobro',
+  sin_presentar: 'Sin presentar',
+  al_dia: 'Al día',
+  vencido: 'Vencido',
+} as const
+export type GrupoSaldo = keyof typeof GRUPOS_SALDO
+
+const ETAPAS_SIN_PRESENTAR: Etapa[] = ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision', 'pres_pendiente']
+
+export function enGrupo(grupo: GrupoSaldo, etapa: Etapa, saldo: number): boolean {
+  if (saldo <= 0) return false
+  if (grupo === 'sin_presentar') return ETAPAS_SIN_PRESENTAR.includes(etapa)
+  if (grupo === 'al_dia') return etapa === 'al_dia'
+  if (grupo === 'vencido') return etapa === 'vencida'
+  return true
+}

@@ -6,7 +6,8 @@ import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { ultimoReclamo } from '../domain/reclamos'
-import { calcularSemaforo } from '../domain/semaforo'
+import { calcularSemaforo, enGrupo, GRUPOS_SALDO, type GrupoSaldo } from '../domain/semaforo'
+import { saldoFactura } from '../domain/importes'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
@@ -32,7 +33,7 @@ export default function ControlDiario() {
   const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante, actualizarComprobante, registrarEvento } = useApp()
   const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const soloConsulta = rol === 'gerencia'
   // Gerencia filtra la sucursal desde la columna: busca siempre en todas
   const comprobantes = soloConsulta ? datos!.comprobantes : filtradosPorSucursal
@@ -45,13 +46,31 @@ export default function ControlDiario() {
     [aseguradoras],
   )
 
-  const filas = useMemo(() => comprobantes.map((c) => ({ c, s: calcularSemaforo(c, hoy) })), [comprobantes, hoy])
+  // Desde las tarjetas del Resumen llega ?grupo=vencido (o sin_presentar, al_dia, pendiente)
+  const grupoParam = params.get('grupo')
+  const grupo = grupoParam && grupoParam in GRUPOS_SALDO ? (grupoParam as GrupoSaldo) : null
+  const filas = useMemo(
+    () =>
+      comprobantes
+        .map((c) => ({ c, s: calcularSemaforo(c, hoy) }))
+        .filter((x) => !grupo || enGrupo(grupo, x.s.etapa, saldoFactura(x.c))),
+    [comprobantes, hoy, grupo],
+  )
+  function quitarGrupo() {
+    const nuevos = new URLSearchParams(params)
+    nuevos.delete('grupo')
+    setParams(nuevos)
+  }
   type Fila = (typeof filas)[number]
 
   // Auditoría arranca en el mes en curso (si no viene un filtro desde un aviso).
   // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
   const filtrosIniciales =
-    [...params.keys()].length > 0 ? Object.fromEntries(params.entries()) : soloConsulta ? {} : { mes: mesDeFecha(hoy) }
+    [...params.keys()].length > 0
+      ? Object.fromEntries([...params.entries()].filter(([k]) => k !== 'grupo'))
+      : soloConsulta
+        ? {}
+        : { mes: mesDeFecha(hoy) }
 
   async function cargarErp(archivo: File | undefined) {
     if (!archivo) return
@@ -273,6 +292,19 @@ export default function ControlDiario() {
           <button type="button" onClick={() => setMensajeErp(null)} aria-label="Cerrar" className="text-slate-500 hover:text-noche">
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {grupo && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Mostrando:</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-marca/10 px-3 py-1 font-semibold text-marca">
+            {GRUPOS_SALDO[grupo]}
+            <button type="button" onClick={quitarGrupo} aria-label="Ver todas las facturas" className="hover:text-noche">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+          <span className="text-xs text-slate-500">Podés sumar los filtros de cada columna (estado, compañía, mes…).</span>
         </div>
       )}
 

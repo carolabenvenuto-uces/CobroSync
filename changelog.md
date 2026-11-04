@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.10.1] - 2026-11-04
+
+### Cambiado
+- **Tablas a la vista:** más compactas (letra y márgenes más chicos, títulos en dos renglones) para que entren a lo ancho sin correr la barra. Botón **Columnas** para ocultar o mostrar las que se usan poco (se recuerda en cada computadora); Ref., Patente y Observaciones arrancan ocultas en el control diario. Si igual hay que correr de costado, la primera columna queda fija, y las filas se alternan en gris para no perderse.
+
 ## [0.10.0] - 2026-11-04
 
 ### Agregado

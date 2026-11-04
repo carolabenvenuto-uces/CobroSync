@@ -121,7 +121,7 @@ export default function ControlDiario() {
       filtro: (x) => mesDeFecha(x.c.fecha),
       celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span>,
     },
-    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
+    { clave: 'ref', titulo: 'Ref.', oculta: true, orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
     { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
     {
       clave: 'comprobante',
@@ -148,7 +148,7 @@ export default function ControlDiario() {
         )
       },
     },
-    { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
+    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
     {
       clave: 'total',
       titulo: 'Total',
@@ -211,7 +211,7 @@ export default function ControlDiario() {
           <span className={`whitespace-nowrap text-xs ${avisoNc(x.c) === 'Sin aviso' ? 'font-semibold text-sem-rojo' : 'text-slate-600'}`}>{avisoNc(x.c)}</span>
         ) : null,
     },
-    { clave: 'obs', titulo: 'Observaciones', celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
+    { clave: 'obs', titulo: 'Observaciones', oculta: true, celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
   ]
 
   function exportar(lista: Fila[]) {
@@ -309,6 +309,7 @@ export default function ControlDiario() {
       )}
 
       <Tabla
+        id={soloConsulta ? 'detalle' : 'control-diario'}
         key={params.toString()}
         filas={filas}
         columnas={columnas}

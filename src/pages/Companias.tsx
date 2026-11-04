@@ -124,6 +124,7 @@ export default function Companias() {
       )}
 
       <Tabla
+        id="companias"
         filas={aseguradoras}
         columnas={columnas}
         clave={(a) => a.id}

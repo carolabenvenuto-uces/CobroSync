@@ -128,6 +128,7 @@ export default function Reclamos() {
       </div>
 
       <Tabla
+        id="reclamos"
         key={params.toString()}
         filas={vencidas}
         columnas={columnas}

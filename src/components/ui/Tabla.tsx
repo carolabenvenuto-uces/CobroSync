@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
 import { BotonExportar } from './Card'
 
 /**
@@ -7,7 +7,9 @@ import { BotonExportar } from './Card'
  * - filtros sobre el nombre de cada columna (desplegable con los valores que hay)
  * - orden tocando el título (ascendente / descendente)
  * - lupa para buscar directo una factura
- * - encabezado fijo al bajar
+ * - encabezado fijo al bajar y primera columna fija al correr de costado
+ * - compacta, para que entre a lo ancho de la pantalla sin correr la barra; las columnas que se
+ *   usan poco se pueden ocultar con "Columnas" (la elección se recuerda en esa computadora)
  */
 export interface Columna<T> {
   clave: string
@@ -20,9 +22,13 @@ export interface Columna<T> {
   derecha?: boolean
   /** clases extra de la celda */
   clase?: string
+  /** arranca oculta (se puede mostrar con el botón "Columnas") */
+  oculta?: boolean
 }
 
 interface Props<T> {
+  /** nombre de la tabla, para recordar qué columnas eligió mostrar cada persona */
+  id?: string
   filas: T[]
   columnas: Columna<T>[]
   clave: (fila: T) => string
@@ -44,10 +50,25 @@ interface Props<T> {
 }
 
 const TODOS = '__todos__'
+/** La primera columna queda fija si igual hay que correr de costado (para no perderse en la fila). */
+const FIJA = 'sticky left-0 z-10 shadow-[1px_0_0_0_#E2E8F0]'
+
+function leerOcultas(id: string | undefined, columnas: { clave: string; oculta?: boolean }[]): Set<string> {
+  if (id) {
+    try {
+      const guardadas = localStorage.getItem(`cobrosync-columnas-${id}`)
+      if (guardadas) return new Set(JSON.parse(guardadas) as string[])
+    } catch {
+      /* sin almacenamiento: las de siempre */
+    }
+  }
+  return new Set(columnas.filter((c) => c.oculta).map((c) => c.clave))
+}
 
 export function Tabla<T>({
+  id,
   filas,
-  columnas,
+  columnas: todasLasColumnas,
   clave,
   buscar,
   textoBusqueda = 'Buscar…',
@@ -64,11 +85,27 @@ export function Tabla<T>({
   const [filtros, setFiltros] = useState<Record<string, string>>(filtrosIniciales)
   const [orden, setOrden] = useState(ordenInicial ?? null)
   const [pagina, setPagina] = useState(1)
+  const [ocultas, setOcultas] = useState<Set<string>>(() => leerOcultas(id, todasLasColumnas))
+  // Una columna con un filtro puesto (por ejemplo, desde un aviso) se muestra aunque esté oculta
+  const columnas = todasLasColumnas.filter((c) => !ocultas.has(c.clave) || (filtrosIniciales[c.clave] ?? '') !== '')
+  function alternarColumna(clave: string) {
+    const n = new Set(ocultas)
+    if (n.has(clave)) n.delete(clave)
+    else n.add(clave)
+    setOcultas(n)
+    if (id) {
+      try {
+        localStorage.setItem(`cobrosync-columnas-${id}`, JSON.stringify([...n]))
+      } catch {
+        /* no se recuerda, pero funciona igual */
+      }
+    }
+  }
 
   // Valores posibles de cada filtro, a partir de las filas
   const opciones = useMemo(() => {
     const r: Record<string, string[]> = {}
-    for (const col of columnas) {
+    for (const col of todasLasColumnas) {
       if (!col.filtro) continue
       const valores = new Set<string>()
       for (const f of filas) {
@@ -78,18 +115,18 @@ export function Tabla<T>({
       r[col.clave] = [...valores].sort((a, b) => a.localeCompare(b, 'es'))
     }
     return r
-  }, [filas, columnas])
+  }, [filas, todasLasColumnas])
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
     let lista = filas.filter((f) => {
-      for (const col of columnas) {
+      for (const col of todasLasColumnas) {
         const elegido = filtros[col.clave]
         if (col.filtro && elegido && elegido !== TODOS && col.filtro(f) !== elegido) return false
       }
       return !texto || !buscar || buscar(f).toLowerCase().includes(texto)
     })
-    const col = orden && columnas.find((c) => c.clave === orden.clave)
+    const col = orden && todasLasColumnas.find((c) => c.clave === orden.clave)
     if (orden && col?.orden) {
       const valor = col.orden
       const signo = orden.dir === 'asc' ? 1 : -1
@@ -103,7 +140,7 @@ export function Tabla<T>({
       })
     }
     return lista
-  }, [filas, columnas, filtros, busqueda, buscar, orden])
+  }, [filas, todasLasColumnas, filtros, busqueda, buscar, orden])
 
   const totalPaginas = Math.max(1, Math.ceil(visibles.length / porPagina))
   const actual = Math.min(pagina, totalPaginas)
@@ -154,24 +191,43 @@ export function Tabla<T>({
             Limpiar filtros
           </button>
         )}
-        {exportar && (
-          <div className="ml-auto">
-            <BotonExportar onClick={() => exportar(visibles)} />
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {todasLasColumnas.length > 6 && !pie && (
+            <details className="relative">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo">
+                <Columns3 className="h-4 w-4 text-marca" />
+                Columnas
+                {ocultas.size > 0 && <span className="text-xs font-normal text-slate-500">({ocultas.size} ocultas)</span>}
+              </summary>
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                <p className="px-2 pb-1 text-[11px] text-slate-500">Elegí qué columnas ver. Se recuerda en esta computadora.</p>
+                {todasLasColumnas.map((c) => (
+                  <label key={c.clave} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-fondo">
+                    <input type="checkbox" checked={!ocultas.has(c.clave)} onChange={() => alternarColumna(c.clave)} />
+                    {c.titulo}
+                  </label>
+                ))}
+              </div>
+            </details>
+          )}
+          {exportar && <BotonExportar onClick={() => exportar(visibles)} />}
+        </div>
       </div>
 
       <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-fondo shadow-[0_1px_0_0_#E2E8F0]">
-            <tr className="text-xs uppercase tracking-wide text-slate-500">
-              {columnas.map((col) => (
-                <th key={col.clave} className={`px-3 pt-3 pb-1 font-semibold whitespace-nowrap ${col.derecha ? 'text-right' : ''}`}>
+        <table className="w-full text-left text-[13px]">
+          <thead className="sticky top-0 z-20 bg-fondo shadow-[0_1px_0_0_#E2E8F0]">
+            <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+              {columnas.map((col, i) => (
+                <th
+                  key={col.clave}
+                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${i === 0 ? FIJA + ' bg-fondo' : ''}`}
+                >
                   {col.orden ? (
                     <button
                       type="button"
                       onClick={() => ordenar(col)}
-                      className={`inline-flex items-center gap-1 uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
+                      className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
                       title="Ordenar"
                     >
                       {col.titulo}
@@ -192,8 +248,8 @@ export function Tabla<T>({
               ))}
             </tr>
             <tr>
-              {columnas.map((col) => (
-                <th key={col.clave} className="px-3 pb-2 font-normal">
+              {columnas.map((col, i) => (
+                <th key={col.clave} className={`px-2 pb-2 font-normal ${i === 0 ? FIJA + ' bg-fondo' : ''}`}>
                   {col.filtro && (
                     <select
                       value={filtros[col.clave] ?? TODOS}
@@ -201,7 +257,7 @@ export function Tabla<T>({
                         setFiltros((f) => ({ ...f, [col.clave]: e.target.value }))
                         setPagina(1)
                       }}
-                      className={`w-full min-w-24 rounded-md border px-1.5 py-1 text-xs ${
+                      className={`w-full min-w-[4.5rem] max-w-40 rounded-md border px-1 py-1 text-xs ${
                         filtros[col.clave] && filtros[col.clave] !== TODOS
                           ? 'border-marca bg-marca/5 font-semibold text-marca'
                           : 'border-slate-200 bg-white text-slate-600'
@@ -222,9 +278,16 @@ export function Tabla<T>({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {pagina_.map((f) => (
-              <tr key={clave(f)} onClick={onFila ? () => onFila(f) : undefined} className={onFila ? 'cursor-pointer hover:bg-marca/5' : ''}>
-                {columnas.map((col) => (
-                  <td key={col.clave} className={`px-3 py-2.5 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''}`}>
+              <tr
+                key={clave(f)}
+                onClick={onFila ? () => onFila(f) : undefined}
+                className={`group even:bg-slate-50/70 ${onFila ? 'cursor-pointer hover:bg-marca/5' : ''}`}
+              >
+                {columnas.map((col, i) => (
+                  <td
+                    key={col.clave}
+                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-blue-50' : ''}`}
+                  >
                     {col.celda(f)}
                   </td>
                 ))}

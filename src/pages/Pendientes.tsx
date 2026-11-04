@@ -94,7 +94,7 @@ export default function Pendientes() {
     },
     { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
     { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap">{x.c.siniestro}</span> },
-    { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
+    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap font-semibold">{formatoPesos(x.c.total)}</span> },
     {
       clave: 'falta',
@@ -182,6 +182,7 @@ export default function Pendientes() {
       </div>
 
       <Tabla
+        id="pendientes"
         key={params.toString()}
         filas={filas}
         columnas={columnas}

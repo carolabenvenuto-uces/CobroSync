@@ -126,7 +126,7 @@ export default function MisFacturas() {
         )
       },
     },
-    { clave: 'patente', titulo: 'Patente', celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
+    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
       clave: 'que',
@@ -269,6 +269,7 @@ export default function MisFacturas() {
       </p>
 
       <Tabla
+        id="mis-facturas"
         filas={visibles}
         columnas={columnas}
         clave={(x) => x.c.id}

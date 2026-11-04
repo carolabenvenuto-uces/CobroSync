@@ -15,22 +15,12 @@ import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
 export default function Impacto() {
   const { datos, hoy, anio, sucursal, parametros, setParametros } = useApp()
 
-  // Al entrar, un cartel avisa que los números de costo están en revisión (una vez por sesión)
-  const [aviso, setAviso] = useState(() => {
-    try {
-      return sessionStorage.getItem('cobrosync-impacto-visto') !== '1'
-    } catch {
-      return true
-    }
-  })
+  // Cada vez que se entra a la pantalla, un cartel avisa que el costo está en revisión
+  const [aviso, setAviso] = useState(true)
   function cerrarAviso() {
     setAviso(false)
-    try {
-      sessionStorage.setItem('cobrosync-impacto-visto', '1')
-    } catch {
-      /* sin almacenamiento: se vuelve a mostrar la próxima vez */
-    }
   }
+
   const comprobantes = useComprobantes()
   const { meta } = datos!
 

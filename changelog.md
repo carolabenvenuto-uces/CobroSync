@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.1] - 2026-11-04
+
+### Cambiado
+- **Tablas a la vista:** más compactas (letra y márgenes más chicos, títulos en dos renglones) para que entren a lo ancho sin correr la barra. Botón **Columnas** para ocultar o mostrar las que se usan poco (se recuerda en cada computadora); Ref., Patente y Observaciones arrancan ocultas en el control diario. Si igual hay que correr de costado, la primera columna queda fija, y las filas se alternan en gris para no perderse. En el control diario, el siniestro va debajo de la compañía y los días debajo de cada fecha.
+- **Notas de crédito con signo menos** en el Resumen (año y mes), para que no se confundan con importes a favor.
+- **Pendiente de cobro hoy:** el total va pegado al título.
+- **Resumen:** el recuadro del año pasa a un tono claro, como el resto. En el mes, las notas de crédito tienen su propio dato (antes estaban debajo de lo facturado). En meses que ya pasaron dice "faltó cobrar".
+- **Impacto económico:** el cartel "En revisión" aparece cada vez que se entra a la pantalla.
+
 ## [0.10.0] - 2026-11-04
 
 ### Agregado

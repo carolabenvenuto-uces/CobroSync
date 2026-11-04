@@ -9,6 +9,9 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 - Pedidos a sucursales: el detalle tiene más ancho y el de las notas de crédito sin aviso es más corto.
 - Mis facturas (rechazos y por vencer): sin la columna Prioridad, que repetía la marca MiPyME; el motivo tiene más ancho.
 - Mis siniestros: las cuatro cifras del siniestro en dos columnas, para que los importes entren completos.
+- **Menú de Auditoría ordenado:** Avisos junto a Notificaciones; Trabajo diario (Control diario, Presentar, Compañías); Seguimiento y reclamos (Pendientes de sucursales, Pedidos a sucursales, Vencidas y reclamos); Informes; Configuración (Usar mi planilla y Ajustes).
+- **Ajustes, solo de la administradora:** con el correo de soporte cargado, solo esa cuenta ve y guarda los Ajustes (también lo controla el servidor).
+- Los importes vencidos van en el mismo rojo oscuro que su marca.
 
 ## [1.0.0] - 2026-11-04 (marca)
 

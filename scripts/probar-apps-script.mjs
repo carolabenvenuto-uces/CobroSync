@@ -449,6 +449,12 @@ prueba('un reporte técnico le llega solo a la desarrolladora', () => {
   esperar(mails[0].body.includes('No me deja subir un PDF') && mails[0].body.includes('rocamora@svaauto.com.ar'), mails[0].body.slice(0, 200))
   esperar(mails[0].replyTo === 'rocamora@svaauto.com.ar', 'sin responder a')
 })
+prueba('con el correo de soporte cargado, los ajustes los cambia solo esa cuenta', () => {
+  setCfg('correoSoporte', 'desarrolladora@svaauto.com.ar')
+  como('auditoria@svaauto.com.ar')
+  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'solo la administradora')
+  setCfg('correoSoporte', '')
+})
 prueba('Ajustes: Auditoría cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
   como('rocamora@svaauto.com.ar')
   falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Auditoría')

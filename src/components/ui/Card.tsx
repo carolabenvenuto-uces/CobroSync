@@ -23,7 +23,7 @@ const TONO_VALOR: Record<Tono, string> = {
   marca: 'text-marca',
   verde: 'text-esmeralda',
   amarillo: 'text-sem-amarillo',
-  rojo: 'text-sem-rojo',
+  rojo: 'text-red-800',
 }
 
 /**

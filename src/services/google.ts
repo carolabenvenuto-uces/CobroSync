@@ -90,6 +90,11 @@ export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; aho
 }
 
 /** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Auditoría. */
+/** Los documentos de varias facturas en un .zip (para presentarlas a la compañía). */
+export function descargarDocumentosDeGoogle(ids: string[], nombre: string): Promise<{ nombre: string; base64: string; cantidad: number; faltan: number }> {
+  return llamar('descargarDocumentos', ids, nombre)
+}
+
 /** Reporte de un problema técnico: le llega por mail solo a la desarrolladora. */
 export function reportarProblemaEnGoogle(texto: string, contexto: { pantalla: string; navegador: string }): Promise<boolean> {
   return llamar('reportarProblema', texto, contexto)

@@ -173,7 +173,7 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
   const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)
   if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion) {
-    const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz)/i.test(e.texto)
+    const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Auditoría)/i.test(e.texto)
     lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Auditoría · ${numero}: ${e.texto}` })
   }
   if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', texto: `${numero}: ${e.texto}` })

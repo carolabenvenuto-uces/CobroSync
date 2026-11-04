@@ -7,13 +7,15 @@ import { EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
+  cambiosPorRespuesta,
   estadoReclamo,
   NOMBRE_ESTADO_RECLAMO,
+  NOMBRE_RESPUESTA,
   RECLAMOS_PARA_ESCALAR,
   ultimoReclamo,
   type EstadoReclamo,
 } from '../domain/reclamos'
-import type { Comprobante, Reclamo } from '../domain/tipos'
+import type { Comprobante, Reclamo, RespuestaReclamo } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { plazosActuales } from '../domain/plazos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
@@ -24,6 +26,10 @@ const ESTILO: Record<EstadoReclamo, string> = {
   reclamada: 'bg-slate-100 text-slate-700',
   volver: 'bg-sem-rojo/10 text-red-800',
   escalar: 'bg-sem-amarillo/20 text-amber-900',
+  tolerancia: 'bg-slate-100 text-slate-600',
+  en_pagos: 'bg-etapa-compania/10 text-violet-800',
+  reenviar: 'bg-sem-rojo/10 text-red-800',
+  refacturar: 'bg-sem-amarillo/20 text-amber-900',
 }
 
 /**
@@ -38,6 +44,7 @@ export default function Reclamos() {
   const [nota, setNota] = useState('')
   const [mail, setMail] = useState<{ asunto: string; texto: string; para?: string } | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [respuesta, setRespuesta] = useState<RespuestaReclamo>('pagos')
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
@@ -66,6 +73,20 @@ export default function Reclamos() {
 
   const seleccion = vencidas.filter((x) => elegidas.has(x.c.id))
   const companiasElegidas = [...new Set(seleccion.map((x) => x.c.aseguradoraId))]
+
+  // Lo que respondió la compañía, para todas las elegidas que ya tienen un reclamo
+  function registrarRespuesta() {
+    let n = 0
+    for (const x of seleccion) {
+      const r = cambiosPorRespuesta(x.c, respuesta, nota, hoy, usuario || 'Auditoría')
+      if (!r) continue
+      actualizarComprobante(x.c.id, r.campos)
+      registrarEvento(x.c.id, 'reclamo', r.evento)
+      n++
+    }
+    setMensaje(n ? `Listo: respuesta registrada en ${n} ${n === 1 ? 'factura' : 'facturas'}.` : 'Las elegidas todavía no tienen un reclamo registrado.')
+    setElegidas(new Set())
+  }
 
   function registrarReclamos() {
     for (const { c } of seleccion) {
@@ -170,6 +191,22 @@ export default function Reclamos() {
         ))}
       </div>
 
+      {/* Lo que ya respondió la compañía, o lo que todavía no se reclama por tolerancia */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+        {(['reenviar', 'refacturar', 'en_pagos', 'tolerancia'] as EstadoReclamo[])
+          .filter((e) => resumen(e).cantidad > 0)
+          .map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => setParams({ estado: NOMBRE_ESTADO_RECLAMO[e] }, { replace: true })}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${ESTILO[e]} ${estadoActivo === NOMBRE_ESTADO_RECLAMO[e] ? 'ring-2 ring-marca' : ''}`}
+            >
+              {NOMBRE_ESTADO_RECLAMO[e]} · {resumen(e).cantidad}
+            </button>
+          ))}
+      </div>
+
       {rol === 'auditoria' && (
         <div className={`mb-4 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${seleccion.length ? 'border-marca/40 bg-marca/5' : 'border-slate-200 bg-white'}`}>
           <span className="text-sm">
@@ -200,6 +237,22 @@ export default function Reclamos() {
               className="inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
             >
               <Megaphone className="h-4 w-4" /> Registrar el reclamo
+            </button>
+            <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden="true" />
+            <select value={respuesta} onChange={(e) => setRespuesta(e.target.value as RespuestaReclamo)} className={claseSelect} aria-label="Respuesta de la compañía">
+              {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
+                <option key={k} value={k}>
+                  {NOMBRE_RESPUESTA[k]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!seleccion.length}
+              onClick={registrarRespuesta}
+              className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-3 py-2 text-sm font-semibold text-marca hover:bg-marca/5 disabled:opacity-50"
+            >
+              Registrar la respuesta
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Bell,
   CalendarClock,
@@ -15,7 +15,9 @@ import {
   X,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { cambiosPorRespuesta, estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO, NOMBRE_RESPUESTA } from '../domain/reclamos'
+import { atendidaPorOtra } from '../domain/pedidos'
+import { PedidosLegajo } from './PedidosLegajo'
 import {
   calcularSemaforo,
   documentosDelLegajo,
@@ -31,7 +33,7 @@ import { facturasDelSiniestro } from '../domain/siniestros'
 import { esNotaTotal } from '../services/erp'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
 import { numeroParaNombre, revisarNombre } from '../domain/archivos'
-import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, TipoDocumento } from '../domain/tipos'
+import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { AYUDA_ETAPA, BadgeEtapa, quienEtapa } from './ui/Badges'
@@ -114,6 +116,26 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [comentarioRechazo, setComentarioRechazo] = useState('')
   const [medioReclamo, setMedioReclamo] = useState<Reclamo['medio']>('mail')
   const [notaReclamo, setNotaReclamo] = useState('')
+  const [respuestaReclamo, setRespuestaReclamo] = useState<RespuestaReclamo>('pagos')
+  const [notaRespuesta, setNotaRespuesta] = useState('')
+
+  // Que dos personas de Auditoría no trabajen la misma factura a la vez: al abrirla queda tomada
+  // unos minutos a nombre de quien la abrió; la otra persona ve un aviso.
+  const otraPersona = rol === 'auditoria' ? atendidaPorOtra(c, usuario) : null
+  useEffect(() => {
+    if (rol !== 'auditoria' || atendidaPorOtra(c, usuario)) return
+    actualizarComprobante(c.id, { atendiendo: { por: usuario, hasta: new Date(Date.now() + 15 * 60_000).toISOString() } })
+    return () => actualizarComprobante(c.id, { atendiendo: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c.id])
+
+  function registrarRespuesta() {
+    const r = cambiosPorRespuesta(c, respuestaReclamo, notaRespuesta.trim(), hoy, usuario || 'Auditoría')
+    if (!r) return
+    actualizarComprobante(c.id, r.campos)
+    registrarEvento(c.id, 'reclamo', r.evento)
+    setNotaRespuesta('')
+  }
 
   function guardarDocumentos(nuevos: Documento[], extra: Partial<Comprobante> = {}) {
     actualizarComprobante(c.id, { documentos: nuevos, ...extra })
@@ -407,6 +429,14 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               </div>
             )}
           </section>
+
+          {otraPersona && (
+            <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+              <strong>{otraPersona}</strong> tiene abierta esta factura en este momento. Conviene coordinar antes de cambiar algo.
+            </p>
+          )}
+
+          <PedidosLegajo c={c} />
 
           {/* Documentación: tres cosas para tildar */}
           {c.tipo === 'FC' && (
@@ -819,11 +849,19 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               ) : (
                 <ol className="space-y-1">
                   {c.reclamos.map((r, i) => (
-                    <li key={i} className="flex justify-between gap-2">
-                      <span>
-                        {i + 1}. {formatoFecha(r.fecha || null)} por {r.medio} · {r.autor}
-                      </span>
-                      <span className="truncate text-xs text-slate-500">{r.nota}</span>
+                    <li key={i}>
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          {i + 1}. {formatoFecha(r.fecha || null)} por {r.medio} · {r.autor}
+                        </span>
+                        <span className="truncate text-xs text-slate-500">{r.nota}</span>
+                      </div>
+                      {r.respuesta && (
+                        <p className="ml-4 text-xs font-semibold text-violet-800">
+                          Respuesta ({formatoFecha(r.respuesta.fecha)}): {NOMBRE_RESPUESTA[r.respuesta.tipo].toLowerCase()}
+                          {r.respuesta.nota ? ` · ${r.respuesta.nota}` : ''}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ol>
@@ -842,6 +880,29 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <p className="mt-2 rounded-md bg-sem-amarillo/15 p-2 text-xs text-amber-900">
                   La compañía no respondió a 3 reclamos: Auditoría le pide apoyo a gerencia para que intervenga.
                 </p>
+              )}
+              {rol === 'auditoria' && c.reclamos.length > 0 && !c.reclamos[c.reclamos.length - 1].respuesta && (
+                <div className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3">
+                  <div className="text-xs font-semibold text-slate-500">Respuesta de la compañía al último reclamo</div>
+                  <select className={`${claseSelect} w-full`} value={respuestaReclamo} onChange={(e) => setRespuestaReclamo(e.target.value as RespuestaReclamo)}>
+                    {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
+                      <option key={k} value={k}>
+                        {NOMBRE_RESPUESTA[k]}
+                      </option>
+                    ))}
+                  </select>
+                  <input value={notaRespuesta} onChange={(e) => setNotaRespuesta(e.target.value)} placeholder="Detalle (opcional): qué documento, qué monto…" className={`${claseSelect} w-full`} />
+                  <p className="text-[11px] text-slate-500">
+                    {respuestaReclamo === 'pagos'
+                      ? 'Se espera el cobro un mes antes de volver a reclamar.'
+                      : respuestaReclamo === 'documentacion'
+                        ? 'La factura vuelve a la lista de Presentar para reenviarla.'
+                        : 'Se le pide a la sucursal que refacture; queda en Pedidos a sucursales.'}
+                  </p>
+                  <button type="button" onClick={registrarRespuesta} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro`}>
+                    Guardar la respuesta
+                  </button>
+                </div>
               )}
               {rol === 'auditoria' &&
                 (formulario !== 'reclamo' ? (

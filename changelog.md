@@ -2,6 +2,18 @@
 
 Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
 
+## [1.0.0] - 2026-11-04 (Auditoría)
+
+### Agregado
+- **Pedidos a sucursales:** Auditoría le pide algo a la sucursal desde la factura (error en la factura, refacturar, otro). La sucursal lo ve en Mis facturas (tarjeta "Rechazos y pedidos de Auditoría") y responde; Auditoría lo da por resuelto. Una nota de crédito que entra sin aviso genera su pedido sola. Pantalla nueva con los días de espera de cada pedido, y los pedidos sin responder van en el mail de los lunes de cada sucursal.
+- **Respuesta de la compañía a un reclamo, con un clic** (en la factura o en lote): pasa a pagos (se espera un mes), reenviar la documentación (vuelve a Presentar) o refacturar (pedido a la sucursal). Para pedir apoyo a Gerencia solo cuentan los reclamos sin respuesta.
+- **Tolerancia por compañía:** días después del vencimiento antes de reclamar, para las que suelen pagar.
+- **Presentar por compañía y por canal:** mail o plataforma (con el acceso), descarga de todos los documentos en un .zip con el número de factura en cada nombre, y marcar como presentadas por compañía.
+- **Para no pisarse:** una factura abierta o en preparación queda tomada unos minutos a nombre de quien la tiene; la otra persona ve el aviso.
+
+### Cambiado
+- La marca MiPyME es una pastilla con un rayo, sin el signo "!" que se confundía con un 1.
+
 ## [1.0.0] - 2026-11-04 (ajustes previos al lanzamiento)
 
 ### Cambiado

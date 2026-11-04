@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -40,7 +40,7 @@ var HOJAS = {
       'compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada',
       'acreditado', 'importeCobrado', 'percepciones', 'actualizado',
       // Columnas agregadas después (siempre al final, para no correr las que ya tienen datos)
-      'fechaAprobacion',
+      'fechaAprobacion', 'pedidos', 'atendiendo', 'reenviar',
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
@@ -50,7 +50,7 @@ var HOJAS = {
   },
 };
 
-var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada'];
+var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada', 'pedidos', 'atendiendo'];
 var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'];
 var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones']; // vacío = sin dato
 // Los plazos de la documentación (común y MiPyME) están en la pestaña Config y se cambian
@@ -149,6 +149,28 @@ function aplicarCambios(cambios) {
   });
 }
 
+/**
+ * Pedidos de Auditoría a la sucursal. Auditoría los crea y los cierra; la sucursal solo puede
+ * responder los que están abiertos (no borrarlos ni inventarlos). El servidor firma cada respuesta.
+ */
+function combinarPedidos_(actuales, nuevos, usuario) {
+  if (usuario.rol === 'auditoria') {
+    return nuevos.map(function (p) {
+      var antes = actuales.filter(function (x) { return x.id === p.id; })[0];
+      if (!antes) p.autor = usuario.nombre;
+      if (p.cerrado && !(antes && antes.cerrado)) p.cerrado = { fecha: hoy_(), autor: usuario.nombre };
+      return p;
+    });
+  }
+  return actuales.map(function (p) {
+    var nuevo = nuevos.filter(function (x) { return x.id === p.id; })[0];
+    if (!p.cerrado && !p.respuesta && nuevo && nuevo.respuesta && nuevo.respuesta.texto) {
+      p.respuesta = { fecha: hoy_(), autor: usuario.nombre, texto: String(nuevo.respuesta.texto).slice(0, 2000) };
+    }
+    return p;
+  });
+}
+
 function aplicarUno_(hoja, usuario, op, tocadas) {
       var fila = buscarFila_(hoja, op.id);
       if (op.nuevo) {
@@ -165,6 +187,8 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
       if (op.campos) {
         Object.keys(op.campos).forEach(function (k) {
           if (k === 'id' || k === 'documentos' || k === 'eventos') return;
+          if (k === 'pedidos') { c.pedidos = combinarPedidos_(c.pedidos || [], op.campos.pedidos || [], usuario); return; }
+          if (k === 'atendiendo' && usuario.rol !== 'auditoria') return;
           if (usuario.rol === 'sucursal') {
             // La sucursal solo cambia lo suyo; importes, presentación y cobro quedan como estaban
             if (CAMPOS_SUCURSAL.indexOf(k) < 0) return;
@@ -341,6 +365,8 @@ function guardarAseguradoras(lista, completarExistentes) {
       // Con la pestaña CP o Info. Compañías: completa razón social, CUIT, plazo y correos
       if (completarExistentes) {
         ['razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias'].forEach(function (k) { if (a[k]) actual[k] = a[k]; });
+        // Cómo presenta y cuánta tolerancia tiene: se cambian desde la pantalla Compañías (también vacíos)
+        ['canal', 'portalUrl', 'toleranciaReclamo'].forEach(function (k) { if (k in a) actual[k] = a[k] === null || a[k] === undefined ? '' : a[k]; });
         escribirFila_(hoja, HOJAS.aseguradoras, buscarFila_(hoja, a.id), actual);
       }
     });
@@ -439,17 +465,32 @@ function resumenSemanal() {
     var atrasadas = comprobantes
       .filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c) && !compromisoVigente_(c, hoy) && diasEntre_(c.fecha, hoy) > plazoDe_(c, p, sinFce); })
       .sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
-    if (!atrasadas.length) return; // si no hay nada pendiente, no sale ningún mail
-    var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce); }).length;
-    var importe = atrasadas.reduce(function (t, c) { return t + Number(c.total || 0) - Number(c.acreditado || 0); }, 0);
-    var lineas = atrasadas.slice(0, 40).map(function (c) {
-      return c.tipo + ' E ' + c.puntoVenta + '-' + c.numero + ' · ' + diasEntre_(c.fecha, hoy) + ' días' +
-        (esMipyme_(c, p, sinFce) ? ' · MiPyME' : '') + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
+    // Pedidos de Auditoría sin responder (errores de factura, refacturar) y notas de crédito sin avisar
+    var pedidos = [];
+    comprobantes.forEach(function (c) {
+      if (!mismaSucursal_(c.sucursal, s.nombre)) return;
+      var numero = c.tipo + ' E ' + c.puntoVenta + '-' + c.numero;
+      (c.pedidos || []).forEach(function (x) { if (!x.cerrado && !x.respuesta) pedidos.push(numero + ' · ' + x.detalle + ' (desde el ' + String(x.fecha).split('-').reverse().join('/') + ')'); });
+      if (c.tipo === 'NC' && c.ncInformada === false) pedidos.push(numero + ' · nota de crédito sin avisar: falta confirmar el motivo');
     });
-    if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');
-    enviar_(s.correoGerente, 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación',
-      'Estas facturas pasaron el plazo para la documentación (' + p.comun + ' días; ' + p.mipyme + ' si es MiPyME)' + (criticas ? '. ' + criticas + ' ya son críticas' : '') +
-      '. Importe retenido: ' + pesos(importe) + '. Se solicita revisar con el equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
+    if (!atrasadas.length && !pedidos.length) return; // si no hay nada pendiente, no sale ningún mail
+    var partes = [];
+    if (atrasadas.length) {
+      var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce); }).length;
+      var importe = atrasadas.reduce(function (t, c) { return t + Number(c.total || 0) - Number(c.acreditado || 0); }, 0);
+      var lineas = atrasadas.slice(0, 40).map(function (c) {
+        return c.tipo + ' E ' + c.puntoVenta + '-' + c.numero + ' · ' + diasEntre_(c.fecha, hoy) + ' días' +
+          (esMipyme_(c, p, sinFce) ? ' · MiPyME' : '') + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
+      });
+      if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');
+      partes.push('Estas facturas pasaron el plazo para la documentación (' + p.comun + ' días; ' + p.mipyme + ' si es MiPyME)' + (criticas ? '. ' + criticas + ' ya son críticas' : '') +
+        '. Importe retenido: ' + pesos(importe) + '. Se solicita revisar con el equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
+    }
+    if (pedidos.length) partes.push('Pedidos de Auditoría sin responder:\n\n- ' + pedidos.slice(0, 40).join('\n- '));
+    var asunto = atrasadas.length
+      ? 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación'
+      : 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + pedidos.length + (pedidos.length === 1 ? ' pedido' : ' pedidos') + ' de Auditoría';
+    enviar_(s.correoGerente, asunto, partes.join('\n\n'));
   });
 }
 
@@ -473,7 +514,11 @@ function pendientesParaGerencia_(comprobantes, hoy) {
     // 3 reclamos y pasó la espera del último sin respuesta
     var fechas = (c.reclamos || []).map(function (r) { return String(r.fecha || ''); }).filter(String).sort();
     var esperaCumplida = !fechas.length || diasEntre_(fechas[fechas.length - 1], hoy) >= p.respuestaReclamo;
-    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA && esperaCumplida) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
+    // Solo cuentan los reclamos sin respuesta después de la última respuesta de la compañía
+    var lista = c.reclamos || [];
+    var desde = 0;
+    for (var k = 0; k < lista.length; k++) if (lista[k] && lista[k].respuesta) desde = k + 1;
+    if (vencida && !c.reenviar && lista.length - desde >= RECLAMOS_SIN_RESPUESTA && esperaCumplida) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
   });
   var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
@@ -524,6 +569,40 @@ function esMipyme_(c, p, sinFce) {
 }
 function plazoDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.mipyme : p.comun; }
 function criticaDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.criticaMipyme : p.criticaComun; }
+
+/**
+ * Presentar: todos los PDF de las facturas elegidas en un solo .zip, cada uno con el número de la
+ * factura en el nombre (FC E 21-11032 orden.pdf). Solo Auditoría.
+ */
+function descargarDocumentos(ids, nombre) {
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede descargar los documentos.');
+  var hoja = hoja_(HOJAS.comprobantes);
+  var blobs = [];
+  var faltan = 0;
+  (ids || []).slice(0, 200).forEach(function (id) {
+    var fila = buscarFila_(hoja, id);
+    if (!fila) return;
+    var c = leerFila_(hoja, fila);
+    var numero = c.tipo + ' E ' + c.puntoVenta + '-' + c.numero;
+    (c.documentos || []).forEach(function (d) {
+      var enlaces = (d.adjuntos && d.adjuntos.length) ? d.adjuntos : (d.url ? [{ url: d.url }] : []);
+      if (!enlaces.length) { faltan++; return; }
+      enlaces.forEach(function (a, i) {
+        var m = String(a.url || '').match(/[-\w]{25,}/);
+        if (!m) { faltan++; return; }
+        try {
+          var b = DriveApp.getFileById(m[0]).getBlob();
+          b.setName(numero + ' ' + d.tipo + (enlaces.length > 1 ? ' ' + (i + 1) : '') + '.pdf');
+          blobs.push(b);
+        } catch (e) { faltan++; }
+      });
+    });
+  });
+  if (!blobs.length) throw new Error('Las facturas elegidas no tienen documentos para descargar.');
+  var limpio = String(nombre || 'documentos').replace(/[^\w .-]/g, '').trim() || 'documentos';
+  var zip = Utilities.zip(blobs, limpio + '.zip');
+  return { nombre: limpio + '.zip', base64: Utilities.base64Encode(zip.getBytes()), cantidad: blobs.length, faltan: faltan };
+}
 
 /**
  * Manual de uso → "Reportar un problema técnico": le llega un mail solo a la desarrolladora

@@ -42,12 +42,19 @@ export const PLAZOS_INICIALES: Plazos = {
 
 let actuales: Plazos = PLAZOS_INICIALES
 let sinFce = new Set<string>()
+let tolerancias = new Map<string, number>()
 
 /** Lo llama la aplicación cada vez que cambian los datos o los ajustes. */
 export function configurarPlazos(plazos: Plazos | undefined, aseguradoras: Aseguradora[]): void {
   actuales = { ...PLAZOS_INICIALES, ...(plazos ?? {}) }
   // Las compañías son grandes empresas: reciben FCE salvo que se indique lo contrario
   sinFce = new Set(aseguradoras.filter((a) => a.recibeFce === false).map((a) => a.id))
+  tolerancias = new Map(aseguradoras.filter((a) => Number(a.toleranciaReclamo) > 0).map((a) => [a.id, Number(a.toleranciaReclamo)]))
+}
+
+/** Días después del vencimiento antes de reclamarle a esta compañía (las que suelen pagar tienen más). */
+export function toleranciaReclamo(aseguradoraId: string): number {
+  return tolerancias.get(aseguradoraId) ?? 0
 }
 
 export function plazosActuales(): Plazos {

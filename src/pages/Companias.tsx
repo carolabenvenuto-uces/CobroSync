@@ -45,6 +45,17 @@ export default function Companias() {
     if (entrada.current) entrada.current.value = ''
   }
 
+  // Canal de presentación y tolerancia para reclamar: se cambian acá mismo y se guardan para todo el sector
+  async function cambiar(a: Aseguradora, cambios: Partial<Aseguradora>) {
+    const lista = aseguradoras.map((x) => (x.id === a.id ? { ...x, ...cambios } : x))
+    actualizarAseguradoras(lista)
+    try {
+      if (fuente.tipo === 'google') await guardarAseguradorasEnGoogle(lista.filter((x) => x.id === a.id), true)
+    } catch (e) {
+      setMensaje({ texto: e instanceof Error ? e.message : 'No se pudo guardar el cambio.', error: true })
+    }
+  }
+
   const correo = (texto: string | undefined) =>
     texto ? (
       <span className="block max-w-72 truncate text-xs text-slate-700" title={texto}>
@@ -67,6 +78,47 @@ export default function Companias() {
     },
     { clave: 'email', titulo: 'Mail para presentar', celda: (a) => correo(a.email) },
     { clave: 'reclamos', titulo: 'Mail para reclamar', celda: (a) => correo(a.emailReclamos) },
+    {
+      clave: 'canal',
+      titulo: 'Se presenta por',
+      filtro: (a) => (a.canal === 'portal' ? 'Plataforma' : 'Mail'),
+      celda: (a) => (
+        <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+          <select value={a.canal ?? 'mail'} onChange={(e) => cambiar(a, { canal: e.target.value as 'mail' | 'portal' })} className="rounded-md border border-slate-200 px-1 py-1 text-xs" aria-label={`Canal de ${a.nombre}`}>
+            <option value="mail">Mail</option>
+            <option value="portal">Plataforma</option>
+          </select>
+          {a.canal === 'portal' && (
+            <input
+              defaultValue={a.portalUrl ?? ''}
+              onBlur={(e) => e.target.value !== (a.portalUrl ?? '') && cambiar(a, { portalUrl: e.target.value.trim() })}
+              placeholder="Dirección de la plataforma"
+              className="w-48 rounded-md border border-slate-200 px-1.5 py-1 text-xs"
+              aria-label={`Plataforma de ${a.nombre}`}
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      clave: 'tolerancia',
+      titulo: 'Tolerancia para reclamar',
+      orden: (a) => a.toleranciaReclamo ?? 0,
+      celda: (a) => (
+        <label className="flex items-center gap-1 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="number"
+            min={0}
+            max={120}
+            defaultValue={a.toleranciaReclamo ?? 0}
+            onBlur={(e) => Number(e.target.value) !== (a.toleranciaReclamo ?? 0) && cambiar(a, { toleranciaReclamo: Math.max(0, Number(e.target.value) || 0) })}
+            className="w-16 rounded-md border border-slate-200 px-1.5 py-1 text-right text-xs tabular-nums"
+            aria-label={`Días de tolerancia de ${a.nombre}`}
+          />
+          días
+        </label>
+      ),
+    },
     { clave: 'facturas', titulo: 'Facturas', derecha: true, orden: (a) => facturas[a.id] ?? 0, celda: (a) => (facturas[a.id] ?? 0).toLocaleString('es-AR') },
   ]
 

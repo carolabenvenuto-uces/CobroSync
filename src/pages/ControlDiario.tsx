@@ -139,6 +139,17 @@ export default function ControlDiario() {
       ),
     },
     {
+      clave: 'aprobada',
+      titulo: 'Doc. aprobada',
+      orden: (x) => x.c.fechaAprobacion ?? null,
+      celda: (x) => (
+        <span className="whitespace-nowrap">
+          {formatoFecha(x.c.fechaAprobacion ?? null)}
+          {diasHasta(x.c.fecha, x.c.fechaAprobacion ?? null)}
+        </span>
+      ),
+    },
+    {
       clave: 'presentacion',
       titulo: 'Presentación',
       orden: (x) => x.c.fechaPresentacion,
@@ -177,7 +188,7 @@ export default function ControlDiario() {
   function exportar(lista: Fila[]) {
     descargarExcel(
       `control-diario-${hoy}`,
-      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Subida', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Aviso de NC', 'Reclamos', 'Último reclamo', 'Observaciones'],
+      ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañía', 'Siniestro', 'Patente', 'Total', 'Subida', 'Doc. aprobada', 'Días', 'Presentación', 'Días', 'Vto.', 'Fecha de cobro', 'Estado', 'Le toca a', 'Aviso de NC', 'Reclamos', 'Último reclamo', 'Observaciones'],
       lista.map(({ c, s }) => [
         fechaExcel(c.fecha),
         c.ref,
@@ -189,7 +200,8 @@ export default function ControlDiario() {
         c.patente || null,
         c.total,
         fechaExcel(c.fechaDrive),
-        c.fechaDrive ? diffDias(c.fecha, c.fechaDrive) : null,
+        fechaExcel(c.fechaAprobacion ?? null),
+        c.fechaAprobacion ? diffDias(c.fecha, c.fechaAprobacion) : null,
         fechaExcel(c.fechaPresentacion),
         c.fechaPresentacion ? diffDias(c.fecha, c.fechaPresentacion) : null,
         fechaExcel(c.vencimiento),

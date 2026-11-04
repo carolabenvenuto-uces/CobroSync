@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, LockKeyhole, RotateCcw, Upload } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { useApp } from '../context/AppContext'
-import { guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle } from '../services/google'
+import { actualizarPlanillaEnGoogle, guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle } from '../services/google'
 import { importarPlanilla, leerArchivo, type ResultadoImportacion } from '../services/planilla'
 import { formatoFecha } from '../lib/formato'
 
@@ -61,19 +61,34 @@ export default function UsarPlanilla() {
       }))
       let nuevas = 0
       let actualizadas = 0
+      let omitidas = 0
       for (let i = 0; i < lista.length; i += 300) {
         setPasando(`Guardando facturas: ${Math.min(i + 300, lista.length).toLocaleString('es-AR')} de ${lista.length.toLocaleString('es-AR')}…`)
         const r = await sincronizarPlanillaEnGoogle(lista.slice(i, i + 300))
         nuevas += r.nuevas
         actualizadas += r.actualizadas
+        omitidas += r.omitidas ?? 0
       }
       setPasando(
-        `Listo: ${nuevas.toLocaleString('es-AR')} facturas nuevas y ${actualizadas.toLocaleString('es-AR')} actualizadas (presentación o cobro). No se borró nada.`,
+        `Listo: ${nuevas.toLocaleString('es-AR')} facturas nuevas y ${actualizadas.toLocaleString('es-AR')} actualizadas (presentación o cobro). No se borró nada.${
+          omitidas ? ` ${omitidas.toLocaleString('es-AR')} son de sucursales que no están en la prueba y siguen solo en la planilla.` : ''
+        }`,
       )
       usarDemo() // vuelve a leer los datos desde Google
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setPasando(null)
+    }
+  }
+
+  const [copiando, setCopiando] = useState<string | null>(null)
+  async function copiarAMiPlanilla() {
+    setCopiando('Copiando…')
+    try {
+      const r = await actualizarPlanillaEnGoogle()
+      setCopiando(`Listo: ${r.filas.toLocaleString('es-AR')} filas en la pestaña CobroSync de tu planilla.`)
+    } catch (e) {
+      setCopiando(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -148,6 +163,34 @@ export default function UsarPlanilla() {
         </label>
       </div>
 
+      <Card className="mt-4">
+        <CardTitulo>Durante la prueba: tu planilla se completa sola</CardTitulo>
+        <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
+          <li>
+            Las facturas de las sucursales del piloto se trabajan solo en CobroSync. Cada hora, CobroSync las copia en la pestaña{' '}
+            <strong>CobroSync</strong> de tu planilla, con las mismas columnas que la hoja Diario (Drive, Presentación, Cobro, Estado…).
+          </li>
+          <li>
+            La columna <strong>Drive</strong> toma la fecha en que Auditoría <strong>aprobó</strong> toda la documentación, no la de la
+            subida. Si después se observa algo, se vacía hasta que se vuelva a aprobar.
+          </li>
+          <li>Las demás sucursales siguen en la hoja Diario como siempre. No hay que cargar nada dos veces.</li>
+        </ul>
+        {conGoogle && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void copiarAMiPlanilla()}
+              disabled={copiando === 'Copiando…'}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-fondo disabled:opacity-60"
+            >
+              Actualizar mi planilla ahora
+            </button>
+            {copiando && <span className="text-xs text-slate-600">{copiando}</span>}
+          </div>
+        )}
+      </Card>
+
       {error && (
         <div className="mt-4 rounded-lg border border-sem-rojo/30 bg-sem-rojo/5 px-4 py-3 text-sm text-red-800">{error}</div>
       )}
@@ -158,7 +201,8 @@ export default function UsarPlanilla() {
           <p className="text-sm text-slate-700">
             Se leyeron <strong>{resumen.datos.comprobantes.length.toLocaleString('es-AR')}</strong> comprobantes. Al confirmar, se agregan
             a CobroSync los que todavía no estén (se comparan por referencia). En los que ya están, solo se completan la presentación y
-            el cobro si la planilla los tiene. Se puede repetir durante la prueba; no se borra nada.
+            el cobro si la planilla los tiene. Se puede repetir durante la prueba; no se borra nada. Solo pasan las sucursales
+            cargadas en la prueba piloto; las demás siguen en la planilla.
           </p>
           <button
             type="button"

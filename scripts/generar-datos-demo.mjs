@@ -265,6 +265,16 @@ function crearFactura(fecha) {
     if (c <= FECHA_CORTE && azar() < 0.97) fechaCobro = c
   }
 
+  // Día en que Auditoría aprobó toda la documentación (al día siguiente de la subida, o al presentar)
+  const fechaAprobacion =
+    completo && fechaDrive
+      ? fechaPresentacion && fechaPresentacion < sumarDias(fechaDrive, 1)
+        ? fechaPresentacion
+        : sumarDias(fechaDrive, 1) > FECHA_CORTE
+          ? FECHA_CORTE
+          : sumarDias(fechaDrive, 1)
+      : null
+
   // 4) Pendientes de la sucursal: avisos automáticos, compromisos y reclamos
   let compromiso = null
   if (!completo && !fechaPresentacion) {
@@ -316,6 +326,7 @@ function crearFactura(fecha) {
     total,
     fechaDrive,
     subidoPor: fechaDrive ? persona : null,
+    fechaAprobacion,
     fechaPresentacion,
     vencimiento,
     fechaCobro,
@@ -380,6 +391,7 @@ for (const fecha of fechasDeFactura) {
       total: -factura.total,
       fechaDrive: null,
       subidoPor: null,
+      fechaAprobacion: null,
       fechaPresentacion: null,
       vencimiento: null,
       fechaCobro: null,
@@ -503,6 +515,7 @@ for (const c of comprobantes) {
       total: Math.round(original.total * (0.15 + azar2() * 0.3) * 100) / 100,
       fechaDrive,
       subidoPor: fechaDrive ? original.subidoPor : null,
+      fechaAprobacion: mover(original.fechaAprobacion),
       fechaPresentacion,
       vencimiento: fechaPresentacion ? sumarDias(original.vencimiento ?? fechaPresentacion, d) : null,
       fechaCobro,
@@ -531,7 +544,7 @@ for (const c of comprobantes) {
       fecha,
       numero: ++ultimoNumero[f.puntoVenta],
       total: -importe,
-      fechaDrive: null, subidoPor: null, fechaPresentacion: null, vencimiento: null, fechaCobro: null,
+      fechaDrive: null, subidoPor: null, fechaAprobacion: null, fechaPresentacion: null, vencimiento: null, fechaCobro: null,
       estado: 'nota_credito',
       ncReferencia: f.id,
       ncInformada: true,

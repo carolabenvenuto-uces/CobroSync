@@ -79,8 +79,13 @@ export function agregarEnGoogle(lista: Comprobante[]): Promise<number> {
   return llamar('agregarComprobantes', lista)
 }
 
-export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nuevas: number; actualizadas: number }> {
+export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nuevas: number; actualizadas: number; omitidas?: number }> {
   return llamar('sincronizarDesdePlanilla', lista)
+}
+
+/** Copia ya mismo las facturas de CobroSync en la pestaña "CobroSync" de la planilla de control. */
+export function actualizarPlanillaEnGoogle(): Promise<{ filas: number; ahora: string }> {
+  return llamar('actualizarMiPlanilla')
 }
 
 /** Agrega compañías nuevas; con completarExistentes, también completa CUIT, razón social, plazo y correos. */

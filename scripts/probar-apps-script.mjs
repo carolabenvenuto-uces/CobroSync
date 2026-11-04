@@ -35,10 +35,14 @@ function crearHoja(nombre) {
       setNumberFormat: () => {},
       setFontWeight: () => {},
     }),
+    getLastColumn: () => Math.max(0, ...filas.map((f) => f.length)),
+    clearContents: () => (filas.length = 0),
   }
   return hoja
 }
 const hojas = {}
+const hojasControl = { Diario: crearHoja('Diario') } // la planilla de control de Auditoría
+const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
 const libro = {
   getSheetByName: (n) => hojas[n] ?? null,
   insertSheet: (n) => (hojas[n] = crearHoja(n)),
@@ -63,7 +67,7 @@ function carpeta(ruta) {
 }
 const raizDrive = carpeta('CobroSync')
 const contexto = {
-  SpreadsheetApp: { getActive: () => libro },
+  SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
   DriveApp: { getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive } },
@@ -73,7 +77,7 @@ const contexto = {
     base64Decode: (b) => Buffer.from(b, 'base64'),
   },
   MailApp: { sendEmail: (m) => mails.push(m) },
-  ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
+  ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create: () => {} }), everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
   HtmlService: { createHtmlOutputFromFile: () => ({ setTitle: () => ({ addMetaTag: () => ({}) }) }) },
   console,
 }
@@ -135,6 +139,11 @@ prueba('Auditoría pasa la planilla y se guardan las facturas', () => {
   const r = gs('sincronizarDesdePlanilla', lote)
   esperar(r.nuevas === lote.length && r.actualizadas === 0, JSON.stringify(r))
 })
+prueba('pasar la planilla deja afuera las sucursales que no están en la prueba', () => {
+  const otra = demo.find((c) => c.sucursal !== 'Rocamora' && c.sucursal !== 'Warnes')
+  const r = gs('sincronizarDesdePlanilla', [{ ...otra, id: `ref-${otra.ref}` }])
+  esperar(r.nuevas === 0 && r.omitidas === 1, JSON.stringify(r))
+})
 prueba('pasar la planilla otra vez no duplica y actualiza cobros', () => {
   const sinCobrar = lote.find((c) => c.tipo === 'FC' && c.estado === 'presentada')
   const otraVez = lote.map((c) => (c.id === sinCobrar.id ? { ...c, estado: 'cobrada', fechaCobro: '2026-11-03' } : c))
@@ -166,6 +175,28 @@ prueba('la sucursal carga documentos pero no puede cambiar el importe', () => {
   const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.total === c.total, 'la sucursal pudo cambiar el importe')
   esperar(leido.documentos.every((d) => d.estado === 'en_revision'), 'no se guardaron los documentos')
+})
+prueba('la sucursal no puede aprobar sus propios documentos', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'faltante'))
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.map((d) => ({ ...d, estado: 'ok', archivo: 'x.pdf' })) }])
+  como('auditoria@svaauto.com.ar')
+  const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(!leido.documentos.some((d) => d.estado === 'ok' && c.documentos.find((o) => o.tipo === d.tipo).estado !== 'ok'), 'la sucursal aprobó documentos')
+  esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
+})
+prueba('la fecha de aprobación se pone al aprobar todo y se vacía si se observa algo', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'en_revision'))
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.slice(0, 2).map((d) => ({ ...d, estado: 'ok' })) }])
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(!leido.fechaAprobacion, 'se puso la fecha con documentos sin aprobar')
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.map((d) => ({ ...d, estado: 'ok' })) }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(/^\d{4}-\d{2}-\d{2}$/.test(leido.fechaAprobacion ?? ''), `fecha: ${leido.fechaAprobacion}`)
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...c.documentos[2], estado: 'observado', motivo: 'Ilegible' }] }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.fechaAprobacion === null, 'no se vació al observar')
 })
 prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
   como('auditoria@svaauto.com.ar')
@@ -306,6 +337,34 @@ prueba('con los avisos desactivados no sale ningún mail', () => {
   gs('avisosDiarios')
   gs('resumenSemanal')
   esperar(mails.length === 0, 'salieron mails')
+})
+prueba('sin id de planilla de control no se copia nada', () => {
+  esperar(gs('actualizarPlanillaDeControl') === 0, 'copió sin id')
+  como('auditoria@svaauto.com.ar')
+  falla(() => gs('actualizarMiPlanilla'), 'planillaControlId')
+})
+prueba('CobroSync copia sus facturas en la planilla de control, con las columnas de Diario', () => {
+  setCfg('planillaControlId', 'planilla-control')
+  hojasControl.Diario.appendRow(['no tocar'])
+  const n = gs('actualizarPlanillaDeControl')
+  const copia = hojasControl.CobroSync.filas
+  const total = hojas.Comprobantes.filas.length - 1
+  esperar(n === total && copia.length === total + 1, `${n} filas de ${total}`)
+  esperar(copia[0][2] === 'Sucursal' && copia[0][8] === 'Drive' && copia[0][14] === 'Estado', 'encabezado distinto de Diario')
+  esperar(hojasControl.Diario.filas.length === 1, 'tocó la hoja Diario')
+  const estados = new Set(copia.slice(1).map((f) => f[14]))
+  for (const e of ['D. Pend.', 'Al día', 'Cobrado']) esperar(estados.has(e), `falta el estado ${e}: ${[...estados]}`)
+  const aprobadas = copia.slice(1).filter((f) => f[14] === 'P. Pend.')
+  esperar(aprobadas.every((f) => /^\d{2}\/\d{2}\/\d{4}$/.test(f[8])), 'P. Pend. sin fecha en Drive')
+  // Repetir reemplaza la pestaña, no agrega filas
+  gs('actualizarPlanillaDeControl')
+  esperar(hojasControl.CobroSync.filas.length === total + 1, 'se duplicaron filas')
+})
+prueba('solo Auditoría actualiza la planilla desde la aplicación', () => {
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('actualizarMiPlanilla'), 'Solo Auditoría')
+  como('auditoria@svaauto.com.ar')
+  esperar(gs('actualizarMiPlanilla').filas === hojas.Comprobantes.filas.length - 1, 'no devolvió las filas')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

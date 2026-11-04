@@ -101,6 +101,7 @@ export function importarErp(
       percepciones,
       fechaDrive: null,
       subidoPor: null,
+      fechaAprobacion: null,
       fechaPresentacion: null,
       vencimiento: null,
       fechaCobro: null,

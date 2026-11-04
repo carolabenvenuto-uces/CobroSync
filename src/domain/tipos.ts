@@ -145,10 +145,12 @@ export interface Comprobante {
   patente: string
   /** importe total; las notas de crédito son negativas */
   total: number
-  /** primera vez que la sucursal subió documentos */
+  /** última vez que la sucursal subió documentos (si le observan algo y lo vuelve a subir, se mueve) */
   fechaDrive: string | null
   /** quién de la sucursal subió los documentos */
   subidoPor: string | null
+  /** día en que Auditoría aprobó toda la documentación; vuelve a vacío si después se observa algo */
+  fechaAprobacion?: string | null
   fechaPresentacion: string | null
   /** se conoce recién cuando se presenta: presentación + plazo de pago */
   vencimiento: string | null

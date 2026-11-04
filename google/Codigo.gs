@@ -39,6 +39,8 @@ var HOJAS = {
       // Estas columnas guardan listas en formato JSON (no editarlas a mano)
       'compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada',
       'acreditado', 'importeCobrado', 'percepciones', 'actualizado',
+      // Columnas agregadas después (siempre al final, para no correr las que ya tienen datos)
+      'fechaAprobacion',
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
@@ -60,6 +62,8 @@ var CONFIG_INICIAL = [
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
   ['avisosPorMail', 'NO', 'SI para mandar los avisos y el resumen semanal por mail'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
+  ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync copia ahí las facturas del piloto, cada hora'],
+  ['pestanaPlanillaControl', 'CobroSync', 'Pestaña de esa planilla donde se copian (se reemplaza entera cada vez)'],
 ];
 
 // ── Aplicación web ──────────────────────────────────────────────────────────
@@ -155,9 +159,16 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
         var docs = c.documentos || [];
         op.documentos.forEach(function (d) {
           var i = docs.map(function (x) { return x.tipo; }).indexOf(d.tipo);
+          // La sucursal sube para revisar: aprobar u observar es de Auditoría
+          if (usuario.rol === 'sucursal' && d.estado !== 'en_revision' && !(i >= 0 && docs[i].estado === d.estado)) return;
           if (i >= 0) docs[i] = d; else docs.push(d);
         });
         c.documentos = docs;
+        // Fecha de la documentación completa (la que va a la columna Drive de la planilla):
+        // el día en que Auditoría aprueba lo último. Si después se observa algo, se vacía.
+        var aprobada = c.tipo === 'FC' && docs.length > 0 && docs.every(function (x) { return x.estado === 'ok'; });
+        if (!aprobada) c.fechaAprobacion = null;
+        else if (!c.fechaAprobacion) c.fechaAprobacion = hoy_();
       }
       if (op.evento) {
         // El servidor firma el mensaje: nadie puede escribir en nombre de otro
@@ -242,8 +253,14 @@ function sincronizarDesdePlanilla(lista) {
     var actuales = leerHoja_(HOJAS.comprobantes);
     var filaPorRef = {};
     actuales.forEach(function (c, i) { if (c.ref) filaPorRef[String(c.ref)] = { c: c, fila: i + 2 }; });
-    var resultado = { nuevas: 0, actualizadas: 0 };
+    var resultado = { nuevas: 0, actualizadas: 0, omitidas: 0 };
+    // Solo las sucursales cargadas en la pestaña Sucursales (las del piloto); el resto sigue en la planilla
+    var delPiloto = leerHoja_(HOJAS.sucursales).map(function (s) { return s.nombre; });
     lista.forEach(function (p) {
+      if (delPiloto.length && !delPiloto.some(function (n) { return mismaSucursal_(n, p.sucursal); })) {
+        resultado.omitidas++;
+        return;
+      }
       var ref = String(p.ref || '');
       var existente = ref ? filaPorRef[ref] : null;
       if (!existente) {
@@ -258,6 +275,10 @@ function sincronizarDesdePlanilla(lista) {
         c.fechaPresentacion = p.fechaPresentacion;
         c.vencimiento = p.vencimiento;
         if (c.estado !== 'cobrada' && c.estado !== 'anulada') c.estado = 'presentada';
+        cambio = true;
+      }
+      if (!c.fechaAprobacion && p.fechaAprobacion && (c.documentos || []).every(function (d) { return d.estado === 'ok'; })) {
+        c.fechaAprobacion = p.fechaAprobacion;
         cambio = true;
       }
       if (c.estado !== 'cobrada' && p.estado === 'cobrada') {
@@ -398,6 +419,71 @@ function resumenSemanal() {
   });
 }
 
+// ── Copia en la planilla de control de Auditoría ────────────────────────────
+
+/**
+ * Mientras dure el piloto, la planilla de control sigue siendo la referencia del sector. Para no
+ * cargar dos veces, CobroSync copia sus facturas en una pestaña de esa planilla ("CobroSync"),
+ * con las mismas columnas que la hoja Diario. Se reemplaza entera cada hora: no hay que tocarla.
+ */
+var ENCABEZADO_DIARIO = ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', 'Días',
+  'Presentación', 'Días', 'Vto.', 'Cobro', 'Estado', 'Notas de Crédito', '', 'Observaciones', 'Reclamado', 'Reclamos', 'Último reclamo'];
+
+function actualizarPlanillaDeControl() {
+  var id = config_('planillaControlId');
+  if (!id) return 0;
+  var destino = SpreadsheetApp.openById(id);
+  var nombre = config_('pestanaPlanillaControl') || 'CobroSync';
+  if (nombre.toLowerCase() === 'diario') throw new Error('La copia no puede ir en la hoja Diario: elegí otra pestaña.');
+  var hoja = destino.getSheetByName(nombre) || destino.insertSheet(nombre);
+  var filas = filasParaPlanilla_(leerHoja_(HOJAS.comprobantes), leerHoja_(HOJAS.aseguradoras), hoy_());
+  hoja.clearContents();
+  hoja.getRange(1, 1, 1, ENCABEZADO_DIARIO.length).setValues([ENCABEZADO_DIARIO]).setFontWeight('bold');
+  if (filas.length) hoja.getRange(2, 1, filas.length, ENCABEZADO_DIARIO.length).setValues(filas);
+  hoja.setFrozenRows(1);
+  return filas.length;
+}
+
+/** Botón "Actualizar mi planilla ahora" de la aplicación. Solo Auditoría. */
+function actualizarMiPlanilla() {
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede actualizar la planilla.');
+  if (!config_('planillaControlId')) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
+  return { filas: actualizarPlanillaDeControl(), ahora: ahora_() };
+}
+
+function filasParaPlanilla_(comprobantes, aseguradoras, hoy) {
+  var cia = indexar_(aseguradoras, 'id');
+  var porId = indexar_(comprobantes, 'id');
+  var fecha = function (iso) { return iso ? String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7) + '/' + String(iso).slice(0, 4) : ''; };
+  var dias = function (a, b) { return a && b ? diasEntre_(a, b) : ''; };
+  var numero = function (c) { return c.puntoVenta + ' - ' + ('00000000' + c.numero).slice(-8); };
+  return comprobantes
+    .slice()
+    .sort(function (a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.ref).localeCompare(String(b.ref)); })
+    .map(function (c) {
+      var reclamos = c.reclamos || [];
+      var ultimo = reclamos.map(function (r) { return r.fecha; }).filter(String).sort().pop() || '';
+      var anula = c.tipo === 'NC' && c.ncReferencia && porId[c.ncReferencia] ? numero(porId[c.ncReferencia]) : '';
+      return [
+        fecha(c.fecha), c.ref, c.sucursal, c.tipo + ' E', numero(c), (cia[c.aseguradoraId] || {}).nombre || c.aseguradoraId,
+        c.siniestro || c.patente || '', c.total,
+        fecha(c.fechaAprobacion), dias(c.fecha, c.fechaAprobacion),
+        fecha(c.fechaPresentacion), dias(c.fechaAprobacion, c.fechaPresentacion),
+        fecha(c.vencimiento), fecha(c.fechaCobro), estadoParaPlanilla_(c, hoy), anula, '',
+        c.observaciones || '', reclamos.length ? 'Sí' : '', reclamos.length || '', fecha(ultimo),
+      ];
+    });
+}
+
+/** El estado con las palabras de la planilla: D. Pend., P. Pend., Al día, Vencido, Cobrado, Anulada, NC. */
+function estadoParaPlanilla_(c, hoy) {
+  if (c.tipo === 'NC') return 'NC';
+  if (c.estado === 'anulada') return 'Anulada';
+  if (c.estado === 'cobrada') return 'Cobrado';
+  if (c.fechaPresentacion) return c.vencimiento && c.vencimiento < hoy ? 'Vencido' : 'Al día';
+  return c.fechaAprobacion ? 'P. Pend.' : 'D. Pend.';
+}
+
 // ── Instalación (se corren una vez, desde el editor de Apps Script) ───────────
 
 /** Crea las pestañas con sus encabezados y la configuración inicial. */
@@ -410,8 +496,18 @@ function configurarPlanilla() {
       hoja.getRange(1, 1, hoja.getMaxRows(), h.columnas.length).setNumberFormat('@');
       hoja.getRange(1, 1, 1, h.columnas.length).setValues([h.columnas]).setFontWeight('bold');
       hoja.setFrozenRows(1);
+    } else if (hoja.getLastColumn() < h.columnas.length) {
+      // Columnas nuevas de una versión más reciente: se agregan al final
+      var desde = hoja.getLastColumn() + 1;
+      hoja.getRange(1, desde, hoja.getMaxRows(), h.columnas.length - desde + 1).setNumberFormat('@');
+      hoja.getRange(1, 1, 1, h.columnas.length).setValues([h.columnas]).setFontWeight('bold');
     }
   });
+  var cfg = hoja_(HOJAS.config);
+  if (cfg.getLastRow() >= 2) {
+    var claves = cfg.getRange(2, 1, cfg.getLastRow() - 1, 1).getValues().map(function (f) { return f[0]; });
+    CONFIG_INICIAL.forEach(function (f) { if (claves.indexOf(f[0]) < 0) cfg.appendRow(f); });
+  }
   var config = hoja_(HOJAS.config);
   if (config.getLastRow() < 2) config.getRange(2, 1, CONFIG_INICIAL.length, 3).setValues(CONFIG_INICIAL);
 }
@@ -421,6 +517,7 @@ function instalarDisparadores() {
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('avisosDiarios').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('resumenSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
+  ScriptApp.newTrigger('actualizarPlanillaDeControl').timeBased().everyHours(1).create();
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────

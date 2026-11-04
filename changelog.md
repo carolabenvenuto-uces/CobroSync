@@ -3,6 +3,9 @@
 ## [0.9.0] - 2026-11-04
 
 ### Agregado
+- **La planilla de control se completa sola:** cada hora CobroSync copia sus facturas en la pestaña "CobroSync" de la planilla de Auditoría, con las columnas de Diario. También hay un botón para hacerlo en el momento.
+- **Fecha de documentación aprobada:** se guarda el día en que Auditoría aprueba toda la documentación (es la que va a la columna Drive). Si después se observa algo, se vacía hasta la nueva aprobación. La fecha de subida pasa a ser la de la última subida.
+- Al pasar la planilla, solo entran las sucursales de la prueba.
 - **Notas de crédito parciales:** la sucursal avisa si la NC anula toda la factura o solo una parte (con el importe). La factura queda con su saldo pendiente.
 - **Percepciones:** la carga del ERP guarda las percepciones de IIBB de cada factura. Una NC total se reconoce aunque no incluya las percepciones.
 - **Vínculo automático NC → factura:** al cargar el ERP, cada NC se une con la factura avisada por la sucursal. Si no hubo aviso y hay una sola factura posible, también se vincula y queda marcada para revisar.
@@ -13,6 +16,8 @@
 - Auditoría ve un aviso con las notas de crédito informadas por las sucursales.
 
 ### Corregido
+- Una sucursal no puede marcar como aprobados sus propios documentos (lo controla el servidor).
+- Al aprobar un documento de varias páginas se conservan todas las páginas.
 - Un cambio rechazado por el servidor ya no frena el resto de los cambios pendientes.
 - Si se corta la conexión, los cambios se reintentan solos y la página avisa antes de cerrarse con cambios sin guardar.
 - La fecha del día se toma del servidor (hora de Buenos Aires).

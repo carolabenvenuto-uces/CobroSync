@@ -252,7 +252,7 @@ export default function ControlDiario() {
         c.ref,
         c.sucursal,
         `${c.tipo} E`,
-        `${c.puntoVenta} - ${String(c.numero).padStart(8, '0')}`,
+        `${c.puntoVenta} - ${c.numero}`,
         nombreCompania[c.aseguradoraId],
         c.siniestro || null,
         c.patente || null,

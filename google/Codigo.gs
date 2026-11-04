@@ -364,11 +364,11 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var m, re = /(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g;
   while ((m = re.exec(String(nombre))) !== null) numeros.push(Number(m[1]) + '-' + Number(m[2]));
   if (numeros.indexOf(Number(c.puntoVenta) + '-' + Number(c.numero)) < 0) {
-    throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ').');
+    throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + c.numero + ').');
   }
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
   var carpeta = subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)),
-    c.tipo + ' ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8));
+    c.tipo + ' ' + c.puntoVenta + '-' + c.numero);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, tipoDocumento + '_' + hoy_() + extension));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
@@ -442,7 +442,7 @@ function resumenSemanal() {
     var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce); }).length;
     var importe = atrasadas.reduce(function (t, c) { return t + Number(c.total || 0) - Number(c.acreditado || 0); }, 0);
     var lineas = atrasadas.slice(0, 40).map(function (c) {
-      return c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ' · ' + diasEntre_(c.fecha, hoy) + ' días' +
+      return c.tipo + ' E ' + c.puntoVenta + '-' + c.numero + ' · ' + diasEntre_(c.fecha, hoy) + ' días' +
         (esMipyme_(c, p, sinFce) ? ' · MiPyME' : '') + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
     });
     if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');

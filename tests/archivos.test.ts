@@ -82,6 +82,6 @@ describe('nombres obligatorios', () => {
     const sinNumero = revisarNombre('scan0001.pdf', facturas)
     expect(!sinNumero.ok && sinNumero.error).toContain('no tiene el número')
     const mal = revisarNombre('35-00011099 orden.pdf', facturas)
-    expect(!mal.ok && mal.error).toContain('35-00011099')
+    expect(!mal.ok && mal.error).toContain('35-11099')
   })
 })

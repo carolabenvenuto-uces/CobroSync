@@ -81,20 +81,20 @@ export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugeren
   return { factura: null, por: null, candidatas: [], tipo }
 }
 
-/** Número de factura como tiene que ir en el nombre: "35-00011032". */
+/** Número de factura como tiene que ir en el nombre: "35-11032". */
 export function numeroParaNombre(c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string {
-  return `${c.puntoVenta}-${String(c.numero).padStart(8, '0')}`
+  return `${c.puntoVenta}-${c.numero}`
 }
 
 export type RevisionNombre =
   | { ok: true; factura: Comprobante; tipo: TipoArchivo }
   | { ok: false; error: string; tipo: TipoArchivo }
 
-const EJEMPLO = '35-00011032 orden.pdf'
+const EJEMPLO = '35-11032 orden.pdf'
 
 /**
  * La regla que se exige (no solo se pide): PDF y, en el nombre, el punto de venta y el número de una
- * factura de la sucursal, como figura en la factura ("35-00011032"; también "35-11032"). Así no
+ * factura de la sucursal, como figura en la factura ("35-11032"; también se acepta con ceros, "35-00011032"). Así no
  * entra un archivo mal tipeado que después nadie sabe de qué factura es.
  */
 export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /\.pdf$/i.test(nombre)): RevisionNombre {
@@ -109,7 +109,7 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
     const f = facturas.find((c) => c.puntoVenta === n.pv && c.numero === n.numero)
     if (f) return { ok: true, factura: f, tipo }
   }
-  const dicho = `${encontrados[0].pv}-${String(encontrados[0].numero).padStart(8, '0')}`
+  const dicho = `${encontrados[0].pv}-${encontrados[0].numero}`
   return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en tu sucursal: revisá el número.` }
 }
 

@@ -133,7 +133,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
                 className={`${claseSelect} mt-1 w-full`}
-                placeholder="Ej.: se refactura con la FC 0035-00006901"
+                placeholder="Ej.: se refactura con la FC 35-6901"
               />
             </label>
             <button

@@ -33,3 +33,23 @@ describe('para resolver (sucursal)', () => {
     expect(lista).toHaveLength(0)
   })
 })
+
+describe('prioridad y temas', () => {
+  it('las MiPyME van arriba de todo y los rechazos se separan de la documentación', () => {
+    const lista = paraResolver(
+      [
+        factura('6', '2026-10-01'),
+        factura('7', '2026-10-27', { total: 10_000_000 }), // MiPyME por el monto: plazo 5, le queda 1 día
+        factura('8', '2026-10-29', {
+          documentos: [{ tipo: 'factura', estado: 'ok' }, { tipo: 'orden', estado: 'observado', motivo: 'Ilegible o cortado' }],
+          eventos: [{ fecha: '2026-10-30', autor: 'Auditoría', area: 'auditoria', tipo: 'rechazo', texto: 'Rechazo de Sancor: no se lee' }],
+        }),
+      ],
+      HOY,
+    )
+    expect(lista[0].c.id).toBe('7')
+    expect(lista.find((x) => x.c.id === '8')!.tema).toBe('rechazo')
+    expect(lista.find((x) => x.c.id === '8')!.motivo).toContain('Rechazada por la compañía')
+    expect(lista.find((x) => x.c.id === '6')!.tema).toBe('documentacion')
+  })
+})

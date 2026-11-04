@@ -13,9 +13,11 @@ const codigo = readFileSync(join(raiz, 'google', 'Codigo.gs'), 'utf8')
 const demo = JSON.parse(readFileSync(join(raiz, 'public', 'datos-demo', 'comprobantes.json'), 'utf8'))
 
 // ── Google simulado ──────────────────────────────────────────────────────────
-const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : v instanceof Date ? v : String(v)) // celdas con formato texto
+const esFecha = (v) => Object.prototype.toString.call(v) === '[object Date]' // sirve para fechas de Node y del script
+const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : esFecha(v) ? v : String(v)) // celdas con formato texto
 function crearHoja(nombre) {
   const filas = []
+  const formulas = {} // "fila,columna" → fórmula
   const hoja = {
     nombre,
     filas,
@@ -34,14 +36,21 @@ function crearHoja(nombre) {
       },
       setNumberFormat: () => {},
       setFontWeight: () => {},
+      getFormulas: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => formulas[`${r + i},${c + j}`] ?? '')),
+      setValue: (v) => {
+        if (formulas[`${r},${c}`]) throw new Error('se pisó una fórmula')
+        filas[r - 1] ??= []
+        filas[r - 1][c - 1] = comoTexto(v)
+      },
     }),
+    formulas,
     getLastColumn: () => Math.max(0, ...filas.map((f) => f.length)),
     clearContents: () => (filas.length = 0),
   }
   return hoja
 }
 const hojas = {}
-const hojasControl = { Diario: crearHoja('Diario') } // la planilla de control de Auditoría
+const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Auditoría
 const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
 const libro = {
   getSheetByName: (n) => hojas[n] ?? null,
@@ -338,33 +347,75 @@ prueba('con los avisos desactivados no sale ningún mail', () => {
   gs('resumenSemanal')
   esperar(mails.length === 0, 'salieron mails')
 })
-prueba('sin id de planilla de control no se copia nada', () => {
-  esperar(gs('actualizarPlanillaDeControl') === 0, 'copió sin id')
+prueba('sin id de planilla de control no se toca nada', () => {
+  esperar(gs('actualizarPlanillaDeControl') === 0, 'completó sin id')
   como('auditoria@svaauto.com.ar')
+  esperar(gs('agregarAQuiter', [['123']]).configurada === false, 'agregó sin id')
   falla(() => gs('actualizarMiPlanilla'), 'planillaControlId')
 })
-prueba('CobroSync copia sus facturas en la planilla de control, con las columnas de Diario', () => {
+// Planilla de control como la del sector: Quiter con el ERP pegado y Diario que lo toma por referencia
+const comprobantesGuardados = () => (como('auditoria@svaauto.com.ar'), gs('obtenerDatos').datos.comprobantes)
+const diario = hojasControl.Diario
+diario.appendRow(['', '', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', '', 'Presentación', '', 'Vto.', 'Cobro', 'Estado'])
+const enDiario = comprobantesGuardados().filter((c) => c.tipo === 'FC').slice(0, 120)
+enDiario.forEach((c, i) => {
+  diario.appendRow([c.fecha, Number(c.ref), c.sucursal, 'FC E', '', '', '', c.total, '', '', '', '', '', '', ''])
+  if (i % 2 === 0) diario.formulas[`${i + 2},15`] = '=SI(N2<>"";"Cobrado";"")' // Estado con fórmula en algunas filas
+})
+diario.appendRow(['01/11/2026', 8888888, 'Triunvirato', 'FC E', '', '', '', 1, '', '', '', '', '', '', 'D. Pend.']) // otra sucursal
+hojasControl.Quiter.appendRow(['Refer.', 'Fecha', 'TC', 'Clase', 'BOCA', 'Número', 'Nombre', 'TIVA', 'CUIT'])
+hojasControl.Quiter.appendRow([7990001, vm.runInContext('new Date(2026, 9, 30, 12)', contexto), 'FC E'])
+
+prueba('al cargar el ERP, las filas nuevas se agregan al final de Quiter tal cual', () => {
   setCfg('planillaControlId', 'planilla-control')
-  hojasControl.Diario.appendRow(['no tocar'])
-  const n = gs('actualizarPlanillaDeControl')
-  const copia = hojasControl.CobroSync.filas
-  const total = hojas.Comprobantes.filas.length - 1
-  esperar(n === total && copia.length === total + 1, `${n} filas de ${total}`)
-  esperar(copia[0][2] === 'Sucursal' && copia[0][8] === 'Drive' && copia[0][14] === 'Estado', 'encabezado distinto de Diario')
-  esperar(hojasControl.Diario.filas.length === 1, 'tocó la hoja Diario')
-  const estados = new Set(copia.slice(1).map((f) => f[14]))
-  for (const e of ['D. Pend.', 'Al día', 'Cobrado']) esperar(estados.has(e), `falta el estado ${e}: ${[...estados]}`)
-  const aprobadas = copia.slice(1).filter((f) => f[14] === 'P. Pend.')
-  esperar(aprobadas.every((f) => /^\d{2}\/\d{2}\/\d{4}$/.test(f[8])), 'P. Pend. sin fecha en Drive')
-  // Repetir reemplaza la pestaña, no agrega filas
+  como('auditoria@svaauto.com.ar')
+  const r = gs('agregarAQuiter', [
+    ['7990001', '30/10/2026', 'FC E'], // ya estaba
+    ['7990002', '31/10/2026', 'FC E', 'A', '21', 'De 00004571 a 00004571', 'ALLIANZ', 'RI', '30500037217', '0', '1000000', '210000', '0', '0', '12345,67', '0', '1222345,67'],
+    ['7990003', '31/10/2026', 'NC E', 'A', '21', 'De 00000101 a 00000101', 'ALLIANZ', 'RI', '30500037217', '0', '-1000000', '-210000', '0', '0', '0', '0', '-1210000,00'],
+    ['7990002', '31/10/2026', 'FC E'], // repetida en el mismo archivo
+  ])
+  const q = hojasControl.Quiter.filas
+  esperar(r.completadas > 0, 'después de cargar el ERP no completó Diario')
+  esperar(r.agregadas === 2 && q.length === 4, `${r.agregadas} agregadas, ${q.length} filas`)
+  esperar(q[2][0] === '7990002' && q[3][0] === '7990003', 'no respetó el orden')
+  esperar(esFecha(q[2][1]) && q[2][1].getDate() === 31, 'la fecha no quedó como fecha')
+  esperar(q[2][5] === 'De 00004571 a 00004571' && q[2][14] === '12345.67' && q[3][16] === '-1210000', `valores: ${q[2][14]} ${q[3][16]}`)
+  esperar(gs('agregarAQuiter', [['7990002', '31/10/2026']]).agregadas === 0, 'duplicó al cargar otra vez')
+})
+prueba('cada hora se completan Drive, Presentación, Cobro y Estado en Diario, sin pisar fórmulas', () => {
+  const guardados = Object.fromEntries(comprobantesGuardados().map((c) => [c.ref, c]))
   gs('actualizarPlanillaDeControl')
-  esperar(hojasControl.CobroSync.filas.length === total + 1, 'se duplicaron filas')
+  const f = diario.filas
+  let revisadas = 0
+  enDiario.forEach((c0, i) => {
+    const c = guardados[c0.ref]
+    const fila = f[i + 1]
+    const dia = (v) => (esFecha(v) ? `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}` : v)
+    if (c.fechaAprobacion) esperar(dia(fila[8]) === c.fechaAprobacion, `Drive de ${c.ref}: ${fila[8]} / ${c.fechaAprobacion}`)
+    else esperar(fila[8] === '', `Drive puesto sin aprobación en ${c.ref}`)
+    if (c.fechaPresentacion) esperar(dia(fila[10]) === c.fechaPresentacion, `Presentación de ${c.ref}`)
+    if (c.fechaCobro) esperar(dia(fila[13]) === c.fechaCobro, `Cobro de ${c.ref}`)
+    if (i % 2 === 1) esperar(fila[14] !== '', `Estado vacío en ${c.ref}`)
+    else esperar(fila[14] === '', 'escribió sobre una fórmula')
+    revisadas++
+  })
+  esperar(revisadas === enDiario.length, 'faltaron filas')
+  esperar(f.at(-1)[8] === '' && f.at(-1)[14] === 'D. Pend.', 'tocó una fila de otra sucursal')
+  esperar(gs('actualizarPlanillaDeControl') === 0, 'la segunda vez volvió a escribir')
+})
+prueba('nunca se borra un dato de la planilla', () => {
+  const i = enDiario.findIndex((c) => !c.fechaCobro)
+  diario.filas[i + 1][13] = vm.runInContext('new Date(2026, 10, 1, 12)', contexto) // alguien lo cargó a mano
+  gs('actualizarPlanillaDeControl')
+  esperar(esFecha(diario.filas[i + 1][13]), 'se borró un dato cargado a mano')
 })
 prueba('solo Auditoría actualiza la planilla desde la aplicación', () => {
   como('rocamora@svaauto.com.ar')
   falla(() => gs('actualizarMiPlanilla'), 'Solo Auditoría')
+  falla(() => gs('agregarAQuiter', [['1']]), 'Solo Auditoría')
   como('auditoria@svaauto.com.ar')
-  esperar(gs('actualizarMiPlanilla').filas === hojas.Comprobantes.filas.length - 1, 'no devolvió las filas')
+  esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'no respondió')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

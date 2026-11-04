@@ -43,6 +43,13 @@ export function numeroDesde(valor: string | undefined): number | null {
   return m ? Number(m[1]) : null
 }
 
+/** Las filas del Excel del ERP debajo del encabezado, tal cual (para la pestaña Quiter de la planilla). */
+export function filasDeDatosErp(texto: string): string[][] {
+  const filas = parsearCsv(texto)
+  const inicio = filas.findIndex((f) => /refer/i.test(f[COL.ref] ?? '') && /cuit/i.test(f[COL.cuit] ?? ''))
+  return filas.slice(inicio + 1).filter((f) => /^\d+$/.test((f[COL.ref] ?? '').trim()))
+}
+
 export function importarErp(
   texto: string,
   existentes: Comprobante[],

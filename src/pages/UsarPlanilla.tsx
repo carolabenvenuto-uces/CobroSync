@@ -83,10 +83,10 @@ export default function UsarPlanilla() {
 
   const [copiando, setCopiando] = useState<string | null>(null)
   async function copiarAMiPlanilla() {
-    setCopiando('Copiando…')
+    setCopiando('Actualizando…')
     try {
       const r = await actualizarPlanillaEnGoogle()
-      setCopiando(`Listo: ${r.filas.toLocaleString('es-AR')} filas en la pestaña CobroSync de tu planilla.`)
+      setCopiando(r.completadas ? `Listo: se completaron ${r.completadas.toLocaleString('es-AR')} celdas en la hoja Diario.` : 'Listo: la hoja Diario ya estaba al día.')
     } catch (e) {
       setCopiando(e instanceof Error ? e.message : String(e))
     }
@@ -164,24 +164,25 @@ export default function UsarPlanilla() {
       </div>
 
       <Card className="mt-4">
-        <CardTitulo>Durante la prueba: tu planilla se completa sola</CardTitulo>
+        <CardTitulo>Durante la prueba: tu planilla se sigue llenando sola</CardTitulo>
         <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
           <li>
-            Las facturas de las sucursales del piloto se trabajan solo en CobroSync. Cada hora, CobroSync las copia en la pestaña{' '}
-            <strong>CobroSync</strong> de tu planilla, con las mismas columnas que la hoja Diario (Drive, Presentación, Cobro, Estado…).
+            Al cargar el Excel del ERP en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
+            <strong>Quiter</strong> de tu planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
           </li>
           <li>
-            La columna <strong>Drive</strong> toma la fecha en que Auditoría <strong>aprobó</strong> toda la documentación, no la de la
-            subida. Si después se observa algo, se vacía hasta que se vuelva a aprobar.
+            Cada hora, en la hoja <strong>Diario</strong>, se completan para las sucursales del piloto las columnas que hoy se escriben a
+            mano: <strong>Drive</strong> (el día en que Auditoría aprobó toda la documentación), <strong>Presentación</strong>,{' '}
+            <strong>Cobro</strong> y <strong>Estado</strong>. Cada factura se busca por la referencia.
           </li>
-          <li>Las demás sucursales siguen en la hoja Diario como siempre. No hay que cargar nada dos veces.</li>
+          <li>No se borra ningún dato, no se pisa ninguna fórmula y no se mueve ninguna fila. Las demás sucursales se completan a mano como siempre.</li>
         </ul>
         {conGoogle && (
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => void copiarAMiPlanilla()}
-              disabled={copiando === 'Copiando…'}
+              disabled={copiando === 'Actualizando…'}
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-fondo disabled:opacity-60"
             >
               Actualizar mi planilla ahora

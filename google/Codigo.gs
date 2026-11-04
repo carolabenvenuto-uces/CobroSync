@@ -62,8 +62,9 @@ var CONFIG_INICIAL = [
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
   ['avisosPorMail', 'NO', 'SI para mandar los avisos y el resumen semanal por mail'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
-  ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync copia ahí las facturas del piloto, cada hora'],
-  ['pestanaPlanillaControl', 'CobroSync', 'Pestaña de esa planilla donde se copian (se reemplaza entera cada vez)'],
+  ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync le agrega el ERP en Quiter y completa Diario'],
+  ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
+  ['pestanaDiario', 'Diario', 'Pestaña de la planilla de control con Drive (I), Presentación (K), Cobro (N) y Estado (O)'],
 ];
 
 // ── Aplicación web ──────────────────────────────────────────────────────────
@@ -419,69 +420,141 @@ function resumenSemanal() {
   });
 }
 
-// ── Copia en la planilla de control de Auditoría ────────────────────────────
+// ── La planilla de control de Auditoría se sigue llenando sola ─────────────────
 
 /**
- * Mientras dure el piloto, la planilla de control sigue siendo la referencia del sector. Para no
- * cargar dos veces, CobroSync copia sus facturas en una pestaña de esa planilla ("CobroSync"),
- * con las mismas columnas que la hoja Diario. Se reemplaza entera cada hora: no hay que tocarla.
+ * Mientras dure el piloto, la planilla de control sigue siendo la del sector, con su orden de
+ * siempre. CobroSync la mantiene al día sin cambiarle la forma:
+ * 1. Al cargar el Excel del ERP en CobroSync, las filas nuevas se agregan al final de la pestaña
+ *    Quiter, tal cual (de todas las sucursales). La hoja Diario las toma como siempre.
+ * 2. Cada hora, en la hoja Diario, se completan las columnas que hoy se escriben a mano para las
+ *    facturas de las sucursales del piloto: Drive (documentación aprobada), Presentación, Cobro y,
+ *    si no es una fórmula, Estado. Se busca cada factura por la referencia (columna B).
+ * Nunca se borra un dato, nunca se pisa una fórmula y no se mueve ninguna fila.
  */
-var ENCABEZADO_DIARIO = ['Fecha', 'Ref.', 'Sucursal', 'CTE.', 'Número', 'Compañia', 'Siniestro/Patente', 'Total', 'Drive', 'Días',
-  'Presentación', 'Días', 'Vto.', 'Cobro', 'Estado', 'Notas de Crédito', '', 'Observaciones', 'Reclamado', 'Reclamos', 'Último reclamo'];
+var COLUMNAS_DIARIO = { ref: 2, drive: 9, presentacion: 11, cobro: 14, estado: 15 }; // B, I, K, N, O
 
-function actualizarPlanillaDeControl() {
+function planillaDeControl_() {
   var id = config_('planillaControlId');
-  if (!id) return 0;
-  var destino = SpreadsheetApp.openById(id);
-  var nombre = config_('pestanaPlanillaControl') || 'CobroSync';
-  if (nombre.toLowerCase() === 'diario') throw new Error('La copia no puede ir en la hoja Diario: elegí otra pestaña.');
-  var hoja = destino.getSheetByName(nombre) || destino.insertSheet(nombre);
-  var filas = filasParaPlanilla_(leerHoja_(HOJAS.comprobantes), leerHoja_(HOJAS.aseguradoras), hoy_());
-  hoja.clearContents();
-  hoja.getRange(1, 1, 1, ENCABEZADO_DIARIO.length).setValues([ENCABEZADO_DIARIO]).setFontWeight('bold');
-  if (filas.length) hoja.getRange(2, 1, filas.length, ENCABEZADO_DIARIO.length).setValues(filas);
-  hoja.setFrozenRows(1);
-  return filas.length;
+  return id ? SpreadsheetApp.openById(id) : null;
 }
 
-/** Botón "Actualizar mi planilla ahora" de la aplicación. Solo Auditoría. */
+/** Botón de la aplicación al cargar el ERP: agrega a la pestaña Quiter las filas que no estén. Solo Auditoría. */
+function agregarAQuiter(filas) {
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar el ERP.');
+  var libro = planillaDeControl_();
+  if (!libro) return { configurada: false, agregadas: 0 };
+  return conBloqueo_(function () {
+    var nombre = config_('pestanaQuiter') || 'Quiter';
+    var hoja = libro.getSheetByName(nombre);
+    if (!hoja) throw new Error('No encuentro la pestaña "' + nombre + '" en la planilla de control.');
+    var refs = {};
+    if (hoja.getLastRow() > 0) {
+      hoja.getRange(1, 1, hoja.getLastRow(), 1).getValues().forEach(function (f) { refs[refTexto_(f[0])] = true; });
+    }
+    var nuevas = [];
+    filas.forEach(function (f) {
+      var ref = refTexto_(f[0]);
+      if (!/^\d+$/.test(ref) || refs[ref]) return;
+      refs[ref] = true;
+      nuevas.push(f.map(valorDeCelda_));
+    });
+    if (nuevas.length) {
+      var ancho = Math.max.apply(null, nuevas.map(function (f) { return f.length; }));
+      nuevas = nuevas.map(function (f) { while (f.length < ancho) f.push(''); return f; });
+      hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, ancho).setValues(nuevas);
+    }
+    var completadas = completarDiario_(libro);
+    return { configurada: true, agregadas: nuevas.length, completadas: completadas };
+  });
+}
+
+/** Disparador de cada hora (y botón "Actualizar mi planilla ahora"). */
+function actualizarPlanillaDeControl() {
+  var libro = planillaDeControl_();
+  return libro ? completarDiario_(libro) : 0;
+}
+
 function actualizarMiPlanilla() {
   if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede actualizar la planilla.');
   if (!config_('planillaControlId')) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
-  return { filas: actualizarPlanillaDeControl(), ahora: ahora_() };
+  return { completadas: actualizarPlanillaDeControl(), ahora: ahora_() };
 }
 
-function filasParaPlanilla_(comprobantes, aseguradoras, hoy) {
-  var cia = indexar_(aseguradoras, 'id');
-  var porId = indexar_(comprobantes, 'id');
-  var fecha = function (iso) { return iso ? String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7) + '/' + String(iso).slice(0, 4) : ''; };
-  var dias = function (a, b) { return a && b ? diasEntre_(a, b) : ''; };
-  var numero = function (c) { return c.puntoVenta + ' - ' + ('00000000' + c.numero).slice(-8); };
-  return comprobantes
-    .slice()
-    .sort(function (a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.ref).localeCompare(String(b.ref)); })
-    .map(function (c) {
-      var reclamos = c.reclamos || [];
-      var ultimo = reclamos.map(function (r) { return r.fecha; }).filter(String).sort().pop() || '';
-      var anula = c.tipo === 'NC' && c.ncReferencia && porId[c.ncReferencia] ? numero(porId[c.ncReferencia]) : '';
-      return [
-        fecha(c.fecha), c.ref, c.sucursal, c.tipo + ' E', numero(c), (cia[c.aseguradoraId] || {}).nombre || c.aseguradoraId,
-        c.siniestro || c.patente || '', c.total,
-        fecha(c.fechaAprobacion), dias(c.fecha, c.fechaAprobacion),
-        fecha(c.fechaPresentacion), dias(c.fechaAprobacion, c.fechaPresentacion),
-        fecha(c.vencimiento), fecha(c.fechaCobro), estadoParaPlanilla_(c, hoy), anula, '',
-        c.observaciones || '', reclamos.length ? 'Sí' : '', reclamos.length || '', fecha(ultimo),
-      ];
-    });
+function completarDiario_(libro) {
+  var hoja = libro.getSheetByName(config_('pestanaDiario') || 'Diario');
+  if (!hoja || hoja.getLastRow() < 2) return 0;
+  var ultima = hoja.getLastRow();
+  var refs = hoja.getRange(1, COLUMNAS_DIARIO.ref, ultima, 1).getValues();
+  var bloque = hoja.getRange(1, COLUMNAS_DIARIO.drive, ultima, COLUMNAS_DIARIO.estado - COLUMNAS_DIARIO.drive + 1);
+  var valores = bloque.getValues();
+  var formulas = bloque.getFormulas();
+  var filaDeRef = {};
+  refs.forEach(function (f, i) { var r = refTexto_(f[0]); if (/^\d+$/.test(r) && !filaDeRef[r]) filaDeRef[r] = i; });
+
+  var hoy = hoy_();
+  var cambios = 0;
+  leerHoja_(HOJAS.comprobantes).forEach(function (c) {
+    if (c.tipo !== 'FC') return;
+    var i = filaDeRef[refTexto_(c.ref)];
+    if (i === undefined) return;
+    var poner = function (columna, valor, esFecha) {
+      if (!valor) return; // nunca se borra lo que ya está
+      var j = columna - COLUMNAS_DIARIO.drive;
+      if (formulas[i][j]) return; // nunca se pisa una fórmula
+      var actual = valores[i][j];
+      var igual = esFecha ? fechaDeCelda_(actual) === valor : String(actual).trim() === valor;
+      if (igual) return;
+      hoja.getRange(i + 1, columna).setValue(esFecha ? fechaParaCelda_(valor) : valor);
+      cambios++;
+    };
+    poner(COLUMNAS_DIARIO.drive, c.fechaAprobacion, true);
+    poner(COLUMNAS_DIARIO.presentacion, c.fechaPresentacion, true);
+    poner(COLUMNAS_DIARIO.cobro, c.fechaCobro, true);
+    poner(COLUMNAS_DIARIO.estado, estadoParaPlanilla_(c, hoy), false);
+  });
+  return cambios;
 }
 
-/** El estado con las palabras de la planilla: D. Pend., P. Pend., Al día, Vencido, Cobrado, Anulada, NC. */
+/** El estado con las palabras de la planilla: D. Pend., P. Pend., Al día, Vencido, Cobrado, Anulada. */
 function estadoParaPlanilla_(c, hoy) {
-  if (c.tipo === 'NC') return 'NC';
   if (c.estado === 'anulada') return 'Anulada';
   if (c.estado === 'cobrada') return 'Cobrado';
   if (c.fechaPresentacion) return c.vencimiento && c.vencimiento < hoy ? 'Vencido' : 'Al día';
   return c.fechaAprobacion ? 'P. Pend.' : 'D. Pend.';
+}
+
+function refTexto_(v) {
+  return String(v === null || v === undefined ? '' : v).trim().replace(/\.0+$/, '');
+}
+
+/** "2026-10-30" → fecha de la hoja (al mediodía, para que ningún huso horario la corra de día). */
+function fechaParaCelda_(iso) {
+  var p = String(iso).split('-');
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+}
+
+/** Lo que hay en una celda de fecha → "AAAA-MM-DD" (acepta fecha, "30/10/2026" o "30-10-26"). */
+function fechaDeCelda_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
+  var m = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/.exec(String(v).trim());
+  if (!m) return '';
+  var a = m[3].length === 2 ? '20' + m[3] : m[3];
+  return a + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+}
+
+/** Texto del Excel del ERP → valor para la hoja: fechas como fecha, importes como número, el resto igual. */
+function valorDeCelda_(v) {
+  var t = String(v === null || v === undefined ? '' : v).trim();
+  if (t === '') return '';
+  var f = fechaDeCelda_(t);
+  if (f) return fechaParaCelda_(f);
+  if (/^-?\(?\d{1,3}(\.\d{3})+(,\d+)?\)?$|^-?\(?\d+,\d+\)?$/.test(t)) {
+    var n = Number(t.replace(/[()]/g, '').replace(/\./g, '').replace(',', '.'));
+    return /\(/.test(t) ? -Math.abs(n) : n;
+  }
+  if (/^-?(0|[1-9]\d{0,14})$/.test(t)) return Number(t); // sin ceros adelante (esos quedan como texto)
+  return t;
 }
 
 // ── Instalación (se corren una vez, desde el editor de Apps Script) ───────────

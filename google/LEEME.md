@@ -34,7 +34,7 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 4. Elegir la función `configurarPlanilla` y tocar **Ejecutar**. Google pide permisos la primera vez: aceptarlos con la cuenta del sector. Se crean las pestañas.
 5. Completar la planilla:
    - **Config:** el id de la carpeta de Drive, los correos de Gerencia General y el dominio (ya viene `svaauto.com.ar`).
-   - **Config → planillaControlId:** el id de la planilla de control de Auditoría (el texto largo del link, entre `/d/` y `/edit`). La cuenta del sector tiene que poder editarla. Cada hora CobroSync copia sus facturas en la pestaña **CobroSync** de esa planilla, con las columnas de Diario. La hoja Diario no se toca.
+   - **Config → planillaControlId:** el id de la planilla de control de Auditoría (el texto largo del link, entre `/d/` y `/edit`). La cuenta del sector tiene que poder editarla. Con esto, al cargar el ERP en CobroSync las filas nuevas se agregan al final de la pestaña **Quiter** (tal cual, de todas las sucursales), y cada hora se completan en **Diario** las columnas Drive (I), Presentación (K), Cobro (N) y Estado (O) de las facturas del piloto. No se borra nada, no se pisan fórmulas y no se mueven filas. Si las pestañas tienen otro nombre, cambiarlo en **pestanaQuiter** y **pestanaDiario**.
    - **Sucursales:** cargar **solo las sucursales de la prueba**. Las facturas de las demás no se pasan a CobroSync y siguen en la planilla.
    - **Usuarios:** una fila por persona, con email, nombre, rol (`Gerencia`, `Auditoría` o `Sucursal`) y sucursal (solo para el rol Sucursal, con el mismo nombre que en la pestaña Sucursales).
    - **Sucursales:** nombre, puntos de venta separados por coma (por ejemplo `21, 30`), nombre del gerente y su correo. **El nombre tiene que ser el mismo que aparece en la columna Sucursal de la planilla de control** (no importan mayúsculas ni espacios).
@@ -61,7 +61,7 @@ Los datos de la planilla no se tocan al actualizar.
 2. Desde una sucursal, subir un PDF y una foto desde el celular. Verificar que aparezcan en la carpeta de Drive.
 3. Desde Auditoría, aprobar ese documento, presentar la factura y registrar un cobro de prueba.
 4. Medir cuánto tarda en abrir la aplicación con Auditoría (es la que más datos carga). Si tarda más de 15 segundos, avisar: se puede hacer que cargue primero las facturas abiertas.
-5. En **Usar mi planilla → Actualizar mi planilla ahora**, verificar que la pestaña CobroSync de la planilla de control se llene.
+5. **Antes de empezar, hacer una copia de la planilla de control** (Archivo → Hacer una copia). Cargar el ERP del día en CobroSync y verificar que las filas aparezcan al final de Quiter y que Diario las tome. Después, en **Usar mi planilla → Actualizar mi planilla ahora**, verificar que se completen Drive, Presentación y Cobro de una factura del piloto.
 6. Con **avisosPorMail** en `SI`, ejecutar `avisosDiarios` a mano desde el editor y revisar que el gerente reciba el mail.
 
 ## Si algo no funciona

@@ -3,7 +3,7 @@
 ## [0.9.0] - 2026-11-04
 
 ### Agregado
-- **La planilla de control se completa sola:** cada hora CobroSync copia sus facturas en la pestaña "CobroSync" de la planilla de Auditoría, con las columnas de Diario. También hay un botón para hacerlo en el momento.
+- **La planilla de control se sigue llenando sola, sin cambiarle la forma:** al cargar el ERP en CobroSync, las filas nuevas se agregan al final de la pestaña Quiter, tal cual. Cada hora se completan en Diario Drive, Presentación, Cobro y Estado de las facturas del piloto (buscadas por referencia). No borra datos, no pisa fórmulas, no mueve filas. También hay un botón para hacerlo en el momento.
 - **Fecha de documentación aprobada:** se guarda el día en que Auditoría aprueba toda la documentación (es la que va a la columna Drive). Si después se observa algo, se vacía hasta la nueva aprobación. La fecha de subida pasa a ser la de la última subida.
 - Al pasar la planilla, solo entran las sucursales de la prueba.
 - **Notas de crédito parciales:** la sucursal avisa si la NC anula toda la factura o solo una parte (con el importe). La factura queda con su saldo pendiente.

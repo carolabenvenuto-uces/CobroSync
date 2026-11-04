@@ -83,9 +83,14 @@ export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nue
   return llamar('sincronizarDesdePlanilla', lista)
 }
 
-/** Copia ya mismo las facturas de CobroSync en la pestaña "CobroSync" de la planilla de control. */
-export function actualizarPlanillaEnGoogle(): Promise<{ filas: number; ahora: string }> {
+/** Completa ya mismo Drive, Presentación, Cobro y Estado en la hoja Diario de la planilla de control. */
+export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; ahora: string }> {
   return llamar('actualizarMiPlanilla')
+}
+
+/** Agrega al final de la pestaña Quiter de la planilla de control las filas del ERP que no estén. */
+export function agregarAQuiterEnGoogle(filas: string[][]): Promise<{ configurada: boolean; agregadas: number; completadas?: number }> {
+  return llamar('agregarAQuiter', filas)
 }
 
 /** Agrega compañías nuevas; con completarExistentes, también completa CUIT, razón social, plazo y correos. */

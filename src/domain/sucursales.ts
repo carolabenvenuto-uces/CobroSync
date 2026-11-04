@@ -7,7 +7,8 @@
  *  - Más de 21 días: crítico → se avisa además a la gerencia general.
  */
 import { diffDias, enMes, anioDe } from '../lib/fechas'
-import { calcularSemaforo, DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from './semaforo'
+import { calcularSemaforo } from './semaforo'
+import { diasCritica, plazoSucursal } from './plazos'
 import { costoDemora, type ParametrosImpacto } from './impacto'
 import { saldoFactura } from './importes'
 import type { Comprobante, Sucursal } from './tipos'
@@ -29,9 +30,10 @@ export function diasDeEspera(c: Comprobante, fechaCorte: string): number {
   return diffDias(c.fecha, fechaCorte)
 }
 
-export function nivelEscaneo(dias: number): NivelEscaneo {
-  if (dias <= PLAZO_ESCANEO_DIAS) return 'en_plazo'
-  if (dias <= DIAS_ESCALAR_GERENCIA_GENERAL) return 'atrasado'
+/** En plazo, atrasada o crítica, según los días de espera y los plazos de esa factura (común o MiPyME). */
+export function nivelEscaneo(c: Comprobante, dias: number): NivelEscaneo {
+  if (dias <= plazoSucursal(c)) return 'en_plazo'
+  if (dias <= diasCritica(c)) return 'atrasado'
   return 'critico'
 }
 
@@ -84,8 +86,9 @@ export function rankingSucursales(
       const facturas = propias.filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && enPeriodo(c.fecha))
       const subidas = facturas.filter((c) => c.fechaDrive !== null)
       const demoras = subidas.map((c) => diffDias(c.fecha, c.fechaDrive as string))
+      const enPlazo = subidas.filter((c) => diffDias(c.fecha, c.fechaDrive as string) <= plazoSucursal(c)).length
       const pendientes = propias.filter((c) => esperaALaSucursal(c, fechaCorte))
-      const niveles = pendientes.map((c) => nivelEscaneo(diasDeEspera(c, fechaCorte)))
+      const niveles = pendientes.map((c) => nivelEscaneo(c, diasDeEspera(c, fechaCorte)))
 
       return {
         sucursal,
@@ -95,7 +98,7 @@ export function rankingSucursales(
         dentroDePlazoPct:
           facturas.length === 0
             ? null
-            : Math.round((demoras.filter((d) => d <= PLAZO_ESCANEO_DIAS).length / facturas.length) * 100),
+            : Math.round((enPlazo / facturas.length) * 100),
         pendientes: pendientes.length,
         atrasados: niveles.filter((n) => n === 'atrasado').length,
         criticos: niveles.filter((n) => n === 'critico').length,

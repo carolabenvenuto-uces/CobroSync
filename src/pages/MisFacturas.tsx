@@ -4,7 +4,8 @@ import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { Chip } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { calcularSemaforo, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
+import { calcularSemaforo } from '../domain/semaforo'
+import { esMipyme, plazosActuales, plazoSucursal } from '../domain/plazos'
 import { diasDeEspera } from '../domain/sucursales'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import type { Etapa } from '../domain/tipos'
@@ -89,7 +90,16 @@ export default function MisFacturas() {
       orden: (x) => diasDeEspera(x.c, hoy),
       celda: (x) => {
         const d = diasDeEspera(x.c, hoy)
-        return <span className={`text-lg font-extrabold ${d > PLAZO_ESCANEO_DIAS && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
+        return (
+          <div>
+            <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
+            {esMipyme(x.c) && (
+              <div className="whitespace-nowrap text-[11px] font-semibold text-marca" title={`Factura MiPyME: plazo de ${plazoSucursal(x.c)} días`}>
+                MiPyME · {plazoSucursal(x.c)} d
+              </div>
+            )}
+          </div>
+        )
       },
     },
     {
@@ -250,7 +260,7 @@ export default function MisFacturas() {
       </div>
 
       <p className="mb-2 text-xs text-slate-500">
-        Tenés {PLAZO_ESCANEO_DIAS} días desde la factura para subir la factura, la orden de reparación o repuestos y la firma del cliente. Si no
+        Tenés {plazosActuales().comun} días desde la factura ({plazosActuales().mipyme} si es <strong>MiPyME</strong>, priorizalas) para subir la factura, la orden de reparación o repuestos y la firma del cliente. Si no
         podés, entrá a la factura y tocá "No lo puedo subir todavía".
         <span className="mt-1 block">
           En cada factura: <strong>+</strong> falta subirlo · <strong>!</strong> observado, hay que reemplazarlo · <strong>…</strong> en

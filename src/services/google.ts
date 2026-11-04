@@ -7,6 +7,7 @@
  *
  * En la demo de GitHub Pages no existe: todo sigue funcionando en memoria, como hasta ahora.
  */
+import type { Ajustes } from '../domain/plazos'
 import type { Aseguradora, Comprobante, DatosApp, Documento, Evento, Rol, TipoDocumento } from '../domain/tipos'
 
 export interface UsuarioGoogle {
@@ -86,6 +87,11 @@ export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nue
 /** Completa ya mismo Drive, Presentación, Cobro y Estado en la hoja Diario de la planilla de control. */
 export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; ahora: string }> {
   return llamar('actualizarMiPlanilla')
+}
+
+/** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Auditoría. */
+export function guardarAjustesEnGoogle(ajustes: Ajustes): Promise<boolean> {
+  return llamar('guardarAjustes', ajustes)
 }
 
 /** Agrega al final de la pestaña Quiter de la planilla de control las filas del ERP que no estén. */

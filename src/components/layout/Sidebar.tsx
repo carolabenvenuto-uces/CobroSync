@@ -13,12 +13,13 @@ import {
   Megaphone,
   Presentation,
   Trophy,
+  Settings,
   Upload,
   X,
 } from 'lucide-react'
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
-import { estadoReclamo } from '../../domain/reclamos'
+import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
 import { Marca } from '../Logo'
@@ -73,6 +74,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       items: [
         { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
         { ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload },
+        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
       ],
     },
   ],
@@ -92,7 +94,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
       alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
-        return e === 'sin_reclamar' || e === 'escalar'
+        return e !== null && RECLAMO_PARA_ACTUAR.includes(e)
       }).length,
     }
   }, [datos, comprobantes, hoy])

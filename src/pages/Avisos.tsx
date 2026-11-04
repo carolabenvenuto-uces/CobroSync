@@ -4,6 +4,7 @@ import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWar
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { plazosActuales } from '../domain/plazos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
@@ -47,7 +48,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           titulo: 'Documentación crítica',
           descripcion: 'Más de 21 días sin la documentación completa (avisado a gerencia general)',
           icono: Siren,
-          facturas: deSucursal.filter((c) => nivelEscaneo(diasDeEspera(c, hoy)) === 'critico'),
+          facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'critico'),
           ruta: '/app/pendientes?estado=Crítica',
         },
         {
@@ -55,7 +56,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           titulo: 'Documentación atrasada',
           descripcion: 'Entre 8 y 21 días (avisado al gerente de la sucursal)',
           icono: TriangleAlert,
-          facturas: deSucursal.filter((c) => nivelEscaneo(diasDeEspera(c, hoy)) === 'atrasado'),
+          facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'atrasado'),
           ruta: '/app/pendientes?estado=Atrasada',
         },
         {
@@ -129,9 +130,17 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           ruta: '/app/reclamos?estado=Sin reclamar',
         },
         {
+          clave: 'volver',
+          titulo: 'Volver a reclamar',
+          descripcion: `Pasaron ${plazosActuales().respuestaReclamo} días del último reclamo sin respuesta`,
+          icono: BellRing,
+          facturas: comprobantes.filter((c) => estadoReclamo(c, hoy) === 'volver'),
+          ruta: `/app/reclamos?estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.volver)}`,
+        },
+        {
           clave: 'escalar',
           titulo: 'Sin respuesta: pedir apoyo a gerencia',
-          descripcion: 'La compañía no respondió a 3 reclamos',
+          descripcion: 'La compañía no respondió 3 reclamos',
           icono: Megaphone,
           facturas: comprobantes.filter((c) => estadoReclamo(c, hoy) === 'escalar'),
           ruta: `/app/reclamos?estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`,

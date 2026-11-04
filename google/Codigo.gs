@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -53,15 +53,24 @@ var HOJAS = {
 var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada'];
 var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'];
 var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones']; // vacío = sin dato
-var PLAZO_DOCUMENTACION = 7; // días que tiene la sucursal
-var DIAS_GERENCIA_GENERAL = 21; // desde el día 22 se avisa también a Gerencia General
+// Los plazos de la documentación (común y MiPyME) están en la pestaña Config y se cambian
+// desde Ajustes en la aplicación: ver plazos_().
 var RECLAMOS_SIN_RESPUESTA = 3; // con 3 reclamos sin respuesta, Auditoría pide apoyo a Gerencia
 
 var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
   ['carpetaDriveId', '', 'Id de la carpeta de la unidad compartida donde se guardan los documentos'],
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
-  ['avisosPorMail', 'NO', 'SI para mandar los avisos y el resumen semanal por mail'],
+  ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
+  ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
+  ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
+  ['diasCritica', '21', 'Desde estos días sin documentación, la factura común es crítica (se avisa a Gerencia)'],
+  ['diasCriticaMipyme', '12', 'Ídem para una factura MiPyME'],
+  ['montoMinimoMipyme', '5549862', 'Monto mínimo de la factura de crédito MiPyME (total). Se actualiza una vez por año'],
+  ['puntosVentaMipyme', '', 'Puntos de venta que se usan solo para MiPyME, separados por coma (opcional)'],
+  ['diasRespuestaReclamo', '7', 'Días que se espera la respuesta de la compañía a un reclamo. Después: volver a reclamar; con 3, apoyo de Gerencia'],
+  ['textoAvisoApoyo', '', 'Notificación a Gerencia cuando una compañía no responde 3 reclamos (vacío = texto original). Se cambia en Ajustes'],
+  ['textoAvisoCritica', '', 'Notificación a Gerencia por facturas críticas (vacío = texto original). Se cambia en Ajustes'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
   ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync le agrega el ERP en Quiter y completa Diario'],
   ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
@@ -95,7 +104,13 @@ function obtenerDatos() {
       aseguradoras: leerHoja_(HOJAS.aseguradoras),
       comprobantes: comprobantes,
       cobrosPrevistos: usuario.rol === 'sucursal' ? [] : leerHoja_(HOJAS.cobros),
-      meta: { fechaCorte: hoy_(), sucursales: sucursales },
+      meta: {
+        fechaCorte: hoy_(),
+        sucursales: sucursales,
+        plazos: plazos_(),
+        textos: { apoyo: String(config_('textoAvisoApoyo') || ''), critica: String(config_('textoAvisoCritica') || '') },
+        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || '') } : undefined,
+      },
     },
   };
 }
@@ -359,6 +374,8 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
  */
 function avisosDiarios() {
   var hoy = hoy_();
+  var p = plazos_();
+  var sinFce = companiasSinFce_();
   var sucursales = indexar_(leerHoja_(HOJAS.sucursales), 'nombre');
   conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
@@ -367,14 +384,16 @@ function avisosDiarios() {
       var eventos = c.eventos || [];
       var yaAvisado = function (marca) { return eventos.some(function (e) { return e.area === 'sistema' && e.texto.indexOf(marca) >= 0; }); };
       var dias = diasEntre_(c.fecha, hoy);
+      var plazo = plazoDe_(c, p, sinFce);
+      var critica = criticaDe_(c, p, sinFce);
       var cambio = false;
-      if (dias > PLAZO_DOCUMENTACION && !yaAvisado('se avisó a') && !yaAvisado('días sin legajo completo: se')) {
+      if (dias > plazo && !yaAvisado('se avisó a') && !yaAvisado('días sin legajo completo: se')) {
         var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + PLAZO_DOCUMENTACION + ' días sin legajo completo: se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
         cambio = true;
       }
-      if (dias > DIAS_GERENCIA_GENERAL && !yaAvisado('gerencia general')) {
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + DIAS_GERENCIA_GENERAL + ' días sin legajo completo: se avisó a la gerencia general' });
+      if (dias > critica && !yaAvisado('gerencia general')) {
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Más de ' + critica + ' días sin legajo completo: se avisó a la gerencia general' });
         cambio = true;
       }
       if (cambio) {
@@ -401,21 +420,24 @@ function resumenSemanal() {
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   pendientesParaGerencia_(comprobantes, hoy);
   var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var p = plazos_();
+  var sinFce = companiasSinFce_();
   leerHoja_(HOJAS.sucursales).forEach(function (s) {
     if (!s.correoGerente) return;
     // Solo lo que pasó el plazo (sin las que tienen una fecha comprometida que todavía no llegó)
     var atrasadas = comprobantes
-      .filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c) && !compromisoVigente_(c, hoy) && diasEntre_(c.fecha, hoy) > PLAZO_DOCUMENTACION; })
+      .filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c) && !compromisoVigente_(c, hoy) && diasEntre_(c.fecha, hoy) > plazoDe_(c, p, sinFce); })
       .sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
     if (!atrasadas.length) return; // si no hay nada pendiente, no sale ningún mail
-    var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL; }).length;
+    var criticas = atrasadas.filter(function (c) { return diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce); }).length;
     var importe = atrasadas.reduce(function (t, c) { return t + Number(c.total || 0) - Number(c.acreditado || 0); }, 0);
     var lineas = atrasadas.slice(0, 40).map(function (c) {
-      return c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ' · ' + diasEntre_(c.fecha, hoy) + ' días' + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
+      return c.tipo + ' E ' + c.puntoVenta + '-' + ('00000000' + c.numero).slice(-8) + ' · ' + diasEntre_(c.fecha, hoy) + ' días' +
+        (esMipyme_(c, p, sinFce) ? ' · MiPyME' : '') + (c.siniestro ? ' · siniestro ' + c.siniestro : '');
     });
     if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');
     enviar_(s.correoGerente, 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación',
-      'Estas facturas pasaron los ' + PLAZO_DOCUMENTACION + ' días sin la documentación completa' + (criticas ? ' (' + criticas + ' con más de ' + DIAS_GERENCIA_GENERAL + ' días)' : '') +
+      'Estas facturas pasaron el plazo para la documentación (' + p.comun + ' días; ' + p.mipyme + ' si es MiPyME)' + (criticas ? '. ' + criticas + ' ya son críticas' : '') +
       '. Importe retenido: ' + pesos(importe) + '. Por favor, revisá con tu equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
   });
 }
@@ -425,6 +447,8 @@ function pendientesParaGerencia_(comprobantes, hoy) {
   var gerencia = String(config_('correosGerencia')).split(',').map(function (x) { return x.trim(); }).filter(String);
   if (!gerencia.length) return;
   var companias = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
+  var p = plazos_();
+  var sinFce = companiasSinFce_();
   var criticas = {};
   var sinRespuesta = {};
   var sumar = function (mapa, clave, c) {
@@ -433,9 +457,12 @@ function pendientesParaGerencia_(comprobantes, hoy) {
     g.importe += Number(c.total || 0) - Number(c.acreditado || 0);
   };
   comprobantes.forEach(function (c) {
-    if (esperaALaSucursal_(c) && diasEntre_(c.fecha, hoy) > DIAS_GERENCIA_GENERAL) sumar(criticas, c.sucursal, c);
+    if (esperaALaSucursal_(c) && diasEntre_(c.fecha, hoy) > criticaDe_(c, p, sinFce)) sumar(criticas, c.sucursal, c);
     var vencida = c.tipo === 'FC' && c.estado === 'presentada' && c.vencimiento && String(c.vencimiento) < hoy;
-    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
+    // 3 reclamos y pasó la espera del último sin respuesta
+    var fechas = (c.reclamos || []).map(function (r) { return String(r.fecha || ''); }).filter(String).sort();
+    var esperaCumplida = !fechas.length || diasEntre_(fechas[fechas.length - 1], hoy) >= p.respuestaReclamo;
+    if (vencida && (c.reclamos || []).length >= RECLAMOS_SIN_RESPUESTA && esperaCumplida) sumar(sinRespuesta, (companias[c.aseguradoraId] || {}).nombre || c.aseguradoraId, c);
   });
   var pesos = function (n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var facturas = function (n) { return n + (n === 1 ? ' factura' : ' facturas'); };
@@ -448,11 +475,77 @@ function pendientesParaGerencia_(comprobantes, hoy) {
     partes.push('Auditoría necesita tu apoyo: estas compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
   }
   if (Object.keys(criticas).length) {
-    partes.push('Facturas con más de ' + DIAS_GERENCIA_GENERAL + ' días sin documentación. Pedile a cada sucursal que la complete esta semana.\n' + lista(criticas));
+    partes.push('Facturas críticas: llevan más de ' + p.criticaComun + ' días sin documentación (' + p.criticaMipyme + ' si es MiPyME). Pedile a cada sucursal que la complete esta semana.\n' + lista(criticas));
   }
   if (!partes.length) return;
   gerencia.forEach(function (correo) {
     enviar_(correo, 'CobroSync · Pendientes de la semana que necesitan tu apoyo', 'Lo que quedó sin resolver al ' + hoy.split('-').reverse().join('/') + ':\n\n' + partes.join('\n\n'));
+  });
+}
+
+// ── Plazos (común y MiPyME) y Ajustes ────────────────────────────────────────
+
+function plazos_() {
+  var n = function (clave, porDefecto) { var v = Number(String(config_(clave)).replace(/[^0-9]/g, '')); return v > 0 ? v : porDefecto; };
+  return {
+    comun: n('plazoDocumentacion', 10),
+    mipyme: n('plazoDocumentacionMipyme', 5),
+    criticaComun: n('diasCritica', 21),
+    criticaMipyme: n('diasCriticaMipyme', 12),
+    montoMinimoMipyme: n('montoMinimoMipyme', 5549862),
+    puntosVentaMipyme: String(config_('puntosVentaMipyme') || '').split(/[^0-9]+/).filter(String).map(Number),
+    respuestaReclamo: n('diasRespuestaReclamo', 7),
+  };
+}
+
+/** Compañías marcadas con recibeFce = NO (las demás son grandes empresas y reciben FCE). */
+function companiasSinFce_() {
+  var o = {};
+  leerHoja_(HOJAS.aseguradoras).forEach(function (a) { if (/^(no|false)$/i.test(String(a.recibeFce || ''))) o[a.id] = true; });
+  return o;
+}
+
+/** Igual que en la aplicación (src/domain/plazos.ts): la regla del régimen de factura de crédito MiPyME. */
+function esMipyme_(c, p, sinFce) {
+  if (c.tipo !== 'FC') return false;
+  if (p.puntosVentaMipyme.indexOf(Number(c.puntoVenta)) >= 0) return true;
+  return !sinFce[c.aseguradoraId] && Number(c.total || 0) >= p.montoMinimoMipyme;
+}
+function plazoDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.mipyme : p.comun; }
+function criticaDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.criticaMipyme : p.criticaComun; }
+
+/** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Auditoría. */
+function guardarAjustes(a) {
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede cambiar los ajustes.');
+  return conBloqueo_(function () {
+    var valores = {
+      plazoDocumentacion: a.plazos.comun,
+      plazoDocumentacionMipyme: a.plazos.mipyme,
+      diasCritica: a.plazos.criticaComun,
+      diasCriticaMipyme: a.plazos.criticaMipyme,
+      montoMinimoMipyme: a.plazos.montoMinimoMipyme,
+      puntosVentaMipyme: (a.plazos.puntosVentaMipyme || []).join(', '),
+      diasRespuestaReclamo: a.plazos.respuestaReclamo || 7,
+      avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
+      correosGerencia: String(a.avisos.correosGerencia || ''),
+      textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
+      textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
+    };
+    var cfg = hoja_(HOJAS.config);
+    var claves = cfg.getLastRow() > 1 ? cfg.getRange(2, 1, cfg.getLastRow() - 1, 1).getValues().map(function (f) { return f[0]; }) : [];
+    Object.keys(valores).forEach(function (k) {
+      var i = claves.indexOf(k);
+      if (i >= 0) cfg.getRange(i + 2, 2).setValue(String(valores[k]));
+      else cfg.appendRow([k, String(valores[k]), '']);
+    });
+    var sinFce = a.companiasSinFce || [];
+    var hoja = hoja_(HOJAS.aseguradoras);
+    var col = HOJAS.aseguradoras.columnas.indexOf('recibeFce') + 1;
+    if (hoja.getLastRow() > 1) {
+      var ids = hoja.getRange(2, 1, hoja.getLastRow() - 1, 1).getValues();
+      ids.forEach(function (f, i) { hoja.getRange(i + 2, col).setValue(sinFce.indexOf(String(f[0])) >= 0 ? 'NO' : 'SI'); });
+    }
+    return true;
   });
 }
 
@@ -657,6 +750,7 @@ function filaAObjeto_(h, fila) {
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);
     else if (COLUMNAS_NUMERO_OPCIONAL.indexOf(col) >= 0) v = v === '' ? null : Number(v);
     else if (col === 'ncInformada') v = v === '' ? null : v === true || v === 'TRUE' || v === 'SI';
+    else if (col === 'recibeFce') v = v === '' || v === null || v === undefined ? null : !/^(no|false)$/i.test(String(v));
     else if (v === '') v = null;
     else if (typeof v === 'number') v = String(v);
     o[col] = v;

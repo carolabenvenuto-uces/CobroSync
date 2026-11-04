@@ -13,12 +13,14 @@ import {
 } from '../domain/reclamos'
 import type { Comprobante } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
+import { plazosActuales } from '../domain/plazos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 const ESTILO: Record<EstadoReclamo, string> = {
   sin_reclamar: 'bg-red-800/10 text-red-900',
   reclamada: 'bg-slate-100 text-slate-700',
+  volver: 'bg-sem-rojo/10 text-red-800',
   escalar: 'bg-sem-amarillo/20 text-amber-900',
 }
 
@@ -103,16 +105,17 @@ export default function Reclamos() {
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          Se escala a gerencia cuando la compañía no respondió a {RECLAMOS_PARA_ESCALAR} reclamos. Cada reclamo se registra en la
-          factura con fecha, medio y nota{rol === 'auditoria' ? ': tocá la fila para registrarlo.' : '.'}
+          Después de cada reclamo se espera la respuesta {plazosActuales().respuestaReclamo} días; si no llega, hay que volver a reclamar.
+          Con {RECLAMOS_PARA_ESCALAR} reclamos sin respuesta, Auditoría pide apoyo a gerencia. Cada reclamo se registra en la factura con
+          fecha, medio y nota{rol === 'auditoria' ? ': tocá la fila para registrarlo.' : '.'}
         </span>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-5">
         <button type="button" className={`rounded-xl text-left ${!estadoActivo ? 'ring-2 ring-marca' : ''}`} onClick={() => setParams({}, { replace: true })}>
           <Indicador titulo="Vencido total" valor={formatoPesos(total)} ayuda={`${vencidas.length} facturas`} tono="rojo" />
         </button>
-        {(['sin_reclamar', 'reclamada', 'escalar'] as EstadoReclamo[]).map((e) => (
+        {(['sin_reclamar', 'reclamada', 'volver', 'escalar'] as EstadoReclamo[]).map((e) => (
           <button
             key={e}
             type="button"

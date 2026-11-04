@@ -14,11 +14,12 @@ import { saldoFactura } from '../domain/importes'
 
 /**
  * Resumen: lo que la gerencia necesita ver de un vistazo, cada dato una sola vez.
- * 1. Cómo estamos hoy · 2. El año, a la izquierda · 3. El mes elegido: cobros previstos contra
- * lo realmente cobrado · 4. Dónde está la plata pendiente. El detalle está en las demás pantallas.
+ * 1. El año, a la izquierda · 2. El mes elegido: cobros previstos contra lo realmente cobrado ·
+ * 3. Lo pendiente de hoy (el total una sola vez, y en qué etapa está) · 4. Dónde está esa plata.
+ * El detalle está en las demás pantallas.
  */
 /** Importes del recuadro del año: se achican con la pantalla para entrar en una línea. */
-const GRANDE = { fontSize: 'clamp(1.1rem, 1.6vw, 1.6rem)' }
+const GRANDE = { fontSize: 'clamp(1.05rem, 1.4vw, 1.45rem)' }
 
 export default function Resumen() {
   const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros, sucursal } = useApp()
@@ -53,6 +54,8 @@ export default function Resumen() {
     return { ...totales, sinPresentar: de('sin_presentar'), alDia: de('al_dia') }
   }, [comprobantes, hoy])
 
+  const pct = (v: number) => (situacion.pendiente > 0 ? Math.round((v / situacion.pendiente) * 100) : 0)
+
   // 2. El año
   const anual = useMemo(() => {
     const delAnio = comprobantes.filter((c) => anioDe(c.fecha) === anio)
@@ -64,10 +67,12 @@ export default function Resumen() {
   const previsto = useMemo(() => previstoVsCobrado(comprobantes, anio, mes), [comprobantes, anio, mes])
 
   // 4. Dónde está la plata pendiente
-  const sucursales = useMemo(
-    () => rankingSucursales(datos!.comprobantes, meta.sucursales, hoy, anio, null, parametros).sort((a, b) => b.retenido - a.retenido).slice(0, 3),
+  const ranking = useMemo(
+    () => rankingSucursales(datos!.comprobantes, meta.sucursales, hoy, anio, null, parametros).sort((a, b) => b.retenido - a.retenido),
     [datos, meta.sucursales, hoy, anio, parametros],
   )
+  const sucursales = ranking.slice(0, 3)
+  const unaSucursal = sucursal === TODAS_LAS_SUCURSALES ? null : (ranking.find((r) => r.sucursal.nombre === sucursal) ?? null)
   const companias = useMemo(
     () => saldosPorAseguradora(comprobantes, aseguradoras, hoy).sort((a, b) => b.vencido - a.vencido).filter((s) => s.vencido > 0).slice(0, 3),
     [comprobantes, aseguradoras, hoy],
@@ -103,35 +108,24 @@ export default function Resumen() {
     <>
       <EncabezadoPagina titulo="Resumen" sucursal />
 
-      {/* 1. Cómo estamos hoy */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Indicador to={verFacturas('pendiente')} titulo="Pendiente de cobro" valor={formatoPesos(situacion.pendiente)} tono="marca" ayuda="Todo lo facturado que falta cobrar" />
-        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
-        <Indicador to={verFacturas('al_dia')} titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
-        <Indicador to={verFacturas('vencido')} titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        {/* 2. El año: lo primero que se ve, aparte del mes */}
-        <div className="rounded-xl bg-noche p-5 text-white shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-300">Año {anio}</div>
-          <div className="mt-4 space-y-4">
-            <div>
-              <div className="text-xs text-slate-300">Facturado</div>
-              <div className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(anual.facturado)}</div>
-              <div className="text-xs text-slate-400">
-                {anual.facturas.toLocaleString('es-AR')} facturas · notas de crédito {formatoPesos(anual.notasCredito)}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* 2. El año: lo primero que se ve, aparte del mes. Mismo formato que los datos del mes */}
+        <div className="flex flex-col rounded-xl bg-noche p-5 text-white shadow-sm">
+          <div className="text-sm font-bold uppercase tracking-wide text-white">Año {anio}</div>
+          <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
+            {[
+              { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: '' },
+              { titulo: 'Notas de crédito', valor: Math.abs(anual.notasCredito), ayuda: 'Anulaciones y descuentos del año', clase: 'text-slate-200' },
+              { titulo: 'Cobrado', valor: anual.cobrado, ayuda: 'Lo que ya pagaron las compañías', clase: 'text-emerald-300' },
+            ].map((x) => (
+              <div key={x.titulo}>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-300">{x.titulo}</div>
+                <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.clase}`} style={GRANDE}>
+                  {formatoPesos(x.valor)}
+                </div>
+                <div className="text-xs text-slate-400">{x.ayuda}</div>
               </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-300">Cobrado</div>
-              <div className="whitespace-nowrap font-extrabold tabular-nums text-emerald-300" style={GRANDE}>{formatoPesos(anual.cobrado)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-300">Falta cobrar de lo facturado en {anio}</div>
-              <div className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(anual.pendiente)}</div>
-              <div className="text-xs text-slate-400">De eso, vencido: {formatoPesos(anual.vencido)}</div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -146,7 +140,7 @@ export default function Resumen() {
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `Notas de crédito ${formatoPesos(delMes.notasCredito)}`)}
+            {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `Notas de crédito: ${formatoPesos(Math.abs(delMes.notasCredito))}`)}
             {dato('Cobro previsto', previsto.previsto, 'Facturas presentadas que vencen en el mes', 'text-marca')}
             {dato(
               'Cobrado en el mes',
@@ -171,29 +165,77 @@ export default function Resumen() {
         </Card>
       </div>
 
-      {/* 4. Dónde está la plata pendiente */}
+      {/* 3. Lo pendiente de hoy, una sola vez: el total y en qué etapa está */}
+      <div className="mb-2 mt-6 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy</h2>
+          <p className="text-xs text-slate-500">Todo lo facturado que falta cobrar, según en qué etapa está: sin presentar + al día + vencido.</p>
+        </div>
+        <Link to={verFacturas('pendiente')} className="group inline-flex items-baseline gap-2 text-marca hover:underline">
+          <span className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(situacion.pendiente)}</span>
+          <span className="text-xs font-semibold">Ver facturas →</span>
+        </Link>
+      </div>
+      {/* La barra muestra cuánto es cada parte del total */}
+      <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+        <div className="bg-sem-amarillo" style={{ width: `${pct(situacion.sinPresentar)}%` }} />
+        <div className="bg-marca" style={{ width: `${pct(situacion.alDia)}%` }} />
+        <div className="bg-sem-rojo" style={{ width: `${pct(situacion.vencido)}%` }} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" punto="bg-sem-amarillo" valor={formatoPesos(situacion.sinPresentar)} ayuda={`${pct(situacion.sinPresentar)} % · esperando documentación o presentación`} />
+        <Indicador to={verFacturas('al_dia')} titulo="Al día" punto="bg-marca" valor={formatoPesos(situacion.alDia)} ayuda={`${pct(situacion.alDia)} % · presentado, todavía no vence`} />
+        <Indicador to={verFacturas('vencido')} titulo="Vencido" punto="bg-sem-rojo" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda={`${pct(situacion.vencido)} % · presentado, vencido y sin cobrar`} />
+      </div>
+
+      {/* 4. Dónde está la plata pendiente. Con una sucursal elegida, los datos de esa sucursal */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
-            Sucursales con mayor importe retenido por documentación
-          </CardTitulo>
-          <ul className="divide-y divide-slate-100 text-sm">
-            {sucursales.map((r) => (
-              <li key={r.sucursal.nombre} className="flex justify-between gap-3 py-2">
-                <span>
-                  <span className="font-semibold">{r.sucursal.nombre}</span>
-                  <span className="ml-2 text-xs text-slate-500">
-                    {r.pendientes} facturas · {r.criticos} críticas
+        {unaSucursal ? (
+          <Card>
+            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
+              Documentación de {sucursal}
+            </CardTitulo>
+            {unaSucursal && (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {[
+                  { titulo: 'Retenido hoy', valor: formatoPesos(unaSucursal.retenido), clase: '' },
+                  { titulo: 'Esperando documentación', valor: `${unaSucursal.pendientes} facturas`, clase: '' },
+                  { titulo: 'Críticas', valor: `${unaSucursal.criticos} facturas`, clase: unaSucursal.criticos ? 'text-red-800' : '' },
+                  { titulo: 'Atrasadas', valor: `${unaSucursal.atrasados} facturas`, clase: unaSucursal.atrasados ? 'text-sem-rojo' : '' },
+                  { titulo: `Días prom. hasta subir (${anio})`, valor: unaSucursal.diasPromedioEscaneo === null ? '—' : `${unaSucursal.diasPromedioEscaneo} días`, clase: '' },
+                  { titulo: 'Subidas en plazo', valor: unaSucursal.dentroDePlazoPct === null ? '—' : `${unaSucursal.dentroDePlazoPct} %`, clase: '' },
+                ].map((x) => (
+                  <div key={x.titulo}>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{x.titulo}</div>
+                    <div className={`whitespace-nowrap text-base font-extrabold tabular-nums ${x.clase}`}>{x.valor}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        ) : (
+          <Card>
+            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
+              Sucursales con mayor importe retenido por documentación
+            </CardTitulo>
+            <ul className="divide-y divide-slate-100 text-sm">
+              {sucursales.map((r) => (
+                <li key={r.sucursal.nombre} className="flex justify-between gap-3 py-2">
+                  <span>
+                    <span className="font-semibold">{r.sucursal.nombre}</span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      {r.pendientes} facturas · {r.criticos} críticas
+                    </span>
                   </span>
-                </span>
-                <span className="font-semibold tabular-nums">{formatoPesos(r.retenido)}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+                  <span className="font-semibold tabular-nums">{formatoPesos(r.retenido)}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         <Card>
           <CardTitulo accion={<Link to="/app/saldos" className="text-xs font-semibold text-marca hover:underline">Ver saldos</Link>}>
-            Compañías con más vencido sin cobrar
+            {unaSucursal ? `Compañías con más vencido en ${sucursal}` : 'Compañías con más vencido sin cobrar'}
           </CardTitulo>
           <ul className="divide-y divide-slate-100 text-sm">
             {companias.length === 0 && <li className="py-2 text-slate-500">No hay vencidos.</li>}

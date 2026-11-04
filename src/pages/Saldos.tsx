@@ -7,14 +7,14 @@ import { saldosPorAseguradora } from '../domain/finanzas'
 import { estadoReclamo, ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo } from '../domain/semaforo'
 import { descargarExcel } from '../lib/exportar'
-import { formatoFecha, formatoPesos } from '../lib/formato'
+import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /**
  * Saldos por compañía: como el "Detalle por compañía" de la planilla, separando lo
  * pendiente en sin presentar, al día y vencido, y lo vencido según si ya se reclamó.
  */
 export default function Saldos() {
-  const { datos, hoy, rol } = useApp()
+  const { datos, hoy, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
 
@@ -28,7 +28,8 @@ export default function Saldos() {
           ...s,
           sinPresentar: suma((c) => ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'pres_pendiente'].includes(etapa(c))),
           alDia: suma((c) => etapa(c) === 'al_dia'),
-          vencidoSinReclamar: suma((c) => estadoReclamo(c, hoy) === 'sin_reclamar'),
+          // "A reclamar": sin reclamar o pasó la semana sin respuesta
+          vencidoSinReclamar: suma((c) => estadoReclamo(c, hoy) === 'sin_reclamar' || estadoReclamo(c, hoy) === 'volver'),
           vencidoParaEscalar: suma((c) => estadoReclamo(c, hoy) === 'escalar'),
           facturasVencidas: propias.filter((c) => etapa(c) === 'vencida').length,
           // Seguimiento: reclamos hechos por las facturas que siguen sin cobrar
@@ -36,7 +37,13 @@ export default function Saldos() {
             const abiertas = propias.filter((c) => c.tipo === 'FC' && c.estado === 'presentada')
             const reclamadas = abiertas.filter((c) => c.reclamos.length > 0)
             const ultimo = reclamadas.map(ultimoReclamo).filter((f): f is string => !!f).sort().pop() ?? null
-            return { reclamosHechos: reclamadas.reduce((t, c) => t + c.reclamos.length, 0), facturasReclamadas: reclamadas.length, ultimoReclamo: ultimo }
+            return {
+              reclamosHechos: reclamadas.reduce((t, c) => t + c.reclamos.length, 0),
+              facturasReclamadas: reclamadas.length,
+              ultimoReclamo: ultimo,
+              // Para desplegar: cada factura reclamada con las fechas de todos sus reclamos
+              detalleReclamos: reclamadas.map((c) => ({ c, fechas: c.reclamos.map((r) => r.fecha).filter(Boolean).sort() })),
+            }
           })(),
         }
       }),
@@ -46,12 +53,12 @@ export default function Saldos() {
   type Clave = 'facturado' | 'notasCredito' | 'cobrado' | 'pendiente' | 'vencido' | 'sinPresentar' | 'alDia' | 'vencidoSinReclamar' | 'vencidoParaEscalar'
   const sumar = (lista: Fila[], k: Clave) => lista.reduce((s, f) => s + f[k], 0)
   const situacionReclamos = (s: Fila) =>
-    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Sin respuesta' : s.vencidoSinReclamar > 0 ? 'Sin reclamar' : 'Reclamado'
+    s.vencido <= 0 ? 'Sin vencido' : s.vencidoParaEscalar > 0 ? 'Sin respuesta' : s.vencidoSinReclamar > 0 ? 'A reclamar' : 'Esperando respuesta'
 
   function exportar(lista: Fila[]) {
     descargarExcel(
       `saldos-por-compania-${hoy}`,
-      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido sin reclamar', 'Vencido sin respuesta', 'Reclamos hechos', 'Facturas reclamadas', 'Último reclamo'],
+      ['Compañía', 'Facturado', 'Notas de crédito', 'Cobrado', 'Pendiente total', 'Sin presentar', 'Al día', 'Vencido', 'Vencido a reclamar', 'Vencido sin respuesta', 'Reclamos hechos', 'Facturas reclamadas', 'Último reclamo'],
       [
         ...lista.map((s) => [
           s.aseguradora.nombre,
@@ -114,12 +121,30 @@ export default function Saldos() {
         s.reclamosHechos === 0 ? (
           <span className="text-xs text-slate-400">—</span>
         ) : (
-          <div className="whitespace-nowrap text-xs">
-            <div className="font-semibold text-noche">
+          // Tocando se despliegan las fechas de cada reclamo, factura por factura
+          <details className="text-left text-xs" onClick={(e) => e.stopPropagation()}>
+            <summary className="cursor-pointer whitespace-nowrap font-semibold text-noche hover:text-marca">
               {s.reclamosHechos} {s.reclamosHechos === 1 ? 'reclamo' : 'reclamos'} · {s.facturasReclamadas} {s.facturasReclamadas === 1 ? 'factura' : 'facturas'}
-            </div>
-            {s.ultimoReclamo && <div className="text-slate-500">Último: {formatoFecha(s.ultimoReclamo)}</div>}
-          </div>
+              {s.ultimoReclamo && <span className="block font-normal text-slate-500">Último: {formatoFecha(s.ultimoReclamo)} · ver todos</span>}
+            </summary>
+            <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto rounded-lg bg-fondo p-2">
+              {s.detalleReclamos.map(({ c, fechas }) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => abrirLegajo(c.id)}
+                    className="whitespace-nowrap font-semibold text-marca hover:underline"
+                  >
+                    {formatoComprobante(c)}
+                  </button>
+                  <span className="text-slate-500"> · {c.sucursal}</span>
+                  <div className="text-slate-600">
+                    {fechas.length ? fechas.map((f, i) => `${i + 1}°: ${formatoFecha(f)}`).join(' · ') : `${c.reclamos.length} sin fecha (de la planilla)`}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </details>
         ),
     },
     {
@@ -134,9 +159,9 @@ export default function Saldos() {
             to={rol === 'auditoria' ? `/app/reclamos?compania=${s.aseguradora.id}` : '#'}
             className={`block space-y-0.5 text-xs ${rol === 'auditoria' ? 'hover:underline' : 'pointer-events-none'}`}
           >
-            {s.vencidoSinReclamar > 0 && <div className="whitespace-nowrap font-semibold text-red-800">Sin reclamar: {formatoPesos(s.vencidoSinReclamar)}</div>}
+            {s.vencidoSinReclamar > 0 && <div className="whitespace-nowrap font-semibold text-red-800">A reclamar: {formatoPesos(s.vencidoSinReclamar)}</div>}
             {s.vencidoParaEscalar > 0 && <div className="whitespace-nowrap font-semibold text-amber-800">Sin respuesta: {formatoPesos(s.vencidoParaEscalar)}</div>}
-            {s.vencidoSinReclamar === 0 && s.vencidoParaEscalar === 0 && <div className="text-slate-600">Reclamado</div>}
+            {s.vencidoSinReclamar === 0 && s.vencidoParaEscalar === 0 && <div className="text-slate-600">Esperando respuesta</div>}
           </Link>
         ),
     },

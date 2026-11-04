@@ -14,6 +14,7 @@ import {
   aplicarCambiosEnGoogle,
   cargarDesdeGoogle,
   conectadoAGoogle,
+  guardarAjustesEnGoogle,
   marcarLeidasEnGoogle,
   obtenerCambiosDeGoogle,
   subirAGoogle,
@@ -22,7 +23,9 @@ import {
 } from '../services/google'
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
-import { NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { configurarPlazos, plazosActuales, type Ajustes } from '../domain/plazos'
+import { configurarTextos, textoAviso } from '../domain/textos'
 
 export const TODAS_LAS_SUCURSALES = 'Todas'
 
@@ -38,6 +41,7 @@ export const INICIO_ROL: Record<Rol, string> = {
   auditoria: '/app',
   gerencia: '/app',
 }
+
 
 /** Aviso para una persona: a Auditoría (para = 'auditoria'), a Gerencia (para = 'gerencia') o a una sucursal (para = su nombre). */
 export interface Notificacion {
@@ -78,11 +82,11 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
     const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
     const cant = facturas.length
     const compania = nombresCompanias[n.compania ?? ''] ?? 'una compañía'
-    // Escrito como lo que Gerencia tiene que hacer, no como un listado
+    // Escrito como lo que Gerencia tiene que hacer (el texto se cambia en Ajustes)
     const texto =
       n.clase === 'critica'
-        ? `Auditoría marcó como críticas ${cant === 1 ? 'una factura' : `${cant} facturas`} de ${n.sucursal}: falta la documentación hace más de 21 días. Pedile a la sucursal que la complete.`
-        : `Auditoría necesita tu apoyo con ${compania}: no responde los reclamos de ${cant === 1 ? 'una factura vencida' : `${cant} facturas vencidas`}.`
+        ? textoAviso('critica', { sucursal: n.sucursal, cantidad: cant, dias: plazosActuales().criticaComun })
+        : textoAviso('apoyo', { compania, cantidad: cant })
     const ruta =
       n.clase === 'critica'
         ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal ?? '')}&estado=Cr%C3%ADtica`
@@ -107,8 +111,18 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
  * 3 días para Auditoría y sucursales; 14 para Gerencia, que recibe menos avisos.
  */
 function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): Notificacion[] {
+  // Los textos y plazos de estos datos (todavía no se guardaron en el estado)
+  configurarPlazos(d.meta.plazos, d.aseguradoras)
+  configurarTextos(d.meta.textos)
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
+    // Sin respuesta a 3 reclamos: Auditoría pide apoyo a Gerencia desde que terminó la espera
+    if (estadoReclamo(c, d.meta.fechaCorte) === 'escalar') {
+      const desde = finDeEspera(c) ?? d.meta.fechaCorte
+      if (diffDias(desde, d.meta.fechaCorte) <= 14) {
+        lista.push({ id: `${c.id}|apoyo|${desde}`, para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, compania: c.aseguradoraId, fecha: desde, comprobanteId: c.id, leida: false, texto: '' })
+      }
+    }
     for (const e of c.eventos) {
       const dias = diffDias(e.fecha, d.meta.fechaCorte)
       for (const n of crearNotificaciones(c, e)) {
@@ -160,10 +174,8 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
     lista.push({ ...base(), para: 'gerencia', clase: 'critica', sucursal: c.sucursal, texto: `Documentación crítica · ${c.sucursal} · ${numero}` })
   }
-  const nReclamo = e.tipo === 'reclamo' ? Number(/Reclamo (\d+)/.exec(e.texto)?.[1] ?? 0) : 0
-  if (nReclamo >= 3) {
-    lista.push({ ...base(), para: 'gerencia', clase: 'escalar', sucursal: c.sucursal, compania: c.aseguradoraId, texto: `Sin respuesta de la compañía · ${numero}` })
-  }
+  // Los pedidos de apoyo a Gerencia no salen de un movimiento: salen del estado de la factura
+  // (3 reclamos y pasó la semana sin respuesta). Ver notificacionesIniciales.
   return lista
 }
 
@@ -186,6 +198,8 @@ interface EstadoApp {
   agregarComprobante: (comprobante: Comprobante) => void
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
+  /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
+  guardarAjustes: (ajustes: Ajustes) => Promise<void>
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
   registrarEvento: (id: string, tipo: Evento['tipo'], texto: string) => void
   /** tasa y objetivo de días para el informe de impacto económico */
@@ -237,6 +251,9 @@ const AppContext = createContext<EstadoApp | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [datos, setDatos] = useState<DatosApp | null>(null)
+  // Los plazos se aplican antes de que cualquier pantalla calcule el semáforo
+  configurarPlazos(datos?.meta.plazos, datos?.aseguradoras ?? [])
+  configurarTextos(datos?.meta.textos)
   const [error, setError] = useState<string | null>(null)
   const [rol, setRolInterno] = useState<Rol>('auditoria')
   const [sucursal, setSucursal] = useState(TODAS_LAS_SUCURSALES)
@@ -444,6 +461,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [encolar],
   )
 
+  const guardarAjustes = useCallback(async (a: Ajustes) => {
+    if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
+    const sinFce = new Set(a.companiasSinFce)
+    // Las notificaciones de Gerencia se vuelven a escribir con los textos nuevos
+    configurarTextos(a.textos)
+    configurarPlazos(a.plazos, (datosRef.current?.aseguradoras ?? []).map((x) => ({ ...x, recibeFce: !sinFce.has(x.id) })))
+    setNotificaciones((l) => agruparGerencia(l, nombresDe(datosRef.current)))
+    setDatos((actual) =>
+      actual
+        ? {
+            ...actual,
+            // copia nueva de las facturas: así todas las pantallas recalculan con los plazos nuevos
+            comprobantes: [...actual.comprobantes],
+            aseguradoras: actual.aseguradoras.map((x) => ({ ...x, recibeFce: !sinFce.has(x.id) })),
+            meta: { ...actual.meta, plazos: a.plazos, avisos: a.avisos, textos: a.textos },
+          }
+        : actual,
+    )
+  }, [])
+
   const actualizarAseguradoras = useCallback((aseguradoras: Aseguradora[]) => {
     setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
   }, [])
@@ -553,6 +590,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarComprobante,
       agregarComprobante,
       actualizarAseguradoras,
+      guardarAjustes,
       registrarEvento,
       parametros,
       setParametros,
@@ -584,6 +622,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarComprobante,
       agregarComprobante,
       actualizarAseguradoras,
+      guardarAjustes,
       registrarEvento,
       parametros,
       fuente,

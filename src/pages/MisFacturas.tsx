@@ -19,9 +19,9 @@ import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden firmada' } as const
 const ESTADO_DOC = {
   faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
-  observado: { marca: '!', texto: 'observado', clase: 'border-red-300 bg-red-50 text-red-800' },
+  observado: { marca: '!', texto: 'observada', clase: 'border-red-300 bg-red-50 text-red-800' },
   en_revision: { marca: '…', texto: 'en revisión', clase: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ok: { marca: '✓', texto: 'aprobado', clase: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  ok: { marca: '✓', texto: 'aprobada', clase: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
 } as const
 
 type Grupo = 'subir' | 'corregir' | 'revision'
@@ -170,7 +170,8 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
                 title={estado === 'observado' && d?.motivo ? `${NOMBRE_DOC[tipo]}: ${d.motivo}` : `${NOMBRE_DOC[tipo]}: ${e.texto}`}
                 className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`}
               >
-                {e.marca} {NOMBRE_DOC[tipo]}
+                {/* Se lee sola, sin leyenda: "Falta la orden firmada", "Factura aprobada" */}
+                {estado === 'faltante' ? `+ Falta ${tipo === 'factura' ? 'la factura' : 'la orden firmada'}` : `${e.marca} ${NOMBRE_DOC[tipo]} ${e.texto}`}
               </span>
             )
           })}
@@ -424,13 +425,6 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             ¿No llegás? Entrá a la factura y tocá <strong>"Avisar fecha estimada de entrega"</strong>: elegís el motivo y el día en que vas a tener la
             documentación. Auditoría ya sabe cuándo esperarla y la factura no te aparece en Para resolver hasta ese día.
           </p>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            {(['faltante', 'observado', 'en_revision', 'ok'] as const).map((e) => (
-              <span key={e} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-semibold ${ESTADO_DOC[e].clase}`}>
-                <span className="text-sm font-extrabold">{ESTADO_DOC[e].marca}</span> {ESTADO_DOC[e].texto}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 

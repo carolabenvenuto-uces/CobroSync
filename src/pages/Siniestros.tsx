@@ -19,7 +19,7 @@ const ESTILO_DOC: Record<Documento['estado'], string> = {
   en_revision: 'border-sky-200 bg-sky-50 text-sky-800',
   ok: 'border-emerald-200 bg-emerald-50 text-emerald-800',
 }
-const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', observado: 'observado', en_revision: 'en revisión', ok: 'aprobado' }
+const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', observado: 'observada', en_revision: 'en revisión', ok: 'aprobada' }
 
 interface Grupo {
   clave: string
@@ -174,7 +174,7 @@ export default function Siniestros() {
     const enlaces = d.adjuntos ?? (d.url ? [{ archivo: d.archivo ?? '', url: d.url }] : [])
     return (
       <span key={d.tipo} className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${ESTILO_DOC[d.estado]}`}>
-        {NOMBRE_DOCUMENTO[d.tipo].split(' ')[0]}: {TEXTO_DOC[d.estado]}
+        {d.estado === 'faltante' ? `Falta la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()}` : `${NOMBRE_DOCUMENTO[d.tipo]} ${TEXTO_DOC[d.estado]}`}
         {enlaces.map((a, i) =>
           a.url ? (
             <a key={i} href={a.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="underline">

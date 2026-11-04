@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CalendarClock, Info } from 'lucide-react'
-import { FiltroSucursal } from '../components/Filtros'
 import { Chip, nombreEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
@@ -153,7 +152,7 @@ export default function Pendientes() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Pendientes de sucursales" subtitulo="Facturas que esperan documentación de las sucursales" acciones={<FiltroSucursal />} />
+      <EncabezadoPagina titulo="Pendientes de sucursales" subtitulo="Facturas que esperan documentación de las sucursales" sucursal />
 
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />

@@ -7,7 +7,7 @@ import { DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/sem
 import { rankingSucursales } from '../domain/sucursales'
 import { anioDe, mesDe } from '../lib/fechas'
 import { descargarExcel } from '../lib/exportar'
-import { formatoFecha, formatoPesos, MESES } from '../lib/formato'
+import { formatoPesos, MESES } from '../lib/formato'
 
 /** Con menos facturas que esto, los promedios de una sucursal se marcan como poco representativos. */
 const MINIMO_REPRESENTATIVO = 100
@@ -81,7 +81,7 @@ export default function RankingSucursales() {
     <>
       <EncabezadoPagina
         titulo="Ranking de sucursales"
-        subtitulo={`Documentación pendiente al ${formatoFecha(hoy)}, ordenado por importe retenido. Promedios del ${textoPeriodo}.`}
+        subtitulo={`Documentación pendiente, ordenada por importe retenido. Promedios del ${textoPeriodo}.`}
         acciones={
           <>
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">

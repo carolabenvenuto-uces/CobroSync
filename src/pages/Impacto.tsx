@@ -1,9 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Clock, HandCoins, Hourglass, Info, TrendingDown } from 'lucide-react'
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
-import { FiltroSucursal } from '../components/Filtros'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularImpacto } from '../domain/impacto'
 import { esperaALaSucursal, rankingSucursales } from '../domain/sucursales'
@@ -15,6 +14,23 @@ import { formatoPesos, formatoPesosCorto, MESES } from '../lib/formato'
  */
 export default function Impacto() {
   const { datos, hoy, anio, sucursal, parametros, setParametros } = useApp()
+
+  // Al entrar, un cartel avisa que los números de costo están en revisión (una vez por sesión)
+  const [aviso, setAviso] = useState(() => {
+    try {
+      return sessionStorage.getItem('cobrosync-impacto-visto') !== '1'
+    } catch {
+      return true
+    }
+  })
+  function cerrarAviso() {
+    setAviso(false)
+    try {
+      sessionStorage.setItem('cobrosync-impacto-visto', '1')
+    } catch {
+      /* sin almacenamiento: se vuelve a mostrar la próxima vez */
+    }
+  }
   const comprobantes = useComprobantes()
   const { meta } = datos!
 
@@ -59,15 +75,34 @@ export default function Impacto() {
 
   return (
     <>
+      {aviso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-noche/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aviso-impacto">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-sem-amarillo/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-900">
+              <Info className="h-3.5 w-3.5" /> En revisión
+            </div>
+            <h2 id="aviso-impacto" className="text-lg font-extrabold text-noche">Estos números son una estimación</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              El <strong>importe retenido</strong> es real: son facturas emitidas que esperan documentación. El <strong>costo de la demora</strong>{' '}
+              se calcula con una tasa de referencia que todavía se está revisando con Contabilidad. Sirve para dimensionar el problema, no es un
+              dato contable.
+            </p>
+            <button
+              type="button"
+              onClick={cerrarAviso}
+              autoFocus
+              className="mt-5 w-full rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
       <EncabezadoPagina
         titulo="Impacto económico"
-        subtitulo={`Costo financiero de la demora en la documentación · ${anio} · ${sucursal === 'Todas' ? 'Todas las sucursales' : sucursal}`}
-        acciones={
-          <>
-            <FiltroSucursal />
-            <BotonExportar onClick={exportar} />
-          </>
-        }
+        subtitulo={`Costo financiero de la demora en la documentación · ${anio}`}
+        sucursal
+        acciones={<BotonExportar onClick={exportar} />}
       />
 
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-sem-amarillo/40 bg-sem-amarillo/10 px-4 py-3 text-sm text-amber-900">

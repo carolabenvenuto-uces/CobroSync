@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
-import { FiltroSucursal } from '../components/Filtros'
 import { EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -97,8 +96,8 @@ export default function Reclamos() {
     <>
       <EncabezadoPagina
         titulo="Vencidas y reclamos"
-        subtitulo={`Facturas presentadas, vencidas y sin cobrar al ${formatoFecha(hoy)}`}
-        acciones={<FiltroSucursal />}
+        subtitulo="Facturas presentadas, vencidas y sin cobrar"
+        sucursal
       />
 
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">

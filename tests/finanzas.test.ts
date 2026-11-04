@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { calcularTotales, proyeccionDelMes, serieSemanalDelMes, totalesDelMes } from '../src/domain/finanzas'
+import { calcularTotales, previstoVsCobrado, proyeccionDelMes, serieSemanalDelMes, totalesDelMes } from '../src/domain/finanzas'
 import { calcularImpacto, diasDeDemoraExtra, PARAMETROS_INICIALES } from '../src/domain/impacto'
 import { esperaALaSucursal, rankingSucursales } from '../src/domain/sucursales'
 import type { CobroPrevisto, Comprobante, Sucursal } from '../src/domain/tipos'
@@ -28,6 +28,19 @@ describe('calcularTotales (sobre los datos de demo)', () => {
 
   it('lo vencido nunca supera lo pendiente', () => {
     expect(totales.vencido).toBeLessThanOrEqual(totales.pendiente)
+  })
+})
+
+describe('previsto contra cobrado', () => {
+  it('lo cobrado de las semanas coincide con lo cobrado del mes', () => {
+    const p = previstoVsCobrado(comprobantes, 2026, 10)
+    expect(p.cobrado).toBeCloseTo(totalesDelMes(comprobantes, 2026, 10).cobrado, 2)
+    expect(p.semanas).toHaveLength(5)
+  })
+  it('lo previsto sin cobrar nunca supera lo previsto', () => {
+    const p = previstoVsCobrado(comprobantes, 2026, 11)
+    expect(p.previsto).toBeGreaterThan(0)
+    expect(p.previstoSinCobrar).toBeLessThanOrEqual(p.previsto + 0.01)
   })
 })
 

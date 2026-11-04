@@ -11,8 +11,8 @@ export function esPdf(archivo: File): boolean {
 
 export async function prepararArchivo(archivo: File): Promise<File> {
   if (!esPdf(archivo)) {
-    throw new Error(`"${archivo.name}" no es un PDF. Solo se aceptan PDF: las compañías no reciben fotos ni otros formatos. Escanealo como PDF.`)
+    throw new Error(`"${archivo.name}" no es un PDF. Solo se aceptan PDF: las compañías no reciben fotos ni otros formatos. Escanéelo como PDF.`)
   }
-  if (archivo.size > MAXIMO_MB * 1024 * 1024) throw new Error(`"${archivo.name}" pesa más de ${MAXIMO_MB} MB. Escanealo con menos resolución.`)
+  if (archivo.size > MAXIMO_MB * 1024 * 1024) throw new Error(`"${archivo.name}" pesa más de ${MAXIMO_MB} MB. Escanéelo con menos resolución.`)
   return archivo
 }

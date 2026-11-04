@@ -63,7 +63,7 @@ export async function leerArchivo(archivo: File, hoja?: RegExp): Promise<string>
     return xlsxACsv(archivo, hoja)
   }
   if (/\.xls$/i.test(archivo.name)) {
-    throw new Error('Ese archivo es de un Excel viejo (.xls). Abrilo y guardalo como "Libro de Excel (.xlsx)" o como CSV.')
+    throw new Error('Ese archivo es de un Excel viejo (.xls). Ábralo y guárdelo como "Libro de Excel (.xlsx)" o como CSV.')
   }
   const bytes = await archivo.arrayBuffer()
   const utf8 = new TextDecoder('utf-8').decode(bytes)
@@ -164,7 +164,7 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
     .find((f) => /sucursal/i.test(f[COL.sucursal] ?? '') && /estado/i.test(f[COL.estado] ?? ''))
   if (!encabezado) {
     throw new Error(
-      'No reconozco el formato. Descargá la hoja "Diario" como CSV: la columna C tiene que ser "Sucursal" y la O "Estado".',
+      'No reconozco el formato. Descargue la hoja "Diario" como CSV: la columna C tiene que ser "Sucursal" y la O "Estado".',
     )
   }
 
@@ -255,7 +255,7 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
   })
 
   if (comprobantes.length === 0) {
-    throw new Error('El archivo no tiene filas con fecha y sucursal. ¿Descargaste la hoja "Diario"?')
+    throw new Error('El archivo no tiene filas con fecha y sucursal. ¿Descargó la hoja "Diario"?')
   }
 
   return {

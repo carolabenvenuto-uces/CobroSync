@@ -229,12 +229,12 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           <div className="mt-3 space-y-1 text-[11px] text-slate-400">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-              {fuente.tipo === 'demo' ? 'Datos de ejemplo' : fuente.tipo === 'google' ? 'Datos de la empresa' : `Tu planilla: ${fuente.archivo}`}
-              {hoy && ` · al ${formatoFecha(hoy)}`}
+              {fuente.tipo === 'planilla' ? `Planilla: ${fuente.archivo}` : 'Datos'}
+              {hoy && ` al ${formatoFecha(hoy)}`}
             </div>
             {fuente.tipo === 'planilla' && (
               <button type="button" onClick={usarDemo} className="underline hover:text-white">
-                Volver a la demo
+                Volver a los datos de siempre
               </button>
             )}
             {fuente.tipo !== 'google' && (

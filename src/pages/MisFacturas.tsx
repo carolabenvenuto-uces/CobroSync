@@ -48,7 +48,7 @@ const GRUPOS: { clave: Grupo; titulo: string; ayuda: string; etapas: Etapa[]; ic
   {
     clave: 'revision',
     titulo: 'En revisión',
-    ayuda: 'Ya subiste todo: Auditoría lo está revisando. No tenés que hacer nada',
+    ayuda: 'Ya subió todo: Auditoría lo está revisando. No tiene que hacer nada',
     etapas: ['en_revision'],
     icono: CircleCheck,
     color: 'border-sky-400 bg-sky-50',
@@ -195,9 +195,9 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           })}
           {x.c.compromiso && (
             x.c.compromiso.fecha >= hoy ? (
-              <span className="w-full text-[11px] text-slate-500">Fecha estimada que avisaste: {formatoFecha(x.c.compromiso.fecha)}</span>
+              <span className="w-full text-[11px] text-slate-500">Fecha estimada que avisó: {formatoFecha(x.c.compromiso.fecha)}</span>
             ) : (
-              <span className="w-full text-[11px] font-semibold text-sem-rojo">La fecha estimada que avisaste ({formatoFecha(x.c.compromiso.fecha)}) ya pasó</span>
+              <span className="w-full text-[11px] font-semibold text-sem-rojo">La fecha estimada que avisó ({formatoFecha(x.c.compromiso.fecha)}) ya pasó</span>
             )
           )}
         </div>
@@ -282,7 +282,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       <>
         <EncabezadoPagina
           titulo={`Para resolver · ${sucursal}`}
-          subtitulo="Lo que necesita tu atención: documentos rechazados u observados y facturas fuera de plazo o por vencer"
+          subtitulo="Lo que necesita su atención: documentos rechazados u observados y facturas fuera de plazo o por vencer"
         />
 
 
@@ -317,7 +317,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
 
         {!temaActivo ? (
           <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-            Tocá una de las dos tarjetas para ver las facturas (y otra vez para cerrarla).
+            Toque una de las dos tarjetas para ver las facturas (y otra vez para cerrarla).
           </p>
         ) : (
         <>
@@ -338,7 +338,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           onFila={(x) => abrirLegajo(x.c.id)}
           porPagina={15}
           resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'} · ${TEMAS.find((t) => t.clave === temaActivo)!.titulo.toLowerCase()}`}
-          vacio={temaActivo === 'rechazo' ? 'No tenés rechazos ni observaciones. ¡Bien!' : 'No tenés documentación por vencer ni vencida. ¡Bien!'}
+          vacio={temaActivo === 'rechazo' ? 'No tiene rechazos ni observaciones. ¡Bien!' : 'No tiene documentación por vencer ni vencida. ¡Bien!'}
         />
         </>
         )}
@@ -382,7 +382,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           <p className="mt-1 text-sm text-slate-600">
             {urgentes.length > 0 && (
               <button type="button" onClick={() => navigate('/app/resolver')} className="mr-3 font-semibold text-marca hover:underline">
-                Tenés {urgentes.length} para resolver →
+                Tiene {urgentes.length} para resolver →
               </button>
             )}
             {sinLeer > 0 && (
@@ -406,7 +406,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
         <button
           type="button"
           onClick={() => setCargaMasiva(true)}
-          title="Soltá todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 orden.pdf)"
+          title="Suelte todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 orden.pdf)"
           className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
         >
           <FileUp className="h-4 w-4" /> Subir varios PDF de una vez
@@ -426,21 +426,21 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
       {enRevision > 0 && (
         <p className="mb-4 px-1 text-xs text-slate-600">
           Además, <strong>{enRevision}</strong> {enRevision === 1 ? 'factura está' : 'facturas están'} en revisión: Auditoría las está revisando, no
-          tenés que hacer nada.{' '}
+          tiene que hacer nada.{' '}
           <button type="button" onClick={() => setGrupo(grupo === 'revision' ? null : 'revision')} className="font-semibold text-marca hover:underline">
             {grupo === 'revision' ? 'Ocultarlas' : 'Verlas'}
           </button>
         </p>
       )}
 
-      {/* El buscador va pegado a la lista: lo que encontrás aparece justo abajo */}
+      {/* El buscador va pegado a la lista: lo que encuentra aparece justo abajo */}
       <div className="relative mb-3 mt-4">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscá cualquier factura por número, siniestro o patente"
+          placeholder="Busque cualquier factura por número, siniestro o patente"
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
@@ -477,7 +477,7 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
           onFila={(x) => abrirLegajo(x.c.id)}
           ordenInicial={{ clave: 'dias', dir: 'desc' }}
           resumen={(l) => `${l.length} facturas · ${GRUPOS.find((g) => g.clave === grupo)!.titulo.toLowerCase()}`}
-          vacio={grupo === 'subir' ? 'No te falta subir nada. ¡Todo al día!' : 'No tenés nada en revisión.'}
+          vacio={grupo === 'subir' ? 'No le falta subir nada. ¡Todo al día!' : 'No tiene nada en revisión.'}
         />
       )}
 
@@ -493,19 +493,19 @@ export default function MisFacturas({ vista = 'subir' }: { vista?: 'subir' | 're
             </div>
             <h2 id="titulo-plazos" className="text-lg font-extrabold">Los plazos para subir la documentación</h2>
             <p className="mt-3 text-sm text-slate-700">
-              Tenés <strong>{p.comun} días</strong> desde la fecha de la factura para subir la <strong>factura</strong> y la <strong>orden firmada</strong>.
+              Tiene <strong>{p.comun} días</strong> desde la fecha de la factura para subir la <strong>factura</strong> y la <strong>orden firmada</strong>.
             </p>
             <p className="mt-2 text-sm text-slate-700">
-              Si es <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>, solo <strong>{p.mipyme} días</strong>: subilas primero.
+              Si es <strong className="rounded bg-noche px-1 text-white">! MiPyME</strong>, solo <strong>{p.mipyme} días</strong>: súbalas primero.
             </p>
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              ¿No llegás? Entrá a la factura y tocá <strong>"Avisar fecha estimada de entrega"</strong>: elegís el motivo y el día en que vas a tener la
-              documentación. Auditoría sabe cuándo esperarla y la factura no te aparece en Para resolver hasta ese día.
+              ¿No llega? Ingrese a la factura y toque <strong>"Avisar fecha estimada de entrega"</strong>: elige el motivo y el día en que va a tener la
+              documentación. Auditoría sabe cuándo esperarla y la factura no le aparece en Para resolver hasta ese día.
             </p>
             <button type="button" onClick={cerrarAviso} className="mt-5 w-full rounded-lg bg-marca px-4 py-2.5 text-sm font-semibold text-white hover:bg-marca-oscuro">
               Entendido
             </button>
-            <p className="mt-2 text-center text-[11px] text-slate-500">Lo podés volver a leer cuando quieras con el botón "Plazos", arriba a la derecha.</p>
+            <p className="mt-2 text-center text-[11px] text-slate-500">Lo puede volver a leer cuando quiera con el botón "Plazos", arriba a la derecha.</p>
           </div>
         </div>
       )}

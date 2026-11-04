@@ -163,11 +163,11 @@ const SECCIONES: Seccion[] = [
           facturas tiene cada una. Se pueden combinar varios filtros; "Limpiar filtros" los saca a todos.
         </li>
         <li>
-          <strong>Ordenar:</strong> tocá el título de la columna. Primer toque, de mayor a menor; segundo, de menor a mayor; tercero, vuelve
+          <strong>Ordenar:</strong> toque el título de la columna. Primer toque, de mayor a menor; segundo, de menor a mayor; tercero, vuelve
           al orden original. Las filas sin dato (por ejemplo, sin fecha) quedan siempre al final.
         </li>
         <li>
-          <strong>Abrir una factura:</strong> tocá la fila. Se abre el legajo con sus documentos, su historial y lo que se puede hacer.
+          <strong>Abrir una factura:</strong> toque la fila. Se abre el legajo con sus documentos, su historial y lo que se puede hacer.
         </li>
         <li>
           <strong>Exportar a Excel:</strong> baja la lista tal como está filtrada, con cada dato en su columna.
@@ -197,7 +197,7 @@ const SECCIONES: Seccion[] = [
             Después de {p.criticaComun} días ({p.criticaMipyme} si es MiPyME), la factura pasa a crítica y se avisa a Gerencia General.
           </p>
           <Nota>
-            ¿No llegás? Abrí la factura y tocá <strong>"Avisar fecha estimada de entrega"</strong>: elegís el motivo y el día en que vas a
+            ¿No llega? Abra la factura y toque <strong>"Avisar fecha estimada de entrega"</strong>: elige el motivo y el día en que va a
             tener la documentación. Auditoría sabe cuándo esperarla y la factura no aparece en Para resolver hasta ese día. Si la fecha pasa y
             no se subió, se marca en rojo.
           </Nota>
@@ -213,36 +213,36 @@ const SECCIONES: Seccion[] = [
       <>
         <p>
           En <Pantalla>Mis facturas</Pantalla>, la tarjeta <strong>Para subir</strong> abre la lista de facturas a las que les falta la factura o
-          la orden firmada (tocala otra vez para cerrarla). Debajo dice cuántas están <strong>en revisión</strong>, por si las querés ver. El buscador
+          la orden firmada (tóquela otra vez para cerrarla). Debajo dice cuántas están <strong>en revisión</strong>, por si las quiere ver. El buscador
           encuentra cualquier factura de la sucursal y muestra el resultado justo abajo. El botón <strong>Plazos</strong>, arriba a la derecha,
           vuelve a mostrar el aviso de los plazos.
         </p>
         <h4 className="mt-4 font-bold">Subir los documentos de una factura</h4>
         <Pasos>
           <Paso n={1}>
-            Tocá <strong>Para subir</strong> y, en la factura, el botón <strong>Subir</strong>.
+            Toque <strong>Para subir</strong> y, en la factura, el botón <strong>Subir</strong>.
           </Paso>
-          <Paso n={2}>Elegí el PDF de la factura y el de la orden firmada (o uno solo si las escaneaste juntas).</Paso>
-          <Paso n={3}>La factura pasa a "En revisión". Si Auditoría la observa, te llega una notificación y aparece en Para resolver.</Paso>
+          <Paso n={2}>Elija el PDF de la factura y el de la orden firmada (o uno solo si las escaneó juntas).</Paso>
+          <Paso n={3}>La factura pasa a "En revisión". Si Auditoría la observa, le llega una notificación y aparece en Para resolver.</Paso>
         </Pasos>
         <h4 className="mt-4 font-bold">Subir muchos archivos de una vez</h4>
         <Pasos>
           <Paso n={1}>
-            Tocá <strong>Subir varios PDF de una vez</strong> (el botón azul de arriba).
+            Toque <strong>Subir varios PDF de una vez</strong> (el botón azul de arriba).
           </Paso>
           <Paso n={2}>
-            Soltá todos los PDF juntos. Cada uno va a su factura por el número que tiene en el nombre: el punto de venta y el número, por
+            Suelte todos los PDF juntos. Cada uno va a su factura por el número que tiene en el nombre: el punto de venta y el número, por
             ejemplo <code className="rounded bg-slate-100 px-1">35-11032 orden.pdf</code> o{' '}
             <code className="rounded bg-slate-100 px-1">35-11032 factura.pdf</code>.
           </Paso>
           <Paso n={3}>
-            Revisá la lista: lo que está en rojo no se sube (no es PDF, o el número no es de una factura pendiente de tu sucursal). Renombralo y
-            volvé a soltarlo. Después tocá <strong>Subir todo</strong>.
+            Revise la lista: lo que está en rojo no se sube (no es PDF, o el número no es de una factura pendiente de su sucursal). Renómbrelo y
+            vuelva a soltarlo. Después toque <strong>Subir todo</strong>.
           </Paso>
         </Pasos>
         <Nota>
-          Solo se aceptan <strong>PDF</strong>: las compañías no reciben fotos. Desde el celular, escaneá con la cámara o con Google Drive, que
-          guardan en PDF. Mientras un documento está en revisión, lo podés quitar si te equivocaste.
+          Solo se aceptan <strong>PDF</strong>: las compañías no reciben fotos. Desde el celular, escanee con la cámara o con Google Drive, que
+          guardan en PDF. Mientras un documento está en revisión, lo puede quitar si se equivocó.
         </Nota>
         <p>Cada factura dice qué le falta: "+ Falta la orden firmada", "… Factura en revisión", "✓ Factura aprobada".</p>
       </>
@@ -254,12 +254,12 @@ const SECCIONES: Seccion[] = [
     titulo: 'Informar una nota de crédito',
     contenido: () => (
       <>
-        <p>Si una factura se anula, toda o una parte, avisalo para que Auditoría no la presente:</p>
+        <p>Si una factura se anula, toda o una parte, avíselo para que Auditoría no la presente:</p>
         <Pasos>
           <Paso n={1}>
-            En <Pantalla>Mis facturas</Pantalla>, tocá <strong>Informar una nota de crédito</strong>.
+            En <Pantalla>Mis facturas</Pantalla>, toque <strong>Informar una nota de crédito</strong>.
           </Paso>
-          <Paso n={2}>Buscá la factura, elegí si se anula completa o una parte (con el importe) y el motivo.</Paso>
+          <Paso n={2}>Busque la factura, elija si se anula completa o una parte (con el importe) y el motivo.</Paso>
           <Paso n={3}>Auditoría espera que la nota de crédito aparezca en el sistema y la asocia a la factura.</Paso>
         </Pasos>
         <p>Si después se vuelve a facturar, en Mis siniestros aparece "Falta refacturar" hasta que esté la factura nueva.</p>
@@ -273,12 +273,12 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          <Pantalla>Para resolver</Pantalla> junta lo que necesita tu atención primero, en dos tarjetas:
+          <Pantalla>Para resolver</Pantalla> junta lo que necesita su atención primero, en dos tarjetas:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             <strong>Rechazos y observaciones:</strong> un documento que Auditoría o la compañía no aceptó. El motivo dice quién lo rechazó y
-            qué hay que cambiar. Abrí la factura y subí el documento nuevo.
+            qué hay que cambiar. Abra la factura y suba el documento nuevo.
           </li>
           <li>
             <strong>Documentación por vencer o vencida:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
@@ -437,8 +437,8 @@ const SECCIONES: Seccion[] = [
           <dd>No: los datos y las notificaciones se actualizan solos cada minuto.</dd>
         </div>
         <div>
-          <dt className="font-bold">Subí un archivo equivocado, ¿lo puedo sacar?</dt>
-          <dd>Sí, mientras está en revisión: abrí la factura y tocá "Quitar" en ese documento. Una vez aprobado, avisale a Auditoría.</dd>
+          <dt className="font-bold">Se subió un archivo equivocado, ¿se puede quitar?</dt>
+          <dd>Sí, mientras está en revisión: abra la factura y toque "Quitar" en ese documento. Una vez aprobado, avísele a Auditoría.</dd>
         </div>
         <div>
           <dt className="font-bold">¿Por qué no me deja subir un archivo?</dt>
@@ -473,7 +473,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Manual de uso</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Cómo funciona {PRODUCTO} y qué hace cada pantalla. Elegí tu sector para ver lo que te corresponde.
+            Cómo funciona {PRODUCTO} y qué hace cada pantalla. Elija su sector para ver lo que le corresponde.
           </p>
         </div>
         <span className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-blue-800">

@@ -11,6 +11,9 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ### Cambiado
 - **Sucursal · Mis facturas, más liviana:** el aviso de plazos aparece grande la primera vez, con "Entendido", y después queda en un botón chico "Plazos" arriba a la derecha. Los dos botones de acción son finos y van arriba. Queda una sola tarjeta, "Para subir", que se abre y se cierra tocándola. Lo que está en revisión pasa a una línea con "Verlas". El buscador va pegado a la lista, con el resultado justo debajo.
 - **Sucursal · Para resolver:** tarjetas más chicas, con flecha para abrir y cerrar.
+- **Tono formal en toda la aplicación:** los textos, ayudas, errores y mails pasan de "vos" a "usted" ("Toque", "Tiene", "su sucursal").
+- **Sin avisos de demostración:** se quitaron los carteles que aclaraban que es una demo (ingreso, pie, notificaciones, legajo, Ajustes, Compañías).
+- **Resumen · Año:** cada importe dice qué porcentaje es de lo facturado, y un gráfico muestra cómo se reparte lo facturado del año: cobrado, notas de crédito y lo que falta cobrar. Llena el espacio que quedaba en blanco.
 
 ## [0.12.9] - 2026-11-04
 

@@ -82,7 +82,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
 export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprobante; onCerrar: () => void }) {
-  const { datos, rol, usuario, hoy, fuente, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo } = useApp()
+  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
   const documentos = documentosDelLegajo(c.documentos)
@@ -136,7 +136,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         setErrorSubida(
           r.error.startsWith('No es un PDF')
             ? `"${a.name}" no es un PDF. Solo se aceptan PDF: las compañías no reciben fotos.`
-            : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} orden.pdf"). Renombralo y volvé a subirlo.`,
+            : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} orden.pdf"). Renómbrelo y vuelva a subirlo.`,
         )
         return
       }
@@ -468,7 +468,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                               {d.fecha ? ` el ${formatoFecha(d.fecha)}` : ''}
                               {d.origen === 'varios' && ' · carga de varios archivos'}
                               {d.origen === 'varios-automatico' && (
-                                <span className="font-semibold text-amber-800"> · asignado por el número del nombre del archivo: revisá que corresponda</span>
+                                <span className="font-semibold text-amber-800"> · asignado por el número del nombre del archivo: revise que corresponda</span>
                               )}
                             </div>
                           )}
@@ -489,7 +489,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                               type="button"
                               onClick={() => quitar(d.tipo)}
                               className={`${botonChico} border border-slate-200 bg-white text-slate-700 hover:border-sem-rojo hover:text-sem-rojo`}
-                              title="Si te equivocaste de archivo, quitalo y subí el correcto. Se puede mientras Auditoría no lo revisó."
+                              title="Si se equivocó de archivo, quítelo y suba el correcto. Se puede mientras Auditoría no lo revisó."
                             >
                               Quitar
                             </button>
@@ -539,9 +539,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <p className="mt-1 text-xs text-slate-500">
                   {subiendo
                     ? 'Subiendo el archivo…'
-                    : fuente.tipo === 'google'
-                      ? 'Solo PDF, con el número de la factura en el nombre. Desde el celular, escaneá con la cámara o con Google Drive, que guardan en PDF.'
-                      : 'En la demo el archivo no se sube a ningún lado: solo se registra su nombre.'}
+                    : 'Solo PDF, con el número de la factura en el nombre. Desde el celular, escanee con la cámara o con Google Drive, que guardan en PDF.'}
                 </p>
                 {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}
                 </>
@@ -571,7 +569,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     </select>
                   </label>
                   <label className="block text-xs font-semibold text-slate-500">
-                    ¿Qué día estimás tener la documentación?
+                    ¿Qué día estima tener la documentación?
                     <input type="date" min={hoy} value={fechaDemora} onChange={(e) => setFechaDemora(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
                   </label>
                   <button type="button" onClick={avisarDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro`}>
@@ -650,7 +648,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <p className="text-slate-500">No hay facturas abiertas de esta sucursal y compañía con saldo suficiente.</p>
               ) : (
                 <>
-                  {c.ncReferencia && <p className="text-xs text-slate-500">Se encontró una factura que coincide, pero la sucursal no avisó la nota de crédito. Revisala y confirmá.</p>}
+                  {c.ncReferencia && <p className="text-xs text-slate-500">Se encontró una factura que coincide, pero la sucursal no avisó la nota de crédito. Revísela y confirme.</p>}
                   <select className={`${claseSelect} w-full`} value={facturaNcElegida?.id ?? ''} onChange={(e) => setFacturaNc(e.target.value)}>
                     {facturasParaNc.map((f) => (
                       <option key={f.id} value={f.id}>
@@ -901,7 +899,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 value={mensaje}
                 onChange={(e) => setMensaje(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && enviarMensaje()}
-                placeholder={rol === 'sucursal' ? 'Escribile a Auditoría…' : 'Escribile a la sucursal…'}
+                placeholder={rol === 'sucursal' ? 'Escríbale a Auditoría…' : 'Escríbale a la sucursal…'}
                 className={`${claseSelect} flex-1`}
               />
               <button type="button" onClick={enviarMensaje} className="rounded-lg bg-noche px-3 text-white hover:bg-noche-claro" aria-label="Enviar mensaje">

@@ -58,13 +58,13 @@ export default function Ajustes() {
     if (plazos.criticaComun <= plazos.comun) errores.push('las críticas tienen que ser más días que el plazo común')
     if (plazos.criticaMipyme <= plazos.mipyme) errores.push('las críticas MiPyME tienen que ser más días que su plazo')
     if (errores.length) {
-      setEstado({ texto: `Revisá: ${errores.join('; ')}.`, error: true })
+      setEstado({ texto: `Revise: ${errores.join('; ')}.`, error: true })
       return
     }
     try {
       setEstado({ texto: 'Guardando…' })
       await guardarAjustes({ plazos: plazosAGuardar, companiasSinFce: [...sinFce], avisos, textos })
-      setEstado({ texto: conGoogle ? 'Listo: se guardó en la pestaña Config. Ya rige para todos.' : 'Listo. En la demo se guarda solo mientras no recargues la página.' })
+      setEstado({ texto: conGoogle ? 'Listo: se guardó en la pestaña Config. Ya rige para todos.' : 'Listo: se guardó.' })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })
     }
@@ -235,7 +235,6 @@ export default function Ajustes() {
               />
             </label>
           </div>
-          {!conGoogle && <p className="mt-3 text-xs text-slate-500">En la demo no se manda ningún mail: esto se usa en la prueba piloto con Google.</p>}
         </Card>
       </div>
     </>

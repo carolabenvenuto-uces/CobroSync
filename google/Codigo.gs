@@ -448,7 +448,7 @@ function resumenSemanal() {
     if (atrasadas.length > 40) lineas.push('y ' + (atrasadas.length - 40) + ' más (están todas en CobroSync)');
     enviar_(s.correoGerente, 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación',
       'Estas facturas pasaron el plazo para la documentación (' + p.comun + ' días; ' + p.mipyme + ' si es MiPyME)' + (criticas ? '. ' + criticas + ' ya son críticas' : '') +
-      '. Importe retenido: ' + pesos(importe) + '. Por favor, revisá con tu equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
+      '. Importe retenido: ' + pesos(importe) + '. Por favor, revise con su equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
   });
 }
 
@@ -729,17 +729,17 @@ function instalarDisparadores() {
 function usuarioActual_() {
   var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
   var dominio = String(config_('dominio') || '').toLowerCase();
-  if (!email || (dominio && email.split('@')[1] !== dominio)) throw new Error('Ingresá con tu cuenta de la empresa.');
+  if (!email || (dominio && email.split('@')[1] !== dominio)) throw new Error('Ingrese con su cuenta de la empresa.');
   var u = leerHoja_(HOJAS.usuarios).filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
-  if (!u) throw new Error('Tu cuenta (' + email + ') no tiene acceso. Pedíselo a Auditoría.');
+  if (!u) throw new Error('Su cuenta (' + email + ') no tiene acceso. Solicítelo a Auditoría.');
   var rol = String(u.rol).toLowerCase().indexOf('geren') === 0 ? 'gerencia' : String(u.rol).toLowerCase().indexOf('audit') === 0 ? 'auditoria' : 'sucursal';
-  if (rol === 'sucursal' && !u.sucursal) throw new Error('Tu usuario no tiene una sucursal asignada.');
+  if (rol === 'sucursal' && !u.sucursal) throw new Error('Su usuario no tiene una sucursal asignada.');
   return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null };
 }
 
 function hoja_(h) {
   var hoja = SpreadsheetApp.getActive().getSheetByName(h.nombre);
-  if (!hoja) throw new Error('Falta la pestaña "' + h.nombre + '". Corré configurarPlanilla().');
+  if (!hoja) throw new Error('Falta la pestaña "' + h.nombre + '". Corra configurarPlanilla().');
   return hoja;
 }
 

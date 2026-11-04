@@ -129,7 +129,7 @@ export default function Impacto() {
             />
           </label>
           <p className="max-w-md text-xs text-slate-500">
-            Usá la tasa con la que la empresa valúa el dinero (por ejemplo, la de un plazo fijo o la de su
+            Use la tasa con la que la empresa valúa el dinero (por ejemplo, la de un plazo fijo o la de su
             financiación). Es una estimación para dimensionar el problema, no un cálculo contable.
           </p>
         </div>

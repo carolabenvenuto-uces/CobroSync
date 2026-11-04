@@ -25,6 +25,10 @@ import {
   puedePresentarse,
 } from '../domain/semaforo'
 import { compromisoVencido } from '../domain/sucursales'
+import { importeCobrado, saldoSinCobro } from '../domain/importes'
+import { facturasDelSiniestro } from '../domain/siniestros'
+import { esNotaTotal } from '../services/erp'
+import { prepararArchivo } from '../lib/imagenes'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -76,7 +80,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
 export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprobante; onCerrar: () => void }) {
-  const { datos, rol, usuario, hoy, fuente, actualizarComprobante, registrarEvento, subirDocumento } = useApp()
+  const { datos, rol, usuario, hoy, fuente, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
   const documentos = documentosDelLegajo(c.documentos)
@@ -89,6 +93,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [observaciones, setObservaciones] = useState(c.observaciones)
   const [formulario, setFormulario] = useState<'ninguno' | 'demora' | 'rechazo' | 'reclamo' | 'cobro'>('ninguno')
   const [fechaCobro, setFechaCobro] = useState(hoy)
+  const [importeCobroTexto, setImporteCobroTexto] = useState(() => saldoSinCobro(c).toFixed(2).replace('.', ','))
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
   const [motivo, setMotivo] = useState<string>(MOTIVOS_OBSERVACION[0])
   const [motivoDemora, setMotivoDemora] = useState(MOTIVOS_DEMORA[0])
@@ -103,21 +108,54 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   }
 
   // ── Sucursal ──
-  async function subir(tipos: TipoDocumento[], archivo: File | undefined) {
-    if (!archivo) return
+  // Otras facturas del mismo siniestro (facturación parcial de repuestos): comparten orden y firma
+  const hermanas = c.tipo === 'FC' ? facturasDelSiniestro(c, datos?.comprobantes ?? []) : []
+  const [compartirConHermanas, setCompartirConHermanas] = useState(true)
+
+  async function subir(tipos: TipoDocumento[], lista: FileList | null | undefined) {
+    const archivos = lista ? [...lista] : []
+    if (archivos.length === 0) return
     setSubiendo(true)
     setErrorSubida(null)
     try {
-      // Con Google el archivo se guarda en el Drive de la empresa; en la demo solo se registra el nombre
-      const subido = await subirDocumento(c.id, tipos.length > 1 ? 'documentacion' : tipos[0], archivo)
+      // Con Google cada archivo se guarda en el Drive de la empresa (las fotos se achican antes);
+      // en la demo solo se registra el nombre. Un documento puede tener varias páginas o fotos.
+      const adjuntos: { archivo: string; url?: string }[] = []
+      for (const a of archivos) {
+        const listo = await prepararArchivo(a)
+        adjuntos.push(await subirDocumento(c.id, tipos.length > 1 ? 'documentacion' : tipos[0], listo))
+      }
+      const documento = (tipo: TipoDocumento): Documento => ({
+        tipo,
+        estado: 'en_revision',
+        archivo: adjuntos.length > 1 ? `${adjuntos[0].archivo} (+${adjuntos.length - 1})` : adjuntos[0].archivo,
+        url: adjuntos[0].url,
+        adjuntos: adjuntos.length > 1 ? adjuntos : undefined,
+      })
       guardarDocumentos(
-        documentos.map((d): Documento =>
-          tipos.includes(d.tipo) ? { tipo: d.tipo, estado: 'en_revision', archivo: subido.archivo, url: subido.url } : d,
-        ),
+        documentos.map((d): Documento => (tipos.includes(d.tipo) ? documento(d.tipo) : d)),
         { fechaDrive: c.fechaDrive ?? hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
       )
       const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
-      registrarEvento(c.id, 'subida', `Subió ${que} (${archivo.name})`)
+      const nombres = archivos.length > 1 ? `${archivos.length} archivos` : archivos[0].name
+      registrarEvento(c.id, 'subida', `Subió ${que} (${nombres})`)
+
+      // La orden y la firma sirven también para las otras facturas del siniestro que no las tengan
+      const compartibles: TipoDocumento[] = tipos.filter((t) => t !== 'factura')
+      if (compartirConHermanas && compartibles.length) {
+        for (const h of hermanas) {
+          const docsH = h.documentos.length ? h.documentos : (['factura', 'orden', 'firma'] as TipoDocumento[]).map((t) => ({ tipo: t, estado: 'faltante' as const }))
+          const aCompletar = compartibles.filter((t) => docsH.find((d) => d.tipo === t && (d.estado === 'faltante' || d.estado === 'observado')))
+          if (aCompletar.length === 0) continue
+          actualizarComprobante(h.id, {
+            documentos: docsH.map((d) => (aCompletar.includes(d.tipo) ? documento(d.tipo) : d)),
+            fechaDrive: h.fechaDrive ?? hoy,
+            subidoPor: usuario,
+            estado: h.estado === 'pendiente_drive' ? 'en_gestion' : h.estado,
+          })
+          registrarEvento(h.id, 'subida', `Subió ${aCompletar.map((t) => NOMBRE_DOCUMENTO[t].toLowerCase()).join(' y ')} (la misma de ${formatoComprobante(c)}, mismo siniestro)`)
+        }
+      }
     } catch (e) {
       setErrorSubida(e instanceof Error ? e.message : 'No se pudo subir el archivo.')
     } finally {
@@ -132,11 +170,53 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     setFormulario('ninguno')
   }
 
+  // ── Auditoría: anulación informada por la sucursal ──
+  function confirmarAnulacion() {
+    actualizarComprobante(c.id, { estado: 'anulada' })
+    registrarEvento(c.id, 'nota_credito', 'Auditoría confirmó la anulación con nota de crédito')
+  }
+  function rechazarAnulacion() {
+    actualizarComprobante(c.id, { anulacionInformada: null })
+    registrarEvento(c.id, 'mensaje', 'Auditoría indicó que la factura no se anula: sigue vigente')
+  }
+
   // ── Auditoría: registrar el cobro ──
   function registrarCobro() {
-    actualizarComprobante(c.id, { estado: 'cobrada', fechaCobro })
-    registrarEvento(c.id, 'mensaje', `Cobro registrado el ${formatoFecha(fechaCobro)}`)
+    const importe = Number(importeCobroTexto.replace(/\./g, '').replace(',', '.'))
+    const saldo = saldoSinCobro(c)
+    const distinto = Number.isFinite(importe) && importe > 0 && Math.abs(importe - saldo) > 0.5
+    actualizarComprobante(c.id, { estado: 'cobrada', fechaCobro, importeCobrado: distinto ? importe : null })
+    registrarEvento(
+      c.id,
+      'mensaje',
+      `Cobro registrado el ${formatoFecha(fechaCobro)}${distinto ? ` por ${formatoPesos(importe)} (saldo ${formatoPesos(saldo)})` : ''}`,
+    )
     setFormulario('ninguno')
+  }
+
+  // ── Auditoría: vincular una nota de crédito con su factura ──
+  const facturasParaNc =
+    c.tipo === 'NC'
+      ? (datos?.comprobantes ?? [])
+          .filter((f) => f.tipo === 'FC' && f.estado !== 'anulada' && f.sucursal === c.sucursal && f.aseguradoraId === c.aseguradoraId && Math.abs(c.total) <= saldoSinCobro(f) + 1)
+          .sort((a, b) => (a.id === c.ncReferencia ? -1 : b.id === c.ncReferencia ? 1 : b.fecha.localeCompare(a.fecha)))
+          .slice(0, 40)
+      : []
+  const [facturaNc, setFacturaNc] = useState(c.ncReferencia ?? '')
+  const facturaNcElegida = facturasParaNc.find((f) => f.id === (facturaNc || facturasParaNc[0]?.id))
+  function vincularNc(tipo: 'total' | 'parcial') {
+    const f = facturaNcElegida
+    if (!f) return
+    const importe = Math.abs(c.total)
+    actualizarComprobante(c.id, { ncReferencia: f.id, ncInformada: true })
+    registrarEvento(c.id, 'nota_credito', `Vinculada con ${formatoComprobante(f)} (${tipo === 'total' ? 'anula la factura' : 'parcial'})`)
+    if (tipo === 'total') {
+      actualizarComprobante(f.id, { estado: 'anulada', anulacionInformada: null })
+      registrarEvento(f.id, 'nota_credito', `Anulada con la nota de crédito ${formatoComprobante(c)}`)
+    } else {
+      actualizarComprobante(f.id, { acreditado: (f.acreditado ?? 0) + importe, anulacionInformada: null })
+      registrarEvento(f.id, 'nota_credito', `Nota de crédito parcial ${formatoComprobante(c)} por ${formatoPesos(importe)}`)
+    }
   }
 
   // ── Auditoría: revisar y tildar ──
@@ -226,7 +306,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         <div className="space-y-6 p-5 text-sm">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Dato titulo="Compañía" valor={`${aseguradora?.nombre ?? ''} · paga a ${aseguradora?.plazoPagoDias ?? 30} días`} />
-            <Dato titulo="Total" valor={formatoPesos(c.total)} />
+            <Dato
+              titulo="Total"
+              valor={
+                c.acreditado
+                  ? `${formatoPesos(c.total)} · NC −${formatoPesos(c.acreditado)} · saldo ${formatoPesos(saldoSinCobro(c))}`
+                  : c.estado === 'cobrada' && c.importeCobrado != null && Math.abs(c.importeCobrado - c.total) > 0.5
+                    ? `${formatoPesos(c.total)} · cobrado ${formatoPesos(importeCobrado(c))}`
+                    : formatoPesos(c.total)
+              }
+            />
             <Dato titulo="Siniestro / patente" valor={[c.siniestro, c.patente].filter(Boolean).join(' · ')} />
             <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} días`} />
           </dl>
@@ -284,7 +373,19 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         </span>
                         <div className="min-w-0">
                           <div className="font-medium">{NOMBRE_DOCUMENTO[d.tipo]}</div>
-                          {d.archivo &&
+                          {d.adjuntos && d.adjuntos.length > 1 ? (
+                              <div className="flex flex-wrap gap-x-2 text-xs">
+                                {d.adjuntos.map((a, i) =>
+                                  a.url ? (
+                                    <a key={i} href={a.url} target="_blank" rel="noreferrer" className="text-marca hover:underline">
+                                      Página {i + 1}
+                                    </a>
+                                  ) : (
+                                    <span key={i} className="text-slate-500">{a.archivo}</span>
+                                  ),
+                                )}
+                              </div>
+                            ) : d.archivo &&
                             (d.url ? (
                               <a href={d.url} target="_blank" rel="noreferrer" className="block truncate text-xs text-marca hover:underline">
                                 {d.archivo}
@@ -300,7 +401,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                           <label className={`${botonChico} cursor-pointer bg-marca text-white hover:bg-marca-oscuro`}>
                             <FileUp className="h-3.5 w-3.5" />
                             {d.estado === 'faltante' ? 'Subir' : 'Reemplazar'}
-                            <input type="file" accept=".pdf,image/*" className="sr-only" onChange={(e) => subir([d.tipo], e.target.files?.[0])} />
+                            <input type="file" multiple accept=".pdf,image/*" className="sr-only" onChange={(e) => void subir([d.tipo], e.target.files)} />
                           </label>
                         ) : rol === 'auditoria' && d.estado === 'en_revision' ? (
                           <>
@@ -334,7 +435,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               {rol === 'sucursal' && abierta && pendientesDeSubir.length > 1 && (
                 <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-marca/50 px-4 py-2.5 text-sm font-semibold text-marca hover:bg-marca/5">
                   <FileUp className="h-4 w-4" /> Subir un PDF con todo lo que falta
-                  <input type="file" accept=".pdf,image/*" className="sr-only" onChange={(e) => subir(pendientesDeSubir, e.target.files?.[0])} />
+                  <input type="file" multiple accept=".pdf,image/*" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
                 </label>
               )}
               {c.subidoPor && (
@@ -387,6 +488,102 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </button>
                 </div>
               )}
+            </section>
+          )}
+
+          {/* Otras facturas del mismo siniestro */}
+          {hermanas.length > 0 && (
+            <section>
+              <h3 className="mb-2 font-bold">Otras facturas del mismo siniestro ({hermanas.length})</h3>
+              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                {hermanas.map((h) => (
+                  <li key={h.id}>
+                    <button type="button" onClick={() => abrirLegajo(h.id)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-fondo">
+                      <span>
+                        <span className="font-medium">{formatoComprobante(h)}</span>
+                        <span className="ml-2 text-xs text-slate-500">{formatoFecha(h.fecha)} · {formatoPesos(h.total)}</span>
+                      </span>
+                      <BadgeEtapa etapa={calcularSemaforo(h, hoy).etapa} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {rol === 'sucursal' && (
+                <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                  <input type="checkbox" checked={compartirConHermanas} onChange={(e) => setCompartirConHermanas(e.target.checked)} />
+                  Al subir la orden o la firma, usarla también para estas facturas (si les falta)
+                </label>
+              )}
+            </section>
+          )}
+
+          {/* Nota de crédito: con qué factura se vincula */}
+          {c.tipo === 'NC' && rol === 'auditoria' && (
+            <section className="space-y-2 rounded-lg border border-slate-200 p-3">
+              <h3 className="font-bold">Factura que acredita</h3>
+              {c.ncInformada && c.ncReferencia ? (
+                <p className="text-slate-600">
+                  Vinculada con {(() => { const f = datos?.comprobantes.find((x) => x.id === c.ncReferencia); return f ? formatoComprobante(f) : 'una factura' })()}.
+                </p>
+              ) : facturasParaNc.length === 0 ? (
+                <p className="text-slate-500">No hay facturas abiertas de esta sucursal y compañía con saldo suficiente.</p>
+              ) : (
+                <>
+                  {c.ncReferencia && <p className="text-xs text-slate-500">Se encontró una factura que coincide, pero la sucursal no avisó la nota de crédito. Revisala y confirmá.</p>}
+                  <select className={`${claseSelect} w-full`} value={facturaNcElegida?.id ?? ''} onChange={(e) => setFacturaNc(e.target.value)}>
+                    {facturasParaNc.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {formatoComprobante(f)} · {formatoFecha(f.fecha)} · saldo {formatoPesos(saldoSinCobro(f))}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => vincularNc('total')}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold ${facturaNcElegida && esNotaTotal(Math.abs(c.total), facturaNcElegida) ? 'bg-noche text-white' : 'border border-slate-300'}`}
+                    >
+                      Anula la factura
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => vincularNc('parcial')}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold ${facturaNcElegida && !esNotaTotal(Math.abs(c.total), facturaNcElegida) ? 'bg-noche text-white' : 'border border-slate-300'}`}
+                    >
+                      Es parcial: restar del saldo
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">Las percepciones no se acreditan: una nota de crédito total puede ser algo menor que la factura.</p>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* Anulación informada por la sucursal */}
+          {c.anulacionInformada && c.estado !== 'anulada' && (
+            <section className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm">
+              <p className="font-semibold text-noche">
+                {c.anulacionInformada.parcial
+                  ? `La sucursal informó una nota de crédito parcial por ${formatoPesos(c.anulacionInformada.importe ?? 0)}`
+                  : 'La sucursal informó que esta factura se anula con nota de crédito'}
+              </p>
+              <p className="mt-0.5 text-slate-600">
+                {formatoFecha(c.anulacionInformada.fecha)} · {c.anulacionInformada.motivo}
+              </p>
+              {rol === 'auditoria' && !c.anulacionInformada.parcial && (
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={confirmarAnulacion} className="rounded-lg bg-noche px-3 py-1.5 text-xs font-semibold text-white hover:bg-noche-claro">
+                    Confirmar anulación
+                  </button>
+                  <button type="button" onClick={rechazarAnulacion} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white">
+                    No corresponde
+                  </button>
+                </div>
+              )}
+              {rol === 'auditoria' && c.anulacionInformada.parcial && (
+                <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo cuando llega la nota de crédito del ERP (o al vincularla desde la NC).</p>
+              )}
+              {rol === 'sucursal' && <p className="mt-1 text-xs text-slate-500">Se aplica cuando llega la nota de crédito del ERP.</p>}
             </section>
           )}
 
@@ -451,6 +648,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </button>
                 ) : (
                   <div className="space-y-3 rounded-lg border border-esmeralda/40 p-3">
+                    <label className="block text-xs font-semibold text-slate-500">
+                      Importe cobrado
+                      <input
+                        inputMode="decimal"
+                        value={importeCobroTexto}
+                        onChange={(e) => setImporteCobroTexto(e.target.value)}
+                        className={`${claseSelect} mt-1 w-full`}
+                      />
+                      <span className="mt-1 block font-normal">Se propone el saldo. Cambialo si la compañía pagó otro importe.</span>
+                    </label>
                     <label className="block text-xs font-semibold text-slate-500">
                       Fecha en que se cobró
                       <input

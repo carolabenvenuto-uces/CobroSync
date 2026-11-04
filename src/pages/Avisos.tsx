@@ -106,6 +106,14 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           facturas: comprobantes.filter((c) => etapa(c) === 'pres_pendiente'),
           ruta: '/app/control-diario?estado=Pres. pendiente',
         },
+        {
+          clave: 'anulaciones',
+          titulo: 'Notas de crédito avisadas',
+          descripcion: 'La sucursal avisó una nota de crédito (total o parcial) que todavía no llegó del ERP',
+          icono: Receipt,
+          facturas: comprobantes.filter((c) => c.tipo === 'FC' && c.anulacionInformada && c.estado !== 'anulada'),
+          ruta: '/app/control-diario?nc=Anulación informada',
+        },
       ],
     },
     {

@@ -80,6 +80,7 @@ const contexto = {
 vm.createContext(contexto)
 vm.runInContext(codigo, contexto)
 const gs = (fn, ...args) => contexto[fn](...JSON.parse(JSON.stringify(args)))
+const HOJAS_COLUMNAS = vm.runInContext('HOJAS.comprobantes.columnas', contexto)
 const como = (email) => (emailActual = email)
 
 // ── Pruebas ──────────────────────────────────────────────────────────────────
@@ -118,7 +119,8 @@ fila('Usuarios', ['gerencia.general@svaauto.com.ar', 'Gerencia General', 'Gerenc
 fila('Sucursales', ['Rocamora', '35, 37', 'Gerente de Rocamora', 'gerente.rocamora@svaauto.com.ar'])
 fila('Sucursales', ['Warnes', '16, 14', 'Gerente de Warnes', 'gerente.warnes@svaauto.com.ar'])
 
-const lote = demo.filter((c) => c.sucursal === 'Rocamora' || c.sucursal === 'Warnes').slice(0, 400).map((c) => ({ ...c, id: `ref-${c.ref}`, eventos: [] })) // como llegan de la planilla: sin historial
+const deLaPrueba = demo.filter((c) => c.sucursal === 'Rocamora' || c.sucursal === 'Warnes')
+const lote = [...deLaPrueba.slice(0, 300), ...deLaPrueba.slice(300).filter((c) => c.estado === 'pendiente_drive' || c.estado === 'en_gestion' || c.estado === 'presentada')].map((c) => ({ ...c, id: `ref-${c.ref}`, eventos: [] })) // como llegan de la planilla: sin historial
 
 prueba('una cuenta de afuera de la empresa no entra', () => {
   como('alguien@gmail.com')
@@ -169,7 +171,8 @@ prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
   como('auditoria@svaauto.com.ar')
   const ajena = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Warnes')
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('aplicarCambios', [{ id: ajena.id, campos: { observaciones: 'x' } }]), 'otra sucursal')
+  const r = gs('aplicarCambios', [{ id: ajena.id, campos: { observaciones: 'x' } }])
+  esperar(r.errores?.[0]?.mensaje.includes('otra sucursal'), JSON.stringify(r.errores))
   falla(() => gs('subirArchivo', ajena.id, 'factura', 'f.pdf', 'application/pdf', 'AAAA'), 'otra sucursal')
 })
 prueba('Gerencia solo consulta', () => {
@@ -200,6 +203,28 @@ prueba('dos personas en la misma factura a la vez: no se pisan', () => {
   esperar(textos.includes('Subió la firma') && textos.includes('Ojo con la orden'), `conversación: ${textos.join(' | ')}`)
   const deSucursal = final.eventos.find((e) => e.texto === 'Subió la firma')
   esperar(deSucursal.autor === 'Facturación Rocamora' && deSucursal.area === 'sucursal', 'el servidor no firmó el mensaje')
+})
+prueba('notas de crédito parciales y cobro por otro importe se guardan bien', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.estado !== 'cobrada' && x.estado !== 'anulada')
+  // La sucursal avisa una NC parcial, pero no puede tocar el saldo
+  gs('aplicarCambios', [{ id: c.id, campos: { anulacionInformada: { fecha: '2026-11-04', motivo: 'Repuesto', parcial: true, importe: 1000 }, acreditado: 999999 } }])
+  como('auditoria@svaauto.com.ar')
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.anulacionInformada?.parcial === true && leido.anulacionInformada.importe === 1000, 'no se guardó el aviso de la sucursal')
+  esperar(leido.acreditado === null, `la sucursal pudo cambiar el saldo: ${leido.acreditado}`)
+  // Auditoría vincula la NC parcial y registra el cobro por otro importe
+  gs('aplicarCambios', [{ id: c.id, campos: { acreditado: 1000, anulacionInformada: null, estado: 'cobrada', fechaCobro: '2026-11-04', importeCobrado: 5000.5, percepciones: 120.25 } }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.acreditado === 1000 && leido.importeCobrado === 5000.5 && leido.percepciones === 120.25, JSON.stringify([leido.acreditado, leido.importeCobrado, leido.percepciones]))
+  esperar(leido.anulacionInformada === null, 'no se limpió el aviso')
+})
+prueba('un cambio rechazado no traba a los demás', () => {
+  como('rocamora@svaauto.com.ar')
+  const propias = gs('obtenerDatos').datos.comprobantes.filter((x) => x.tipo === 'FC')
+  const r = gs('aplicarCambios', [{ id: 'no-existe', campos: { observaciones: 'x' } }, { id: propias[0].id, evento: { tipo: 'mensaje', texto: 'Sigue funcionando' } }])
+  esperar(r.errores.length === 1 && r.errores[0].id === 'no-existe', JSON.stringify(r.errores))
+  esperar(r.comprobantes.some((x) => x.id === propias[0].id && x.eventos.at(-1).texto === 'Sigue funcionando'), 'el segundo cambio no se guardó')
 })
 prueba('cada minuto llegan solo los cambios nuevos', () => {
   como('auditoria@svaauto.com.ar')
@@ -242,10 +267,25 @@ prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {
   gs('aplicarCambios', [{ id: otra.id, nuevo: otra }, { id: otra.id, nuevo: otra }])
   esperar(gs('obtenerDatos').datos.comprobantes.filter((x) => x.id === 'erp-1000').length === 1, 'se duplicó al cargar desde la app')
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('aplicarCambios', [{ id: 'erp-x', nuevo: { ...otra, id: 'erp-x' } }]), 'Solo Auditoría')
+  const r = gs('aplicarCambios', [{ id: 'erp-x', nuevo: { ...otra, id: 'erp-x' } }])
+  esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('Solo Auditoría'), JSON.stringify(r.errores))
   como('auditoria@svaauto.com.ar')
 })
+prueba('avisos diarios: no se reclama si la sucursal avisó una fecha que todavía no pasó', () => {
+  como('rocamora@svaauto.com.ar')
+  const pendiente = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && !x.fechaPresentacion && x.estado !== 'cobrada' && x.estado !== 'anulada' && !x.anulacionInformada && x.documentos.some((d) => d.estado === 'faltante'))
+  gs('aplicarCambios', [{ id: pendiente.id, campos: { compromiso: { fecha: '2099-01-01', motivo: 'El vehículo sigue en el taller' } } }])
+  como('auditoria@svaauto.com.ar')
+  mails.length = 0
+  gs('avisosDiarios')
+  const numero = `${pendiente.tipo} E ${pendiente.puntoVenta}-${String(pendiente.numero).padStart(8, '0')}`
+  esperar(!mails.some((m) => m.body.includes(numero)), 'se reclamó una factura con fecha comprometida vigente')
+  // Se vuelve a dejar como estaba para la prueba siguiente
+  hojas.Comprobantes.filas.forEach((f) => f.forEach((v, j) => { if (typeof v === 'string' && v.includes('se avisó a')) f[j] = v }))
+})
 prueba('avisos diarios: un mail por gerente y no se repiten', () => {
+  // Facturas sin avisos previos (la prueba anterior ya mandó los de hoy)
+  hojas.Comprobantes.filas.forEach((f, i) => { if (i > 0) f[HOJAS_COLUMNAS.indexOf('eventos')] = '' })
   mails.length = 0
   gs('avisosDiarios')
   const destinatarios = mails.map((m) => m.to)

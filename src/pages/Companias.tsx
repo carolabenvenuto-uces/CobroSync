@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext'
 import type { Aseguradora } from '../domain/tipos'
 import { descargarExcel } from '../lib/exportar'
 import { importarCompanias } from '../services/companias'
+import { guardarAseguradorasEnGoogle } from '../services/google'
 import { leerArchivo } from '../services/planilla'
 
 /** "30500037217" → "30-50003721-7" */
@@ -33,8 +34,10 @@ export default function Companias() {
   async function cargar(archivo: File | undefined) {
     if (!archivo) return
     try {
-      const r = importarCompanias(await leerArchivo(archivo), aseguradoras)
+      const r = importarCompanias(await leerArchivo(archivo, /^cp$|compa/i), aseguradoras)
       actualizarAseguradoras(r.aseguradoras)
+      // Con Google, los datos quedan guardados para todos
+      if (fuente.tipo === 'google') await guardarAseguradorasEnGoogle(r.aseguradoras, true)
       setMensaje({ texto: `Se completaron ${r.actualizadas} compañías. ${r.sinCoincidencia ? `${r.sinCoincidencia} filas no coincidieron con ninguna compañía de las facturas.` : ''}` })
     } catch (e) {
       setMensaje({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
@@ -82,12 +85,12 @@ export default function Companias() {
         subtitulo="Razón social, CUIT, plazo de pago y correos de cada compañía de seguros"
         acciones={
           <>
-            <input ref={entrada} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => cargar(e.target.files?.[0])} />
+            <input ref={entrada} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargar(e.target.files?.[0])} />
             <button
               type="button"
               onClick={() => entrada.current?.click()}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche hover:bg-fondo"
-              title='Pestaña "CP" o "Info. Compañías" descargada como CSV'
+              title='El Excel de la planilla (se toma la pestaña CP) o un CSV de "CP" o "Info. Compañías"'
             >
               <Upload className="h-4 w-4" /> Cargar pestaña CP / Info. Compañías
             </button>
@@ -104,6 +107,8 @@ export default function Companias() {
               ".example"). Para ver los reales, cargá la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este
               navegador y no se guarda.
             </>
+          ) : fuente.tipo === 'google' ? (
+            <>Los datos que cargues de la planilla quedan guardados en CobroSync para todo el sector.</>
           ) : (
             <>Los datos que cargues de la planilla se leen solo en este navegador y desaparecen al recargar.</>
           )}

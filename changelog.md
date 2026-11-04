@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0] - 2026-11-04
+
+### Agregado
+- **Notas de crédito parciales:** la sucursal avisa si la NC anula toda la factura o solo una parte (con el importe). La factura queda con su saldo pendiente.
+- **Percepciones:** la carga del ERP guarda las percepciones de IIBB de cada factura. Una NC total se reconoce aunque no incluya las percepciones.
+- **Vínculo automático NC → factura:** al cargar el ERP, cada NC se une con la factura avisada por la sucursal. Si no hubo aviso y hay una sola factura posible, también se vincula y queda marcada para revisar.
+- **Varias facturas por siniestro:** el legajo muestra las otras facturas del mismo siniestro y permite usar la misma orden y firma en todas.
+- **Cobros parciales:** al registrar un cobro se puede indicar un importe distinto del total.
+- **Archivos Excel (.xlsx):** el ERP, la planilla y la pestaña CP se cargan directamente, sin pasar a CSV.
+- **Varias páginas por documento** y fotos del celular reducidas automáticamente antes de subirlas.
+- Auditoría ve un aviso con las notas de crédito informadas por las sucursales.
+
+### Corregido
+- Un cambio rechazado por el servidor ya no frena el resto de los cambios pendientes.
+- Si se corta la conexión, los cambios se reintentan solos y la página avisa antes de cerrarse con cambios sin guardar.
+- La fecha del día se toma del servidor (hora de Buenos Aires).
+- No se envían avisos de facturas con un compromiso de entrega vigente.
+- Las compañías cargadas desde la pestaña CP se guardan en Google.
+
 ## [0.8.0] - 2026-11-04
 
 ### Agregado

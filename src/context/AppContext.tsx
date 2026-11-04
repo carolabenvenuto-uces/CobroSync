@@ -379,12 +379,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGuardado({ estado: 'guardando' })
     aplicarCambiosEnGoogle(lote)
       .then((r) => {
+        // Lo rechazado vuelve como está guardado (la pantalla vuelve atrás) y no traba lo demás
         aplicarDelServidor(r.comprobantes, false)
-        setGuardado({ estado: cola.current.length ? 'guardando' : 'ok' })
+        if (r.errores?.length) setGuardado({ estado: 'error', mensaje: r.errores[0].mensaje })
+        else setGuardado({ estado: cola.current.length ? 'guardando' : 'ok' })
       })
-      .catch((e: unknown) => {
+      .catch(() => {
+        // Sin conexión o Google no respondió: se reintenta solo
         cola.current.unshift(...lote)
-        setGuardado({ estado: 'error', mensaje: e instanceof Error ? e.message : String(e) })
+        setGuardado({ estado: 'error', mensaje: 'Sin conexión. Se reintenta solo en unos segundos; no cierres la página.' })
+        temporizador.current = setTimeout(enviarCambios, 15_000)
       })
       .finally(() => {
         enviando.current = false
@@ -464,12 +468,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .then((r) => {
           marcaServidor.current = r.ahora
           aplicarDelServidor(r.comprobantes, true)
+          // Si la página quedó abierta de un día para otro, los días se cuentan desde hoy
+          const hoyServidor = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(r.ahora))
+          setDatos((d) => (d && d.meta.fechaCorte !== hoyServidor ? { ...d, meta: { ...d.meta, fechaCorte: hoyServidor } } : d))
         })
         .catch(() => {
           // sin conexión por un momento: se vuelve a intentar en la próxima consulta
         })
     }
-    const intervalo = setInterval(consultar, 60_000)
+    const intervalo = setInterval(() => {
+      consultar()
+      if (cola.current.length && !enviando.current) enviarCambios()
+    }, 60_000)
+    // Aviso si se cierra la página con cambios sin guardar
+    const alSalir = (e: BeforeUnloadEvent) => {
+      if (cola.current.length || enviando.current) e.preventDefault()
+    }
+    window.addEventListener('beforeunload', alSalir)
     const alVolver = () => {
       if (document.visibilityState === 'visible') consultar()
     }
@@ -477,8 +492,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(intervalo)
       document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('beforeunload', alSalir)
     }
-  }, [usuarioGoogle, aplicarDelServidor])
+  }, [usuarioGoogle, aplicarDelServidor, enviarCambios])
 
   const subirDocumento = useCallback(
     async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>

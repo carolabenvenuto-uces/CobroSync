@@ -141,9 +141,9 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          <Pantalla>Notificaciones</Pantalla>, arriba de todo en el menú, funciona como un correo: a la izquierda la bandeja (lo no leído, en
-          negrita y con un punto azul) y a la derecha el mensaje completo, con la factura y un botón para abrirla.
-        </p>
+          <Pantalla>Notificaciones</Pantalla>, arriba de todo en el menú, funciona como un correo: la bandeja a lo ancho, con lo no leído en
+          negrita y con un punto azul. Al abrir un mensaje se lee completo, con la factura y un botón para abrirla; "Volver a la bandeja" regresa
+          a la lista.</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>El número al lado de "Notificaciones" es lo que falta leer.</li>
           <li>Al abrir un mensaje, o la factura de la que habla, queda marcado como leído.</li>

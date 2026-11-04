@@ -364,6 +364,51 @@ prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () =
   esperar(!mails.some((m) => m.to === 'gerente.warnes@svaauto.com.ar'), 'le llegó un mail a una sucursal sin pendientes')
   esperar(mails.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), 'no le llegó a la que sí tiene')
 })
+prueba('Ajustes: Auditoría cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Auditoría')
+  como('auditoria@svaauto.com.ar')
+  const antes = gs('obtenerDatos')
+  esperar(antes.datos.meta.plazos.comun === 10 && antes.datos.meta.plazos.mipyme === 5, JSON.stringify(antes.datos.meta.plazos))
+  esperar(antes.datos.meta.avisos && antes.datos.meta.avisos.porMail === true, 'Auditoría no recibe la configuración de avisos')
+  gs('guardarAjustes', {
+    plazos: { comun: 12, mipyme: 6, criticaComun: 25, criticaMipyme: 14, montoMinimoMipyme: 6000000, puntosVentaMipyme: [50] },
+    companiasSinFce: ['allianz'],
+    avisos: { porMail: true, correosGerencia: 'gerencia.general@svaauto.com.ar' },
+  })
+  const d = gs('obtenerDatos').datos
+  esperar(d.meta.plazos.comun === 12 && d.meta.plazos.puntosVentaMipyme[0] === 50, JSON.stringify(d.meta.plazos))
+  const allianz = d.aseguradoras.find((x) => x.id === 'allianz')
+  if (allianz) esperar(allianz.recibeFce === false, 'no se guardó que Allianz no recibe FCE')
+  como('rocamora@svaauto.com.ar')
+  esperar(gs('obtenerDatos').datos.meta.avisos === undefined, 'la sucursal ve los correos de Gerencia')
+  como('auditoria@svaauto.com.ar')
+  // Se vuelve a los plazos de siempre para las pruebas siguientes
+  gs('guardarAjustes', { plazos: { comun: 10, mipyme: 5, criticaComun: 21, criticaMipyme: 12, montoMinimoMipyme: 5549862, puntosVentaMipyme: [] }, companiasSinFce: [], avisos: { porMail: true, correosGerencia: 'gerencia.general@svaauto.com.ar' } })
+})
+prueba('una factura MiPyME entra en el resumen del lunes a los 6 días; una común, no', () => {
+  const col = (n) => HOJAS_COLUMNAS.indexOf(n)
+  const hoyReal = new Date().toISOString().slice(0, 10) // el simulador usa la fecha real
+  const menos = (dias) => new Date(Date.parse(hoyReal) - dias * 86400000).toISOString().slice(0, 10)
+  const base = hojas.Comprobantes.filas.find((f, i) => i > 0 && f[col('sucursal')] === 'Rocamora' && f[col('tipo')] === 'FC')
+  const nueva = (id, total) => {
+    const f = [...base]
+    f[col('id')] = id; f[col('ref')] = id; f[col('numero')] = String(90000 + hojas.Comprobantes.filas.length)
+    f[col('fecha')] = menos(6); f[col('total')] = String(total); f[col('estado')] = 'pendiente_drive'
+    f[col('fechaPresentacion')] = ''; f[col('vencimiento')] = ''; f[col('fechaCobro')] = ''; f[col('compromiso')] = ''; f[col('anulacionInformada')] = ''
+    f[col('documentos')] = JSON.stringify(['factura', 'orden', 'firma'].map((t) => ({ tipo: t, estado: 'faltante' })))
+    hojas.Comprobantes.filas.push(f)
+    return f
+  }
+  const fMipyme = nueva('mipyme-1', 18853739.6)
+  const fComun = nueva('comun-1', 1000000)
+  mails.length = 0
+  gs('resumenSemanal')
+  const cuerpo = mails.find((m) => m.to === 'gerente.rocamora@svaauto.com.ar')?.body ?? ''
+  const nro = (f) => `FC E ${f[col('puntoVenta')]}-${String(f[col('numero')]).padStart(8, '0')}`
+  esperar(cuerpo.includes(nro(fMipyme)) && cuerpo.includes('MiPyME'), 'la MiPyME de 6 días no está en el resumen')
+  esperar(!cuerpo.includes(nro(fComun)), 'la común de 6 días está en el resumen (todavía está en plazo)')
+})
 prueba('con los avisos desactivados no sale ningún mail', () => {
   setCfg('avisosPorMail', 'NO')
   mails.length = 0

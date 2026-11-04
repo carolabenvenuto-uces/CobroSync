@@ -1,3 +1,5 @@
+import type { Plazos } from './plazos'
+
 /**
  * Modelo de datos de CobroSync.
  *
@@ -72,6 +74,8 @@ export interface Aseguradora {
   emailReclamos?: string
   /** días que tarda en pagar desde la presentación (7 o 30) */
   plazoPagoDias: number
+  /** es gran empresa y recibe factura de crédito MiPyME (si no se indica, sí) */
+  recibeFce?: boolean
 }
 
 export interface Sucursal {
@@ -193,6 +197,10 @@ export interface MetaDemo {
   /** "hoy" de la demo: todos los cálculos de plazos usan esta fecha */
   fechaCorte: string
   sucursales: Sucursal[]
+  /** plazos de la documentación (Ajustes); si falta, los de siempre */
+  plazos?: Plazos
+  /** avisos por mail (solo lo ve Auditoría) */
+  avisos?: { porMail: boolean; correosGerencia: string }
 }
 
 export interface DatosApp {

@@ -15,6 +15,7 @@
  * pantallas, y tienen sus propios tests (tests/semaforo.test.ts).
  */
 import { diffDias } from '../lib/fechas'
+import { esMipyme, plazoSucursal } from './plazos'
 import type {
   ColorSemaforo,
   Comprobante,
@@ -25,10 +26,7 @@ import type {
   TipoDocumento,
 } from './tipos'
 
-/** Días que tiene la sucursal para subir el legajo completo antes de pasar a rojo. */
-export const PLAZO_ESCANEO_DIAS = 7
-/** A partir de estos días sin legajo se avisa a la gerencia general. */
-export const DIAS_ESCALAR_GERENCIA_GENERAL = 21
+// Los días que tiene la sucursal (10, o 5 para MiPyME) están en ./plazos y se cambian en Ajustes
 
 export const DOCUMENTOS_REQUERIDOS: TipoDocumento[] = ['factura', 'orden', 'firma']
 
@@ -103,23 +101,25 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
     }
   }
 
-  // Faltan documentos: la sucursal tiene 7 días desde la emisión de la factura.
+  // Faltan documentos: la sucursal tiene su plazo desde la emisión de la factura (más corto si es MiPyME).
   if (faltantes.length > 0) {
+    const plazo = plazoSucursal(c)
+    const tipo = esMipyme(c) ? ' · MiPyME' : ''
     const encabezado =
       c.fechaDrive === null ? 'La sucursal todavía no subió el legajo' : 'La sucursal subió el legajo incompleto'
-    if (dias > PLAZO_ESCANEO_DIAS) {
+    if (dias > plazo) {
       return {
         color: 'rojo',
         etapa: 'doc_atrasada',
         responsable: 'sucursal',
-        detalle: [`${encabezado}: ${dias} días desde la factura`, ...faltantes.map(textoProblema)],
+        detalle: [`${encabezado}: ${dias} días desde la factura (plazo ${plazo}${tipo})`, ...faltantes.map(textoProblema)],
       }
     }
     return {
       color: 'amarillo',
       etapa: 'doc_pendiente',
       responsable: 'sucursal',
-      detalle: [`${encabezado} (día ${dias} de ${PLAZO_ESCANEO_DIAS})`, ...faltantes.map(textoProblema)],
+      detalle: [`${encabezado} (día ${dias} de ${plazo}${tipo})`, ...faltantes.map(textoProblema)],
     }
   }
 

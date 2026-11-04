@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url'
 const SEMILLA = 20261103
 const FECHA_INICIO = '2026-01-02'
 const FECHA_CORTE = '2026-10-31' // el "hoy" de la demo
-const PLAZO_ESCANEO = 7
+const PLAZO_ESCANEO = 10 // plazo de una factura común (ver src/domain/plazos.ts)
 
 // ── Números aleatorios reproducibles (algoritmo mulberry32) ──────────────────
 function crearAleatorio(semilla) {

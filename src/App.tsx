@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { INICIO_ROL, useApp } from './context/AppContext'
 import type { Rol } from './domain/tipos'
+import Ajustes from './pages/Ajustes'
 import Avisos from './pages/Avisos'
 import Companias from './pages/Companias'
 import ControlDiario from './pages/ControlDiario'
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="saldos" element={oficina(<Saldos />)} />
         <Route path="companias" element={auditoria(<Companias />)} />
         <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
+        <Route path="ajustes" element={auditoria(<Ajustes />)} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

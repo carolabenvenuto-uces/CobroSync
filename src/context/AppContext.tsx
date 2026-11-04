@@ -14,6 +14,7 @@ import {
   aplicarCambiosEnGoogle,
   cargarDesdeGoogle,
   conectadoAGoogle,
+  guardarAjustesEnGoogle,
   marcarLeidasEnGoogle,
   obtenerCambiosDeGoogle,
   subirAGoogle,
@@ -23,6 +24,7 @@ import {
 import type { ResultadoImportacion } from '../services/planilla'
 import { PARAMETROS_INICIALES, type ParametrosImpacto } from '../domain/impacto'
 import { NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
+import { configurarPlazos, type Ajustes } from '../domain/plazos'
 
 export const TODAS_LAS_SUCURSALES = 'Todas'
 
@@ -38,6 +40,7 @@ export const INICIO_ROL: Record<Rol, string> = {
   auditoria: '/app',
   gerencia: '/app',
 }
+
 
 /** Aviso para una persona: a Auditoría (para = 'auditoria'), a Gerencia (para = 'gerencia') o a una sucursal (para = su nombre). */
 export interface Notificacion {
@@ -186,6 +189,8 @@ interface EstadoApp {
   agregarComprobante: (comprobante: Comprobante) => void
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
+  /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
+  guardarAjustes: (ajustes: Ajustes) => Promise<void>
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
   registrarEvento: (id: string, tipo: Evento['tipo'], texto: string) => void
   /** tasa y objetivo de días para el informe de impacto económico */
@@ -237,6 +242,8 @@ const AppContext = createContext<EstadoApp | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [datos, setDatos] = useState<DatosApp | null>(null)
+  // Los plazos se aplican antes de que cualquier pantalla calcule el semáforo
+  configurarPlazos(datos?.meta.plazos, datos?.aseguradoras ?? [])
   const [error, setError] = useState<string | null>(null)
   const [rol, setRolInterno] = useState<Rol>('auditoria')
   const [sucursal, setSucursal] = useState(TODAS_LAS_SUCURSALES)
@@ -444,6 +451,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [encolar],
   )
 
+  const guardarAjustes = useCallback(async (a: Ajustes) => {
+    if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
+    const sinFce = new Set(a.companiasSinFce)
+    setDatos((actual) =>
+      actual
+        ? {
+            ...actual,
+            // copia nueva de las facturas: así todas las pantallas recalculan con los plazos nuevos
+            comprobantes: [...actual.comprobantes],
+            aseguradoras: actual.aseguradoras.map((x) => ({ ...x, recibeFce: !sinFce.has(x.id) })),
+            meta: { ...actual.meta, plazos: a.plazos, avisos: a.avisos },
+          }
+        : actual,
+    )
+  }, [])
+
   const actualizarAseguradoras = useCallback((aseguradoras: Aseguradora[]) => {
     setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
   }, [])
@@ -553,6 +576,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarComprobante,
       agregarComprobante,
       actualizarAseguradoras,
+      guardarAjustes,
       registrarEvento,
       parametros,
       setParametros,
@@ -584,6 +608,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarComprobante,
       agregarComprobante,
       actualizarAseguradoras,
+      guardarAjustes,
       registrarEvento,
       parametros,
       fuente,

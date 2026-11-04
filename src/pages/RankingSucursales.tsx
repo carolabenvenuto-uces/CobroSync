@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { BotonExportar, Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
-import { DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
+import { textoCritica, textoPlazo } from '../domain/plazos'
 import { rankingSucursales } from '../domain/sucursales'
 import { anioDe, mesDe } from '../lib/fechas'
 import { descargarExcel } from '../lib/exportar'
@@ -85,9 +85,9 @@ export default function RankingSucursales() {
       [
         'Sucursal',
         'Doc. pendiente hoy',
-        `En plazo (hasta ${PLAZO_ESCANEO_DIAS} días)`,
-        `Atrasadas (${PLAZO_ESCANEO_DIAS + 1} a ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
-        `Críticas (más de ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`,
+        `En plazo (hasta ${textoPlazo()})`,
+        'Atrasadas (pasaron el plazo)',
+        `Críticas (${textoCritica()})`,
         'Importe retenido hoy',
         '% de lo retenido',
         `Facturas del período (${textoPeriodo})`,
@@ -153,9 +153,9 @@ export default function RankingSucursales() {
               <YAxis type="category" dataKey="sucursal" tickLine={false} axisLine={false} fontSize={13} width={120} />
               <Tooltip cursor={{ fill: '#F1F5F9' }} />
               <Legend iconType="circle" />
-              <Bar dataKey="enPlazo" name={`En plazo (hasta ${PLAZO_ESCANEO_DIAS} días)`} stackId="p" fill="#F59E0B" />
-              <Bar dataKey="atrasados" name={`Atrasadas (${PLAZO_ESCANEO_DIAS + 1} a ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`} stackId="p" fill="#EF4444" />
-              <Bar dataKey="criticos" name={`Críticas (más de ${DIAS_ESCALAR_GERENCIA_GENERAL} días)`} stackId="p" fill="#991B1B" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="enPlazo" name={`En plazo (hasta ${textoPlazo()})`} stackId="p" fill="#F59E0B" />
+              <Bar dataKey="atrasados" name="Atrasadas (pasaron el plazo)" stackId="p" fill="#EF4444" />
+              <Bar dataKey="criticos" name={`Críticas (${textoCritica()})`} stackId="p" fill="#991B1B" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

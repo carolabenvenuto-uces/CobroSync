@@ -47,7 +47,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           titulo: 'Documentación crítica',
           descripcion: 'Más de 21 días sin la documentación completa (avisado a gerencia general)',
           icono: Siren,
-          facturas: deSucursal.filter((c) => nivelEscaneo(diasDeEspera(c, hoy)) === 'critico'),
+          facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'critico'),
           ruta: '/app/pendientes?estado=Crítica',
         },
         {
@@ -55,7 +55,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           titulo: 'Documentación atrasada',
           descripcion: 'Entre 8 y 21 días (avisado al gerente de la sucursal)',
           icono: TriangleAlert,
-          facturas: deSucursal.filter((c) => nivelEscaneo(diasDeEspera(c, hoy)) === 'atrasado'),
+          facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'atrasado'),
           ruta: '/app/pendientes?estado=Atrasada',
         },
         {

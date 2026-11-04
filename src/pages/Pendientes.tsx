@@ -5,7 +5,8 @@ import { Chip, nombreEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina, Indicador } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { calcularSemaforo, DIAS_ESCALAR_GERENCIA_GENERAL, PLAZO_ESCANEO_DIAS } from '../domain/semaforo'
+import { calcularSemaforo } from '../domain/semaforo'
+import { plazosActuales, textoCritica, textoPlazo } from '../domain/plazos'
 import { avisoA, compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo, type NivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
@@ -43,7 +44,7 @@ export default function Pendientes() {
           return {
             c,
             dias,
-            nivel: nivelEscaneo(dias),
+            nivel: nivelEscaneo(c, dias),
             semaforo: calcularSemaforo(c, hoy),
             situacion: situacion(c, hoy),
             sucursal: meta.sucursales.find((s) => s.nombre === c.sucursal),
@@ -58,7 +59,7 @@ export default function Pendientes() {
     return { cantidad: l.length, monto: l.reduce((s, x) => s + x.c.total, 0) }
   }
   const tarjetas: { titulo: string; ayuda: string; tono: 'amarillo' | 'rojo' | 'neutro'; filtro: Record<string, string>; r: { cantidad: number; monto: number } }[] = [
-    { titulo: 'En plazo', ayuda: `Hasta ${PLAZO_ESCANEO_DIAS} días`, tono: 'amarillo' as const, filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
+    { titulo: 'En plazo', ayuda: `Hasta ${textoPlazo()}`, tono: 'amarillo' as const, filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
     { titulo: 'Atrasadas', ayuda: 'Van en el resumen del lunes al gerente', tono: 'rojo' as const, filtro: { estado: 'Atrasada' }, r: resumen((x) => x.nivel === 'atrasado') },
     { titulo: 'Críticas', ayuda: 'Aviso a gerencia general', tono: 'rojo' as const, filtro: { estado: 'Crítica' }, r: resumen((x) => x.nivel === 'critico') },
     {
@@ -157,8 +158,9 @@ export default function Pendientes() {
       <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-blue-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          La sucursal tiene <strong>{PLAZO_ESCANEO_DIAS} días</strong> desde la factura. Desde el día {PLAZO_ESCANEO_DIAS + 1} se avisa al
-          gerente de la sucursal; desde el día {DIAS_ESCALAR_GERENCIA_GENERAL + 1}, también a la gerencia general.
+          La sucursal tiene <strong>{plazosActuales().comun} días</strong> desde la factura (<strong>{plazosActuales().mipyme}</strong> si es
+          MiPyME). Pasado el plazo, la factura va en el resumen de los lunes al gerente de la sucursal; con {textoCritica()} es crítica y le
+          llega también a la gerencia general.
         </span>
       </div>
 

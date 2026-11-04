@@ -13,6 +13,7 @@ import {
   Megaphone,
   Presentation,
   Trophy,
+  Settings,
   Upload,
   X,
 } from 'lucide-react'
@@ -73,6 +74,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       items: [
         { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
         { ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload },
+        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
       ],
     },
   ],

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { calcularSemaforo, estaVencido, puedePresentarse } from '../src/domain/semaforo'
 import { avisoA, nivelEscaneo } from '../src/domain/sucursales'
 import { estadoReclamo } from '../src/domain/reclamos'
+import { configurarPlazos, esMipyme, PLAZOS_INICIALES } from '../src/domain/plazos'
 import type { Comprobante, Documento } from '../src/domain/tipos'
 
 const CORTE = '2026-10-31'
@@ -54,16 +55,36 @@ describe('calcularSemaforo', () => {
     expect(puedePresentarse(c, CORTE)).toBe(true)
   })
 
-  it('si falta un documento y la sucursal está dentro de los 7 días, está en AMARILLO', () => {
+  it('si falta un documento y la sucursal está dentro de los 10 días, está en AMARILLO', () => {
     const r = calcularSemaforo(factura({ fecha: '2026-10-26', documentos: sinOrden }), CORTE)
     expect(r.color).toBe('amarillo')
     expect(r.etapa).toBe('doc_pendiente')
     expect(r.detalle).toContain('Falta orden de reparación o repuestos')
   })
 
-  it('el día 7 todavía está en plazo; el día 8 pasa a ROJO', () => {
-    expect(calcularSemaforo(factura({ fecha: '2026-10-24', documentos: sinOrden }), CORTE).color).toBe('amarillo')
-    expect(calcularSemaforo(factura({ fecha: '2026-10-23', documentos: sinOrden }), CORTE).color).toBe('rojo')
+  it('el día 10 todavía está en plazo; el día 11 pasa a ROJO', () => {
+    expect(calcularSemaforo(factura({ fecha: '2026-10-21', documentos: sinOrden }), CORTE).color).toBe('amarillo')
+    expect(calcularSemaforo(factura({ fecha: '2026-10-20', documentos: sinOrden }), CORTE).color).toBe('rojo')
+  })
+
+  it('una factura MiPyME (desde el monto mínimo) tiene 5 días', () => {
+    const mipyme = (fecha: string) => factura({ fecha, total: 18_853_739.6, documentos: sinOrden })
+    expect(esMipyme(mipyme('2026-10-26'))).toBe(true)
+    expect(calcularSemaforo(mipyme('2026-10-26'), CORTE).color).toBe('amarillo')
+    expect(calcularSemaforo(mipyme('2026-10-25'), CORTE).color).toBe('rojo')
+    expect(calcularSemaforo(mipyme('2026-10-25'), CORTE).detalle[0]).toContain('MiPyME')
+  })
+
+  it('una compañía marcada como que no recibe FCE no tiene facturas MiPyME', () => {
+    configurarPlazos(PLAZOS_INICIALES, [{ id: 'ceibo', nombre: 'Ceibo', email: '', plazoPagoDias: 30, recibeFce: false }])
+    expect(esMipyme(factura({ total: 18_853_739.6 }))).toBe(false)
+    configurarPlazos(PLAZOS_INICIALES, [])
+  })
+
+  it('un punto de venta solo para MiPyME marca la factura aunque sea chica', () => {
+    configurarPlazos({ ...PLAZOS_INICIALES, puntosVentaMipyme: [50] }, [])
+    expect(esMipyme(factura({ puntoVenta: 50, total: 1000 }))).toBe(true)
+    configurarPlazos(PLAZOS_INICIALES, [])
   })
 
   it('un documento observado por Auditoría bloquea aunque esté dentro del plazo', () => {
@@ -108,20 +129,24 @@ describe('calcularSemaforo', () => {
 })
 
 describe('escalamiento de escaneos', () => {
+  const comun = factura()
+  const mipyme = factura({ total: 10_000_000 })
   const sucursal = { nombre: 'Sucursal Norte', puntoVenta: 35, gerente: 'S. Ferreyra', personas: [] }
 
-  it('hasta 7 días está en plazo y no se avisa a nadie', () => {
-    expect(nivelEscaneo(7)).toBe('en_plazo')
+  it('hasta 10 días está en plazo y no se avisa a nadie', () => {
+    expect(nivelEscaneo(comun, 10)).toBe('en_plazo')
     expect(avisoA('en_plazo', sucursal)).toBe('—')
   })
 
-  it('de 8 a 21 días se avisa al gerente de la sucursal', () => {
-    expect(nivelEscaneo(8)).toBe('atrasado')
+  it('de 11 a 21 días se avisa al gerente de la sucursal', () => {
+    expect(nivelEscaneo(comun, 11)).toBe('atrasado')
     expect(avisoA('atrasado', sucursal)).toBe('S. Ferreyra')
   })
 
   it('después de 21 días se suma la gerencia general', () => {
-    expect(nivelEscaneo(22)).toBe('critico')
+    expect(nivelEscaneo(comun, 22)).toBe('critico')
+    expect(nivelEscaneo(mipyme, 6)).toBe('atrasado')
+    expect(nivelEscaneo(mipyme, 13)).toBe('critico')
     expect(avisoA('critico', sucursal)).toBe('S. Ferreyra y gerencia general')
   })
 })

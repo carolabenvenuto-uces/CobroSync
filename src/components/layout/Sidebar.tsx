@@ -8,6 +8,7 @@ import {
   Building2,
   ClipboardList,
   FileText,
+  FolderOpen,
   HandCoins,
   LayoutDashboard,
   Megaphone,
@@ -78,7 +79,15 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       ],
     },
   ],
-  sucursal: [{ titulo: 'Mi sucursal', items: [{ ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' }] }],
+  sucursal: [
+    {
+      titulo: 'Mi sucursal',
+      items: [
+        { ruta: '/app', etiqueta: 'Mis facturas', icono: ClipboardList, contador: 'pendientes' },
+        { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
+      ],
+    },
+  ],
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {

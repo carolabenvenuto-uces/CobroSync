@@ -59,20 +59,45 @@ const libro = {
 let emailActual = ''
 const mails = []
 const archivos = []
+let siguienteId = 1
 function carpeta(ruta) {
   const hijas = {}
-  return {
+  const propios = []
+  const yo = {
     ruta,
+    archivos: propios,
     getFoldersByName: (n) => {
       let dado = false
       return { hasNext: () => !!hijas[n] && !dado, next: () => ((dado = true), hijas[n]) }
     },
     createFolder: (n) => (hijas[n] = carpeta(`${ruta}/${n}`)),
+    getFiles: () => {
+      const copia = [...propios]
+      let i = 0
+      return { hasNext: () => i < copia.length, next: () => copia[i++] }
+    },
     createFile: (blob) => {
       archivos.push(`${ruta}/${blob.name}`)
-      return { getName: () => blob.name, getUrl: () => `https://drive.google.com/${ruta}/${blob.name}`, setDescription: () => {} }
+      const f = {
+        id: `archivo-${siguienteId++}`,
+        nombre: blob.name,
+        padre: yo,
+        getId: () => f.id,
+        getName: () => f.nombre,
+        getUrl: () => `https://drive.google.com/${f.padre.ruta}/${f.nombre}`,
+        setDescription: () => {},
+        moveTo: (destino) => {
+          f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1)
+          destino.archivos.push(f)
+          f.padre = destino
+          archivos.push(`${destino.ruta}/${f.nombre}`)
+        },
+      }
+      propios.push(f)
+      return f
     },
   }
+  return yo
 }
 const raizDrive = carpeta('CobroSync')
 const contexto = {
@@ -197,13 +222,13 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
 prueba('la fecha de aprobación se pone al aprobar todo y se vacía si se observa algo', () => {
   como('auditoria@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'en_revision'))
-  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.slice(0, 2).map((d) => ({ ...d, estado: 'ok' })) }])
+  gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.slice(0, 1).map((d) => ({ ...d, estado: 'ok' })) }])
   let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(!leido.fechaAprobacion, 'se puso la fecha con documentos sin aprobar')
   gs('aplicarCambios', [{ id: c.id, documentos: c.documentos.map((d) => ({ ...d, estado: 'ok' })) }])
   leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(/^\d{4}-\d{2}-\d{2}$/.test(leido.fechaAprobacion ?? ''), `fecha: ${leido.fechaAprobacion}`)
-  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...c.documentos[2], estado: 'observado', motivo: 'Ilegible' }] }])
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...c.documentos[1], estado: 'observado', motivo: 'Ilegible' }] }])
   leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.fechaAprobacion === null, 'no se vació al observar')
 })
@@ -233,15 +258,15 @@ prueba('dos personas en la misma factura a la vez: no se pisan', () => {
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Rocamora' && x.tipo === 'FC' && x.estado !== 'cobrada')
   // Las dos abrieron la factura igual; cada una guarda su cambio sin ver el de la otra
   como('rocamora@svaauto.com.ar')
-  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo: 'firma', estado: 'en_revision', archivo: 'firma.jpg' }] }, { id: c.id, evento: { tipo: 'subida', texto: 'Subió la firma' } }])
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo: 'orden', estado: 'en_revision', archivo: 'orden firmada.jpg' }] }, { id: c.id, evento: { tipo: 'subida', texto: 'Subió la orden firmada' } }])
   como('auditoria@svaauto.com.ar')
   gs('aplicarCambios', [{ id: c.id, campos: { observaciones: 'Revisar la orden' } }, { id: c.id, evento: { tipo: 'mensaje', texto: 'Ojo con la orden' } }])
   const final = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
-  esperar(final.documentos.find((d) => d.tipo === 'firma').archivo === 'firma.jpg', 'se perdió la firma de la sucursal')
+  esperar(final.documentos.find((d) => d.tipo === 'orden').archivo === 'orden firmada.jpg', 'se perdió la orden de la sucursal')
   esperar(final.observaciones === 'Revisar la orden', 'se perdió la observación de Auditoría')
   const textos = final.eventos.map((e) => e.texto)
-  esperar(textos.includes('Subió la firma') && textos.includes('Ojo con la orden'), `conversación: ${textos.join(' | ')}`)
-  const deSucursal = final.eventos.find((e) => e.texto === 'Subió la firma')
+  esperar(textos.includes('Subió la orden firmada') && textos.includes('Ojo con la orden'), `conversación: ${textos.join(' | ')}`)
+  const deSucursal = final.eventos.find((e) => e.texto === 'Subió la orden firmada')
   esperar(deSucursal.autor === 'Facturación Rocamora' && deSucursal.area === 'sucursal', 'el servidor no firmó el mensaje')
 })
 prueba('notas de crédito parciales y cobro por otro importe se guardan bien', () => {
@@ -295,7 +320,7 @@ prueba('las notificaciones leídas se guardan en la cuenta', () => {
 prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura', () => {
   como('rocamora@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
-  const r = gs('subirArchivo', c.id, 'firma', 'foto celular.jpg', 'image/jpeg', Buffer.from('hola').toString('base64'))
+  const r = gs('subirArchivo', c.id, 'orden', 'foto celular.jpg', 'image/jpeg', Buffer.from('hola').toString('base64'))
   esperar(r.url.startsWith('https://drive.google.com/'), 'sin link')
   esperar(archivos.at(-1).startsWith(`CobroSync/Rocamora/${c.fecha.slice(0, 7)}/FC ${c.puntoVenta}-`), archivos.at(-1))
 })
@@ -344,10 +369,11 @@ prueba('el lunes: un resumen por sucursal con pendientes y un solo mail a Gerenc
   gs('resumenSemanal')
   const deSucursal = mails.filter((m) => m.subject.includes('Resumen semanal'))
   const aGerencia = mails.filter((m) => m.to === 'gerencia.general@svaauto.com.ar')
-  // Rocamora tiene facturas atrasadas; Warnes, solo recientes (en plazo): a Warnes no le llega
-  esperar(deSucursal.length === 1 && deSucursal[0].to === 'gerente.rocamora@svaauto.com.ar', `resúmenes a: ${deSucursal.map((m) => m.to)}`)
+  // Un mail por sucursal con atrasadas (las que no tienen nada pendiente no reciben)
+  esperar(deSucursal.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), `resúmenes a: ${deSucursal.map((m) => m.to)}`)
+  esperar(new Set(deSucursal.map((m) => m.to)).size === deSucursal.length, 'más de un resumen por sucursal')
   esperar(deSucursal[0].body.includes(' días'), 'el resumen de la sucursal no lista las facturas')
-  esperar(aGerencia.length === 1 && mails.length === 2, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
+  esperar(aGerencia.length === 1 && mails.length === deSucursal.length + 1, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
   const cuerpo = aGerencia[0].body
   esperar(cuerpo.includes('Auditoría necesita tu apoyo') && cuerpo.includes('Pedile a cada sucursal'), cuerpo.slice(0, 300))
   esperar(!cuerpo.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
@@ -356,7 +382,7 @@ prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () =
   const col = (n) => HOJAS_COLUMNAS.indexOf(n)
   hojas.Comprobantes.filas.forEach((f, i) => {
     if (i > 0 && f[col('sucursal')] === 'Warnes' && f[col('tipo')] === 'FC') {
-      f[col('documentos')] = JSON.stringify(['factura', 'orden', 'firma'].map((t) => ({ tipo: t, estado: 'ok' })))
+      f[col('documentos')] = JSON.stringify(['factura', 'orden'].map((t) => ({ tipo: t, estado: 'ok' })))
     }
   })
   mails.length = 0
@@ -403,7 +429,7 @@ prueba('una factura MiPyME entra en el resumen del lunes a los 6 días; una com�
     f[col('id')] = id; f[col('ref')] = id; f[col('numero')] = String(90000 + hojas.Comprobantes.filas.length)
     f[col('fecha')] = menos(6); f[col('total')] = String(total); f[col('estado')] = 'pendiente_drive'
     f[col('fechaPresentacion')] = ''; f[col('vencimiento')] = ''; f[col('fechaCobro')] = ''; f[col('compromiso')] = ''; f[col('anulacionInformada')] = ''
-    f[col('documentos')] = JSON.stringify(['factura', 'orden', 'firma'].map((t) => ({ tipo: t, estado: 'faltante' })))
+    f[col('documentos')] = JSON.stringify(['factura', 'orden'].map((t) => ({ tipo: t, estado: 'faltante' })))
     hojas.Comprobantes.filas.push(f)
     return f
   }

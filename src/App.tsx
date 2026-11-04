@@ -16,6 +16,7 @@ import RankingSucursales from './pages/RankingSucursales'
 import Reclamos from './pages/Reclamos'
 import Resumen from './pages/Resumen'
 import Saldos from './pages/Saldos'
+import Siniestros from './pages/Siniestros'
 import UsarPlanilla from './pages/UsarPlanilla'
 
 /** Si el rol activo no tiene acceso a una pantalla, lo lleva a su inicio. */
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="companias" element={auditoria(<Companias />)} />
         <Route path="planilla" element={auditoria(<UsarPlanilla />)} />
         <Route path="ajustes" element={auditoria(<Ajustes />)} />
+        <Route path="siniestros" element={<Siniestros />} />
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>

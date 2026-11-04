@@ -12,7 +12,7 @@ La demo está verticalizada en **concesionarias y talleres que facturan reparaci
 
 ## El problema
 
-Cada factura a una aseguradora necesita un legajo de respaldo: factura, orden de reparación, remito y conformidad firmada. Hoy eso se controla con planillas, carpetas en Drive y correos. Cuando un documento falta, está ilegible o sin firma, la compañía lo rechaza o lo retiene, y el cobro se demora entre 15 y 45 días.
+Cada factura a una aseguradora necesita un legajo de respaldo: la factura y la orden de reparación o repuestos firmada por el cliente. Hoy eso se controla con planillas, carpetas en Drive y correos. Cuando un documento falta, está ilegible o sin firma, la compañía lo rechaza o lo retiene, y el cobro se demora entre 15 y 45 días.
 
 ## La solución
 

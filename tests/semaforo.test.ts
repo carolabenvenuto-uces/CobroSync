@@ -10,7 +10,6 @@ const CORTE = '2026-10-31'
 const completos: Documento[] = [
   { tipo: 'factura', estado: 'ok' },
   { tipo: 'orden', estado: 'ok' },
-  { tipo: 'firma', estado: 'ok' },
 ]
 
 /** Crea una factura completa y sin presentar; cada test cambia solo lo que necesita. */
@@ -59,7 +58,7 @@ describe('calcularSemaforo', () => {
     const r = calcularSemaforo(factura({ fecha: '2026-10-26', documentos: sinOrden }), CORTE)
     expect(r.color).toBe('amarillo')
     expect(r.etapa).toBe('doc_pendiente')
-    expect(r.detalle).toContain('Falta orden de reparación o repuestos')
+    expect(r.detalle).toContain('Falta orden firmada')
   })
 
   it('el día 10 todavía está en plazo; el día 11 pasa a ROJO', () => {
@@ -90,11 +89,11 @@ describe('calcularSemaforo', () => {
   it('un documento observado por Auditoría bloquea aunque esté dentro del plazo', () => {
     const c = factura({
       fecha: '2026-10-30',
-      documentos: completos.map((d) => (d.tipo === 'firma' ? { ...d, estado: 'observado', motivo: 'Sin firma del cliente' } : d)),
+      documentos: completos.map((d) => (d.tipo === 'orden' ? { ...d, estado: 'observado', motivo: 'Sin firma del cliente' } : d)),
     })
     const r = calcularSemaforo(c, CORTE)
     expect(r.etapa).toBe('doc_observada')
-    expect(r.detalle).toContain('Firma del cliente: sin firma del cliente')
+    expect(r.detalle).toContain('Orden firmada: sin firma del cliente')
     expect(puedePresentarse(c, CORTE)).toBe(false)
   })
 
@@ -109,7 +108,7 @@ describe('calcularSemaforo', () => {
   it('un documento que no figura en el legajo cuenta como faltante', () => {
     const r = calcularSemaforo(factura({ fecha: '2026-10-01', documentos: [{ tipo: 'factura', estado: 'ok' }] }), CORTE)
     expect(r.color).toBe('rojo')
-    expect(r.detalle).toContain('Falta firma del cliente')
+    expect(r.detalle).toContain('Falta orden firmada')
   })
 
   it('presentada y sin cobrar: le toca a la compañía', () => {

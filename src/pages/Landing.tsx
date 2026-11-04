@@ -33,7 +33,7 @@ const PROBLEMAS = [
 
 const PASOS = [
   { icono: FileSpreadsheet, titulo: 'Ingesta desde el ERP', texto: 'Las facturas llegan desde la exportación del ERP (Excel o CSV).' },
-  { icono: FolderSearch, titulo: 'Armado del legajo', texto: 'La sucursal sube la factura, la orden y la firma; Auditoría las revisa y las tilda.' },
+  { icono: FolderSearch, titulo: 'Armado del legajo', texto: 'La sucursal sube la factura y la orden firmada; Auditoría las revisa y las tilda.' },
   { icono: ShieldCheck, titulo: 'Validación y semáforo', texto: 'Lo que falta, está ilegible o sin firma queda en rojo y no avanza.' },
   { icono: Send, titulo: 'Presentación y cobro', texto: 'Se presenta a cada compañía y se sigue hasta que el dinero ingresa.' },
 ]

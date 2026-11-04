@@ -80,7 +80,7 @@ Mientras dure la prueba, la planilla de control sigue funcionando como siempre. 
 
 ## Preguntas frecuentes
 
-**¿Qué pasa si dos personas trabajan a la vez?** Cada cambio se guarda por separado sobre lo que hay en ese momento, así que no se pisan (por ejemplo, la sucursal sube la firma mientras Auditoría escribe una observación: quedan las dos cosas). Cada pantalla trae sola los cambios de los demás cada minuto y al volver a la pestaña.
+**¿Qué pasa si dos personas trabajan a la vez?** Cada cambio se guarda por separado sobre lo que hay en ese momento, así que no se pisan (por ejemplo, la sucursal sube la orden mientras Auditoría escribe una observación: quedan las dos cosas). Cada pantalla trae sola los cambios de los demás cada minuto y al volver a la pestaña.
 
 **¿Quién ve la planilla?** Solo la cuenta del sector y quien ella comparta. Para trabajar, nadie más la necesita.
 

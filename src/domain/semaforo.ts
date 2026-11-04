@@ -28,12 +28,11 @@ import type {
 
 // Los días que tiene la sucursal (10, o 5 para MiPyME) están en ./plazos y se cambian en Ajustes
 
-export const DOCUMENTOS_REQUERIDOS: TipoDocumento[] = ['factura', 'orden', 'firma']
+export const DOCUMENTOS_REQUERIDOS: TipoDocumento[] = ['factura', 'orden']
 
 export const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = {
   factura: 'Factura',
-  orden: 'Orden de reparación o repuestos',
-  firma: 'Firma del cliente',
+  orden: 'Orden firmada',
 }
 
 export const NOMBRE_ESTADO_DOCUMENTO: Record<EstadoDocumento, string> = {
@@ -57,6 +56,8 @@ export interface ResultadoSemaforo {
 
 /** Devuelve el documento de cada tipo requerido; si no existe, lo da por faltante. */
 export function documentosDelLegajo(documentos: Documento[]): Documento[] {
+  // Datos de antes tenían la firma como documento aparte: ya no se pide (va en la orden)
+  documentos = documentos.filter((d) => DOCUMENTOS_REQUERIDOS.includes(d.tipo))
   return DOCUMENTOS_REQUERIDOS.map(
     (tipo): Documento => documentos.find((d) => d.tipo === tipo) ?? { tipo, estado: 'faltante' },
   )

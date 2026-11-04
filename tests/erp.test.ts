@@ -34,7 +34,7 @@ describe('importarErp', () => {
     expect(r.ignoradas).toBe(1)
     const [fc, nc] = r.nuevas
     expect(fc).toMatchObject({ id: 'ref-7990001', ref: '7990001', sucursal: 'Alvarez Thomas', numero: 4570, aseguradoraId: 'allianz', total: 1210000, estado: 'pendiente_drive' })
-    expect(fc.documentos.map((d) => d.estado)).toEqual(['faltante', 'faltante', 'faltante'])
+    expect(fc.documentos.map((d) => d.estado)).toEqual(['faltante', 'faltante'])
     expect(nc).toMatchObject({ tipo: 'NC', sucursal: 'Rocamora', total: -121000, ncInformada: false })
   })
 

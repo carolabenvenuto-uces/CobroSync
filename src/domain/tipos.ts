@@ -34,8 +34,11 @@ export type EstadoComprobante =
   | 'anulada' // anulada con una nota de crédito
   | 'nota_credito' // estado propio de las NC
 
-/** Lo que Auditoría tiene que ver de cada factura: la factura, la orden (de reparación o de repuestos) y la firma del cliente. */
-export type TipoDocumento = 'factura' | 'orden' | 'firma'
+/**
+ * Lo que Auditoría tiene que ver de cada factura: la factura y la orden (de reparación o de repuestos)
+ * firmada por el cliente. La firma no se sube aparte: va en la orden.
+ */
+export type TipoDocumento = 'factura' | 'orden'
 
 /**
  * faltante → la sucursal no lo subió · en_revision → subido, Auditoría tiene que revisarlo
@@ -101,6 +104,11 @@ export interface Documento {
   adjuntos?: { archivo: string; url?: string }[]
   /** por qué se observó (ilegible, sin firma, no corresponde…) */
   motivo?: string
+  /** quién lo subió y cuándo (cada documento, aunque se hayan subido juntos) */
+  subidoPor?: string
+  fecha?: string
+  /** cómo llegó: desde el legajo o en una carga de varios archivos (y si se asignó solo por el nombre) */
+  origen?: 'legajo' | 'varios' | 'varios-automatico'
 }
 
 export type AreaEvento = 'sucursal' | 'auditoria' | 'gerencia' | 'sistema'

@@ -219,6 +219,21 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
   esperar(!leido.documentos.some((d) => d.estado === 'ok' && c.documentos.find((o) => o.tipo === d.tipo).estado !== 'ok'), 'la sucursal aprobó documentos')
   esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
 })
+prueba('la sucursal puede quitar un documento subido por error, pero no uno aprobado', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'en_revision'))
+  const enRevision = c.documentos.find((d) => d.estado === 'en_revision')
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo: enRevision.tipo, estado: 'faltante' }] }])
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.documentos.find((d) => d.tipo === enRevision.tipo).estado === 'faltante', 'no se pudo quitar')
+  const aprobado = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'ok'))
+  const ok = aprobado.documentos.find((d) => d.estado === 'ok')
+  gs('aplicarCambios', [{ id: aprobado.id, documentos: [{ tipo: ok.tipo, estado: 'faltante' }] }])
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === aprobado.id)
+  esperar(leido.documentos.find((d) => d.tipo === ok.tipo).estado === 'ok', 'la sucursal pudo quitar un documento aprobado')
+  // Se vuelve a dejar para la revisión de la prueba siguiente
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...enRevision }] }])
+})
 prueba('la fecha de aprobación se pone al aprobar todo y se vacía si se observa algo', () => {
   como('auditoria@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'en_revision'))

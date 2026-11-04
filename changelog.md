@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.12.0] - 2026-11-04
+
+### Agregado
+- **Auditoría · Presentar:** pantalla nueva con las facturas con documentación aprobada. Se eligen varias (o todas las filtradas), se arma el mail de presentación con la lista y se marcan como presentadas de una vez, con la fecha.
+- **Auditoría · Reclamos en lote:** en Vencidas y reclamos se eligen varias, se arma el mail de reclamo (con vencimiento, días y número de reclamo) y se registra el reclamo en todas.
+- **Auditoría · Revisión en serie:** en el legajo, "Siguiente para revisar" pasa a la próxima factura que espera revisión, de la más vieja a la más nueva.
+- **Auditoría · Novedades del control diario:** botones para ver las facturas que entraron con la última carga del ERP y las que tuvieron cambios desde ayer.
+- **Sucursal · Quitar un documento subido por error,** mientras Auditoría no lo revisó (queda registrado).
+- **Gerencia · Imprimir o guardar en PDF** el Resumen, sin menú ni botones.
+
 ## [0.11.0] - 2026-11-04
 
 ### Agregado (vista de la sucursal)

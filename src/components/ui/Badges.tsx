@@ -36,8 +36,8 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
 
 /** Qué significa cada etapa, para mostrar como ayuda. */
 export const AYUDA_ETAPA: Record<Etapa, string> = {
-  doc_pendiente: 'Falta documentación de la sucursal, dentro de los 7 días',
-  doc_atrasada: 'Falta documentación de la sucursal y pasaron más de 7 días',
+  doc_pendiente: 'Falta documentación de la sucursal, dentro del plazo (10 días; 5 si es MiPyME)',
+  doc_atrasada: 'Falta documentación de la sucursal y ya pasó el plazo (10 días; 5 si es MiPyME)',
   doc_observada: 'Auditoría observó un documento: la sucursal tiene que reemplazarlo',
   en_revision: 'La sucursal subió todo: Auditoría tiene que revisarlo y tildarlo',
   pres_pendiente: 'Legajo completo: falta presentarlo a la compañía',

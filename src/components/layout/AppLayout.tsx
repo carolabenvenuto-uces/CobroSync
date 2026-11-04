@@ -25,7 +25,7 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra superior solo en celulares, con el botón para abrir el menú */}
-        <div className="flex items-center justify-between bg-noche px-4 py-3 lg:hidden">
+        <div className="no-imprimir flex items-center justify-between bg-noche px-4 py-3 lg:hidden">
           <Marca oscuro />
           <button
             type="button"

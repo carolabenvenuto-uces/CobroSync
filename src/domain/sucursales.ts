@@ -2,9 +2,9 @@
  * Seguimiento de las sucursales: plazos de escaneo, escalamiento y ranking.
  *
  * Regla acordada:
- *  - La sucursal tiene 7 días desde la emisión para subir el legajo completo.
- *  - Del día 8 al 21: atrasado → se avisa al gerente de la sucursal.
- *  - Más de 21 días: crítico → se avisa además a la gerencia general.
+ *  - La sucursal tiene su plazo desde la emisión (10 días; 5 si es MiPyME, ver plazos.ts).
+ *  - Pasado el plazo: atrasado → va en el resumen de los lunes al gerente de la sucursal.
+ *  - Crítico (21 días; 12 si es MiPyME) → se avisa además a la gerencia general.
  */
 import { diffDias, enMes, anioDe } from '../lib/fechas'
 import { calcularSemaforo } from './semaforo'
@@ -53,7 +53,7 @@ export interface ResumenSucursal {
   facturas: number
   /** días promedio entre la emisión y la primera subida del legajo */
   diasPromedioEscaneo: number | null
-  /** % de facturas con legajo subido dentro de los 7 días */
+  /** % de facturas con legajo subido dentro de su plazo */
   dentroDePlazoPct: number | null
   pendientes: number
   atrasados: number

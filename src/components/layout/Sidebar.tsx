@@ -14,12 +14,14 @@ import {
   Megaphone,
   Presentation,
   Trophy,
+  Send,
   Settings,
   Upload,
   X,
 } from 'lucide-react'
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
+import { calcularSemaforo } from '../../domain/semaforo'
 import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
@@ -31,7 +33,7 @@ interface ItemMenu {
   ruta: string
   etiqueta: string
   icono: ComponentType<{ className?: string }>
-  contador?: 'pendientes' | 'alertas' | 'reclamos'
+  contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar'
 }
 
 /**
@@ -57,6 +59,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       items: [
         { ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' },
         { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
+        { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
         { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
       ],
@@ -96,7 +99,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const comprobantes = useComprobantes()
 
   const contadores = useMemo(() => {
-    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0 }
+    if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0 }
     const sectores = calcularAvisos(comprobantes, hoy)
     return {
       pendientes: comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
@@ -105,6 +108,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         const e = estadoReclamo(c, hoy)
         return e !== null && RECLAMO_PARA_ACTUAR.includes(e)
       }).length,
+      presentar: comprobantes.filter((c) => c.tipo === 'FC' && calcularSemaforo(c, hoy).etapa === 'pres_pendiente').length,
     }
   }, [datos, comprobantes, hoy])
 
@@ -152,7 +156,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                       {contador && contadores[contador] > 0 && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            contador === 'pendientes' ? 'bg-sem-amarillo text-noche' : 'bg-sem-rojo text-white'
+                            contador === 'pendientes' ? 'bg-sem-amarillo text-noche' : contador === 'presentar' ? 'bg-marca text-white' : 'bg-sem-rojo text-white'
                           }`}
                         >
                           {contadores[contador]}

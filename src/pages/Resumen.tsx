@@ -14,8 +14,9 @@ import { saldoFactura } from '../domain/importes'
 
 /**
  * Resumen: lo que la gerencia necesita ver de un vistazo, cada dato una sola vez.
- * 1. Cómo estamos hoy · 2. El año, a la izquierda · 3. El mes elegido: cobros previstos contra
- * lo realmente cobrado · 4. Dónde está la plata pendiente. El detalle está en las demás pantallas.
+ * 1. El año, a la izquierda · 2. El mes elegido: cobros previstos contra lo realmente cobrado ·
+ * 3. Lo pendiente de hoy (el total una sola vez, y en qué etapa está) · 4. Dónde está esa plata.
+ * El detalle está en las demás pantallas.
  */
 /** Importes del recuadro del año: se achican con la pantalla para entrar en una línea. */
 const GRANDE = { fontSize: 'clamp(1.05rem, 1.4vw, 1.45rem)' }
@@ -105,15 +106,7 @@ export default function Resumen() {
     <>
       <EncabezadoPagina titulo="Resumen" sucursal />
 
-      {/* 1. Cómo estamos hoy */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Indicador to={verFacturas('pendiente')} titulo="Pendiente de cobro" valor={formatoPesos(situacion.pendiente)} tono="marca" ayuda="Todo lo facturado que falta cobrar" />
-        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
-        <Indicador to={verFacturas('al_dia')} titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
-        <Indicador to={verFacturas('vencido')} titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* 2. El año: lo primero que se ve, aparte del mes. Mismo formato que los datos del mes */}
         <div className="flex flex-col rounded-xl bg-noche p-5 text-white shadow-sm">
           <div className="text-sm font-bold uppercase tracking-wide text-white">Año {anio}</div>
@@ -122,7 +115,6 @@ export default function Resumen() {
               { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: '' },
               { titulo: 'Notas de crédito', valor: Math.abs(anual.notasCredito), ayuda: 'Anulaciones y descuentos del año', clase: 'text-slate-200' },
               { titulo: 'Cobrado', valor: anual.cobrado, ayuda: 'Lo que ya pagaron las compañías', clase: 'text-emerald-300' },
-              { titulo: 'Falta cobrar', valor: anual.pendiente, ayuda: `De eso, vencido: ${formatoPesos(anual.vencido)}`, clase: '' },
             ].map((x) => (
               <div key={x.titulo}>
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-300">{x.titulo}</div>
@@ -169,6 +161,20 @@ export default function Resumen() {
             </ResponsiveContainer>
           </div>
         </Card>
+      </div>
+
+      {/* 3. Lo pendiente de hoy, una sola vez: el total y en qué etapa está */}
+      <div className="mb-3 mt-6 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-noche">Pendiente de cobro hoy</h2>
+        <Link to={verFacturas('pendiente')} className="group inline-flex items-baseline gap-2 text-marca hover:underline">
+          <span className="whitespace-nowrap font-extrabold tabular-nums" style={GRANDE}>{formatoPesos(situacion.pendiente)}</span>
+          <span className="text-xs font-semibold">Ver facturas →</span>
+        </Link>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Indicador to={verFacturas('sin_presentar')} titulo="Sin presentar" valor={formatoPesos(situacion.sinPresentar)} ayuda="Esperando documentación o presentación" />
+        <Indicador to={verFacturas('al_dia')} titulo="Al día" valor={formatoPesos(situacion.alDia)} ayuda="Presentado, todavía no vence" />
+        <Indicador to={verFacturas('vencido')} titulo="Vencido" valor={formatoPesos(situacion.vencido)} tono="rojo" ayuda="Presentado, vencido y sin cobrar" />
       </div>
 
       {/* 4. Dónde está la plata pendiente. Con una sucursal elegida, los datos de esa sucursal */}

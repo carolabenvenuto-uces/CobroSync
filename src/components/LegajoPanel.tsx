@@ -13,11 +13,13 @@ import {
   TriangleAlert,
   Undo2,
   X,
+  Camera,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { cambiosPorRespuesta, estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO, NOMBRE_RESPUESTA } from '../domain/reclamos'
 import { atendidaPorOtra } from '../domain/pedidos'
 import { PedidosLegajo } from './PedidosLegajo'
+import { SacarFoto } from './SacarFoto'
 import {
   calcularSemaforo,
   documentosDelLegajo,
@@ -109,6 +111,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [fechaCobro, setFechaCobro] = useState(hoy)
   const [importeCobroTexto, setImporteCobroTexto] = useState(() => saldoSinCobro(c).toFixed(2).replace('.', ','))
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
+  // Sacar fotos con el celular para este documento (se suben como PDF)
+  const [foto, setFoto] = useState<TipoDocumento | null>(null)
   const [motivo, setMotivo] = useState<string>('')
   const [motivoDemora, setMotivoDemora] = useState('')
   const [fechaDemora, setFechaDemora] = useState(sumarDias(hoy, 5))
@@ -147,7 +151,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const hermanas = c.tipo === 'FC' ? facturasDelSiniestro(c, datos?.comprobantes ?? []) : []
   const [compartirConHermanas, setCompartirConHermanas] = useState(true)
 
-  async function subir(tipos: TipoDocumento[], lista: FileList | null | undefined) {
+  async function subir(tipos: TipoDocumento[], lista: FileList | File[] | null | undefined) {
     const archivos = lista ? [...lista] : []
     if (archivos.length === 0) return
     setErrorSubida(null)
@@ -158,7 +162,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       if (!r.ok) {
         setErrorSubida(
           r.error.startsWith('No es un PDF')
-            ? `"${a.name}" no es un PDF. Solo se aceptan PDF: las compañías no reciben fotos.`
+            ? `"${a.name}" no es un PDF. Solo se aceptan PDF; para una foto, el botón Foto la convierte en PDF.`
             : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} orden.pdf"). Hay que cambiarle el nombre y volver a subirlo.`,
         )
         return
@@ -511,11 +515,16 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         {rol === 'sucursal' && abierta && (d.estado === 'faltante' || d.estado === 'observado') ? (
+                          <>
                           <label className={`${botonChico} cursor-pointer bg-marca text-white hover:bg-marca-oscuro`}>
                             <FileUp className="h-3.5 w-3.5" />
                             {d.estado === 'faltante' ? 'Subir' : 'Reemplazar'}
                             <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir([d.tipo], e.target.files)} />
                           </label>
+                          <button type="button" onClick={() => setFoto(d.tipo)} className={`${botonChico} border border-marca/40 bg-white text-marca hover:bg-marca/5`} title="Sacar fotos con la cámara y subirlas como PDF">
+                            <Camera className="h-3.5 w-3.5" /> Foto
+                          </button>
+                          </>
                         ) : rol === 'sucursal' && abierta && d.estado === 'en_revision' ? (
                           <>
                             <span className={`text-xs font-semibold ${ESTILO_DOC[d.estado]}`}>{NOMBRE_ESTADO_DOCUMENTO[d.estado]}</span>
@@ -1033,6 +1042,18 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           )}
         </div>
       </aside>
+      {foto && (
+        <SacarFoto
+          titulo={`${NOMBRE_DOCUMENTO[foto]} · ${formatoComprobante(c)}`}
+          nombreArchivo={`${numeroParaNombre(c)} ${NOMBRE_DOCUMENTO[foto].toLowerCase()}.pdf`}
+          onCerrar={() => setFoto(null)}
+          onListo={(pdf) => {
+            const tipo = foto
+            setFoto(null)
+            void subir([tipo], [pdf])
+          }}
+        />
+      )}
     </>
   )
 }

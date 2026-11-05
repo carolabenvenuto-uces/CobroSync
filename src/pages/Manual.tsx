@@ -271,8 +271,10 @@ const SECCIONES: Seccion[] = [
           </Paso>
         </Pasos>
         <Nota>
-          Solo se aceptan <strong>PDF</strong>: las compañías no reciben fotos. Desde el celular, la cámara o Google Drive permiten escanear en
-          PDF. Mientras un documento está en revisión, se puede quitar si hubo un error.
+          Solo se aceptan <strong>PDF</strong>. Desde el celular, el botón <strong>Foto</strong> de cada documento abre la cámara: cada foto
+          es una página, se mejora para que se lea como un escaneo (con la opción de blanco y negro, más nítida) y se sube como PDF. Para
+          mejor calidad, la hoja entera sobre un fondo oscuro, con buena luz y sin sombras. También sirven los escáneres del celular (Google
+          Drive o la app Notas en iPhone). Mientras un documento está en revisión, se puede quitar si hubo un error.
         </Nota>
         <p>Cada factura dice qué le falta: "+ Falta la orden firmada", "… Factura en revisión", "✓ Factura aprobada".</p>
       </>
@@ -455,7 +457,7 @@ const SECCIONES: Seccion[] = [
         </div>
         <div>
           <dt className="font-bold">¿Se puede usar desde el celular?</dt>
-          <dd>Sí. Las listas se ven como tarjetas y se puede subir un PDF escaneado con la cámara.</dd>
+          <dd>Sí. Las listas se ven como tarjetas y, con el botón Foto, se sacan fotos de los documentos que se suben como PDF.</dd>
         </div>
       </dl>
     ),

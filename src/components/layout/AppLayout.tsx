@@ -52,7 +52,7 @@ export function AppLayout() {
           {fuente.tipo === 'demo' ? '' : ' · '}
           {AUTORIA}
           </span>
-          <img src={`${import.meta.env.BASE_URL}grupo-sva.png`} alt="Grupo SVA" className="h-7 w-auto shrink-0 opacity-80" />
+          <img src={`${import.meta.env.BASE_URL}grupo-sva.png`} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </footer>
       </div>
 

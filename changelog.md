@@ -13,6 +13,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 - **Ajustes, solo de la administradora:** con el correo de soporte cargado, solo esa cuenta ve y guarda los Ajustes (también lo controla el servidor).
 - Los importes vencidos van en el mismo rojo oscuro que su marca.
 - **Presentar, más simple:** sin el texto de explicación; una fila por compañía (cantidad, canal, MiPyME, reenvíos y total) que abre su pantalla con las facturas para elegir, descargar los documentos, armar el mail o abrir la plataforma y marcarlas como presentadas.
+- **Notificaciones de Auditoría, menos mensajes:** lo que sube cada sucursal en el día llega en un solo aviso ("Documentación subida en 8 facturas") con la lista para abrir cada una. Las observaciones, notas de crédito, compromisos y respuestas siguen llegando de a uno.
 
 ## [1.0.0] - 2026-11-04 (marca)
 

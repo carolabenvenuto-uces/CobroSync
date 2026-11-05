@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- Sin la aclaración "(restan)" en las notas de crédito del Resumen y del manual.
 - Presentar: el encabezado de cada compañía pasa a dos renglones (datos arriba, botones abajo) para que no se aprieten.
 - Pedidos a sucursales: el detalle tiene más ancho y el de las notas de crédito sin aviso es más corto.
 - Mis facturas (rechazos y por vencer): sin la columna Prioridad, que repetía la marca MiPyME; el motivo tiene más ancho.

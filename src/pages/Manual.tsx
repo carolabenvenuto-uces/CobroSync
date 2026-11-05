@@ -106,8 +106,7 @@ const SECCIONES: Seccion[] = [
             <Etiqueta clase="bg-sem-rojo/10 text-red-800">Rojo</Etiqueta> rechazado, observado o atrasado: hay que hacer algo ya.
           </li>
           <li>
-            <Etiqueta clase="bg-red-800/10 text-red-900">Rojo oscuro</Etiqueta> vencido o crítico (lo más grave). También los importes que
-            restan, como las notas de crédito, que llevan "−".
+            <Etiqueta clase="bg-red-800/10 text-red-900">Rojo oscuro</Etiqueta> vencido o crítico (lo más grave), y las notas de crédito.
           </li>
           <li>
             <Etiqueta clase="bg-sem-amarillo/15 text-amber-900">Amarillo</Etiqueta> falta documentación, todavía en plazo; avisos importantes.
@@ -329,7 +328,7 @@ const SECCIONES: Seccion[] = [
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <strong>El año:</strong> lo facturado, las notas de crédito (restan) y lo cobrado.
+            <strong>El año:</strong> lo facturado, las notas de crédito y lo cobrado.
           </li>
           <li>
             <strong>El mes elegido:</strong> lo facturado, el cobro previsto (facturas presentadas que vencen en el mes) y lo cobrado, semana

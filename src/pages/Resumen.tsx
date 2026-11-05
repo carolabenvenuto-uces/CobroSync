@@ -168,11 +168,10 @@ export default function Resumen() {
                 </div>
                 {partes.map((x) => (
                   <div key={x.titulo}>
-                    <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      <span className="flex items-center gap-1.5">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${x.color}`} aria-hidden="true" /> {x.titulo}
-                      </span>
-                      <span className={`tabular-nums normal-case ${x.texto}`}>{pct(x.valor)}</span>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${x.color}`} aria-hidden="true" /> {x.titulo}
+                      {/* el porcentaje pegado al título, no en el borde del recuadro */}
+                      <span className={`tabular-nums normal-case ${x.texto}`}>· {pct(x.valor)}</span>
                     </div>
                     <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.texto}`} style={GRANDE}>
                       {formatoPesos(x.titulo === 'Notas de crédito' ? -x.valor : x.valor)}

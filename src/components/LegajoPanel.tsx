@@ -34,7 +34,7 @@ import { importeCobrado, saldoSinCobro } from '../domain/importes'
 import { facturasDelSiniestro } from '../domain/siniestros'
 import { esNotaTotal } from '../services/erp'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
-import { numeroParaNombre, revisarNombre } from '../domain/archivos'
+import { numeroParaNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -113,6 +113,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
   // Sacar fotos con el celular para este documento (se suben como PDF)
   const [foto, setFoto] = useState<TipoDocumento | null>(null)
+  // El siniestro no se conoce hasta tener la orden: la sucursal lo informa al subirla
+  const [siniestroNuevo, setSiniestroNuevo] = useState('')
   const [motivo, setMotivo] = useState<string>('')
   const [motivoDemora, setMotivoDemora] = useState('')
   const [fechaDemora, setFechaDemora] = useState(sumarDias(hoy, 5))
@@ -168,6 +170,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         return
       }
     }
+    // Con la orden llega el número de siniestro: si el legajo no lo tiene, se pide (o se toma del nombre del archivo)
+    let siniestro: string | null = null
+    if (!c.siniestro && tipos.includes('orden')) {
+      siniestro = siniestroNuevo.trim() || archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
+      if (!siniestro) {
+        setErrorSubida('Falta el número de siniestro: escribirlo en "Número de siniestro", arriba de los documentos, o agregarlo al nombre del archivo (por ejemplo "' + numeroParaNombre(c) + ' orden 029-9-506622.pdf").')
+        return
+      }
+    }
     setSubiendo(true)
     try {
       // Con Google cada archivo se guarda en el Drive de la empresa; en la demo solo se registra el
@@ -189,8 +200,9 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       })
       guardarDocumentos(
         documentos.map((d): Documento => (tipos.includes(d.tipo) ? documento(d.tipo) : d)),
-        { fechaDrive: hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado },
+        { fechaDrive: hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado, ...(siniestro ? { siniestro } : {}) },
       )
+      if (siniestro) registrarEvento(c.id, 'mensaje', `Informó el siniestro ${siniestro}`)
       const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
       const nombres = archivos.length > 1 ? `${archivos.length} archivos` : archivos[0].name
       registrarEvento(c.id, 'subida', `Subió ${que} (${nombres})`)
@@ -407,7 +419,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     : formatoPesos(c.total)
               }
             />
-            <Dato titulo="Siniestro / patente" valor={[c.siniestro, c.patente].filter(Boolean).join(' · ')} />
+            <Dato titulo="Siniestro / patente" valor={[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')} />
             <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} ${diffDias(c.fecha, hoy) === 1 ? 'día' : 'días'}`} />
           </dl>
 
@@ -457,6 +469,17 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       PDF llamado <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} factura.pdf</code> o{' '}
                       <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} orden.pdf</code>
                     </p>
+                  )}
+                  {rol === 'sucursal' && abierta && !c.siniestro && (
+                    <label className="mt-2 block text-[11px] font-semibold text-slate-600">
+                      Número de siniestro (figura en la orden; se pide al subirla)
+                      <input
+                        value={siniestroNuevo}
+                        onChange={(e) => setSiniestroNuevo(e.target.value)}
+                        placeholder="Por ejemplo 029-9-506622"
+                        className={`${claseSelect} mt-1 w-full font-normal`}
+                      />
+                    </label>
                   )}
                 </div>
                 {rol === 'auditoria' && paraRevisar.length > 0 && (

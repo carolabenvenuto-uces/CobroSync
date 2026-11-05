@@ -152,7 +152,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           </button>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
+        <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">
           <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
             const items = seccion.items.filter((it) => !it.soloAdministradora || administradora)

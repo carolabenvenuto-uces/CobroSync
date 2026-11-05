@@ -5,6 +5,11 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- Pie de página sin el logo de Grupo SVA (queda en el menú, junto al usuario).
+- Menú: la barra de desplazamiento va del color del menú, sin la franja gris.
+- **Foto desde el celular, revisada:** se elige cómo queda cada página (original, mejorada o blanco y negro) mirándola; tocar una página la muestra grande; la mejora ya no exagera los colores; antes de subir, una pantalla muestra el documento completo (Volver a editar o Subir PDF). En la demo, lo subido se puede abrir.
+- **Siniestro al subir la orden:** la factura no tiene siniestro hasta que la sucursal sube la orden; al subirla se pide el número (un campo en el legajo, o en el nombre del archivo: "35-11032 orden 029-9-506622.pdf").
+- Subir varios PDF: las condiciones se muestran la primera vez y después quedan en el botón Condiciones; más cortas.
 - Logo de Grupo SVA en el menú, junto al usuario (en el celular sigue en el pie).
 - Ranking de sucursales: sin los días promedio hasta subir ni la comparación con el mes anterior.
 - Resumen: el porcentaje de cada parte del año va junto a su título.

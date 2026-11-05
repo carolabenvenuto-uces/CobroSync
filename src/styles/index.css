@@ -78,3 +78,19 @@ body {
     print-color-adjust: exact;
   }
 }
+
+/* Barra de desplazamiento del menú: del mismo color que el menú, sin la franja gris */
+.scroll-oscuro {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+.scroll-oscuro::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-oscuro::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-oscuro::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.18);
+  border-radius: 9999px;
+}

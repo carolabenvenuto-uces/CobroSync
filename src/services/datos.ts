@@ -24,7 +24,7 @@ export async function cargarDatos(): Promise<DatosApp> {
     leer<CobroPrevisto[]>('cobros-previstos.json'),
     leer<MetaDemo>('meta.json'),
   ])
-  return { aseguradoras, comprobantes: comprobantes.map(normalizar), cobrosPrevistos, meta }
+  return { aseguradoras, comprobantes: comprobantes.map(normalizar).map(sinSiniestroHastaLaOrden), cobrosPrevistos, meta }
 }
 
 /** Completa los campos que un archivo de una versión anterior podría no tener. */
@@ -37,4 +37,14 @@ function normalizar(c: Comprobante): Comprobante {
     documentos: (c.documentos ?? []).filter((d) => d.tipo === 'factura' || d.tipo === 'orden'),
     compromiso: c.compromiso ?? null,
   }
+}
+
+/**
+ * En la realidad el número de siniestro llega con la orden firmada: mientras la sucursal no la
+ * subió, la factura todavía no lo tiene. Los datos de ejemplo lo traen siempre; acá se borra.
+ */
+function sinSiniestroHastaLaOrden(c: Comprobante): Comprobante {
+  if (c.tipo !== 'FC') return c
+  const orden = c.documentos.find((d) => d.tipo === 'orden')
+  return !orden || orden.estado === 'faltante' ? { ...c, siniestro: '' } : c
 }

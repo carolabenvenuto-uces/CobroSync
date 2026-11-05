@@ -117,3 +117,18 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
 export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
   return comprobantes.filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada')
 }
+
+/**
+ * Número de siniestro escrito en el nombre del archivo, además del número de factura:
+ * "35-11032 orden 029-9-506622.pdf" → "029-9-506622". Se usa para completar el siniestro del
+ * legajo, que no se conoce hasta tener la orden. Devuelve null si no hay uno (6 dígitos o más).
+ */
+export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string | null {
+  let base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  // se saca el número de factura (con o sin ceros adelante) y las palabras
+  base = base.replace(new RegExp(`\\b0*${c.puntoVenta}\\s*[-_ ]\\s*0*${c.numero}\\b`), ' ')
+  base = base.replace(/[a-záéíóúñ]+/gi, ' ')
+  const candidatos = base.match(/\d[\d\-/.]*\d/g) ?? []
+  const s = candidatos.find((x) => x.replace(/\D/g, '').length >= 6)
+  return s ?? null
+}

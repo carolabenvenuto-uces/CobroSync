@@ -155,7 +155,7 @@ export default function Resumen() {
               <div className="mt-4 flex flex-1 flex-col gap-4">
                 {[
                   { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: 'text-noche' },
-                  { titulo: 'Notas de crédito', valor: -nc, ayuda: `${pct(nc)} de lo facturado (restan)`, clase: 'text-red-700' },
+                  { titulo: 'Notas de crédito', valor: -nc, ayuda: `${pct(nc)} de lo facturado`, clase: 'text-red-700' },
                   { titulo: 'Cobrado', valor: anual.cobrado, ayuda: `${pct(anual.cobrado)} de lo facturado`, clase: 'text-esmeralda' },
                 ].map((x) => (
                   <div key={x.titulo}>
@@ -202,7 +202,7 @@ export default function Resumen() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {dato('Facturado en el mes', delMes.facturado, futuro ? 'Todavía no empezó' : `${delMes.facturas.toLocaleString('es-AR')} facturas`)}
-            {dato('Notas de crédito', -Math.abs(delMes.notasCredito), 'Anulaciones y descuentos (restan)', 'text-red-700')}
+            {dato('Notas de crédito', -Math.abs(delMes.notasCredito), 'Anulaciones y descuentos', 'text-red-700')}
             {dato('Cobro previsto', previsto.previsto, 'Facturas presentadas que vencen en el mes', 'text-marca')}
             {dato(
               'Cobrado en el mes',

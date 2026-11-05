@@ -11,6 +11,7 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 | Los datos (facturas, estados, conversación, reclamos) | Una planilla de Google de la cuenta del sector |
 | Los PDF y las fotos de cada factura | Una carpeta de una unidad compartida de Drive |
 | Los avisos por mail | Se envían desde la cuenta del sector |
+| Los PDF de facturas que todavía no están en el ERP | Pestaña **EnEspera** y carpeta "En espera" de cada sucursal; se unen al legajo al cargar el ERP |
 
 - La aplicación funciona con la cuenta del sector (la dueña de la planilla). Las sucursales **no** necesitan acceso a la planilla ni a la carpeta de Drive.
 - Cada persona entra con su cuenta de la empresa. Su rol sale de la pestaña **Usuarios**.

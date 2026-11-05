@@ -8,7 +8,7 @@
  * En la demo de GitHub Pages no existe: todo sigue funcionando en memoria, como hasta ahora.
  */
 import type { Ajustes } from '../domain/plazos'
-import type { Aseguradora, Comprobante, DatosApp, Documento, Evento, Rol, TipoDocumento } from '../domain/tipos'
+import type { Aseguradora, Comprobante, DatosApp, Documento, DocumentoEnEspera, Evento, Rol, TipoDocumento } from '../domain/tipos'
 
 export interface UsuarioGoogle {
   email: string
@@ -123,4 +123,23 @@ export async function subirAGoogle(comprobanteId: string, tipo: TipoDocumento | 
     lector.readAsDataURL(archivo)
   })
   return llamar<{ archivo: string; url: string }>('subirArchivo', comprobanteId, tipo, archivo.name, archivo.type || 'application/pdf', base64)
+}
+
+/** PDF de una factura de hoy (todavía no cargada): queda en espera hasta que se cargue el ERP. */
+export async function subirEnEsperaEnGoogle(puntoVenta: number, numero: number, tipo: string, siniestro: string, archivo: File) {
+  const base64 = await new Promise<string>((resolver, rechazar) => {
+    const lector = new FileReader()
+    lector.onload = () => resolver(String(lector.result).split(',')[1] ?? '')
+    lector.onerror = () => rechazar(lector.error)
+    lector.readAsDataURL(archivo)
+  })
+  return llamar<DocumentoEnEspera>('subirEnEspera', puntoVenta, numero, tipo, siniestro, archivo.name, archivo.type || 'application/pdf', base64)
+}
+
+export function marcarEsperaAsociadaEnGoogle(pares: { id: string; comprobanteId: string }[]): Promise<number> {
+  return llamar<number>('marcarEsperaAsociada', pares)
+}
+
+export function descartarEsperaEnGoogle(id: string): Promise<boolean> {
+  return llamar<boolean>('descartarEspera', id)
 }

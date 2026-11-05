@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { EnEsperaSucursal } from '../components/EnEspera'
 import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
@@ -394,6 +395,11 @@ export default function MisFacturas() {
             </button>
           )
         })}
+      </div>
+
+      {/* PDF de facturas de hoy, hasta que Auditoría cargue el ERP */}
+      <div className="-mt-1 mb-3">
+        <EnEsperaSucursal />
       </div>
 
       {/* Buscador, con el resultado justo abajo */}

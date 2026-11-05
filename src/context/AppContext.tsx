@@ -7,7 +7,8 @@
  * React Context evita pasar estos valores "a mano" de componente en componente.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { AreaEvento, Aseguradora, TipoDocumento, Comprobante, DatosApp, Evento, Rol, Sucursal } from '../domain/tipos'
+import type { AreaEvento, Aseguradora, TipoDocumento, Comprobante, DatosApp, DocumentoEnEspera, Evento, Rol, Sucursal } from '../domain/tipos'
+import { unirEnEspera } from '../domain/espera'
 import { anioDe, diffDias, mesDe } from '../lib/fechas'
 import { cargarDatos } from '../services/datos'
 import {
@@ -18,6 +19,9 @@ import {
   marcarLeidasEnGoogle,
   obtenerCambiosDeGoogle,
   subirAGoogle,
+  subirEnEsperaEnGoogle,
+  marcarEsperaAsociadaEnGoogle,
+  descartarEsperaEnGoogle,
   type Cambio,
   type UsuarioGoogle,
 } from '../services/google'
@@ -220,6 +224,11 @@ interface EstadoApp {
   /** En la demo los cambios viven en memoria: al recargar la página se pierden. */
   actualizarComprobante: (id: string, cambios: Partial<Comprobante>) => void
   agregarComprobante: (comprobante: Comprobante) => void
+  /** facturas nuevas del ERP: antes de agregarlas, cada una toma sus PDF en espera; devuelve cuántas se unieron */
+  agregarDelErp: (nuevas: Comprobante[]) => number
+  /** PDF de una factura de hoy (todavía no cargada), hasta que se cargue el ERP */
+  subirEnEspera: (puntoVenta: number, numero: number, tipo: DocumentoEnEspera['tipo'], siniestro: string, archivo: File) => Promise<void>
+  descartarEspera: (id: string) => Promise<void>
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
   /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
@@ -567,6 +576,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [usuarioGoogle, aplicarDelServidor, enviarCambios])
 
+  const subirEnEspera = useCallback(
+    async (puntoVenta: number, numero: number, tipo: DocumentoEnEspera['tipo'], siniestro: string, archivo: File) => {
+      const e: DocumentoEnEspera =
+        fuente.tipo === 'google'
+          ? await subirEnEsperaEnGoogle(puntoVenta, numero, tipo, siniestro, archivo)
+          : { id: `esp-${Date.now()}-${Math.round(Math.random() * 1000)}`, sucursal, puntoVenta, numero, tipo, siniestro, archivo: archivo.name, url: URL.createObjectURL(archivo), subidoPor: usuario, fecha: hoy, nombreOriginal: archivo.name, asociado: null }
+      setDatos((actual) => (actual ? { ...actual, enEspera: [...(actual.enEspera ?? []), e] } : actual))
+    },
+    [fuente.tipo, sucursal, usuario, hoy],
+  )
+
+  const descartarEspera = useCallback(
+    async (id: string) => {
+      if (fuente.tipo === 'google') await descartarEsperaEnGoogle(id)
+      setDatos((actual) => (actual ? { ...actual, enEspera: (actual.enEspera ?? []).filter((e) => e.id !== id) } : actual))
+    },
+    [fuente.tipo],
+  )
+
+  const agregarDelErp = useCallback(
+    (nuevas: Comprobante[]) => {
+      const { comprobantes, unidos } = unirEnEspera(nuevas, datosRef.current?.enEspera ?? [], hoy)
+      comprobantes.forEach(agregarComprobante)
+      if (unidos.length) {
+        const ids = new Set(unidos.map((u) => u.id))
+        setDatos((actual) => (actual ? { ...actual, enEspera: (actual.enEspera ?? []).filter((e) => !ids.has(e.id)) } : actual))
+        if (fuente.tipo === 'google') marcarEsperaAsociadaEnGoogle(unidos).catch(() => {})
+      }
+      return new Set(unidos.map((u) => u.comprobanteId)).size
+    },
+    [agregarComprobante, hoy, fuente.tipo],
+  )
+
   const subirDocumento = useCallback(
     async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>
       // En la demo el archivo queda en el navegador, para poder abrirlo y revisarlo
@@ -629,6 +671,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hoy,
       actualizarComprobante,
       agregarComprobante,
+      agregarDelErp,
+      subirEnEspera,
+      descartarEspera,
       actualizarAseguradoras,
       guardarAjustes,
       registrarEvento,
@@ -661,6 +706,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hoy,
       actualizarComprobante,
       agregarComprobante,
+      agregarDelErp,
+      subirEnEspera,
+      descartarEspera,
       actualizarAseguradoras,
       guardarAjustes,
       registrarEvento,

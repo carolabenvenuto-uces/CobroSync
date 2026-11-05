@@ -1,5 +1,5 @@
 import { useMemo, type ComponentType } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut,
   BarChart3,
@@ -7,7 +7,6 @@ import {
   Bell,
   Building2,
   ClipboardList,
-  ListTodo,
   FileText,
   FolderOpen,
   HandCoins,
@@ -74,7 +73,6 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Seguimiento y reclamos',
       items: [
         { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
-        { ruta: '/app/pedidos', etiqueta: 'Pedidos a sucursales', icono: ListTodo, contador: 'pedidos' },
         { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
       ],
     },
@@ -111,6 +109,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
+  const { pathname } = useLocation()
   const administradora = esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte)
 
   const contadores = useMemo(() => {
@@ -124,7 +123,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               ...comprobantes.filter((c) => c.tipo === 'FC' && ['doc_pendiente', 'doc_atrasada', 'doc_observada'].includes(calcularSemaforo(c, hoy).etapa)).map((c) => c.id),
               ...pedidosParaSucursal(comprobantes, hoy).map((p) => p.c.id),
             ]).size
-          : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length,
+          : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length + (rol === 'auditoria' ? pedidosAbiertos(comprobantes, hoy).length : 0),
       alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
@@ -174,7 +173,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                       onClick={onCerrar}
                       className={({ isActive }) =>
                         `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-marca text-white' : 'hover:bg-white/5 hover:text-white'
+                          // Pedidos es la otra pestaña de Pendientes de sucursales
+                          isActive || (ruta === '/app/pendientes' && pathname === '/app/pedidos') ? 'bg-marca text-white' : 'hover:bg-white/5 hover:text-white'
                         }`
                       }
                     >

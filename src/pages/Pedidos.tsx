@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { EncabezadoPagina } from '../components/ui/Card'
+import { FiltroRapido } from '../components/ui/FiltroRapido'
+import { PestanasSucursales } from '../components/PestanasSucursales'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { NOMBRE_PEDIDO, pedidosAbiertos, type PedidoAbierto } from '../domain/pedidos'
@@ -15,8 +17,8 @@ export default function Pedidos() {
   const { hoy, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const lista = useMemo(() => pedidosAbiertos(comprobantes, hoy), [comprobantes, hoy])
-  const [ver, setVer] = useState<'esperando' | 'respondido' | 'todos'>('esperando')
-  const filas = lista.filter((p) => ver === 'todos' || p.estado === ver)
+  const [ver, setVer] = useState<'esperando' | 'respondido' | 'todos' | 'viejos'>('todos')
+  const filas = lista.filter((p) => ver === 'todos' || (ver === 'viejos' ? p.estado === 'esperando' && p.dias > 7 : p.estado === ver))
   const esperando = lista.filter((p) => p.estado === 'esperando')
   const respondidos = lista.filter((p) => p.estado === 'respondido')
   const viejos = esperando.filter((p) => p.dias > 7).length
@@ -49,7 +51,6 @@ export default function Pedidos() {
       clave: 'estado',
       movil: 'accion',
       titulo: 'Estado',
-      filtro: (p) => (p.estado === 'esperando' ? 'Esperando a la sucursal' : 'Respondido: falta cerrar'),
       celda: (p) =>
         p.estado === 'esperando' ? (
           <span className="whitespace-nowrap rounded-md bg-sem-amarillo/15 px-2 py-0.5 text-xs font-semibold text-amber-900">Esperando a la sucursal</span>
@@ -77,24 +78,20 @@ export default function Pedidos() {
     )
   }
 
-  const tarjeta = (clave: typeof ver, titulo: string, valor: number, ayuda: string, tono?: 'rojo') => (
-    <button type="button" onClick={() => setVer(clave)} className={`rounded-xl text-left ${ver === clave ? 'ring-2 ring-marca' : ''}`}>
-      <Indicador titulo={titulo} valor={valor.toLocaleString('es-AR')} ayuda={ayuda} tono={tono} />
-    </button>
-  )
-
   return (
     <>
-      <EncabezadoPagina
-        titulo="Pedidos a sucursales"
-        subtitulo="Lo que se les pidió a las sucursales (errores de factura, refacturaciones, notas de crédito sin avisar) y cuántos días lleva cada pedido."
-        sucursal
+      <EncabezadoPagina titulo="Pendientes de sucursales" sucursal />
+      <PestanasSucursales />
+      <FiltroRapido
+        opciones={[
+          { clave: 'todos', titulo: 'Todos', cantidad: lista.length },
+          { clave: 'esperando', titulo: 'Esperando a la sucursal', cantidad: esperando.length },
+          { clave: 'viejos', titulo: 'Más de 7 días', cantidad: viejos, alerta: true },
+          { clave: 'respondido', titulo: 'Respondidos: falta cerrar', cantidad: respondidos.length },
+        ]}
+        activa={ver}
+        onElegir={(c) => setVer(c as typeof ver)}
       />
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        {tarjeta('esperando', 'Esperando a la sucursal', esperando.length, viejos ? `${viejos} con más de 7 días` : 'Ninguno con más de 7 días', viejos ? 'rojo' : undefined)}
-        {tarjeta('respondido', 'Respondidos: falta cerrar', respondidos.length, 'Revisar la respuesta y darlos por resueltos')}
-        {tarjeta('todos', 'Todos los abiertos', lista.length, 'Esperando y respondidos')}
-      </div>
       <Tabla
         id="pedidos"
         key={ver}
@@ -107,7 +104,7 @@ export default function Pedidos() {
         ordenInicial={{ clave: 'dias', dir: 'desc' }}
         exportar={exportar}
         resumen={(l) => `${l.length} ${l.length === 1 ? 'pedido' : 'pedidos'}`}
-        vacio={ver === 'esperando' ? 'Sin pedidos esperando a las sucursales.' : 'Sin pedidos en esta lista.'}
+        vacio="Sin pedidos en esta lista."
       />
     </>
   )

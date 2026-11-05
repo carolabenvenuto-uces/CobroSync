@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarClock, Info } from 'lucide-react'
+import { CalendarClock } from 'lucide-react'
 import { Chip, nombreEtapa } from '../components/ui/Badges'
-import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { EncabezadoPagina } from '../components/ui/Card'
+import { FiltroRapido } from '../components/ui/FiltroRapido'
+import { PestanasSucursales } from '../components/PestanasSucursales'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
-import { plazosActuales, textoCritica, textoPlazo } from '../domain/plazos'
 import { avisoA, compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo, type NivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
@@ -26,7 +27,7 @@ function situacion(c: Comprobante, hoy: string): string {
 
 /**
  * Pendientes de las sucursales: lo que cada sucursal todavía tiene que subir o corregir.
- * Las tarjetas de arriba y los filtros de las columnas filtran la misma tabla.
+ * Los atajos de arriba y los filtros de las columnas filtran la misma tabla.
  */
 export default function Pendientes() {
   const { datos, hoy, abrirLegajo } = useApp()
@@ -58,18 +59,16 @@ export default function Pendientes() {
     const l = filas.filter(f)
     return { cantidad: l.length, monto: l.reduce((s, x) => s + x.c.total, 0) }
   }
-  const tarjetas: { titulo: string; ayuda: string; tono: 'amarillo' | 'rojo' | 'neutro'; filtro: Record<string, string>; r: { cantidad: number; monto: number } }[] = [
-    { titulo: 'En plazo', ayuda: `Hasta ${textoPlazo()}`, tono: 'amarillo' as const, filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
-    { titulo: 'Atrasadas', ayuda: 'Van en el resumen del lunes al gerente', tono: 'rojo' as const, filtro: { estado: 'Atrasada' }, r: resumen((x) => x.nivel === 'atrasado') },
-    { titulo: 'Críticas', ayuda: 'Aviso a gerencia general', tono: 'rojo' as const, filtro: { estado: 'Crítica' }, r: resumen((x) => x.nivel === 'critico') },
-    {
-      titulo: 'Compromisos vencidos',
-      ayuda: 'Fecha prometida ya pasada',
-      tono: 'neutro' as const,
-      filtro: { situacion: 'Compromiso vencido' },
-      r: resumen((x) => x.situacion === 'Compromiso vencido'),
-    },
+  // Atajos arriba de la tabla: usan los mismos filtros de las columnas
+  const atajos: { clave: string; titulo: string; filtro: Record<string, string>; alerta?: boolean; r: { cantidad: number; monto: number } }[] = [
+    { clave: 'todas', titulo: 'Todas', filtro: {}, r: resumen(() => true) },
+    { clave: 'plazo', titulo: 'En plazo', filtro: { estado: 'En plazo' }, r: resumen((x) => x.nivel === 'en_plazo') },
+    { clave: 'atrasada', titulo: 'Atrasadas', filtro: { estado: 'Atrasada' }, alerta: true, r: resumen((x) => x.nivel === 'atrasado') },
+    { clave: 'critica', titulo: 'Críticas', filtro: { estado: 'Crítica' }, alerta: true, r: resumen((x) => x.nivel === 'critico') },
+    { clave: 'compromiso', titulo: 'Compromiso vencido', filtro: { situacion: 'Compromiso vencido' }, alerta: true, r: resumen((x) => x.situacion === 'Compromiso vencido') },
   ]
+  const atajoActivo =
+    atajos.slice(1).find((a) => Object.entries(a.filtro).every(([k, v]) => params.get(k) === v))?.clave ?? 'todas'
   const filtrosIniciales = Object.fromEntries(params.entries())
 
   const columnas: Columna<Fila>[] = [
@@ -153,33 +152,20 @@ export default function Pendientes() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Pendientes de sucursales" subtitulo="Facturas que esperan documentación de las sucursales" sucursal />
-
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          La sucursal tiene <strong>{plazosActuales().comun} días</strong> desde la factura (<strong>{plazosActuales().mipyme}</strong> si es
-          MiPyME). Pasado el plazo, la factura va en el resumen de los lunes al gerente de la sucursal; con {textoCritica()} es crítica y le
-          llega también a la gerencia general.
-        </span>
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {tarjetas.map((t) => {
-          const [clave, valor] = Object.entries(t.filtro)[0]
-          const activa = params.get(clave) === valor
-          return (
-            <button
-              key={t.titulo}
-              type="button"
-              onClick={() => setParams(activa ? {} : t.filtro, { replace: true })}
-              className={`rounded-xl text-left transition ${activa ? 'ring-2 ring-marca' : 'hover:ring-2 hover:ring-slate-200'}`}
-            >
-              <Indicador titulo={t.titulo} valor={String(t.r.cantidad)} tono={t.tono} ayuda={`${formatoPesos(t.r.monto)} · ${t.ayuda}`} />
-            </button>
-          )
-        })}
-      </div>
+      <EncabezadoPagina titulo="Pendientes de sucursales" sucursal />
+      <PestanasSucursales />
+      <FiltroRapido
+        opciones={atajos.map((a) => ({ clave: a.clave, titulo: a.titulo, cantidad: a.r.cantidad, monto: a.r.monto, alerta: a.alerta }))}
+        activa={atajoActivo}
+        onElegir={(clave) => {
+          // conserva el filtro de sucursal que venga de un aviso
+          const nuevos = new URLSearchParams(params)
+          nuevos.delete('estado')
+          nuevos.delete('situacion')
+          Object.entries(atajos.find((a) => a.clave === clave)?.filtro ?? {}).forEach(([k, v]) => nuevos.set(k, v))
+          setParams(nuevos, { replace: true })
+        }}
+      />
 
       <Tabla
         id="pendientes"

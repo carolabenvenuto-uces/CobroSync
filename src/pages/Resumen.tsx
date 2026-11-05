@@ -168,7 +168,7 @@ export default function Resumen() {
                 ))}
                 {/* Cómo se reparte lo facturado del año: el gráfico que completa el recuadro */}
                 <div className="mt-auto rounded-lg bg-white/70 p-3">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Qué pasó con lo facturado</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Composición de lo facturado</div>
                   <div className="flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={partes.map((x) => `${x.titulo} ${pct(x.valor)}`).join(', ')}>
                     {partes.map((x) => (
                       <div key={x.titulo} className={x.color} style={{ width: `${(x.valor / base) * 100}%` }} />

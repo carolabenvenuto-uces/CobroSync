@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- Resumen: el gráfico del año se llama "Composición de lo facturado".
 - **Foto desde el celular:** cada documento de la sucursal tiene el botón Foto, que abre la cámara. Cada foto es una página; se mejora en el navegador (luz pareja, papel blanco, más contraste, opción blanco y negro), se puede girar o quitar, y se sube como un solo PDF.
 - Los desplegables que deciden algo (la factura que anula una nota de crédito, motivos de observación, rechazo y demora, documento rechazado, tipo de pedido y respuesta de la compañía) arrancan en "Seleccionar…": no vienen con la primera opción elegida y el botón se habilita recién al elegir.
 - Logo de Grupo SVA en el ingreso y en el pie de cada pantalla.

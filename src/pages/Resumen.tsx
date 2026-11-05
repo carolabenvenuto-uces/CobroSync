@@ -152,7 +152,7 @@ export default function Resumen() {
               { titulo: 'Falta cobrar', valor: falta, color: 'bg-sem-amarillo', texto: 'text-amber-900' },
             ]
             return (
-              <div className="mt-4 flex flex-1 flex-col gap-4">
+              <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturado</div>
                   <div className="whitespace-nowrap font-extrabold tabular-nums text-noche" style={GRANDE}>

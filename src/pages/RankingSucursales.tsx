@@ -8,10 +8,6 @@ import { rankingSucursales } from '../domain/sucursales'
 import { anioDe, mesDe } from '../lib/fechas'
 import { descargarExcel } from '../lib/exportar'
 import { formatoPesos, MESES } from '../lib/formato'
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
-
-/** Con menos facturas que esto, los promedios de una sucursal se marcan como poco representativos. */
-const MINIMO_REPRESENTATIVO = 100
 
 /**
  * Ranking de sucursales: quién tiene más documentación pendiente y cuánta plata retiene.
@@ -34,42 +30,6 @@ export default function RankingSucursales() {
   )
   const textoPeriodo = periodo === 'anio' ? `año ${anio}` : `${MESES[periodo - 1].toLowerCase()} ${anio}`
 
-  // Tendencia: el mes elegido contra el anterior. Con "todo el año", el último mes cerrado
-  // contra el anterior (el mes en curso todavía tiene facturas recientes sin subir).
-  const mesComparado = periodo === 'anio' ? (anioDe(hoy) === anio ? mesDe(hoy) - 1 : 12) : periodo
-  const tendencia = useMemo(() => {
-    if (mesComparado < 2) return null
-    const deMes = (m: number) =>
-      new Map(rankingSucursales(comprobantes, meta.sucursales, hoy, anio, m, parametros).map((r) => [r.sucursal.nombre, r]))
-    return { actual: deMes(mesComparado), anterior: deMes(mesComparado - 1) }
-  }, [comprobantes, meta.sucursales, hoy, anio, mesComparado, parametros])
-
-  /** Flecha de cada sucursal: menos días hasta subir el legajo = mejoró. */
-  function flecha(nombre: string) {
-    const a = tendencia?.actual.get(nombre)?.diasPromedioEscaneo
-    const b = tendencia?.anterior.get(nombre)?.diasPromedioEscaneo
-    if (a === null || a === undefined || b === null || b === undefined) return null
-    const diferencia = Math.round((a - b) * 10) / 10
-    const mes = MESES[mesComparado - 2].slice(0, 3).toLowerCase()
-    if (Math.abs(diferencia) < 0.5) {
-      return (
-        <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400" title={`Igual que en ${MESES[mesComparado - 2].toLowerCase()}`}>
-          <Minus className="h-3 w-3" /> igual que {mes}
-        </span>
-      )
-    }
-    const mejoro = diferencia < 0
-    const Icono = mejoro ? ArrowDownRight : ArrowUpRight
-    return (
-      <span
-        className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${mejoro ? 'text-teal-700' : 'text-sem-rojo'}`}
-        title={`${MESES[mesComparado - 1]}: ${a} días · ${MESES[mesComparado - 2]}: ${b} días`}
-      >
-        <Icono className="h-3 w-3" />
-        {mejoro ? 'mejoró' : 'empeoró'} {Math.abs(diferencia).toLocaleString('es-AR')} d vs {mes}
-      </span>
-    )
-  }
   const totalRetenido = ranking.reduce((s, r) => s + r.retenido, 0)
 
   const grafico = ranking.map((r) => ({
@@ -91,7 +51,6 @@ export default function RankingSucursales() {
         'Importe retenido hoy',
         '% de lo retenido',
         `Facturas del período (${textoPeriodo})`,
-        'Días promedio hasta subir el legajo',
         '% subidas dentro del plazo',
         'Compromisos vencidos',
         'NC sin aviso',
@@ -106,7 +65,6 @@ export default function RankingSucursales() {
         r.retenido,
         totalRetenido ? Math.round((r.retenido / totalRetenido) * 100) : 0,
         r.facturas,
-        r.diasPromedioEscaneo,
         r.dentroDePlazoPct,
         r.compromisosVencidos,
         r.ncSinInformar,
@@ -119,11 +77,11 @@ export default function RankingSucursales() {
     <>
       <EncabezadoPagina
         titulo="Ranking de sucursales"
-        subtitulo={`Documentación pendiente, ordenada por importe retenido. Promedios del ${textoPeriodo}.`}
+        subtitulo={`Documentación pendiente, ordenada por importe retenido. Facturas y subidas en plazo del ${textoPeriodo}.`}
         acciones={
           <>
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              Promedios de
+              Período
               <select
                 className={claseSelect}
                 value={periodo}
@@ -175,14 +133,11 @@ export default function RankingSucursales() {
                 <th className="px-3 py-3 text-right font-semibold">Compromisos vencidos</th>
                 <th className="px-3 py-3 text-right font-semibold">NC sin aviso</th>
                 <th className="px-3 py-3 text-right font-semibold">Facturas ({periodo === 'anio' ? 'año' : 'mes'})</th>
-                <th className="px-3 py-3 text-right font-semibold">Días prom. hasta subir</th>
-                <th className="px-3 py-3 font-semibold">{tendencia ? `${MESES[mesComparado - 1]} vs. ${MESES[mesComparado - 2].toLowerCase()}` : 'Tendencia'}</th>
                 <th className="px-4 py-3 text-right font-semibold">Subidas en plazo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {ranking.map((r, i) => {
-                const pocas = r.facturas < MINIMO_REPRESENTATIVO
                 return (
                   <tr key={r.sucursal.nombre}>
                     <td className="px-4 py-3 text-slate-400">{i + 1}</td>
@@ -204,11 +159,6 @@ export default function RankingSucursales() {
                     </td>
                     <td className={`px-3 py-3 text-right tabular-nums ${r.ncSinInformar ? 'font-semibold' : 'text-slate-400'}`}>{r.ncSinInformar}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{r.facturas.toLocaleString('es-AR')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {r.diasPromedioEscaneo ?? '—'}
-                      {pocas && <div className="text-[11px] text-slate-400">pocas facturas</div>}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">{flecha(r.sucursal.nombre) ?? <span className="text-xs text-slate-400">—</span>}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{r.dentroDePlazoPct === null ? '—' : `${r.dentroDePlazoPct} %`}</td>
                   </tr>
                 )
@@ -218,9 +168,8 @@ export default function RankingSucursales() {
         </div>
       </Card>
       <p className="mt-3 text-xs text-slate-500">
-        Los promedios de una sucursal con menos de {MINIMO_REPRESENTATIVO} facturas en el período se marcan como poco
-        representativos. La tendencia compara los días promedio hasta subir el legajo de un mes con el anterior: si bajan, la
-        sucursal mejoró. El costo de la demora por sucursal está en "Impacto económico".
+        Facturas y subidas en plazo corresponden al período elegido; lo pendiente y lo retenido, a hoy. El costo de la demora por
+        sucursal está en "Impacto económico".
       </p>
     </>
   )

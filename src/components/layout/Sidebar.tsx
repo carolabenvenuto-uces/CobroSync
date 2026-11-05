@@ -203,10 +203,11 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
               {usuario.slice(0, 1)}
             </div>
-            <div className="min-w-0 text-sm font-semibold text-white">
+            <div className="min-w-0 flex-1 text-sm font-semibold text-white">
               <div className="truncate">{usuario}</div>
               {cuenta && <div className="truncate text-[11px] font-normal text-slate-400">{cuenta.email}</div>}
             </div>
+            <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="h-9 w-auto shrink-0" />
           </div>
           {fuente.tipo === 'google' ? (
             <div className="mt-1 truncate text-[11px] text-slate-400">

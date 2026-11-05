@@ -90,7 +90,9 @@ export type RevisionNombre =
   | { ok: true; factura: Comprobante; tipo: TipoArchivo }
   | { ok: false; error: string; tipo: TipoArchivo }
 
-const EJEMPLO = '35-11032 orden.pdf'
+const EJEMPLO = '35-11032 siniestro 029-9-506622.pdf'
+/** Nombres cortos: las plataformas de las compañías rechazan los nombres largos. */
+export const LARGO_MAXIMO_NOMBRE = 40
 
 /**
  * La regla que se exige (no solo se pide): PDF y, en el nombre, el punto de venta y el número de una
@@ -101,6 +103,9 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   const tipo = tipoPorNombre(nombre)
   if (!esPdf) return { ok: false, tipo, error: 'No es un PDF: solo se aceptan PDF.' }
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  if (base.length > LARGO_MAXIMO_NOMBRE) {
+    return { ok: false, tipo, error: `El nombre es muy largo (más de ${LARGO_MAXIMO_NOMBRE} caracteres). Alcanza con el número de factura y el siniestro: ${EJEMPLO}` }
+  }
   const encontrados = [...base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)].map((m) => ({ pv: Number(m[1]), numero: Number(m[2]), texto: m[0] }))
   if (encontrados.length === 0) {
     return { ok: false, tipo, error: `El nombre no tiene el número de factura. Por ejemplo: ${EJEMPLO}` }
@@ -120,15 +125,18 @@ export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
 
 /**
  * Número de siniestro escrito en el nombre del archivo, además del número de factura:
- * "35-11032 orden 029-9-506622.pdf" → "029-9-506622". Se usa para completar el siniestro del
+ * "35-11032 siniestro 22365.pdf" → "22365"; "35-11032 or 029-9-506622.pdf" → "029-9-506622". Se usa para completar el siniestro del
  * legajo, que no se conoce hasta tener la orden. Devuelve null si no hay uno (6 dígitos o más).
  */
 export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string | null {
   let base = nombre.replace(/\.[a-z0-9]+$/i, '')
-  // se saca el número de factura (con o sin ceros adelante) y las palabras
+  // se saca el número de factura (con o sin ceros adelante)
   base = base.replace(new RegExp(`\\b0*${c.puntoVenta}\\s*[-_ ]\\s*0*${c.numero}\\b`), ' ')
+  // 1) lo que sigue a "siniestro" (o "sin", "stro", "sto"): "siniestro 22365", "sin. 029-9-506622"
+  const conPalabra = base.match(/\b(?:siniestro|sin|stro|sto)\b\.?\s*[:#nº°]*\s*([a-z0-9][a-z0-9\-/.]*\d[a-z0-9\-/.]*)/i)
+  if (conPalabra && conPalabra[1].replace(/\D/g, '').length >= 4) return conPalabra[1].replace(/[.\-/]+$/, '')
+  // 2) sin la palabra: un número largo aparte del de la factura
   base = base.replace(/[a-záéíóúñ]+/gi, ' ')
   const candidatos = base.match(/\d[\d\-/.]*\d/g) ?? []
-  const s = candidatos.find((x) => x.replace(/\D/g, '').length >= 6)
-  return s ?? null
+  return candidatos.find((x) => x.replace(/\D/g, '').length >= 6) ?? null
 }

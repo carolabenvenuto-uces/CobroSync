@@ -165,7 +165,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         setErrorSubida(
           r.error.startsWith('No es un PDF')
             ? `"${a.name}" no es un PDF. Solo se aceptan PDF; para una foto, el botón Foto la convierte en PDF.`
-            : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} orden.pdf"). Hay que cambiarle el nombre y volver a subirlo.`,
+            : `"${a.name}": el nombre tiene que tener el número de esta factura, ${numeroParaNombre(c)} (por ejemplo "${numeroParaNombre(c)} siniestro 22365.pdf"). Hay que cambiarle el nombre y volver a subirlo.`,
         )
         return
       }
@@ -175,7 +175,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     if (!c.siniestro && tipos.includes('orden')) {
       siniestro = siniestroNuevo.trim() || archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
       if (!siniestro) {
-        setErrorSubida('Falta el número de siniestro: escribirlo en "Número de siniestro", arriba de los documentos, o agregarlo al nombre del archivo (por ejemplo "' + numeroParaNombre(c) + ' orden 029-9-506622.pdf").')
+        setErrorSubida('Falta el número de siniestro: escribirlo en "Número de siniestro", arriba de los documentos, o agregarlo al nombre del archivo (por ejemplo "' + numeroParaNombre(c) + ' siniestro 22365.pdf").')
         return
       }
     }
@@ -466,8 +466,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   <h3 className="font-bold">Documentación</h3>
                   {rol === 'sucursal' && abierta && (
                     <p className="text-[11px] text-slate-500">
-                      PDF llamado <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} factura.pdf</code> o{' '}
-                      <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} orden.pdf</code>
+                      PDF con el número de factura y el siniestro:{' '}
+                      <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} siniestro {c.siniestro || '22365'}.pdf</code>
                     </p>
                   )}
                   {rol === 'sucursal' && abierta && !c.siniestro && (

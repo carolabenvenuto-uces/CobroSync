@@ -262,8 +262,9 @@ const SECCIONES: Seccion[] = [
             El botón <strong>Subir varios PDF de una vez</strong>, arriba.
           </Paso>
           <Paso n={2}>
-            Todos los PDF juntos. Cada uno va a su factura por el número del nombre: el punto de venta y el número, por ejemplo{' '}
-            <code className="rounded bg-slate-100 px-1">35-11032 orden.pdf</code> o <code className="rounded bg-slate-100 px-1">35-11032 factura.pdf</code>.
+            Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}
+            <code className="rounded bg-slate-100 px-1">35-11032 siniestro 22365.pdf</code> (si se quiere, <code className="rounded bg-slate-100 px-1">fc</code> u{' '}
+            <code className="rounded bg-slate-100 px-1">or</code> para decir qué es). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila.
           </Paso>
           <Paso n={3}>
             Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y
@@ -453,7 +454,7 @@ const SECCIONES: Seccion[] = [
         </div>
         <div>
           <dt className="font-bold">¿Por qué no se puede subir un archivo?</dt>
-          <dd>Tiene que ser PDF y tener en el nombre el punto de venta y el número de la factura (por ejemplo, 35-11032).</dd>
+          <dd>Tiene que ser PDF, con el número de la factura en el nombre (por ejemplo, 35-11032 siniestro 22365) y no más de 40 caracteres.</dd>
         </div>
         <div>
           <dt className="font-bold">¿Se puede usar desde el celular?</dt>

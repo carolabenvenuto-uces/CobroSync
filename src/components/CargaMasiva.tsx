@@ -22,6 +22,9 @@ interface Fila {
   tipo: TipoArchivo
   /** por qué no se puede subir: no es PDF, el nombre no tiene el número o el número no existe */
   error: string | null
+  /** la factura todavía no tiene siniestro: se toma del nombre o se escribe en la fila */
+  pideSiniestro: boolean
+  siniestro: string
 }
 
 /**
@@ -40,16 +43,19 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   const [arrastrando, setArrastrando] = useState(false)
   const [estado, setEstado] = useState<{ texto: string; error?: boolean } | null>(null)
   const [subiendo, setSubiendo] = useState(false)
-  // Las condiciones se muestran solas la primera vez; después quedan en el botón Condiciones
-  const [condiciones, setCondiciones] = useState(() => {
+  // La primera vez las condiciones se leen sí o sí: hasta tocar Entendido no se cierran ni se pueden
+  // agregar archivos. Después quedan en el botón Condiciones, para abrirlas y cerrarlas.
+  const [leidas, setLeidas] = useState(() => {
     try {
-      return !localStorage.getItem('cobrosync-condiciones-varios')
+      return !!localStorage.getItem('cobrosync-condiciones-varios')
     } catch {
-      return true
+      return false
     }
   })
+  const [condiciones, setCondiciones] = useState(!leidas)
   function cerrarCondiciones() {
     setCondiciones(false)
+    setLeidas(true)
     try {
       localStorage.setItem('cobrosync-condiciones-varios', '1')
     } catch {
@@ -63,12 +69,10 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       ...actuales,
       ...nuevos.map((archivo): Fila => {
         const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
-        if (!r.ok) return { archivo, facturaId: '', tipo: r.tipo, error: r.error }
-        // La orden trae el siniestro: si la factura todavía no lo tiene, tiene que venir en el nombre
-        if (r.tipo !== 'factura' && !r.factura.siniestro && !siniestroDelNombre(archivo.name, r.factura)) {
-          return { archivo, facturaId: '', tipo: r.tipo, error: `Falta el número de siniestro en el nombre (por ejemplo "${archivo.name.replace(/\.pdf$/i, '')} 029-9-506622.pdf").` }
-        }
-        return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null }
+        if (!r.ok) return { archivo, facturaId: '', tipo: r.tipo, error: r.error, pideSiniestro: false, siniestro: '' }
+        // El siniestro llega con la documentación: si la factura no lo tiene, sale del nombre o se escribe en la fila
+        const pide = !r.factura.siniestro
+        return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, pideSiniestro: pide, siniestro: pide ? siniestroDelNombre(archivo.name, r.factura) ?? '' : '' }
       }),
     ])
     setEstado(null)
@@ -81,6 +85,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   const cambiar = (i: number, cambios: Partial<Fila>) => setFilas((l) => l.map((f, j) => (j === i ? { ...f, ...cambios } : f)))
 
   const asignadas = filas.filter((f) => f.facturaId)
+  const sinSiniestro = asignadas.filter((f) => f.pideSiniestro && !f.siniestro.trim()).length
   const sinAsignar = filas.length - asignadas.length
 
   async function subirTodo() {
@@ -122,7 +127,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           subidos.push(tipo === 'documentacion' ? 'la documentación' : NOMBRE_DOCUMENTO[tipo].toLowerCase())
           hechas += archivos.length
         }
-        const siniestro = c.siniestro ? null : lista.map((f) => siniestroDelNombre(f.archivo.name, c)).find(Boolean) ?? null
+        const siniestro = c.siniestro ? null : lista.map((f) => f.siniestro.trim()).find(Boolean) ?? null
         actualizarComprobante(id, {
           ...(siniestro ? { siniestro } : {}),
           documentos,
@@ -153,8 +158,10 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => (condiciones ? cerrarCondiciones() : setCondiciones(true))}
-              className="inline-flex items-center gap-1 rounded-full border border-sem-amarillo/60 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              onClick={() => leidas && setCondiciones((v) => !v)}
+              disabled={!leidas}
+              title={leidas ? undefined : 'Leer las condiciones y tocar Entendido'}
+              className="inline-flex disabled:cursor-default items-center gap-1 rounded-full border border-sem-amarillo/60 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
             >
               <Info className="h-3.5 w-3.5" /> Condiciones
             </button>
@@ -172,7 +179,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             }}
             onDragLeave={() => setArrastrando(false)}
             onDrop={soltar}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center ${
+            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center ${!leidas ? 'pointer-events-none opacity-40' : ''} ${
               arrastrando ? 'border-marca bg-marca/5' : 'border-slate-300 hover:border-marca/60'
             }`}
           >
@@ -186,17 +193,17 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
             <div className="mt-3 rounded-lg border border-sem-amarillo/50 bg-amber-50 p-3 text-xs text-amber-950">
               <ul className="list-disc space-y-0.5 pl-4">
                 <li>
-                  Solo <strong>PDF</strong>, con el <strong>número de factura</strong> en el nombre y qué es: <code>35-11032 factura.pdf</code> o{' '}
-                  <code>35-11032 orden.pdf</code> (las dos juntas: <code>35-11032.pdf</code>).
+                  Solo <strong>PDF</strong>. En el nombre, el <strong>número de factura</strong> y el <strong>siniestro</strong>:{' '}
+                  <code>35-11032 siniestro 22365.pdf</code>. Si se quiere, <code>fc</code> u <code>or</code> para decir qué es.
                 </li>
-                <li>
-                  Con la orden, agregar el <strong>número de siniestro</strong>: <code>35-11032 orden 029-9-506622.pdf</code>.
-                </li>
-                <li>Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo. Para fotos, el botón Foto de cada factura.</li>
+                <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
+                <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
               </ul>
-              <button type="button" onClick={cerrarCondiciones} className="mt-2 font-semibold text-amber-900 underline">
-                Entendido
-              </button>
+              {!leidas && (
+                <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
+                  Entendido
+                </button>
+              )}
             </div>
           )}
 
@@ -223,6 +230,15 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                           <span className="whitespace-nowrap">
                             {formatoComprobante(factura)}
                             {factura.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {factura.siniestro}</span>}
+                            {f.pideSiniestro && (
+                              <input
+                                value={f.siniestro}
+                                onChange={(e) => cambiar(i, { siniestro: e.target.value })}
+                                placeholder="N.º de siniestro"
+                                aria-label="Número de siniestro"
+                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${f.siniestro.trim() ? '' : 'border-sem-amarillo'}`}
+                              />
+                            )}
                           </span>
                         ) : (
                           <span className="text-xs font-semibold text-red-800">{f.error}</span>
@@ -257,11 +273,13 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
           <span className="text-sm text-slate-600">
-            {filas.length === 0 ? 'Todavía no agregó archivos.' : `${asignadas.length} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
+            {filas.length === 0
+              ? 'Todavía no hay archivos.'
+              : `${asignadas.length} listos para subir${sinSiniestro ? ` · ${sinSiniestro} sin número de siniestro (escribirlo en la fila)` : ''}${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"
-            disabled={subiendo || asignadas.length === 0}
+            disabled={subiendo || asignadas.length === 0 || sinSiniestro > 0}
             onClick={() => void subirTodo()}
             className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
           >

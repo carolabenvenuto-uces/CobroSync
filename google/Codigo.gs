@@ -127,7 +127,8 @@ function obtenerDatos() {
  * - evento: un mensaje nuevo para la conversación (se agrega, nunca reemplaza)
  * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Auditoría.
  */
-var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada'];
+// siniestro: lo informa la sucursal al subir la orden (antes no se conoce)
+var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro'];
 
 function aplicarCambios(cambios) {
   var usuario = usuarioActual_();

@@ -1,7 +1,7 @@
 import { useMemo, useState, type DragEvent } from 'react'
-import { FileUp, Upload, X } from 'lucide-react'
+import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, revisarNombre, type TipoArchivo } from '../domain/archivos'
+import { facturasParaCargar, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
@@ -40,6 +40,22 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   const [arrastrando, setArrastrando] = useState(false)
   const [estado, setEstado] = useState<{ texto: string; error?: boolean } | null>(null)
   const [subiendo, setSubiendo] = useState(false)
+  // Las condiciones se muestran solas la primera vez; después quedan en el botón Condiciones
+  const [condiciones, setCondiciones] = useState(() => {
+    try {
+      return !localStorage.getItem('cobrosync-condiciones-varios')
+    } catch {
+      return true
+    }
+  })
+  function cerrarCondiciones() {
+    setCondiciones(false)
+    try {
+      localStorage.setItem('cobrosync-condiciones-varios', '1')
+    } catch {
+      // sin almacenamiento: se vuelven a mostrar la próxima vez
+    }
+  }
 
   function agregar(lista: FileList | null) {
     const nuevos = lista ? [...lista] : []
@@ -47,7 +63,12 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       ...actuales,
       ...nuevos.map((archivo): Fila => {
         const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
-        return r.ok ? { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null } : { archivo, facturaId: '', tipo: r.tipo, error: r.error }
+        if (!r.ok) return { archivo, facturaId: '', tipo: r.tipo, error: r.error }
+        // La orden trae el siniestro: si la factura todavía no lo tiene, tiene que venir en el nombre
+        if (r.tipo !== 'factura' && !r.factura.siniestro && !siniestroDelNombre(archivo.name, r.factura)) {
+          return { archivo, facturaId: '', tipo: r.tipo, error: `Falta el número de siniestro en el nombre (por ejemplo "${archivo.name.replace(/\.pdf$/i, '')} 029-9-506622.pdf").` }
+        }
+        return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null }
       }),
     ])
     setEstado(null)
@@ -101,7 +122,9 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           subidos.push(tipo === 'documentacion' ? 'la documentación' : NOMBRE_DOCUMENTO[tipo].toLowerCase())
           hechas += archivos.length
         }
+        const siniestro = c.siniestro ? null : lista.map((f) => siniestroDelNombre(f.archivo.name, c)).find(Boolean) ?? null
         actualizarComprobante(id, {
+          ...(siniestro ? { siniestro } : {}),
           documentos,
           fechaDrive: hoy,
           subidoPor: usuario,
@@ -125,13 +148,20 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
         <div className="flex items-start justify-between border-b border-slate-200 p-5">
           <div>
             <h2 className="text-lg font-extrabold">Subir varios PDF de una vez</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Todos los PDF juntos: cada uno va a la factura del número que tiene en el nombre. Después de revisar la lista, <strong>Subir todo</strong>.
-            </p>
+            <p className="mt-1 text-sm text-slate-600">Cada PDF va a la factura del número que tiene en el nombre.</p>
           </div>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 hover:bg-fondo">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => (condiciones ? cerrarCondiciones() : setCondiciones(true))}
+              className="inline-flex items-center gap-1 rounded-full border border-sem-amarillo/60 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              <Info className="h-3.5 w-3.5" /> Condiciones
+            </button>
+            <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 hover:bg-fondo">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto p-5">
@@ -152,22 +182,23 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           </label>
 
           {/* La regla de los nombres: se exige, para que ningún archivo quede sin saber de qué factura es */}
-          <div className="mt-3 rounded-lg border border-marca/20 bg-marca/5 p-3 text-xs text-indigo-950">
-            <div className="mb-1 font-bold">Solo PDF, y el nombre tiene que tener el número de la factura</div>
-            <ul className="list-disc space-y-0.5 pl-4">
-              <li>
-                El <strong>punto de venta y el número de factura</strong>: <code>35-11032</code> (los ceros de adelante no hacen falta). Un archivo sin ese número, o con un número que no es de una factura pendiente de la sucursal, no se sube:
-                hay que cambiarle el nombre y volver a soltarlo.
-              </li>
-              <li>
-                Conviene agregar <strong>qué es</strong>: <code>factura</code> u <code>orden</code> (la orden firmada por el cliente). Si las dos están escaneadas en un solo PDF, no hace falta.
-              </li>
-              <li>
-                Ejemplos: <code>35-11032 orden.pdf</code> · <code>35-11032 factura.pdf</code> · <code>35-11032.pdf</code> (las dos juntas)
-              </li>
-              <li>Solo <strong>PDF</strong>: las compañías no aceptan fotos. Desde el celular, la cámara o Google Drive permiten escanear en PDF.</li>
-            </ul>
-          </div>
+          {condiciones && (
+            <div className="mt-3 rounded-lg border border-sem-amarillo/50 bg-amber-50 p-3 text-xs text-amber-950">
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>
+                  Solo <strong>PDF</strong>, con el <strong>número de factura</strong> en el nombre y qué es: <code>35-11032 factura.pdf</code> o{' '}
+                  <code>35-11032 orden.pdf</code> (las dos juntas: <code>35-11032.pdf</code>).
+                </li>
+                <li>
+                  Con la orden, agregar el <strong>número de siniestro</strong>: <code>35-11032 orden 029-9-506622.pdf</code>.
+                </li>
+                <li>Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo. Para fotos, el botón Foto de cada factura.</li>
+              </ul>
+              <button type="button" onClick={cerrarCondiciones} className="mt-2 font-semibold text-amber-900 underline">
+                Entendido
+              </button>
+            </div>
+          )}
 
           {filas.length > 0 && (
             <table className="mt-4 w-full text-left text-[13px]">

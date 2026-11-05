@@ -569,7 +569,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const subirDocumento = useCallback(
     async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>
-      fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name },
+      // En la demo el archivo queda en el navegador, para poder abrirlo y revisarlo
+      fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name, url: URL.createObjectURL(archivo) },
     [fuente.tipo],
   )
 

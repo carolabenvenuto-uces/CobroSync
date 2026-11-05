@@ -5,7 +5,8 @@
  * 1. Se empareja la luz: se divide cada píxel por el fondo (la misma foto muy achicada y vuelta a
  *    agrandar, que queda borrosa). Así desaparecen las sombras y el papel queda parejo.
  * 2. Se estiran los niveles: el papel pasa a blanco y la tinta a casi negro.
- * 3. Opcional, blanco y negro: además se pasa a grises con más contraste (más nítido para texto).
+ * 3. Se elige cómo queda: original (sin cambios), mejorada (lo anterior, sin exagerar los colores) o
+ *    blanco y negro (grises con más contraste, más nítido para texto).
  * La imagen se guarda como JPEG y cada foto es una página A4 del PDF.
  */
 
@@ -44,7 +45,9 @@ function lienzo(ancho: number, alto: number) {
 }
 
 /** Mejora una foto y la devuelve como página (rotacion en múltiplos de 90°). */
-export async function procesarFoto(archivo: Blob, opciones: { blancoYNegro: boolean; rotacion: number }): Promise<Pagina> {
+export type ModoFoto = 'original' | 'mejorada' | 'byn'
+
+export async function procesarFoto(archivo: Blob, opciones: { modo: ModoFoto; rotacion: number }): Promise<Pagina> {
   const img = await cargar(archivo)
   const escala = Math.min(1, LADO_MAXIMO / Math.max(img.width, img.height))
   const w0 = Math.round(img.width * escala)
@@ -57,6 +60,8 @@ export async function procesarFoto(archivo: Blob, opciones: { blancoYNegro: bool
   ctx.rotate((giro * Math.PI) / 180)
   ctx.drawImage(img, -w0 / 2, -h0 / 2, w0, h0)
   ctx.setTransform(1, 0, 0, 1, 0, 0)
+  if (opciones.modo === 'original') return aPagina(c, w, h)
+  const blancoYNegro = opciones.modo === 'byn'
 
   // Fondo: la foto achicada en dos pasos (queda borrosa) y vuelta a agrandar
   const chico1 = lienzo(Math.max(1, Math.round(w / 8)), Math.max(1, Math.round(h / 8)))
@@ -90,27 +95,33 @@ export async function procesarFoto(archivo: Blob, opciones: { blancoYNegro: bool
   for (let v = 0; v < 256; v++) {
     acum += hist[v]
     if (acum < total * 0.01) bajo = v
-    if (acum < total * 0.92) alto = v
+    if (acum < total * 0.96) alto = v
   }
   if (alto - bajo < 40) alto = Math.min(255, bajo + 40)
   const tabla = new Uint8ClampedArray(256)
   for (let v = 0; v < 256; v++) {
     const x = Math.min(1, Math.max(0, (v - bajo) / (alto - bajo)))
     // un poco más de contraste en los tonos medios (la letra se ve más firme)
-    tabla[v] = Math.round(255 * (opciones.blancoYNegro ? Math.pow(x, 1.6) : Math.pow(x, 1.25)))
+    tabla[v] = Math.round(255 * (blancoYNegro ? Math.pow(x, 1.5) : Math.pow(x, 1.1)))
   }
   for (let i = 0; i < p.length; i += 4) {
-    if (opciones.blancoYNegro) {
-      const g = tabla[(p[i] * 77 + p[i + 1] * 150 + p[i + 2] * 29) >> 8]
-      p[i] = p[i + 1] = p[i + 2] = g
+    const l = (p[i] * 77 + p[i + 1] * 150 + p[i + 2] * 29) >> 8
+    if (blancoYNegro) {
+      p[i] = p[i + 1] = p[i + 2] = tabla[l]
     } else {
-      p[i] = tabla[p[i]]
-      p[i + 1] = tabla[p[i + 1]]
-      p[i + 2] = tabla[p[i + 2]]
+      // se ajusta el brillo sin exagerar los colores: misma proporción entre canales y un poco menos de color
+      const k = l ? tabla[l] / l : 1
+      const g = tabla[l]
+      p[i] = Math.min(255, (p[i] * k) * 0.8 + g * 0.2)
+      p[i + 1] = Math.min(255, (p[i + 1] * k) * 0.8 + g * 0.2)
+      p[i + 2] = Math.min(255, (p[i + 2] * k) * 0.8 + g * 0.2)
     }
   }
   ctx.putImageData(datos, 0, 0)
+  return aPagina(c, w, h)
+}
 
+async function aPagina(c: HTMLCanvasElement, w: number, h: number): Promise<Pagina> {
   const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.85))
   if (!blob) throw new Error('No se pudo convertir la foto')
   return { jpeg: new Uint8Array(await blob.arrayBuffer()), ancho: w, alto: h }

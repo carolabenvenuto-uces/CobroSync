@@ -42,7 +42,8 @@ export function AppLayout() {
           {error ? <ErrorCarga mensaje={error} /> : datos ? <Outlet /> : <Cargando />}
         </main>
 
-        <footer className="border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
+        <footer className="flex items-center justify-between gap-4 border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
+          <span>
           {fuente.tipo === 'demo'
             ? ''
             : fuente.tipo === 'google'
@@ -50,6 +51,8 @@ export function AppLayout() {
               : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
           {fuente.tipo === 'demo' ? '' : ' · '}
           {AUTORIA}
+          </span>
+          <img src={`${import.meta.env.BASE_URL}grupo-sva.png`} alt="Grupo SVA" className="h-7 w-auto shrink-0 opacity-80" />
         </footer>
       </div>
 

@@ -302,11 +302,11 @@ export default function Presentar() {
                             <input type="checkbox" aria-label="Elegir todas" checked={todas} onChange={(e) => elegirTodas(lista, e.target.checked)} />
                           </th>
                           <th className="px-2 py-2">Comprobante</th>
-                          <th className="px-2 py-2">Sucursal</th>
-                          <th className="px-2 py-2">Siniestro</th>
+                          <th className="hidden px-2 py-2 sm:table-cell">Sucursal</th>
+                          <th className="hidden px-2 py-2 md:table-cell">Siniestro</th>
                           <th className="px-2 py-2 text-right">Total</th>
-                          <th className="px-2 py-2">Doc. aprobada</th>
-                          <th className="px-4 py-2 text-right">Días</th>
+                          <th className="hidden px-2 py-2 md:table-cell">Doc. aprobada</th>
+                          <th className="hidden px-4 py-2 text-right sm:table-cell">Días</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -317,7 +317,7 @@ export default function Presentar() {
                               <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                                 <input type="checkbox" aria-label="Elegir esta factura" disabled={!!otra} checked={elegidas.has(c.id)} onChange={() => alternar(c.id)} />
                               </td>
-                              <td className="whitespace-nowrap px-2 py-2 font-medium">
+                              <td className="px-2 py-2 font-medium sm:whitespace-nowrap">
                                 {formatoComprobante(c)}
                                 {esMipyme(c) && (
                                   <span className="ml-1.5">
@@ -326,12 +326,16 @@ export default function Presentar() {
                                 )}
                                 {c.reenviar && <span className="ml-1.5 rounded bg-sem-rojo/10 px-1 text-[11px] font-bold text-red-800">Reenvío</span>}
                                 {otra && <span className="ml-1.5 rounded bg-sky-500/10 px-1 text-[11px] font-semibold text-sky-800">La está presentando {otra}</span>}
+                                {/* en el celular, la sucursal va debajo del número */}
+                                <span className="block text-xs font-normal text-slate-500 sm:hidden">
+                                  {c.sucursal} · {diffDias(c.fecha, hoy)} días
+                                </span>
                               </td>
-                              <td className="whitespace-nowrap px-2 py-2">{c.sucursal}</td>
-                              <td className="whitespace-nowrap px-2 py-2 text-slate-600">{c.siniestro}</td>
+                              <td className="hidden whitespace-nowrap px-2 py-2 sm:table-cell">{c.sucursal}</td>
+                              <td className="hidden whitespace-nowrap px-2 py-2 text-slate-600 md:table-cell">{c.siniestro}</td>
                               <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">{formatoPesos(c.total)}</td>
-                              <td className="whitespace-nowrap px-2 py-2">{formatoFecha(c.fechaAprobacion ?? null)}</td>
-                              <td className="px-4 py-2 text-right tabular-nums">{diffDias(c.fecha, hoy)}</td>
+                              <td className="hidden whitespace-nowrap px-2 py-2 md:table-cell">{formatoFecha(c.fechaAprobacion ?? null)}</td>
+                              <td className="hidden px-4 py-2 text-right tabular-nums sm:table-cell">{diffDias(c.fecha, hoy)}</td>
                             </tr>
                           )
                         })}

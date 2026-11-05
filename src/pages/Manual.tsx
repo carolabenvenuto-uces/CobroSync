@@ -408,16 +408,17 @@ const SECCIONES: Seccion[] = [
             revisión de documentos: aprobar u observar cada uno.
           </li>
           <li>
-            <Pantalla>Presentar</Pantalla>: lo aprobado, agrupado por compañía y por canal (mail o plataforma). Por compañía: elegir las
+            <Pantalla>Presentar</Pantalla>: una fila por compañía con lo aprobado y su canal (mail o plataforma). Al abrirla: elegir las
             facturas, <strong>descargar todos los documentos en un .zip</strong> (cada PDF con el número de factura en el nombre), armar el
             mail o abrir la plataforma, y marcarlas como presentadas. Vuelven acá las que la compañía pidió reenviar.
           </li>
           <li>
-            <Pantalla>Vencidas y reclamos</Pantalla>: reclamos en lote y la respuesta de la compañía con un clic: pasa a pagos (se espera
+            <Pantalla>Vencidas y reclamos</Pantalla>: los botones de arriba muestran cada estado; al marcar facturas aparece la barra para registrar
+            reclamos en lote y la respuesta de la compañía con un clic: pasa a pagos (se espera
             un mes), reenviar la documentación (vuelve a Presentar) o refacturar (pedido a la sucursal).
           </li>
           <li>
-            <Pantalla>Pedidos a sucursales</Pantalla>: lo que se les pidió (errores de factura, refacturaciones, notas de crédito sin
+            <Pantalla>Pendientes de sucursales</Pantalla>, pestaña <strong>Pedidos</strong>: lo que se les pidió (errores de factura, refacturaciones, notas de crédito sin
             avisar), con los días de espera. Lo respondido queda para revisar y dar por resuelto. Los pedidos sin responder también salen
             en el mail de los lunes de cada sucursal.
           </li>

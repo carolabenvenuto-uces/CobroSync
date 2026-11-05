@@ -14,6 +14,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 - Los importes vencidos van en el mismo rojo oscuro que su marca.
 - **Presentar, más simple:** sin el texto de explicación; una fila por compañía (cantidad, canal, MiPyME, reenvíos y total) que abre su pantalla con las facturas para elegir, descargar los documentos, armar el mail o abrir la plataforma y marcarlas como presentadas.
 - **Notificaciones de Auditoría, menos mensajes:** lo que sube cada sucursal en el día llega en un solo aviso ("Documentación subida en 8 facturas") con la lista para abrir cada una. Las observaciones, notas de crédito, compromisos y respuestas siguen llegando de a uno.
+- **Seguimiento y reclamos, más liviano:** sin los textos de explicación ni las tarjetas grandes; arriba de cada tabla, una fila de botones con cantidad e importe por estado. Pendientes y Pedidos a sucursales quedan en una sola opción del menú, con dos pestañas (Documentación y Pedidos). En Vencidas y reclamos, la barra para reclamar o registrar la respuesta aparece solo al marcar facturas.
 
 ## [1.0.0] - 2026-11-04 (marca)
 

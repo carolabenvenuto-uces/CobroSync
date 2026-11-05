@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Info, Mail, Megaphone } from 'lucide-react'
+import { Mail, Megaphone } from 'lucide-react'
 import { claseSelect } from '../components/ui/Estados'
 import { listaParaMail, TextoMail } from '../components/TextoMail'
-import { EncabezadoPagina, Indicador } from '../components/ui/Card'
+import { EncabezadoPagina } from '../components/ui/Card'
+import { FiltroRapido } from '../components/ui/FiltroRapido'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
@@ -11,7 +12,6 @@ import {
   estadoReclamo,
   NOMBRE_ESTADO_RECLAMO,
   NOMBRE_RESPUESTA,
-  RECLAMOS_PARA_ESCALAR,
   ultimoReclamo,
   type EstadoReclamo,
 } from '../domain/reclamos'
@@ -160,68 +160,41 @@ export default function Reclamos() {
 
   return (
     <>
-      <EncabezadoPagina
-        titulo="Vencidas y reclamos"
-        subtitulo="Facturas presentadas, vencidas y sin cobrar"
-        sucursal
+      <EncabezadoPagina titulo="Vencidas y reclamos" sucursal />
+
+      {/* Lo que hay que hacer primero; lo que respondió la compañía o espera por tolerancia, solo si hay */}
+      <FiltroRapido
+        opciones={[
+          { clave: '', titulo: 'Todas', cantidad: vencidas.length, monto: total },
+          ...(['sin_reclamar', 'volver', 'escalar', 'reclamada', 'reenviar', 'refacturar', 'en_pagos', 'tolerancia'] as EstadoReclamo[])
+            .filter((e) => ['sin_reclamar', 'volver', 'escalar', 'reclamada'].includes(e) || resumen(e).cantidad > 0)
+            .map((e) => ({
+              clave: NOMBRE_ESTADO_RECLAMO[e],
+              titulo: NOMBRE_ESTADO_RECLAMO[e],
+              cantidad: resumen(e).cantidad,
+              monto: resumen(e).total,
+              alerta: e === 'volver' || e === 'escalar',
+            })),
+        ]}
+        activa={estadoActivo ?? ''}
+        onElegir={(clave) => {
+          const nuevos = new URLSearchParams(params)
+          if (clave) nuevos.set('estado', clave)
+          else nuevos.delete('estado')
+          setParams(nuevos, { replace: true })
+        }}
       />
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          Después de cada reclamo se espera la respuesta {plazosActuales().respuestaReclamo} días; si no llega, hay que volver a reclamar.
-          Con {RECLAMOS_PARA_ESCALAR} reclamos sin respuesta, Auditoría pide apoyo a gerencia. Cada reclamo se registra en la factura con
-          fecha, medio y nota{rol === 'auditoria' ? ': cada fila permite registrarlo.' : '.'}
-        </span>
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <button type="button" className={`rounded-xl text-left ${!estadoActivo ? 'ring-2 ring-marca' : ''}`} onClick={() => setParams({}, { replace: true })}>
-          <Indicador titulo="Vencido total" valor={formatoPesos(total)} ayuda={`${vencidas.length} facturas`} tono="rojo" />
-        </button>
-        {(['sin_reclamar', 'reclamada', 'volver', 'escalar'] as EstadoReclamo[]).map((e) => (
-          <button
-            key={e}
-            type="button"
-            className={`rounded-xl text-left ${estadoActivo === NOMBRE_ESTADO_RECLAMO[e] ? 'ring-2 ring-marca' : ''}`}
-            onClick={() => setParams({ estado: NOMBRE_ESTADO_RECLAMO[e] }, { replace: true })}
-          >
-            <Indicador titulo={NOMBRE_ESTADO_RECLAMO[e]} valor={formatoPesos(resumen(e).total)} ayuda={`${resumen(e).cantidad} facturas`} />
-          </button>
-        ))}
-      </div>
-
-      {/* Lo que ya respondió la compañía, o lo que todavía no se reclama por tolerancia */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-        {(['reenviar', 'refacturar', 'en_pagos', 'tolerancia'] as EstadoReclamo[])
-          .filter((e) => resumen(e).cantidad > 0)
-          .map((e) => (
-            <button
-              key={e}
-              type="button"
-              onClick={() => setParams({ estado: NOMBRE_ESTADO_RECLAMO[e] }, { replace: true })}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${ESTILO[e]} ${estadoActivo === NOMBRE_ESTADO_RECLAMO[e] ? 'ring-2 ring-marca' : ''}`}
-            >
-              {NOMBRE_ESTADO_RECLAMO[e]} · {resumen(e).cantidad}
-            </button>
-          ))}
-      </div>
-
-      {rol === 'auditoria' && (
-        <div className={`mb-4 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${seleccion.length ? 'border-marca/40 bg-marca/5' : 'border-slate-200 bg-white'}`}>
+      {mensaje && !seleccion.length && <p className="mb-3 text-sm text-teal-800">{mensaje}</p>}
+      {rol === 'auditoria' && seleccion.length > 0 && (
+        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-marca/40 bg-white p-3 shadow-sm">
           <span className="text-sm">
-            {seleccion.length ? (
-              <>
-                <strong>{seleccion.length}</strong> elegidas · <strong>{formatoPesos(seleccion.reduce((t, x) => t + x.c.total, 0))}</strong>
-                {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
-              </>
-            ) : (
-              <span className="text-slate-500">Para reclamar varias juntas: filtrar por compañía y marcar las casillas.</span>
-            )}
+            <strong>{seleccion.length}</strong> elegidas · <strong>{formatoPesos(seleccion.reduce((t, x) => t + x.c.total, 0))}</strong>
+            {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
           </span>
           {mensaje && <span className="text-sm text-teal-800">{mensaje}</span>}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button type="button" disabled={!seleccion.length} onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">
+            <button type="button" onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">
               <Mail className="h-4 w-4 text-marca" /> Armar el mail
             </button>
             <select value={medio} onChange={(e) => setMedio(e.target.value as Reclamo['medio'])} className={claseSelect} aria-label="Medio del reclamo">
@@ -232,7 +205,6 @@ export default function Reclamos() {
             <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={`${claseSelect} w-40`} />
             <button
               type="button"
-              disabled={!seleccion.length}
               onClick={registrarReclamos}
               className="inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
             >
@@ -248,7 +220,6 @@ export default function Reclamos() {
             </select>
             <button
               type="button"
-              disabled={!seleccion.length}
               onClick={registrarRespuesta}
               className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-3 py-2 text-sm font-semibold text-marca hover:bg-marca/5 disabled:opacity-50"
             >

@@ -80,8 +80,9 @@ export default function BandejaNotificaciones() {
           // Búsqueda por número de factura (o cualquier texto del mensaje)
           const t = normal(buscar)
           if (t.length >= 2) {
-            const c = porId.get(n.comprobanteId)
-            const textos = [n.texto, c ? formatoComprobante(c) : '', c?.siniestro ?? '', c ? `${c.puntoVenta}${c.numero}` : '']
+            // los avisos que juntan varias facturas se encuentran por cualquiera de ellas
+            const cs = (n.facturas ?? [n.comprobanteId]).map((id) => porId.get(id)).filter((x) => x !== undefined)
+            const textos = [n.texto, n.sucursal ?? '', ...cs.flatMap((c) => [formatoComprobante(c), c.siniestro ?? '', `${c.puntoVenta}${c.numero}`])]
             if (!textos.some((x) => normal(x).includes(t))) return false
           }
           return true
@@ -161,7 +162,11 @@ export default function BandejaNotificaciones() {
                         {f.sucursal} · {formatoPesos(f.total)}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs font-semibold text-sem-rojo">{diffDias(f.fecha, hoy)} {diffDias(f.fecha, hoy) === 1 ? 'día' : 'días'}</span>
+                    {n.clase === 'subidas' ? (
+                      <span className="shrink-0 text-xs text-slate-500">{nombreCompania(f.aseguradoraId)}</span>
+                    ) : (
+                      <span className="shrink-0 text-xs font-semibold text-sem-rojo">{diffDias(f.fecha, hoy)} {diffDias(f.fecha, hoy) === 1 ? 'día' : 'días'}</span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -169,7 +174,7 @@ export default function BandejaNotificaciones() {
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {(n.ruta || varias.length <= 1) && <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => irALaFactura(n)}
@@ -177,7 +182,7 @@ export default function BandejaNotificaciones() {
           >
             <ExternalLink className="h-4 w-4" /> {n.ruta ? 'Ver las facturas' : rol === 'sucursal' ? 'Abrir la factura y resolver' : 'Abrir la factura'}
           </button>
-        </div>
+        </div>}
       </article>
     )
   }

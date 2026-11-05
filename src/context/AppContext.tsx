@@ -51,8 +51,8 @@ export interface Notificacion {
   texto: string
   comprobanteId: string
   leida: boolean
-  /** avisos a Gerencia: de qué tipo y de qué sucursal, para agruparlos */
-  clase?: 'critica' | 'escalar'
+  /** avisos que se juntan: a Gerencia (crítica, pedido de apoyo) y a Auditoría (documentos subidos en el día) */
+  clase?: 'critica' | 'escalar' | 'subidas'
   sucursal?: string
   /** id de la compañía (los pedidos de apoyo se agrupan por compañía) */
   compania?: string
@@ -67,32 +67,45 @@ export interface Notificacion {
 /**
  * A Gerencia le llega un aviso por sucursal y por tipo, no uno por factura:
  * "Alvarez Thomas: 15 facturas pasaron a documentación crítica". Al tocarlo se abre la lista.
+ * A Auditoría, lo subido por cada sucursal en el día llega en un solo aviso con la lista de facturas.
  */
 export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<string, string> = {}): Notificacion[] {
   const grupos = new Map<string, Notificacion>()
   const resto: Notificacion[] = []
   for (const n of lista) {
-    const agrupable = n.para === 'gerencia' && (n.clase === 'critica' ? !!n.sucursal : n.clase === 'escalar' && !!n.compania)
+    const agrupable =
+      (n.para === 'gerencia' && (n.clase === 'critica' ? !!n.sucursal : n.clase === 'escalar' && !!n.compania)) ||
+      (n.para === 'auditoria' && n.clase === 'subidas' && !!n.sucursal)
     if (!agrupable) {
       resto.push(n)
       continue
     }
-    // Lo crítico se agrupa por sucursal; los pedidos de apoyo, por compañía
-    const clave = n.clase === 'critica' ? `critica|${n.sucursal}` : `escalar|${n.compania}`
+    // Lo crítico se agrupa por sucursal; los pedidos de apoyo, por compañía; lo subido, por sucursal y día
+    const clave =
+      n.clase === 'critica' ? `critica|${n.sucursal}` : n.clase === 'escalar' ? `escalar|${n.compania}` : `subidas|${n.sucursal}|${n.fecha}`
     const g = grupos.get(clave)
     const facturas = [...new Set([...(g?.facturas ?? []), ...(n.facturas ?? [n.comprobanteId])])]
     const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
     const cant = facturas.length
+    // Una sola factura subida en el día: queda el aviso de esa factura, tal cual
+    if (n.clase === 'subidas' && cant === 1) {
+      grupos.set(clave, { ...n, facturas })
+      continue
+    }
     const compania = nombresCompanias[n.compania ?? ''] ?? 'una compañía'
     // Escrito como lo que Gerencia tiene que hacer (el texto se cambia en Ajustes)
     const texto =
       n.clase === 'critica'
         ? textoAviso('critica', { sucursal: n.sucursal, cantidad: cant, dias: plazosActuales().criticaComun })
-        : textoAviso('apoyo', { compania, cantidad: cant })
+        : n.clase === 'escalar'
+          ? textoAviso('apoyo', { compania, cantidad: cant })
+          : `Documentación subida en ${cant} facturas. Quedan para revisar en Control diario.`
     const ruta =
       n.clase === 'critica'
         ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal ?? '')}&estado=Cr%C3%ADtica`
-        : `/app/reclamos?compania=${encodeURIComponent(n.compania ?? '')}&estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`
+        : n.clase === 'escalar'
+          ? `/app/reclamos?compania=${encodeURIComponent(n.compania ?? '')}&estado=${encodeURIComponent(NOMBRE_ESTADO_RECLAMO.escalar)}`
+          : undefined
     grupos.set(clave, {
       ...(g ?? n),
       // el id cambia cuando el grupo suma facturas: así vuelve a aparecer como no leído
@@ -168,7 +181,12 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   const id = `${c.id}|${e.fecha}|${e.tipo}|${huella(e.texto)}`
   const base = () => ({ id: `${id}|${lista.length}`, fecha: e.fecha, comprobanteId: c.id, leida: false })
   const lista: Notificacion[] = []
-  if (e.area === 'sucursal') lista.push({ ...base(), para: 'auditoria', texto: `${c.sucursal} · ${numero}: ${e.texto}` })
+  // Lo que sube la sucursal se junta en un aviso por sucursal y por día (ver agruparGerencia);
+  // lo demás (notas de crédito, compromisos, respuestas) llega de a uno
+  if (e.area === 'sucursal') {
+    const subida = e.tipo === 'subida'
+    lista.push({ ...base(), para: 'auditoria', ...(subida ? { clase: 'subidas' as const, sucursal: c.sucursal } : {}), texto: `${c.sucursal} · ${numero}: ${e.texto}` })
+  }
   // A la sucursal le llega lo que le pide algo (observaciones, mensajes); las aprobaciones no,
   // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
   const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)

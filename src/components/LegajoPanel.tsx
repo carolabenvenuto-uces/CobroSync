@@ -586,7 +586,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <p className="mt-1 text-xs text-slate-500">
                   {subiendo
                     ? 'Subiendo el archivo…'
-                    : 'Solo PDF, con el número de la factura en el nombre. Desde el celular, la cámara o Google Drive permiten escanear en PDF.'}
+                    : 'Solo PDF, con el número de la factura en el nombre. Desde el celular, el botón Foto saca la foto y la sube como PDF.'}
                 </p>
                 {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}
                 </>

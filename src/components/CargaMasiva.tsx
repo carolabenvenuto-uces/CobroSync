@@ -2,7 +2,7 @@ import { useMemo, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
-import { facturaDeHoy } from '../domain/espera'
+import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
@@ -78,7 +78,16 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
           const n = rol === 'sucursal' && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
           if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
-          return { archivo, facturaId: '', tipo: r.tipo, error: r.error, pideSiniestro: false, siniestro: '' }
+          // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
+          const num = numerosDelNombre(archivo.name)[0]
+          let error = r.error
+          if (num && esPdf(archivo) && corto && rol === 'sucursal' && miSucursal) {
+            const existe = comprobantes.find((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)
+            if (existe) error = `La factura ${num.puntoVenta}-${num.numero} está ${existe.estado === 'anulada' ? 'anulada' : 'cobrada'}: no recibe documentos.`
+            else if (!puntosDeVenta(miSucursal).includes(num.puntoVenta))
+              error = `El punto de venta ${num.puntoVenta} no es de ${miSucursal.nombre} (sus puntos de venta: ${puntosDeVenta(miSucursal).join(', ')}). Revisar el número o la sucursal elegida.`
+          }
+          return { archivo, facturaId: '', tipo: r.tipo, error, pideSiniestro: false, siniestro: '' }
         }
         // El siniestro llega con la documentación: si la factura no lo tiene, sale del nombre o se escribe en la fila
         const pide = !r.factura.siniestro

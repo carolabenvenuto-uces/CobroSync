@@ -92,7 +92,8 @@ export default function Ingreso() {
           </ul>
 
         </div>
-        <p className="mt-6 text-center text-xs text-slate-400">
+        <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="mx-auto mt-8 h-12 w-auto opacity-90" />
+        <p className="mt-4 text-center text-xs text-slate-400">
           <Link to="/manual" className="font-semibold text-slate-200 hover:underline">
             Manual de uso
           </Link>{' '}

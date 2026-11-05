@@ -5,6 +5,8 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- Los desplegables que deciden algo (la factura que anula una nota de crédito, motivos de observación, rechazo y demora, documento rechazado, tipo de pedido y respuesta de la compañía) arrancan en "Seleccionar…": no vienen con la primera opción elegida y el botón se habilita recién al elegir.
+- Logo de Grupo SVA en el ingreso y en el pie de cada pantalla.
 - Sin la aclaración "(restan)" en las notas de crédito del Resumen y del manual.
 - Presentar: el encabezado de cada compañía pasa a dos renglones (datos arriba, botones abajo) para que no se aprieten.
 - Pedidos a sucursales: el detalle tiene más ancho y el de las notas de crédito sin aviso es más corto.

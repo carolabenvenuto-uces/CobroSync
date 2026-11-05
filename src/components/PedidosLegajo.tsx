@@ -16,7 +16,7 @@ import { claseSelect } from './ui/Estados'
 export function PedidosLegajo({ c }: { c: Comprobante }) {
   const { rol, usuario, hoy, actualizarComprobante, registrarEvento } = useApp()
   const [nuevo, setNuevo] = useState(false)
-  const [tipo, setTipo] = useState<TipoPedido>('error_factura')
+  const [tipo, setTipo] = useState<TipoPedido | ''>('')
   const [detalle, setDetalle] = useState('')
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [motivoNc, setMotivoNc] = useState('')
@@ -28,6 +28,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
   const guardar = (lista: Pedido[]) => actualizarComprobante(c.id, { pedidos: lista })
 
   function pedir() {
+    if (!tipo) return
     if (!detalle.trim()) return
     guardar([...pedidos, { id: idPedido(hoy), fecha: hoy, tipo, detalle: detalle.trim(), autor: usuario || 'Auditoría' }])
     registrarEvento(c.id, 'mensaje', `Pedido de Auditoría (${NOMBRE_PEDIDO[tipo].toLowerCase()}): ${detalle.trim()}`)
@@ -123,6 +124,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
         (nuevo ? (
           <div className="mt-2 space-y-2 rounded-md bg-white p-2.5">
             <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoPedido)} className={`${claseSelect} w-full`}>
+              <option value="" disabled>Seleccionar el tipo de pedido</option>
               {(['error_factura', 'refacturar', 'aviso_nc', 'otro'] as TipoPedido[]).map((t) => (
                 <option key={t} value={t}>
                   {NOMBRE_PEDIDO[t]}
@@ -137,7 +139,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
               className={`${claseSelect} w-full`}
             />
             <div className="flex gap-2">
-              <button type="button" onClick={pedir} disabled={!detalle.trim()} className="rounded-lg bg-marca px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" onClick={pedir} disabled={!tipo || !detalle.trim()} className="rounded-lg bg-marca px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
                 Enviar a la sucursal
               </button>
               <button type="button" onClick={() => setNuevo(false)} className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-fondo">

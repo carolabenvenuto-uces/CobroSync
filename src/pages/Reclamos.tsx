@@ -44,7 +44,7 @@ export default function Reclamos() {
   const [nota, setNota] = useState('')
   const [mail, setMail] = useState<{ asunto: string; texto: string; para?: string } | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
-  const [respuesta, setRespuesta] = useState<RespuestaReclamo>('pagos')
+  const [respuesta, setRespuesta] = useState<RespuestaReclamo | ''>('')
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
@@ -76,6 +76,7 @@ export default function Reclamos() {
 
   // Lo que respondió la compañía, para todas las elegidas que ya tienen un reclamo
   function registrarRespuesta() {
+    if (!respuesta) return
     let n = 0
     for (const x of seleccion) {
       const r = cambiosPorRespuesta(x.c, respuesta, nota, hoy, usuario || 'Auditoría')
@@ -212,6 +213,7 @@ export default function Reclamos() {
             </button>
             <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden="true" />
             <select value={respuesta} onChange={(e) => setRespuesta(e.target.value as RespuestaReclamo)} className={claseSelect} aria-label="Respuesta de la compañía">
+              <option value="" disabled>Respuesta de la compañía</option>
               {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
                 <option key={k} value={k}>
                   {NOMBRE_RESPUESTA[k]}
@@ -221,6 +223,7 @@ export default function Reclamos() {
             <button
               type="button"
               onClick={registrarRespuesta}
+              disabled={!respuesta}
               className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-3 py-2 text-sm font-semibold text-marca hover:bg-marca/5 disabled:opacity-50"
             >
               Registrar la respuesta

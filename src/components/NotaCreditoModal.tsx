@@ -28,8 +28,8 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
         .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [comprobantes, hoy],
   )
-  const [facturaId, setFacturaId] = useState(facturas[0]?.id ?? '')
-  const [motivo, setMotivo] = useState(MOTIVOS_NC[0])
+  const [facturaId, setFacturaId] = useState('')
+  const [motivo, setMotivo] = useState('')
   const [comentario, setComentario] = useState('')
   const [parcial, setParcial] = useState(false)
   const [importeTexto, setImporteTexto] = useState('')
@@ -80,6 +80,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
             <label className="block text-xs font-semibold text-slate-500">
               Factura que anula
               <select className={`${claseSelect} mt-1 w-full`} value={facturaId} onChange={(e) => setFacturaId(e.target.value)}>
+                <option value="" disabled>Seleccionar la factura</option>
                 {facturas.map((f) => (
                   <option key={f.id} value={f.id}>
                     {formatoComprobante(f)} · {nombreCompania(f.aseguradoraId)} · {formatoPesos(f.total)}
@@ -121,6 +122,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
             <label className="block text-xs font-semibold text-slate-500">
               Motivo
               <select className={`${claseSelect} mt-1 w-full`} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+                <option value="" disabled>Seleccionar el motivo</option>
                 {MOTIVOS_NC.map((m) => (
                   <option key={m}>{m}</option>
                 ))}
@@ -139,7 +141,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
             <button
               type="button"
               onClick={informar}
-              disabled={!facturaId || !parcialValido}
+              disabled={!facturaId || !motivo || !parcialValido}
               className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white hover:bg-marca-oscuro disabled:bg-slate-200"
             >
               Informar a auditoría

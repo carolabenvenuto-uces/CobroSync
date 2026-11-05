@@ -109,14 +109,14 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [fechaCobro, setFechaCobro] = useState(hoy)
   const [importeCobroTexto, setImporteCobroTexto] = useState(() => saldoSinCobro(c).toFixed(2).replace('.', ','))
   const [observando, setObservando] = useState<TipoDocumento | null>(null)
-  const [motivo, setMotivo] = useState<string>(MOTIVOS_OBSERVACION[0])
-  const [motivoDemora, setMotivoDemora] = useState(MOTIVOS_DEMORA[0])
+  const [motivo, setMotivo] = useState<string>('')
+  const [motivoDemora, setMotivoDemora] = useState('')
   const [fechaDemora, setFechaDemora] = useState(sumarDias(hoy, 5))
-  const [docRechazo, setDocRechazo] = useState<TipoDocumento>('orden')
+  const [docRechazo, setDocRechazo] = useState<TipoDocumento | ''>('')
   const [comentarioRechazo, setComentarioRechazo] = useState('')
   const [medioReclamo, setMedioReclamo] = useState<Reclamo['medio']>('mail')
   const [notaReclamo, setNotaReclamo] = useState('')
-  const [respuestaReclamo, setRespuestaReclamo] = useState<RespuestaReclamo>('pagos')
+  const [respuestaReclamo, setRespuestaReclamo] = useState<RespuestaReclamo | ''>('')
   const [notaRespuesta, setNotaRespuesta] = useState('')
 
   // Que dos personas de Auditoría no trabajen la misma factura a la vez: al abrirla queda tomada
@@ -130,6 +130,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   }, [c.id])
 
   function registrarRespuesta() {
+    if (!respuestaReclamo) return
     const r = cambiosPorRespuesta(c, respuestaReclamo, notaRespuesta.trim(), hoy, usuario || 'Auditoría')
     if (!r) return
     actualizarComprobante(c.id, r.campos)
@@ -215,6 +216,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const pendientesDeSubir = documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map((d) => d.tipo)
 
   function avisarDemora() {
+    if (!motivoDemora) return
     actualizarComprobante(c.id, { compromiso: { fecha: fechaDemora, motivo: motivoDemora } })
     registrarEvento(c.id, 'compromiso', `${motivoDemora}. Se compromete a subirlo el ${formatoFecha(fechaDemora)}.`)
     setFormulario('ninguno')
@@ -253,7 +255,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           .slice(0, 40)
       : []
   const [facturaNc, setFacturaNc] = useState(c.ncReferencia ?? '')
-  const facturaNcElegida = facturasParaNc.find((f) => f.id === (facturaNc || facturasParaNc[0]?.id))
+  const facturaNcElegida = facturasParaNc.find((f) => f.id === facturaNc)
   function vincularNc(tipo: 'total' | 'parcial') {
     const f = facturaNcElegida
     if (!f) return
@@ -293,6 +295,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     )
   }
   function observar(tipo: TipoDocumento) {
+    if (!motivo) return
     guardarDocumentos(
       documentos.map((d): Documento => (d.tipo === tipo ? { ...d, estado: 'observado', motivo } : d)),
       { fechaAprobacion: null },
@@ -313,6 +316,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   // Rechazo de la compañía después de presentar: vuelve a la sucursal
   function registrarRechazo() {
+    if (!docRechazo || !motivo) return
     guardarDocumentos(
       documentos.map((d): Documento => (d.tipo === docRechazo ? { ...d, estado: 'observado', motivo } : d)),
       { estado: 'en_gestion', fechaPresentacion: null, vencimiento: null, fechaAprobacion: null },
@@ -529,7 +533,10 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             <button type="button" onClick={() => aprobar([d.tipo])} className={`${botonChico} bg-esmeralda/15 text-teal-800 hover:bg-esmeralda/25`}>
                               <Check className="h-3.5 w-3.5" /> Aprobar
                             </button>
-                            <button type="button" onClick={() => setObservando(d.tipo)} className={`${botonChico} bg-sem-rojo/10 text-red-800 hover:bg-sem-rojo/20`}>
+                            <button type="button" onClick={() => {
+                              setMotivo('')
+                              setObservando(d.tipo)
+                            }} className={`${botonChico} bg-sem-rojo/10 text-red-800 hover:bg-sem-rojo/20`}>
                               Observar
                             </button>
                           </>
@@ -541,11 +548,12 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     {observando === d.tipo && (
                       <div className="mt-2 flex gap-2">
                         <select className={`${claseSelect} flex-1`} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+                          <option value="" disabled>Seleccionar el motivo</option>
                           {MOTIVOS_OBSERVACION.map((m) => (
                             <option key={m}>{m}</option>
                           ))}
                         </select>
-                        <button type="button" onClick={() => observar(d.tipo)} className={`${botonChico} bg-sem-rojo text-white`}>
+                        <button type="button" onClick={() => observar(d.tipo)} disabled={!motivo} className={`${botonChico} bg-sem-rojo text-white disabled:opacity-50`}>
                           Devolver a la sucursal
                         </button>
                       </div>
@@ -593,6 +601,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   <label className="block text-xs font-semibold text-slate-500">
                     Motivo
                     <select className={`${claseSelect} mt-1 w-full`} value={motivoDemora} onChange={(e) => setMotivoDemora(e.target.value)}>
+                      <option value="" disabled>Seleccionar el motivo</option>
                       {MOTIVOS_DEMORA.map((m) => (
                         <option key={m}>{m}</option>
                       ))}
@@ -602,7 +611,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     Fecha estimada de entrega de la documentación
                     <input type="date" min={hoy} value={fechaDemora} onChange={(e) => setFechaDemora(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
                   </label>
-                  <button type="button" onClick={avisarDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro`}>
+                  <button type="button" onClick={avisarDemora} disabled={!motivoDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
                     Avisar a Auditoría
                   </button>
                 </div>
@@ -680,6 +689,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <>
                   {c.ncReferencia && <p className="text-xs text-slate-500">Se encontró una factura que coincide, pero la sucursal no avisó la nota de crédito. Falta revisarla y confirmarla.</p>}
                   <select className={`${claseSelect} w-full`} value={facturaNcElegida?.id ?? ''} onChange={(e) => setFacturaNc(e.target.value)}>
+                    <option value="" disabled>Seleccionar la factura</option>
                     {facturasParaNc.map((f) => (
                       <option key={f.id} value={f.id}>
                         {formatoComprobante(f)} · {formatoFecha(f.fecha)} · saldo {formatoPesos(saldoSinCobro(f))}
@@ -690,6 +700,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     <button
                       type="button"
                       onClick={() => vincularNc('total')}
+                      disabled={!facturaNcElegida}
                       className={`rounded-lg px-3 py-2 text-xs font-semibold ${facturaNcElegida && esNotaTotal(Math.abs(c.total), facturaNcElegida) ? 'bg-noche text-white' : 'border border-slate-300'}`}
                     >
                       Anula la factura
@@ -697,6 +708,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     <button
                       type="button"
                       onClick={() => vincularNc('parcial')}
+                      disabled={!facturaNcElegida}
                       className={`rounded-lg px-3 py-2 text-xs font-semibold ${facturaNcElegida && !esNotaTotal(Math.abs(c.total), facturaNcElegida) ? 'bg-noche text-white' : 'border border-slate-300'}`}
                     >
                       Es parcial: restar del saldo
@@ -762,6 +774,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       <label className="block text-xs font-semibold text-slate-500">
                         Documento
                         <select className={`${claseSelect} mt-1 w-full`} value={docRechazo} onChange={(e) => setDocRechazo(e.target.value as TipoDocumento)}>
+                          <option value="" disabled>Seleccionar el documento</option>
                           {documentos.map((d) => (
                             <option key={d.tipo} value={d.tipo}>
                               {NOMBRE_DOCUMENTO[d.tipo]}
@@ -772,6 +785,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       <label className="block text-xs font-semibold text-slate-500">
                         Motivo
                         <select className={`${claseSelect} mt-1 w-full`} value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+                          <option value="" disabled>Seleccionar el motivo</option>
                           {MOTIVOS_OBSERVACION.map((m) => (
                             <option key={m}>{m}</option>
                           ))}
@@ -785,7 +799,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       placeholder="Qué pidió la compañía (refacturar, NC, aclarar la orden…)"
                       className={`${claseSelect} w-full`}
                     />
-                    <button type="button" onClick={registrarRechazo} className={`${botonPrincipal} bg-sem-rojo hover:bg-red-600`}>
+                    <button type="button" onClick={registrarRechazo} disabled={!docRechazo || !motivo} className={`${botonPrincipal} bg-sem-rojo hover:bg-red-600 disabled:opacity-50`}>
                       Devolver a la sucursal
                     </button>
                   </div>
@@ -885,6 +899,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <div className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3">
                   <div className="text-xs font-semibold text-slate-500">Respuesta de la compañía al último reclamo</div>
                   <select className={`${claseSelect} w-full`} value={respuestaReclamo} onChange={(e) => setRespuestaReclamo(e.target.value as RespuestaReclamo)}>
+                    <option value="" disabled>Seleccionar la respuesta</option>
                     {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
                       <option key={k} value={k}>
                         {NOMBRE_RESPUESTA[k]}
@@ -893,13 +908,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </select>
                   <input value={notaRespuesta} onChange={(e) => setNotaRespuesta(e.target.value)} placeholder="Detalle (opcional): qué documento, qué monto…" className={`${claseSelect} w-full`} />
                   <p className="text-[11px] text-slate-500">
-                    {respuestaReclamo === 'pagos'
+                    {!respuestaReclamo
+                      ? 'Elegir qué respondió la compañía.'
+                      : respuestaReclamo === 'pagos'
                       ? 'Se espera el cobro un mes antes de volver a reclamar.'
                       : respuestaReclamo === 'documentacion'
                         ? 'La factura vuelve a la lista de Presentar para reenviarla.'
                         : 'Se le pide a la sucursal que refacture; queda en Pedidos a sucursales.'}
                   </p>
-                  <button type="button" onClick={registrarRespuesta} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro`}>
+                  <button type="button" onClick={registrarRespuesta} disabled={!respuestaReclamo} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
                     Guardar la respuesta
                   </button>
                 </div>

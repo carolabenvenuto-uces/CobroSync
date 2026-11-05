@@ -251,9 +251,32 @@ export interface MetaDemo {
   textos?: Partial<TextosAvisos>
 }
 
+/**
+ * PDF de una factura que todavía no está en la plataforma: la sucursal escanea el mismo día que
+ * factura y el ERP se carga al día siguiente. Al cargarlo, se une al legajo nuevo.
+ */
+export interface DocumentoEnEspera {
+  id: string
+  sucursal: string
+  puntoVenta: number
+  numero: number
+  /** factura, orden o las dos juntas */
+  tipo: 'factura' | 'orden' | 'documentacion'
+  siniestro: string
+  archivo: string
+  url?: string
+  subidoPor: string
+  fecha: string
+  nombreOriginal: string
+  /** id de la factura a la que se unió (vacío mientras espera) */
+  asociado?: string | null
+}
+
 export interface DatosApp {
   aseguradoras: Aseguradora[]
   comprobantes: Comprobante[]
+  /** PDF de facturas de hoy que esperan la carga del ERP */
+  enEspera?: DocumentoEnEspera[]
   cobrosPrevistos: CobroPrevisto[]
   meta: MetaDemo
 }

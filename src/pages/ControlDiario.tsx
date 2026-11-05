@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { EnEsperaAuditoria } from '../components/EnEspera'
 import { FileSpreadsheet, Info, X } from 'lucide-react'
 import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
@@ -31,7 +32,7 @@ function avisoNc(c: Comprobante): string {
  * Para Gerencia es "Detalle de facturas": la misma tabla, solo para consultar (por si necesita buscar una).
  */
 export default function ControlDiario() {
-  const { datos, hoy, rol, fuente, abrirLegajo, agregarComprobante, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, hoy, rol, fuente, abrirLegajo, agregarDelErp, actualizarComprobante, registrarEvento } = useApp()
   const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params, setParams] = useSearchParams()
@@ -96,7 +97,8 @@ export default function ControlDiario() {
     try {
       const texto = await leerArchivo(archivo, /quiter|erp|factur/i)
       const r = importarErp(texto, datos!.comprobantes, aseguradoras, meta.sucursales, hoy)
-      r.nuevas.forEach(agregarComprobante)
+      // Las facturas que la sucursal ya escaneó (PDF en espera) entran con sus documentos
+      const unidas = agregarDelErp(r.nuevas)
       // Notas de crédito que la sucursal había avisado: total → anula; parcial → resta del saldo
       r.vinculadas.forEach(({ facturaId, ncId, tipo, importe }) => {
         const nc = r.nuevas.find((x) => x.id === ncId)
@@ -121,7 +123,7 @@ export default function ControlDiario() {
         }
       }
       setMensajeErp({
-        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.${enPlanilla}`,
+        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${unidas ? `${unidas} ya tenían sus PDF subidos por la sucursal y quedan "En revisión". ` : ''}${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.${enPlanilla}`,
       })
     } catch (e) {
       setMensajeErp({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
@@ -289,7 +291,9 @@ export default function ControlDiario() {
         sucursal={!soloConsulta}
         acciones={
           <>
-            {!soloConsulta && (
+            {rol === 'auditoria' && <EnEsperaAuditoria />}
+
+      {!soloConsulta && (
               <>
                 <input ref={entradaErp} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
                 <button

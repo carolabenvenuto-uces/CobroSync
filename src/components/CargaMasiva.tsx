@@ -1,7 +1,8 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
+import { facturaDeHoy } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
@@ -25,6 +26,8 @@ interface Fila {
   /** la factura todavía no tiene siniestro: se toma del nombre o se escribe en la fila */
   pideSiniestro: boolean
   siniestro: string
+  /** factura de hoy, todavía no cargada: el PDF queda en espera hasta que se cargue el ERP */
+  deHoy?: { puntoVenta: number; numero: number }
 }
 
 /**
@@ -33,7 +36,8 @@ interface Fila {
  * Cada factura sigue teniendo su legajo, como siempre.
  */
 export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
-  const { hoy, usuario, subirDocumento, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento } = useApp()
+  const miSucursal = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
   const comprobantes = useComprobantes()
   const facturas = useMemo(
     () => facturasParaCargar(comprobantes).sort((a, b) => b.fecha.localeCompare(a.fecha)),
@@ -69,7 +73,13 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       ...actuales,
       ...nuevos.map((archivo): Fila => {
         const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
-        if (!r.ok) return { archivo, facturaId: '', tipo: r.tipo, error: r.error, pideSiniestro: false, siniestro: '' }
+        if (!r.ok) {
+          // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en el ERP
+          const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
+          const n = rol === 'sucursal' && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
+          if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
+          return { archivo, facturaId: '', tipo: r.tipo, error: r.error, pideSiniestro: false, siniestro: '' }
+        }
         // El siniestro llega con la documentación: si la factura no lo tiene, sale del nombre o se escribe en la fila
         const pide = !r.factura.siniestro
         return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, pideSiniestro: pide, siniestro: pide ? siniestroDelNombre(archivo.name, r.factura) ?? '' : '' }
@@ -85,8 +95,10 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   const cambiar = (i: number, cambios: Partial<Fila>) => setFilas((l) => l.map((f, j) => (j === i ? { ...f, ...cambios } : f)))
 
   const asignadas = filas.filter((f) => f.facturaId)
-  const sinSiniestro = asignadas.filter((f) => f.pideSiniestro && !f.siniestro.trim()).length
-  const sinAsignar = filas.length - asignadas.length
+  const deHoy = filas.filter((f) => f.deHoy && !f.error)
+  const listas = asignadas.length + deHoy.length
+  const sinSiniestro = [...asignadas, ...deHoy].filter((f) => f.pideSiniestro && !f.siniestro.trim()).length
+  const sinAsignar = filas.length - asignadas.length - deHoy.length
 
   async function subirTodo() {
     setSubiendo(true)
@@ -137,8 +149,15 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
         })
         registrarEvento(id, 'subida', `Subió ${subidos.join(' y ')} (carga de varios archivos: ${lista.map((f) => f.archivo.name).join(', ')})`)
       }
-      setFilas((l) => l.filter((f) => !f.facturaId))
-      setEstado({ texto: `Listo: se subieron ${hechas} archivos a ${porFactura.size} facturas. Ahora los revisa Auditoría.` })
+      // Facturas de hoy: quedan en espera hasta que Auditoría cargue el ERP, y ahí se unen a su legajo
+      for (const f of deHoy) {
+        setEstado({ texto: `Subiendo ${f.archivo.name}…` })
+        await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, f.siniestro.trim(), await prepararArchivo(f.archivo))
+      }
+      setFilas((l) => l.filter((f) => !f.facturaId && !(f.deHoy && !f.error)))
+      setEstado({
+        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el ERP` : ''}. Auditoría los revisa.`,
+      })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })
     } finally {
@@ -198,6 +217,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
                 <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
+                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Auditoría cargue el ERP.</li>
               </ul>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
@@ -241,7 +261,21 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                             )}
                           </span>
                         ) : (
-                          <span className="text-xs font-semibold text-red-800">{f.error}</span>
+                          f.deHoy ? (
+                            <span className="whitespace-nowrap">
+                              {f.deHoy.puntoVenta}-{f.deHoy.numero}
+                              <span className="block text-[11px] font-semibold text-marca">Factura de hoy: se une al cargar el ERP</span>
+                              <input
+                                value={f.siniestro}
+                                onChange={(e) => cambiar(i, { siniestro: e.target.value })}
+                                placeholder="N.º de siniestro"
+                                aria-label="Número de siniestro"
+                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${f.siniestro.trim() ? '' : 'border-sem-amarillo'}`}
+                              />
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-red-800">{f.error}</span>
+                          )
                         )}
                       </td>
                       <td className="px-2 py-2">
@@ -275,15 +309,15 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           <span className="text-sm text-slate-600">
             {filas.length === 0
               ? 'Todavía no hay archivos.'
-              : `${asignadas.length} listos para subir${sinSiniestro ? ` · ${sinSiniestro} sin número de siniestro (escribirlo en la fila)` : ''}${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
+              : `${listas} listos para subir${sinSiniestro ? ` · ${sinSiniestro} sin número de siniestro (escribirlo en la fila)` : ''}${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"
-            disabled={subiendo || asignadas.length === 0 || sinSiniestro > 0}
+            disabled={subiendo || listas === 0 || sinSiniestro > 0}
             onClick={() => void subirTodo()}
             className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
           >
-            <FileUp className="h-4 w-4" /> {subiendo ? 'Subiendo…' : `Subir todo (${asignadas.length})`}
+            <FileUp className="h-4 w-4" /> {subiendo ? 'Subiendo…' : `Subir todo (${listas})`}
           </button>
         </div>
       </div>

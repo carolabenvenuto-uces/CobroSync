@@ -44,6 +44,11 @@ var HOJAS = {
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
+  // PDF de facturas que todavía no están cargadas (se factura hoy, el ERP se carga mañana)
+  espera: {
+    nombre: 'EnEspera',
+    columnas: ['id', 'sucursal', 'puntoVenta', 'numero', 'tipo', 'siniestro', 'archivo', 'url', 'subidoPor', 'fecha', 'nombreOriginal', 'asociado'],
+  },
   cobros: {
     nombre: 'CobrosPrevistos',
     columnas: ['id', 'comprobanteId', 'aseguradoraId', 'fechaIngreso', 'monto', 'estado'],
@@ -104,6 +109,9 @@ function obtenerDatos() {
     datos: {
       aseguradoras: leerHoja_(HOJAS.aseguradoras),
       comprobantes: comprobantes,
+      enEspera: usuario.rol === 'gerencia' ? [] : leerEspera_().filter(function (e) {
+        return !e.asociado && (usuario.rol !== 'sucursal' || mismaSucursal_(e.sucursal, usuario.sucursal));
+      }),
       cobrosPrevistos: usuario.rol === 'sucursal' ? [] : leerHoja_(HOJAS.cobros),
       meta: {
         fechaCorte: hoy_(),
@@ -401,6 +409,92 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, tipoDocumento + '_' + hoy_() + extension));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
   return { archivo: archivo.getName(), url: archivo.getUrl() };
+}
+
+// ── PDF en espera: facturas de hoy que todavía no están en el ERP ──────────────────
+
+/**
+ * La sucursal escanea el mismo día que factura, pero la factura recién se carga con el Excel del
+ * ERP del día siguiente. Mientras tanto el PDF queda "en espera", con el número de la factura y el
+ * siniestro; al cargar el ERP, la aplicación lo une al legajo nuevo (marcarEsperaAsociada).
+ * El punto de venta tiene que ser de la sucursal: así un número mal tipeado de otra sucursal no entra.
+ */
+function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64) {
+  var usuario = usuarioActual_();
+  if (usuario.rol !== 'sucursal') throw new Error('Solo las sucursales suben documentos de facturas de hoy.');
+  if (mime !== 'application/pdf' && !/\.pdf$/i.test(nombre)) throw new Error('Solo se aceptan PDF.');
+  puntoVenta = Number(puntoVenta);
+  numero = Number(numero);
+  var suc = leerHoja_(HOJAS.sucursales).filter(function (s) { return mismaSucursal_(s.nombre, usuario.sucursal); })[0];
+  var pvs = suc ? String(suc.puntosVenta || '').split(/[^0-9]+/).filter(String).map(Number) : [];
+  if (pvs.indexOf(puntoVenta) < 0) throw new Error('El punto de venta ' + puntoVenta + ' no es de la sucursal.');
+  var yaEsta = leerHoja_(HOJAS.comprobantes).some(function (c) { return Number(c.puntoVenta) === puntoVenta && Number(c.numero) === numero; });
+  if (yaEsta) throw new Error('La factura ' + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
+  var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
+  var carpeta = subcarpeta_(subcarpeta_(raiz, usuario.sucursal), 'En espera');
+  var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
+  var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension));
+  archivo.setDescription('Subido por ' + usuario.email + ' antes de cargar la factura (' + nombre + ')');
+  var e = {
+    id: 'esp-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000),
+    sucursal: usuario.sucursal, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: String(siniestro || ''),
+    archivo: archivo.getName(), url: archivo.getUrl(), subidoPor: usuario.nombre || usuario.email, fecha: hoy_(), nombreOriginal: nombre, asociado: '',
+  };
+  conBloqueo_(function () { escribirFila_(hojaEspera_(), HOJAS.espera, null, e); });
+  return e;
+}
+
+/** Al cargar el ERP: los PDF en espera que ya se unieron a su factura. Solo Auditoría. */
+function marcarEsperaAsociada(pares) {
+  var usuario = usuarioActual_();
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría carga el ERP.');
+  return conBloqueo_(function () {
+    var hoja = hojaEspera_();
+    var n = 0;
+    (pares || []).forEach(function (p) {
+      var fila = buscarFila_(hoja, p.id);
+      if (!fila) return;
+      hoja.getRange(fila, HOJAS.espera.columnas.indexOf('asociado') + 1).setValue(p.comprobanteId);
+      n++;
+    });
+    return n;
+  });
+}
+
+/** Quitar un PDF en espera (por ejemplo, un número mal tipeado). Auditoría o la misma sucursal. */
+function descartarEspera(id) {
+  var usuario = usuarioActual_();
+  if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
+  return conBloqueo_(function () {
+    var hoja = hojaEspera_();
+    var fila = buscarFila_(hoja, id);
+    if (!fila) return false;
+    var e = filaAObjeto_(HOJAS.espera, hoja.getRange(fila, 1, 1, HOJAS.espera.columnas.length).getValues()[0]);
+    if (usuario.rol === 'sucursal' && !mismaSucursal_(e.sucursal, usuario.sucursal)) throw new Error('Es de otra sucursal.');
+    hoja.deleteRow(fila);
+    return true;
+  });
+}
+
+/** La pestaña EnEspera se crea sola si una planilla de una versión anterior no la tiene. */
+function hojaEspera_() {
+  var libro = SpreadsheetApp.getActive();
+  var hoja = libro.getSheetByName(HOJAS.espera.nombre);
+  if (!hoja) {
+    hoja = libro.insertSheet(HOJAS.espera.nombre);
+    hoja.getRange(1, 1, hoja.getMaxRows(), HOJAS.espera.columnas.length).setNumberFormat('@');
+    hoja.getRange(1, 1, 1, HOJAS.espera.columnas.length).setValues([HOJAS.espera.columnas]).setFontWeight('bold');
+    hoja.setFrozenRows(1);
+  }
+  return hoja;
+}
+
+function leerEspera_() {
+  var hoja = hojaEspera_();
+  if (hoja.getLastRow() < 2) return [];
+  return hoja.getRange(2, 1, hoja.getLastRow() - 1, HOJAS.espera.columnas.length).getValues()
+    .filter(function (f) { return String(f[0]) !== ''; })
+    .map(function (f) { return filaAObjeto_(HOJAS.espera, f); });
 }
 
 // ── Avisos por mail ─────────────────────────────────────────────────────────

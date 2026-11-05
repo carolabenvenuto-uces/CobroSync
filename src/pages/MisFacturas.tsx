@@ -347,7 +347,7 @@ export default function MisFacturas() {
         <button
           type="button"
           onClick={() => setCargaMasiva(true)}
-          title="Todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 orden.pdf)"
+          title="Todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 siniestro 22365.pdf)"
           className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
         >
           <FileUp className="h-4 w-4" /> Subir varios PDF de una vez

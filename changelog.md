@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Nombres de archivo:** número de factura y siniestro ("35-11032 siniestro 22365.pdf"; "fc" u "or" opcionales), hasta 40 caracteres. En la carga de varios, si falta el siniestro se escribe en la fila. Las condiciones se leen sí o sí la primera vez (hasta tocar Entendido no se pueden agregar archivos).
 - Pie de página sin el logo de Grupo SVA (queda en el menú, junto al usuario).
 - Menú: la barra de desplazamiento va del color del menú, sin la franja gris.
 - **Foto desde el celular, revisada:** se elige cómo queda cada página (original, mejorada o blanco y negro) mirándola; tocar una página la muestra grande; la mejora ya no exagera los colores; antes de subir, una pantalla muestra el documento completo (Volver a editar o Subir PDF). En la demo, lo subido se puede abrir.

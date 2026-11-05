@@ -153,38 +153,32 @@ export default function Resumen() {
             ]
             return (
               <div className="mt-4 flex flex-1 flex-col gap-4">
-                {[
-                  { titulo: 'Facturado', valor: anual.facturado, ayuda: `${anual.facturas.toLocaleString('es-AR')} facturas`, clase: 'text-noche' },
-                  { titulo: 'Notas de crédito', valor: -nc, ayuda: `${pct(nc)} de lo facturado`, clase: 'text-red-700' },
-                  { titulo: 'Cobrado', valor: anual.cobrado, ayuda: `${pct(anual.cobrado)} de lo facturado`, clase: 'text-esmeralda' },
-                ].map((x) => (
-                  <div key={x.titulo}>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{x.titulo}</div>
-                    <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.clase}`} style={GRANDE}>
-                      {formatoPesos(x.valor)}
-                    </div>
-                    <div className="text-xs text-slate-500">{x.ayuda}</div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturado</div>
+                  <div className="whitespace-nowrap font-extrabold tabular-nums text-noche" style={GRANDE}>
+                    {formatoPesos(anual.facturado)}
                   </div>
-                ))}
-                {/* Cómo se reparte lo facturado del año: el gráfico que completa el recuadro */}
-                <div className="mt-auto rounded-lg bg-white/70 p-3">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Qué pasó con lo facturado</div>
-                  <div className="flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={partes.map((x) => `${x.titulo} ${pct(x.valor)}`).join(', ')}>
+                  <div className="text-xs text-slate-500">{anual.facturas.toLocaleString('es-AR')} facturas</div>
+                  {/* Cómo se reparte lo facturado: cada parte abajo lleva su color y su porcentaje */}
+                  <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={partes.map((x) => `${x.titulo} ${pct(x.valor)}`).join(', ')}>
                     {partes.map((x) => (
                       <div key={x.titulo} className={x.color} style={{ width: `${(x.valor / base) * 100}%` }} />
                     ))}
                   </div>
-                  <ul className="mt-2 space-y-1 text-xs">
-                    {partes.map((x) => (
-                      <li key={x.titulo} className="flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1.5 text-slate-600">
-                          <span className={`h-2 w-2 rounded-full ${x.color}`} /> {x.titulo}
-                        </span>
-                        <span className={`font-semibold tabular-nums ${x.texto}`}>{pct(x.valor)}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
+                {partes.map((x) => (
+                  <div key={x.titulo}>
+                    <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${x.color}`} aria-hidden="true" /> {x.titulo}
+                      </span>
+                      <span className={`tabular-nums normal-case ${x.texto}`}>{pct(x.valor)}</span>
+                    </div>
+                    <div className={`whitespace-nowrap font-extrabold tabular-nums ${x.texto}`} style={GRANDE}>
+                      {formatoPesos(x.titulo === 'Notas de crédito' ? -x.valor : x.valor)}
+                    </div>
+                  </div>
+                ))}
               </div>
             )
           })()}

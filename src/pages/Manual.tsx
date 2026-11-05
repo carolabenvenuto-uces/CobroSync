@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { reportarProblemaEnGoogle } from '../services/google'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Building2, ClipboardCheck, LifeBuoy, Send, Store } from 'lucide-react'
+import { ArrowLeft, BookOpen, Building2, ChevronDown, ClipboardCheck, LifeBuoy, Send, Store } from 'lucide-react'
 import { Isologo } from '../components/Logo'
 import { BadgeEtapa, EtiquetaMipyme } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
@@ -68,7 +68,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'camino',
     sector: 'todos',
-    titulo: 'El camino de una factura',
+    titulo: '¿Por qué etapas pasa una factura?',
     contenido: () => (
       <>
         <p>Cada factura pasa por estas etapas. La etiqueta de color dice en cuál está y a quién le toca:</p>
@@ -97,7 +97,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'colores',
     sector: 'todos',
-    titulo: 'Qué significa cada color',
+    titulo: '¿Qué significa cada color?',
     contenido: () => (
       <>
         <p>En toda la plataforma, el mismo color quiere decir lo mismo:</p>
@@ -139,7 +139,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'notificaciones',
     sector: 'todos',
-    titulo: 'Notificaciones',
+    titulo: '¿Cómo funcionan las notificaciones?',
     contenido: () => (
       <>
         <p>
@@ -159,7 +159,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'tablas',
     sector: 'todos',
-    titulo: 'Listas, filtros y Excel',
+    titulo: '¿Cómo se filtra, ordena o exporta una lista?',
     contenido: () => (
       <ul className="list-disc space-y-1 pl-5">
         <li>
@@ -187,7 +187,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-plazo',
     sector: 'sucursal',
-    titulo: 'El plazo para subir la documentación',
+    titulo: '¿Cuánto tiempo hay para subir la documentación?',
     contenido: () => {
       const p = plazosActuales()
       return (
@@ -213,7 +213,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-mis-facturas',
     sector: 'sucursal',
-    titulo: 'Mis facturas: los cuatro estados',
+    titulo: '¿Qué muestra cada tarjeta de Mis facturas?',
     contenido: () => (
       <>
         <p>
@@ -245,7 +245,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-subir',
     sector: 'sucursal',
-    titulo: 'Subir la documentación',
+    titulo: '¿Cómo se sube la documentación?',
     contenido: () => (
       <>
         <h4 className="font-bold">De a una factura</h4>
@@ -284,7 +284,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-nc',
     sector: 'sucursal',
-    titulo: 'Informar una nota de crédito',
+    titulo: '¿Cómo se informa una nota de crédito?',
     contenido: () => (
       <>
         <p>Cuando una factura se anula, toda o una parte, hay que avisarlo para que Auditoría no la presente:</p>
@@ -302,7 +302,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-siniestros',
     sector: 'sucursal',
-    titulo: 'Mis siniestros',
+    titulo: '¿Para qué sirve Mis siniestros?',
     contenido: () => (
       <>
         <p>
@@ -323,7 +323,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'ger-resumen',
     sector: 'gerencia',
-    titulo: 'Resumen',
+    titulo: '¿Qué muestra el Resumen?',
     contenido: () => (
       <>
         <p>
@@ -352,7 +352,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'ger-informes',
     sector: 'gerencia',
-    titulo: 'Ranking, Saldos e Impacto',
+    titulo: '¿Qué informes hay?',
     contenido: () => (
       <ul className="list-disc space-y-1 pl-5">
         <li>
@@ -377,7 +377,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'ger-avisos',
     sector: 'gerencia',
-    titulo: 'Qué le llega a Gerencia',
+    titulo: '¿Qué avisos le llegan a Gerencia?',
     contenido: () => {
       const p = plazosActuales()
       return (
@@ -401,7 +401,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'aud-base',
     sector: 'auditoria',
-    titulo: 'Auditoría: el día a día',
+    titulo: '¿Qué pantallas usa Auditoría en el día a día?',
     contenido: () => (
       <>
         <ul className="list-disc space-y-1.5 pl-5">
@@ -441,7 +441,7 @@ const SECCIONES: Seccion[] = [
   {
     id: 'preguntas',
     sector: 'todos',
-    titulo: 'Preguntas frecuentes',
+    titulo: 'Otras preguntas',
     contenido: () => (
       <dl className="space-y-3">
         <div>
@@ -484,35 +484,54 @@ function ReportarProblema({ conGoogle }: { conGoogle: boolean }) {
       setEstado({ tipo: 'error', mensaje: e instanceof Error ? e.message : 'No se pudo enviar.' })
     }
   }
+  const [abierto, setAbierto] = useState(false)
   return (
-    <section id="soporte" className="scroll-mt-6 rounded-xl border border-marca/30 bg-white p-5 text-sm text-slate-700 shadow-sm">
-      <h2 className="mb-1 flex items-center gap-2 text-lg font-extrabold text-noche">
-        <LifeBuoy className="h-5 w-5 text-marca" /> ¿Algo no funciona?
-      </h2>
-      <p>
-        Para un error técnico (una pantalla que no carga, un botón que no responde, un dato que se ve mal), el mensaje le llega directamente a la
-        desarrolladora de {PRODUCTO}. Para dudas sobre una factura, el canal es Auditoría.
-      </p>
-      <textarea
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        rows={3}
-        placeholder="Qué pasó, en qué pantalla y, si corresponde, con qué factura"
-        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-      />
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={enviar}
-          disabled={!texto.trim() || estado.tipo === 'enviando'}
-          className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
-        >
-          <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar a la desarrolladora'}
-        </button>
-        {estado.tipo === 'ok' && <span className="text-xs font-semibold text-teal-700">Enviado. Gracias por avisar.</span>}
-        {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
+    <section id="soporte" className="mb-6 rounded-xl border border-marca/40 bg-marca/5 p-4 text-sm text-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <LifeBuoy className="mt-0.5 h-6 w-6 shrink-0 text-marca" />
+          <div>
+            <div className="text-base font-extrabold text-noche">¿Algo no funciona?</div>
+            <div className="text-xs text-slate-600">
+              Un error de la plataforma (una pantalla que no carga, un botón que no responde): el mensaje le llega solo a soporte de {PRODUCTO}.
+              Las dudas sobre una factura, a Auditoría.
+            </div>
+          </div>
+        </div>
+        {!abierto && (
+          <button type="button" onClick={() => setAbierto(true)} className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro">
+            <Send className="h-4 w-4" /> Avisar un problema
+          </button>
+        )}
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
+      {abierto && (
+        <>
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="Qué pasó, en qué pantalla y, si corresponde, con qué factura"
+            className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={enviar}
+              disabled={!texto.trim() || estado.tipo === 'enviando'}
+              className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar a soporte'}
+            </button>
+            <button type="button" onClick={() => setAbierto(false)} className="text-xs font-semibold text-slate-500 hover:text-noche">
+              Cancelar
+            </button>
+            {estado.tipo === 'ok' && <span className="text-xs font-semibold text-teal-700">Enviado. Gracias por avisar.</span>}
+            {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
+        </>
+      )}
     </section>
   )
 }
@@ -531,7 +550,19 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
   const [sector, setSector] = useState<Sector>(rol ?? 'todos')
   const visibles = SECCIONES.filter((s) => s.sector === 'todos' || s.sector === sector || sector === 'todos')
   // "Para todos" muestra lo general; cada sector, lo general primero y después lo suyo
-  const lista = sector === 'todos' ? SECCIONES.filter((s) => s.sector === 'todos') : visibles
+  // Lo del propio sector primero; lo general, después
+  const lista = sector === 'todos' ? SECCIONES.filter((s) => s.sector === 'todos') : [...visibles.filter((s) => s.sector !== 'todos'), ...visibles.filter((s) => s.sector === 'todos')]
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
+  const alternar = (id: string) =>
+    setAbiertas((a) => {
+      const n = new Set(a)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  const [buscar, setBuscar] = useState('')
+  const normal = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const filtradas = buscar.trim() ? lista.filter((s) => normal(s.titulo).includes(normal(buscar.trim()))) : lista
 
   const cuerpo = (
     <div className="mx-auto max-w-4xl">
@@ -539,7 +570,7 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Manual de uso</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Cómo funciona {PRODUCTO} y qué hace cada pantalla, por sector.
+            Tocar una pregunta para ver la respuesta.
           </p>
         </div>
         <span className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-indigo-800">
@@ -562,37 +593,41 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
       </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
-        {/* Índice */}
-        <nav className="hidden lg:block">
-          <div className="sticky top-6 space-y-1 text-sm">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">En esta guía</div>
-            {rol && (
-              <a href="#soporte" onClick={(e) => { e.preventDefault(); document.getElementById('soporte')?.scrollIntoView({ behavior: 'smooth' }) }} className="block rounded px-2 py-1 font-semibold text-marca hover:bg-white">
-                ¿Algo no funciona?
-              </a>
-            )}
-            {lista.map((s) => (
-              <a key={s.id} href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' }) }} className="block rounded px-2 py-1 text-slate-600 hover:bg-white hover:text-noche">
-                {s.titulo}
-              </a>
-            ))}
-          </div>
-        </nav>
+      {rol && <ReportarProblema conGoogle={fuente.tipo === 'google'} />}
 
-        <div className="space-y-4">
-          {lista.map((s) => (
-            <section key={s.id} id={s.id} className="scroll-mt-6 rounded-xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-700 shadow-sm">
-              <h2 className="mb-2 text-lg font-extrabold text-noche">{s.titulo}</h2>
-              {s.contenido()}
-            </section>
-          ))}
-          {rol && <ReportarProblema conGoogle={fuente.tipo === 'google'} />}
-          <p className="pt-2 text-center text-xs text-slate-500">
-            {AUTORIA} · © {new Date().getFullYear()}
-          </p>
-        </div>
+      {/* Cada pregunta se despliega al tocarla: así no hay que leer todo el manual */}
+      <div className="mb-3">
+        <input
+          type="search"
+          value={buscar}
+          onChange={(e) => setBuscar(e.target.value)}
+          placeholder="Buscar una pregunta"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
+        />
       </div>
+      <div className="space-y-2">
+        {filtradas.map((s) => {
+          const desplegada = abiertas.has(s.id)
+          return (
+            <section key={s.id} id={s.id} className="rounded-xl border border-slate-200 bg-white text-sm leading-relaxed text-slate-700 shadow-sm">
+              <button
+                type="button"
+                onClick={() => alternar(s.id)}
+                aria-expanded={desplegada}
+                className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left"
+              >
+                <span className="font-bold text-noche">{s.titulo}</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${desplegada ? 'rotate-180' : ''}`} />
+              </button>
+              {desplegada && <div className="border-t border-slate-100 px-5 pb-5 pt-3">{s.contenido()}</div>}
+            </section>
+          )
+        })}
+        {filtradas.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Sin preguntas con esa búsqueda.</p>}
+      </div>
+      <p className="pt-6 text-center text-xs text-slate-500">
+        {AUTORIA} · © {new Date().getFullYear()}
+      </p>
     </div>
   )
 

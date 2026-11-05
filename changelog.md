@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Manual por preguntas:** cada tema es una pregunta que se despliega al tocarla, con un buscador; primero las del propio sector. "¿Algo no funciona?" va arriba, destacado, con el botón Avisar un problema (le llega solo al correo de soporte de Ajustes).
 - **PDF de facturas de hoy:** la sucursal puede subir en "Subir varios PDF" los de facturas que todavía no están (el ERP se carga al día siguiente), si el punto de venta es suyo. Quedan en espera y, al cargar el ERP, se unen solos a su legajo (en revisión, con el siniestro). Mis facturas muestra lo que está en espera; Control diario muestra a Auditoría los PDF que llevan más de 2 días sin factura, para revisar el número o quitarlos. Nueva pestaña EnEspera en la planilla (se crea sola).
 - **Nombres de archivo:** número de factura y siniestro ("35-11032 siniestro 22365.pdf"; "fc" u "or" opcionales), hasta 40 caracteres. En la carga de varios, si falta el siniestro se escribe en la fila. Las condiciones se leen sí o sí la primera vez (hasta tocar Entendido no se pueden agregar archivos).
 - Pie de página sin el logo de Grupo SVA (queda en el menú, junto al usuario).

@@ -5,6 +5,10 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Soporte técnico en el menú:** el botón para avisar un problema sale del manual y queda en el menú, debajo de Manual de uso; abre una ventana para escribir el mensaje (le llega solo al correo de soporte de Ajustes).
+- Manual: la primera pregunta de cada sector es "¿Qué es CobroSync?".
+- **Control diario más claro:** arriba, tres tarjetas con dónde está cada factura pendiente (le toca a la sucursal, a Auditoría o está en la compañía), que filtran la tabla al tocarlas. La tabla queda con 7 columnas: las cinco fechas se reemplazan por una barra de avance (subida, aprobada, presentada, cobrada) con la última fecha debajo; las fechas sueltas, el aviso de NC y otras siguen disponibles en "Columnas". Las NC sin aviso se marcan debajo del estado.
+- **Excel con el logo de Grupo SVA:** todo lo que se exporta sale con el logo, el título del informe y la fecha arriba de la tabla. El Resumen impreso también lleva el logo.
 - **Menú:** el usuario va arriba, junto al logo de Grupo SVA; debajo del nombre de CobroSync, "v1.0 · by CB" en chico (la autoría completa sigue en el pie). Abajo queda solo Manual de uso; el cambio de usuario de la demo queda guardado en "Vista de demostración".
 - **Manual por sector:** cada usuario ve solo el suyo, con las preguntas en orden de importancia para su tarea.
 - **Mis siniestros:** cada siniestro tiene su estado con color (pendiente de documentación, a refacturar, en revisión, presentado, vencido, cobrado, anulado) y se filtra por estado debajo del buscador. "Sin número de siniestro" pasa a "Pendiente de documentación". En el detalle, los documentos solo aparecen si falta algo o fue observado. Auditoría puede cargar el monto de la orden y se ve cuánto falta facturar (o si se facturó de más), contando las notas de crédito parciales. Nueva columna montoOrden en la planilla.

@@ -1,4 +1,5 @@
-import { useMemo, type ComponentType } from 'react'
+import { useMemo, useState, type ComponentType } from 'react'
+import { VentanaSoporte } from '../Soporte'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut,
@@ -12,6 +13,7 @@ import {
   LayoutDashboard,
   Megaphone,
   BookOpen,
+  LifeBuoy,
   Store,
   Send,
   Settings,
@@ -108,6 +110,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
   const comprobantes = useComprobantes()
 
   const { pathname } = useLocation()
+  const [soporte, setSoporte] = useState(false)
   const administradora = esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte)
 
   const contadores = useMemo(() => {
@@ -216,6 +219,11 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
             <BookOpen className="h-4 w-4" />
             Manual de uso
           </Link>
+          <button type="button" onClick={() => setSoporte(true)} className="flex w-full items-center gap-2 py-1 text-left hover:text-white">
+            <LifeBuoy className="h-4 w-4" />
+            Soporte técnico
+          </button>
+          {soporte && <VentanaSoporte onCerrar={() => setSoporte(false)} />}
           {fuente.tipo !== 'google' && (
             <details className="mt-1">
               <summary className="cursor-pointer select-none py-1 text-[11px] text-slate-500 hover:text-slate-300">Vista de demostración</summary>

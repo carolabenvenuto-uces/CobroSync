@@ -14,4 +14,10 @@ describe('exportar a Excel', () => {
     expect(b[0]).toBe(0x50)
     expect(b[1]).toBe(0x4b)
   })
+  it('con encabezado de informe: título arriba y la tabla desde la fila 5', () => {
+    const x = hojaXml(['Sucursal', 'Total'], [['Warnes', 10]], { titulo: 'Control por sucursal', subtitulo: 'CobroSync' })
+    expect(x).toContain('<c r="A2" t="inlineStr" s="5"><is><t>Control por sucursal</t></is></c>')
+    expect(x).toContain('<c r="A5" t="inlineStr" s="1">')
+    expect(x).toContain('<autoFilter ref="A5:B6"/>')
+  })
 })

@@ -73,12 +73,18 @@ export default function Pendientes() {
 
   const columnas: Columna<Fila>[] = [
     {
-      clave: 'dias',
-      titulo: 'Días',
+      // Días de espera y si está en plazo, en una sola celda; a quién se escaló, al pasar el mouse
+      clave: 'estado',
+      titulo: 'Espera',
       orden: (x) => x.dias,
-      celda: (x) => <span className="text-base font-extrabold">{x.dias}</span>,
+      filtro: (x) => NOMBRE_ESTADO[x.nivel],
+      celda: (x) => (
+        <div className="flex items-center gap-2 whitespace-nowrap" title={x.nivel === 'en_plazo' ? undefined : `Escalado a ${avisoA(x.nivel, x.sucursal)}`}>
+          <span className="w-7 text-right text-base font-extrabold tabular-nums">{x.dias}</span>
+          <Chip tono={TONO[x.nivel]}>{NOMBRE_ESTADO[x.nivel]}</Chip>
+        </div>
+      ),
     },
-    { clave: 'estado', titulo: 'Estado', filtro: (x) => NOMBRE_ESTADO[x.nivel], celda: (x) => <Chip tono={TONO[x.nivel]}>{NOMBRE_ESTADO[x.nivel]}</Chip> },
     { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, orden: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
     {
       clave: 'factura', movil: 'titulo',
@@ -91,8 +97,17 @@ export default function Pendientes() {
         </div>
       ),
     },
-    { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
-    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap">{x.c.siniestro}</span> },
+    {
+      clave: 'compania',
+      titulo: 'Compañía / siniestro',
+      filtro: (x) => nombreCompania(x.c.aseguradoraId),
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          {nombreCompania(x.c.aseguradoraId)}
+          {x.c.siniestro && <div className="text-[11px] text-slate-500">{x.c.siniestro}</div>}
+        </div>
+      ),
+    },
     { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap font-semibold">{formatoPesos(x.c.total)}</span> },
     {
@@ -109,7 +124,7 @@ export default function Pendientes() {
     },
     {
       clave: 'situacion', movil: 'ancha',
-      titulo: 'Aviso de la sucursal',
+      titulo: 'Respuesta de la sucursal',
       filtro: (x) => x.situacion,
       celda: (x) =>
         x.c.compromiso ? (
@@ -125,7 +140,7 @@ export default function Pendientes() {
           <span className="text-xs text-slate-500">{x.situacion}</span>
         ),
     },
-    { clave: 'aviso', titulo: 'Escalado a', filtro: (x) => avisoA(x.nivel, x.sucursal), celda: (x) => <span className="whitespace-nowrap text-xs">{avisoA(x.nivel, x.sucursal)}</span> },
+    { clave: 'aviso', titulo: 'Escalado a', oculta: true, filtro: (x) => avisoA(x.nivel, x.sucursal), celda: (x) => <span className="whitespace-nowrap text-xs">{avisoA(x.nivel, x.sucursal)}</span> },
   ]
 
   function exportar(lista: Fila[]) {
@@ -168,7 +183,7 @@ export default function Pendientes() {
       />
 
       <Tabla
-        id="pendientes"
+        id="pendientes-v2"
         key={params.toString()}
         filas={filas}
         columnas={columnas}
@@ -177,7 +192,7 @@ export default function Pendientes() {
         buscar={(x) => [formatoComprobante(x.c), x.c.siniestro, x.c.patente, x.c.ref, x.c.sucursal].join(' ')}
         textoBusqueda="Buscar por número de factura, siniestro, patente o referencia"
         filtrosIniciales={filtrosIniciales}
-        ordenInicial={{ clave: 'dias', dir: 'desc' }}
+        ordenInicial={{ clave: 'estado', dir: 'desc' }}
         exportar={exportar}
         resumen={(l) => (
           <>

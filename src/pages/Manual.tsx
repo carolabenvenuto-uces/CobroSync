@@ -356,8 +356,8 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <ul className="list-disc space-y-1 pl-5">
         <li>
-          <Pantalla>Ranking de sucursales</Pantalla>: cuánto retiene cada sucursal por falta de documentación, cuántas facturas están en
-          plazo, atrasadas o críticas, y si mejora o empeora.
+          <Pantalla>Control por sucursal</Pantalla>: las sucursales en orden alfabético, con el porcentaje de facturas subidas en plazo,
+          lo pendiente hoy (atrasado o crítico) y el importe que retiene cada una.
         </li>
         <li>
           <Pantalla>Saldos por compañía</Pantalla>: facturado, notas de crédito, cobrado y pendiente de cada compañía, con lo vencido y los
@@ -536,6 +536,13 @@ function ReportarProblema({ conGoogle }: { conGoogle: boolean }) {
   )
 }
 
+/** Orden de las preguntas para cada sector: primero lo que se usa todos los días, al final lo general */
+const ORDEN: Record<Exclude<Sector, 'todos'>, string[]> = {
+  sucursal: ['suc-mis-facturas', 'suc-subir', 'suc-plazo', 'suc-nc', 'notificaciones', 'suc-siniestros', 'colores', 'camino', 'tablas', 'que-es', 'preguntas'],
+  gerencia: ['ger-resumen', 'ger-avisos', 'ger-informes', 'notificaciones', 'colores', 'camino', 'tablas', 'que-es', 'preguntas'],
+  auditoria: ['aud-base', 'camino', 'colores', 'notificaciones', 'tablas', 'que-es', 'preguntas'],
+}
+
 const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
   { clave: 'todos', titulo: 'Para todos', icono: BookOpen },
   { clave: 'sucursal', titulo: 'Sucursal', icono: Store },
@@ -545,13 +552,14 @@ const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
 
 export default function Manual({ suelto = false }: { suelto?: boolean }) {
   const { rol, fuente } = useApp()
-  // Cada usuario ve lo general y lo de su sector. Auditoría (y quien entra sin usuario) ve todo, por pestañas.
-  const conPestanas = !rol || rol === 'auditoria' || suelto
+  // Cada usuario ve solo su manual. Las pestañas quedan para quien lo abre desde el ingreso, sin usuario.
+  const conPestanas = !rol
   const [sector, setSector] = useState<Sector>(rol ?? 'todos')
-  const visibles = SECCIONES.filter((s) => s.sector === 'todos' || s.sector === sector || sector === 'todos')
-  // "Para todos" muestra lo general; cada sector, lo general primero y después lo suyo
-  // Lo del propio sector primero; lo general, después
-  const lista = sector === 'todos' ? SECCIONES.filter((s) => s.sector === 'todos') : [...visibles.filter((s) => s.sector !== 'todos'), ...visibles.filter((s) => s.sector === 'todos')]
+  const sectorVisto = (rol ?? sector) as Sector
+  const lista =
+    sectorVisto === 'todos'
+      ? SECCIONES.filter((s) => s.sector === 'todos')
+      : ORDEN[sectorVisto].map((id) => SECCIONES.find((s) => s.id === id)).filter((s): s is (typeof SECCIONES)[number] => !!s)
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
   const alternar = (id: string) =>
     setAbiertas((a) => {

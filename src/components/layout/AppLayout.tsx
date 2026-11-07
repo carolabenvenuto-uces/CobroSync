@@ -3,6 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
+import { AvisoNotificacion } from '../Notificaciones'
 import { Marca } from '../Logo'
 import { AUTORIA } from '../../lib/marca'
 import { Cargando, ErrorCarga, SinAcceso } from '../ui/Estados'
@@ -56,6 +57,7 @@ export function AppLayout() {
       </div>
 
       {/* El legajo se abre desde cualquier pantalla (tablas, avisos, notificaciones) */}
+      {datos && <AvisoNotificacion />}
       {legajo && <LegajoPanel key={legajo.id} comprobante={legajo} onCerrar={() => abrirLegajo(null)} />}
     </div>
   )

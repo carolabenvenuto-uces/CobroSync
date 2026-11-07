@@ -31,6 +31,17 @@ export interface Columna<T> {
    * 'accion' arriba a la derecha (un botón), 'ancha' ocupa todo el ancho y 'no' no se muestra.
    */
   movil?: 'titulo' | 'accion' | 'ancha' | 'no'
+  /** grupo de columnas (como en la planilla: factura, documentación, presentación, cobro), con un color suave */
+  grupo?: { titulo: string; tono: TonoGrupo }
+}
+
+export type TonoGrupo = 'gris' | 'celeste' | 'ambar' | 'violeta' | 'verde'
+const TONO: Record<TonoGrupo, { cabecera: string; titulo: string; celda: string; borde: string }> = {
+  gris: { cabecera: 'bg-slate-100', titulo: 'bg-slate-200/70 text-slate-700', celda: '', borde: 'border-slate-200' },
+  celeste: { cabecera: 'bg-sky-50', titulo: 'bg-sky-100 text-sky-900', celda: 'bg-sky-50/40', borde: 'border-sky-200' },
+  ambar: { cabecera: 'bg-amber-50', titulo: 'bg-amber-100 text-amber-900', celda: 'bg-amber-50/40', borde: 'border-amber-200' },
+  violeta: { cabecera: 'bg-violet-50', titulo: 'bg-violet-100 text-violet-900', celda: 'bg-violet-50/40', borde: 'border-violet-200' },
+  verde: { cabecera: 'bg-teal-50', titulo: 'bg-teal-100 text-teal-900', celda: 'bg-teal-50/40', borde: 'border-teal-200' },
 }
 
 interface Props<T> {
@@ -98,6 +109,16 @@ export function Tabla<T>({
   const [ocultas, setOcultas] = useState<Set<string>>(() => leerOcultas(id, todasLasColumnas))
   // Una columna con un filtro puesto (por ejemplo, desde un aviso) se muestra aunque esté oculta
   const columnas = todasLasColumnas.filter((c) => !ocultas.has(c.clave) || (filtrosIniciales[c.clave] ?? '') !== '')
+  // Tramos de columnas seguidas del mismo grupo, para la fila de títulos de arriba
+  const conGrupos = columnas.some((c) => c.grupo)
+  const tramos: { titulo: string; tono: TonoGrupo | null; cantidad: number }[] = []
+  for (const c of columnas) {
+    const ultimo = tramos[tramos.length - 1]
+    if (ultimo && ultimo.titulo === (c.grupo?.titulo ?? '')) ultimo.cantidad++
+    else tramos.push({ titulo: c.grupo?.titulo ?? '', tono: c.grupo?.tono ?? null, cantidad: 1 })
+  }
+  const empiezaGrupo = (i: number) => i > 0 && columnas[i].grupo?.titulo !== columnas[i - 1].grupo?.titulo
+  const tonoDe = (c: Columna<T>) => (c.grupo ? TONO[c.grupo.tono] : null)
   function alternarColumna(clave: string) {
     const n = new Set(ocultas)
     if (n.has(clave)) n.delete(clave)
@@ -361,6 +382,20 @@ export function Tabla<T>({
       <div className={`max-h-[70vh] overflow-auto ${pie ? '' : 'hidden sm:block'}`}>
         <table className="w-full text-left text-[13px]">
           <thead className="sticky top-0 z-20 bg-fondo shadow-[0_1px_0_0_#E2E8F0]">
+            {conGrupos && (
+              <tr className="text-[10px] uppercase tracking-wider">
+                {seleccion && <th />}
+                {tramos.map((t, i) => (
+                  <th
+                    key={`${t.titulo}-${i}`}
+                    colSpan={t.cantidad}
+                    className={`px-2 py-1 text-center font-bold ${t.tono ? `${TONO[t.tono].titulo} border-l-2 border-white` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                  >
+                    {t.titulo}
+                  </th>
+                ))}
+              </tr>
+            )}
             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
               {seleccion && (
                 <th rowSpan={2} className="w-8 px-2 align-middle">
@@ -382,7 +417,7 @@ export function Tabla<T>({
               {columnas.map((col, i) => (
                 <th
                   key={col.clave}
-                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
                 >
                   {col.orden ? (
                     <button
@@ -410,7 +445,10 @@ export function Tabla<T>({
             </tr>
             <tr>
               {columnas.map((col, i) => (
-                <th key={col.clave} className={`px-2 pb-2 font-normal ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}>
+                <th
+                  key={col.clave}
+                  className={`px-2 pb-2 font-normal ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                >
                   {conFiltro(col) && (
                     <select
                       value={filtros[col.clave] ?? TODOS}
@@ -462,7 +500,7 @@ export function Tabla<T>({
                 {columnas.map((col, i) => (
                   <td
                     key={col.clave}
-                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
+                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${tonoDe(col)?.celda ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
                   >
                     {col.celda(f)}
                   </td>

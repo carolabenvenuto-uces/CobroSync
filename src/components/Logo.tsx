@@ -20,7 +20,7 @@ export function Isologo({ className = 'h-9 w-9', claro = false }: { className?: 
   )
 }
 
-/** Marca completa: isologo + "CobroSync 1.0" + la firma de la autora. */
+/** Marca: isologo + "CobroSync" con la versión y la firma corta, chiquitas. */
 export function Marca({ oscuro = false }: { oscuro?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -29,9 +29,10 @@ export function Marca({ oscuro = false }: { oscuro?: boolean }) {
         <div className={`text-lg font-extrabold tracking-tight ${oscuro ? 'text-white' : 'text-noche'}`}>
           Cobro<span className={oscuro ? 'text-[#B9AEFF]' : 'text-marca'}>Sync</span>
           {/* versión chiquita, abajo al lado del nombre */}
-          <span className={`ml-1 align-baseline text-[9px] font-medium ${oscuro ? 'text-slate-500' : 'text-slate-400'}`}>v{VERSION}</span>
+          <span className={`ml-1 align-baseline text-[9px] font-medium ${oscuro ? 'text-slate-500' : 'text-slate-400'}`}>
+            v{VERSION} · {FIRMA}
+          </span>
         </div>
-        <div className={`mt-1 text-[10px] font-semibold tracking-wide ${oscuro ? 'text-slate-400' : 'text-slate-500'}`}>{FIRMA}</div>
       </div>
     </div>
   )

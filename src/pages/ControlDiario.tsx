@@ -137,6 +137,7 @@ export default function ControlDiario() {
   const columnas: Columna<Fila>[] = [
     {
       clave: 'novedad',
+      grupo: { titulo: 'Factura', tono: 'gris' },
       titulo: 'Novedad',
       oculta: true,
       filtro: (x) => novedad(x.c),
@@ -147,15 +148,16 @@ export default function ControlDiario() {
     },
     {
       clave: 'mes',
+      grupo: { titulo: 'Factura', tono: 'gris' },
       titulo: 'Fecha',
       orden: (x) => x.c.fecha,
       filtro: (x) => mesDeFecha(x.c.fecha),
       celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span>,
     },
-    { clave: 'ref', titulo: 'Ref.', oculta: true, orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
-    { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
+    { clave: 'ref', grupo: { titulo: 'Factura', tono: 'gris' }, titulo: 'Ref.', oculta: true, orden: (x) => x.c.ref, celda: (x) => <span className="text-slate-500">{x.c.ref}</span> },
+    { clave: 'sucursal', grupo: { titulo: 'Factura', tono: 'gris' }, titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
     {
-      clave: 'comprobante', movil: 'titulo',
+      clave: 'comprobante', grupo: { titulo: 'Factura', tono: 'gris' }, movil: 'titulo',
       titulo: 'Comprobante',
       filtro: (x) => (x.c.tipo === 'NC' ? 'Nota de crédito' : 'Factura'),
       celda: (x) => <span className="whitespace-nowrap font-medium">{formatoComprobante(x.c)}</span>,
@@ -163,6 +165,7 @@ export default function ControlDiario() {
     {
       // Compañía arriba y siniestro abajo: una columna menos para que la tabla entre a lo ancho
       clave: 'compania',
+      grupo: { titulo: 'Factura', tono: 'gris' },
       titulo: 'Compañía / siniestro',
       filtro: (x) => nombreCompania[x.c.aseguradoraId] ?? x.c.aseguradoraId,
       celda: (x) => {
@@ -180,51 +183,52 @@ export default function ControlDiario() {
         )
       },
     },
-    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
+    { clave: 'patente', grupo: { titulo: 'Factura', tono: 'gris' }, titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.patente}</span> },
     {
       clave: 'total',
+      grupo: { titulo: 'Factura', tono: 'gris' },
       titulo: 'Total',
       derecha: true,
       orden: (x) => x.c.total,
       celda: (x) => <span className={`whitespace-nowrap font-semibold tabular-nums ${x.c.total < 0 ? 'text-sem-rojo' : ''}`}>{formatoPesos(x.c.total)}</span>,
     },
     {
-      clave: 'subida', movil: 'no',
+      clave: 'subida', grupo: { titulo: 'Documentación', tono: 'ambar' }, movil: 'no',
       titulo: 'Subida',
       orden: (x) => x.c.fechaDrive,
       celda: (x) => (
         <span className="whitespace-nowrap">
-          {formatoFecha(x.c.fechaDrive)}
+          <Fecha valor={x.c.fechaDrive} tono="ambar" />
           {diasHasta(x.c.fecha, x.c.fechaDrive)}
         </span>
       ),
     },
     {
-      clave: 'aprobada', movil: 'no',
+      clave: 'aprobada', grupo: { titulo: 'Documentación', tono: 'ambar' }, movil: 'no',
       titulo: 'Doc. aprobada',
       orden: (x) => x.c.fechaAprobacion ?? null,
       celda: (x) => (
         <span className="whitespace-nowrap">
-          {formatoFecha(x.c.fechaAprobacion ?? null)}
+          <Fecha valor={x.c.fechaAprobacion ?? null} tono="ambar" />
           {diasHasta(x.c.fecha, x.c.fechaAprobacion ?? null)}
         </span>
       ),
     },
     {
-      clave: 'presentacion', movil: 'no',
+      clave: 'presentacion', grupo: { titulo: 'Presentación', tono: 'celeste' }, movil: 'no',
       titulo: 'Presentación',
       orden: (x) => x.c.fechaPresentacion,
       celda: (x) => (
         <span className="whitespace-nowrap">
-          {formatoFecha(x.c.fechaPresentacion)}
+          <Fecha valor={x.c.fechaPresentacion} tono="celeste" />
           {diasHasta(x.c.fecha, x.c.fechaPresentacion)}
         </span>
       ),
     },
-    { clave: 'vto', titulo: 'Vto.', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
-    { clave: 'cobro', titulo: 'Cobro', orden: (x) => x.c.fechaCobro, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fechaCobro)}</span> },
+    { clave: 'vto', grupo: { titulo: 'Presentación', tono: 'celeste' }, titulo: 'Vto.', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
+    { clave: 'cobro', grupo: { titulo: 'Cobro y estado', tono: 'verde' }, titulo: 'Cobro', orden: (x) => x.c.fechaCobro, celda: (x) => <Fecha valor={x.c.fechaCobro} tono="verde" /> },
     {
-      clave: 'estado', movil: 'accion',
+      clave: 'estado', grupo: { titulo: 'Cobro y estado', tono: 'verde' }, movil: 'accion',
       titulo: 'Estado',
       filtro: (x) => nombreEtapa(x.s.etapa),
       // en el orden en que avanza una factura (también para las opciones del filtro)
@@ -237,7 +241,7 @@ export default function ControlDiario() {
       ),
     },
     {
-      clave: 'nc', movil: 'no',
+      clave: 'nc', grupo: { titulo: 'Cobro y estado', tono: 'verde' }, movil: 'no',
       titulo: 'Aviso de NC',
       filtro: (x) => avisoNc(x.c),
       celda: (x) =>
@@ -245,7 +249,7 @@ export default function ControlDiario() {
           <span className={`whitespace-nowrap text-xs ${avisoNc(x.c) === 'Sin aviso' ? 'font-semibold text-sem-rojo' : 'text-slate-600'}`}>{avisoNc(x.c)}</span>
         ) : null,
     },
-    { clave: 'obs', titulo: 'Observaciones', oculta: true, celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
+    { clave: 'obs', grupo: { titulo: 'Cobro y estado', tono: 'verde' }, titulo: 'Observaciones', oculta: true, celda: (x) => <span className="block max-w-56 truncate text-xs text-slate-600">{x.c.observaciones}</span> },
   ]
 
   function exportar(lista: Fila[]) {
@@ -373,12 +377,32 @@ export default function ControlDiario() {
         ordenInicial={{ clave: 'mes', dir: 'desc' }}
         exportar={exportar}
         resumen={(l) => (
-          <>
-            <strong>{l.length.toLocaleString('es-AR')}</strong> comprobantes · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong>
-          </>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span>
+              <strong>{l.length.toLocaleString('es-AR')}</strong> comprobantes · <strong>{formatoPesos(l.reduce((s, x) => s + x.c.total, 0))}</strong>
+            </span>
+            {/* Cuántas hay en cada estado, con los mismos colores que la columna Estado */}
+            <span className="flex flex-wrap gap-1.5">
+              {ORDEN_ETAPAS.map((e) => [e, l.filter((x) => x.s.etapa === e).length] as const)
+                .filter(([, n]) => n > 0)
+                .map(([e, n]) => (
+                  <span key={e} className="inline-flex items-center gap-1">
+                    <BadgeEtapa etapa={e} />
+                    <span className="text-xs font-bold tabular-nums text-slate-700">{n.toLocaleString('es-AR')}</span>
+                  </span>
+                ))}
+            </span>
+          </div>
         )}
         vacio="No hay comprobantes con estos filtros."
       />
     </>
   )
+}
+
+/** Fecha de una etapa: con dato, un chip suave del color del grupo; sin dato, una raya gris. */
+function Fecha({ valor, tono }: { valor: string | null; tono: 'ambar' | 'celeste' | 'verde' }) {
+  if (!valor) return <span className="text-slate-300">—</span>
+  const clase = { ambar: 'bg-amber-100/70 text-amber-900', celeste: 'bg-sky-100/70 text-sky-900', verde: 'bg-teal-100/70 text-teal-900' }[tono]
+  return <span className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${clase}`}>{formatoFecha(valor)}</span>
 }

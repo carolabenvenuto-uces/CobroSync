@@ -5,6 +5,11 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Soporte técnico guiado:** se elige la pantalla (viene marcada la que está abierta) y el problema de una lista (no carga, un botón no responde, no se puede subir un archivo, un cambio no se guarda, un dato no coincide, un mensaje de error u otro), se puede indicar la factura o el siniestro y se cuenta qué pasó. Sin pantalla, problema y explicación no se envía.
+- Manual: "¿Qué hacer si algo de la plataforma no funciona?" es una pregunta más (al final), con el botón para avisar el problema.
+- **Compañías más simple:** la tabla muestra nombre, cómo se presenta, plazo de pago, tolerancia, si faltan datos y cantidad de facturas. Al tocar una compañía se abre su ficha, donde se cambia el canal, la plataforma, los mails y la tolerancia. CUIT y correos siguen disponibles en "Columnas".
+- **Pendientes de sucursales:** días y estado en una sola columna (a quién se escaló, al pasar el mouse); compañía y siniestro juntos; 7 columnas.
+- **Vencidas y reclamos:** arriba, tres tarjetas (Reclamar, Resolver, Esperando) que filtran la tabla; 7 columnas (vencida con días y fecha, reclamos con la fecha del último). Con varias elegidas, "Registrar reclamo" y "Registrar respuesta" abren cada uno solo sus campos.
 - **Soporte técnico en el menú:** el botón para avisar un problema sale del manual y queda en el menú, debajo de Manual de uso; abre una ventana para escribir el mensaje (le llega solo al correo de soporte de Ajustes).
 - Manual: la primera pregunta de cada sector es "¿Qué es CobroSync?".
 - **Control diario más claro:** arriba, tres tarjetas con dónde está cada factura pendiente (le toca a la sucursal, a Auditoría o está en la compañía), que filtran la tabla al tocarlas. La tabla queda con 7 columnas: las cinco fechas se reemplazan por una barra de avance (subida, aprobada, presentada, cobrada) con la última fecha debajo; las fechas sueltas, el aviso de NC y otras siguen disponibles en "Columnas". Las NC sin aviso se marcan debajo del estado.

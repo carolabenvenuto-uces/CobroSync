@@ -4,7 +4,6 @@ import { Mail, Megaphone } from 'lucide-react'
 import { claseSelect } from '../components/ui/Estados'
 import { listaParaMail, TextoMail } from '../components/TextoMail'
 import { EncabezadoPagina } from '../components/ui/Card'
-import { FiltroRapido } from '../components/ui/FiltroRapido'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
@@ -20,6 +19,14 @@ import { diffDias } from '../lib/fechas'
 import { plazosActuales } from '../domain/plazos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
+
+/** Las tarjetas de arriba: qué hay que hacer con cada vencida (el título es el filtro "Acción") */
+const ACCIONES: { titulo: string; ayuda: string; estados: EstadoReclamo[] }[] = [
+  { titulo: 'Reclamar', ayuda: 'Nunca reclamadas o ya sin respuesta en el plazo', estados: ['sin_reclamar', 'volver'] },
+  { titulo: 'Resolver', ayuda: 'Pedir apoyo a gerencia o reenviar documentación', estados: ['escalar', 'reenviar'] },
+  { titulo: 'Esperando', ayuda: 'Reclamadas, en pagos, en tolerancia o por refacturar', estados: ['reclamada', 'en_pagos', 'tolerancia', 'refacturar'] },
+]
+const accionDe = (e: EstadoReclamo) => ACCIONES.find((a) => a.estados.includes(e))?.titulo ?? ''
 
 const ESTILO: Record<EstadoReclamo, string> = {
   sin_reclamar: 'bg-red-800/10 text-red-900',
@@ -45,6 +52,8 @@ export default function Reclamos() {
   const [mail, setMail] = useState<{ asunto: string; texto: string; para?: string } | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [respuesta, setRespuesta] = useState<RespuestaReclamo | ''>('')
+  // Con varias elegidas: qué se va a registrar (cada acción abre solo sus campos)
+  const [registrando, setRegistrando] = useState<'reclamo' | 'respuesta' | null>(null)
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
@@ -59,17 +68,11 @@ export default function Reclamos() {
         .map((x): Fila => ({ ...x, dias: diffDias(x.c.vencimiento as string, hoy) })),
     [comprobantes, hoy],
   )
-  const resumen = (e: EstadoReclamo) => {
-    const lista = vencidas.filter((x) => x.estado === e)
-    return { cantidad: lista.length, total: lista.reduce((s, x) => s + x.c.total, 0) }
-  }
-  const total = vencidas.reduce((s, x) => s + x.c.total, 0)
 
   // Desde Saldos llega ?compania=<id>; el filtro de la columna usa el nombre
   const filtrosIniciales = Object.fromEntries(
     [...params.entries()].map(([k, v]) => (k === 'compania' ? [k, nombreCompania(v)] : [k, v])),
   )
-  const estadoActivo = params.get('estado')
 
   const seleccion = vencidas.filter((x) => elegidas.has(x.c.id))
   const companiasElegidas = [...new Set(seleccion.map((x) => x.c.aseguradoraId))]
@@ -85,6 +88,7 @@ export default function Reclamos() {
       registrarEvento(x.c.id, 'reclamo', r.evento)
       n++
     }
+    setRegistrando(null)
     setMensaje(n ? `Listo: respuesta registrada en ${n} ${n === 1 ? 'factura' : 'facturas'}.` : 'Las elegidas todavía no tienen un reclamo registrado.')
     setElegidas(new Set())
   }
@@ -98,6 +102,7 @@ export default function Reclamos() {
     setMensaje(`Listo: se registró el reclamo en ${seleccion.length} facturas. Quedan esperando respuesta ${plazosActuales().respuestaReclamo} días.`)
     setElegidas(new Set())
     setNota('')
+    setRegistrando(null)
   }
 
   function armarMail() {
@@ -122,21 +127,51 @@ export default function Reclamos() {
   }
 
   const columnas: Columna<Fila>[] = [
+    {
+      clave: 'comprobante', movil: 'titulo',
+      titulo: 'Factura',
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          <div className="font-medium">{formatoComprobante(x.c)}</div>
+          {x.c.siniestro && <div className="text-[11px] text-slate-500">{x.c.siniestro}</div>}
+        </div>
+      ),
+    },
     { clave: 'compania', titulo: 'Compañía', filtro: (x) => nombreCompania(x.c.aseguradoraId), celda: (x) => <span className="whitespace-nowrap">{nombreCompania(x.c.aseguradoraId)}</span> },
-    { clave: 'comprobante', movil: 'titulo', titulo: 'Comprobante', celda: (x) => <span className="whitespace-nowrap font-medium">{formatoComprobante(x.c)}</span> },
     { clave: 'sucursal', titulo: 'Sucursal', filtro: (x) => x.c.sucursal, celda: (x) => <span className="whitespace-nowrap">{x.c.sucursal}</span> },
-    { clave: 'siniestro', titulo: 'Siniestro', celda: (x) => <span className="whitespace-nowrap text-slate-600">{x.c.siniestro}</span> },
-    { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap tabular-nums">{formatoPesos(x.c.total)}</span> },
-    { clave: 'vto', titulo: 'Vencimiento', orden: (x) => x.c.vencimiento, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.vencimiento)}</span> },
-    { clave: 'dias', titulo: 'Días vencida', derecha: true, orden: (x) => x.dias, celda: (x) => <span className="font-semibold tabular-nums text-red-800">{x.dias}</span> },
-    { clave: 'reclamos', titulo: 'Reclamos', derecha: true, orden: (x) => x.c.reclamos.length, celda: (x) => <span className="tabular-nums">{x.c.reclamos.length || '—'}</span> },
-    { clave: 'ultimo', titulo: 'Último reclamo', orden: (x) => ultimoReclamo(x.c), celda: (x) => <span className="whitespace-nowrap">{formatoFecha(ultimoReclamo(x.c))}</span> },
+    { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap font-semibold tabular-nums">{formatoPesos(x.c.total)}</span> },
+    {
+      clave: 'dias',
+      titulo: 'Vencida',
+      orden: (x) => x.dias,
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          <span className="font-bold tabular-nums text-red-800">{x.dias} días</span>
+          <div className="text-[11px] text-slate-500">desde {formatoFecha(x.c.vencimiento)}</div>
+        </div>
+      ),
+    },
+    {
+      clave: 'reclamos',
+      titulo: 'Reclamos',
+      orden: (x) => x.c.reclamos.length,
+      celda: (x) =>
+        x.c.reclamos.length ? (
+          <div className="whitespace-nowrap">
+            <span className="font-semibold tabular-nums">{x.c.reclamos.length}</span>
+            <div className="text-[11px] text-slate-500">último {formatoFecha(ultimoReclamo(x.c))}</div>
+          </div>
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
+    },
     {
       clave: 'estado', movil: 'accion',
       titulo: 'Estado',
       filtro: (x) => NOMBRE_ESTADO_RECLAMO[x.estado],
       celda: (x) => <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${ESTILO[x.estado]}`}>{NOMBRE_ESTADO_RECLAMO[x.estado]}</span>,
     },
+    { clave: 'accion', titulo: 'Acción', oculta: true, filtro: (x) => accionDe(x.estado), celda: (x) => <span className="text-xs">{accionDe(x.estado)}</span> },
   ]
 
   function exportar(lista: Fila[]) {
@@ -163,28 +198,46 @@ export default function Reclamos() {
     <>
       <EncabezadoPagina titulo="Vencidas y reclamos" sucursal />
 
-      {/* Lo que hay que hacer primero; lo que respondió la compañía o espera por tolerancia, solo si hay */}
-      <FiltroRapido
-        opciones={[
-          { clave: '', titulo: 'Todas', cantidad: vencidas.length, monto: total },
-          ...(['sin_reclamar', 'volver', 'escalar', 'reclamada', 'reenviar', 'refacturar', 'en_pagos', 'tolerancia'] as EstadoReclamo[])
-            .filter((e) => ['sin_reclamar', 'volver', 'escalar', 'reclamada'].includes(e) || resumen(e).cantidad > 0)
-            .map((e) => ({
-              clave: NOMBRE_ESTADO_RECLAMO[e],
-              titulo: NOMBRE_ESTADO_RECLAMO[e],
-              cantidad: resumen(e).cantidad,
-              monto: resumen(e).total,
-              alerta: e === 'volver' || e === 'escalar',
-            })),
-        ]}
-        activa={estadoActivo ?? ''}
-        onElegir={(clave) => {
-          const nuevos = new URLSearchParams(params)
-          if (clave) nuevos.set('estado', clave)
-          else nuevos.delete('estado')
-          setParams(nuevos, { replace: true })
-        }}
-      />
+      {/* Arriba, qué hay que hacer: cada tarjeta filtra la tabla */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        {ACCIONES.map((ac) => {
+          const lista = vencidas.filter((x) => ac.estados.includes(x.estado))
+          const activa = params.get('accion') === ac.titulo
+          return (
+            <button
+              key={ac.titulo}
+              type="button"
+              onClick={() => {
+                const nuevos = new URLSearchParams(params)
+                nuevos.delete('estado')
+                if (activa) nuevos.delete('accion')
+                else nuevos.set('accion', ac.titulo)
+                setParams(nuevos, { replace: true })
+              }}
+              className={`rounded-xl border bg-white p-3 text-left transition hover:shadow-sm ${activa ? 'border-marca ring-2 ring-marca/20' : 'border-slate-200'}`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{ac.titulo}</span>
+                <span className="text-xl font-extrabold tabular-nums text-noche">{lista.length.toLocaleString('es-AR')}</span>
+              </div>
+              <div className="text-xs text-slate-500">
+                {formatoPesos(lista.reduce((t, x) => t + x.c.total, 0))} · {ac.ayuda}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {ac.estados.map((e) => {
+                  const n = lista.filter((x) => x.estado === e).length
+                  return n ? (
+                    <span key={e} className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${ESTILO[e]}`}>
+                      {NOMBRE_ESTADO_RECLAMO[e]} · {n}
+                    </span>
+                  ) : null
+                })}
+                {lista.length === 0 && <span className="text-xs text-slate-400">Nada por ahora</span>}
+              </div>
+            </button>
+          )
+        })}
+      </div>
 
       {mensaje && !seleccion.length && <p className="mb-3 text-sm text-teal-800">{mensaje}</p>}
       {rol === 'auditoria' && seleccion.length > 0 && (
@@ -195,45 +248,60 @@ export default function Reclamos() {
           </span>
           {mensaje && <span className="text-sm text-teal-800">{mensaje}</span>}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button type="button" onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">
+            <button type="button" onClick={armarMail} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
               <Mail className="h-4 w-4 text-marca" /> Armar el mail
             </button>
-            <select value={medio} onChange={(e) => setMedio(e.target.value as Reclamo['medio'])} className={claseSelect} aria-label="Medio del reclamo">
-              <option value="mail">Por mail</option>
-              <option value="portal">Por el portal</option>
-              <option value="telefono">Por teléfono</option>
-            </select>
-            <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={`${claseSelect} w-40`} />
             <button
               type="button"
-              onClick={registrarReclamos}
-              className="inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
+              onClick={() => setRegistrando(registrando === 'reclamo' ? null : 'reclamo')}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${registrando === 'reclamo' ? 'bg-marca text-white' : 'border border-marca/40 bg-white text-marca hover:bg-marca/5'}`}
             >
-              <Megaphone className="h-4 w-4" /> Registrar el reclamo
+              <Megaphone className="h-4 w-4" /> Registrar reclamo
             </button>
-            <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden="true" />
-            <select value={respuesta} onChange={(e) => setRespuesta(e.target.value as RespuestaReclamo)} className={claseSelect} aria-label="Respuesta de la compañía">
-              <option value="" disabled>Respuesta de la compañía</option>
-              {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
-                <option key={k} value={k}>
-                  {NOMBRE_RESPUESTA[k]}
-                </option>
-              ))}
-            </select>
             <button
               type="button"
-              onClick={registrarRespuesta}
-              disabled={!respuesta}
-              className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-3 py-2 text-sm font-semibold text-marca hover:bg-marca/5 disabled:opacity-50"
+              onClick={() => setRegistrando(registrando === 'respuesta' ? null : 'respuesta')}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${registrando === 'respuesta' ? 'bg-marca text-white' : 'border border-marca/40 bg-white text-marca hover:bg-marca/5'}`}
             >
-              Registrar la respuesta
+              Registrar respuesta
             </button>
           </div>
+          {registrando && (
+            <div className="flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              {registrando === 'reclamo' ? (
+                <select value={medio} onChange={(e) => setMedio(e.target.value as Reclamo['medio'])} className={claseSelect} aria-label="Medio del reclamo">
+                  <option value="mail">Por mail</option>
+                  <option value="portal">Por el portal</option>
+                  <option value="telefono">Por teléfono</option>
+                </select>
+              ) : (
+                <select value={respuesta} onChange={(e) => setRespuesta(e.target.value as RespuestaReclamo)} className={claseSelect} aria-label="Respuesta de la compañía">
+                  <option value="" disabled>
+                    Seleccionar respuesta
+                  </option>
+                  {(Object.keys(NOMBRE_RESPUESTA) as RespuestaReclamo[]).map((k) => (
+                    <option key={k} value={k}>
+                      {NOMBRE_RESPUESTA[k]}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={`${claseSelect} min-w-48 flex-1`} />
+              <button
+                type="button"
+                onClick={registrando === 'reclamo' ? registrarReclamos : registrarRespuesta}
+                disabled={registrando === 'respuesta' && !respuesta}
+                className="rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
+              >
+                Confirmar en {seleccion.length} {seleccion.length === 1 ? 'factura' : 'facturas'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       <Tabla
-        id="reclamos"
+        id="reclamos-v2"
         key={params.toString()}
         filas={vencidas}
         columnas={columnas}

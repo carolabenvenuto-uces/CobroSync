@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Info, LockKeyhole, Upload } from 'lucide-react'
+import { Info, Mail, MonitorUp, Upload, X } from 'lucide-react'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp } from '../context/AppContext'
@@ -56,6 +56,14 @@ export default function Companias() {
     }
   }
 
+  // Lo que hace falta para presentar y reclamar sin buscar el dato a mano
+  const faltan = (a: Aseguradora) =>
+    [
+      !a.cuit && 'CUIT',
+      a.canal === 'portal' ? !a.portalUrl && 'plataforma' : !a.email && 'mail',
+      !(a.emailReclamos || a.email) && 'mail de reclamos',
+    ].filter((x): x is string => !!x)
+
   const correo = (texto: string | undefined) =>
     texto ? (
       <span className="block max-w-72 truncate text-xs text-slate-700" title={texto}>
@@ -65,10 +73,38 @@ export default function Companias() {
       <span className="text-xs text-slate-400">—</span>
     )
 
+  const [abierta, setAbierta] = useState<string | null>(null)
+  const ficha = aseguradoras.find((a) => a.id === abierta) ?? null
+
+  // En la tabla, lo que se mira de un vistazo; el resto (CUIT, correos, plataforma) en la ficha de cada una
   const columnas: Columna<Aseguradora>[] = [
-    { clave: 'nombre', titulo: 'Compañía', orden: (a) => a.nombre, filtro: (a) => a.nombre, celda: (a) => <span className="whitespace-nowrap font-semibold">{a.nombre}</span> },
-    { clave: 'razon', titulo: 'Razón social', orden: (a) => a.razonSocial ?? '', celda: (a) => <span className="text-xs">{a.razonSocial ?? '—'}</span> },
-    { clave: 'cuit', titulo: 'CUIT', celda: (a) => <span className="whitespace-nowrap tabular-nums">{formatoCuit(a.cuit) || '—'}</span> },
+    {
+      clave: 'nombre', movil: 'titulo',
+      titulo: 'Compañía',
+      orden: (a) => a.nombre,
+      filtro: (a) => a.nombre,
+      celda: (a) => (
+        <div>
+          <div className="whitespace-nowrap font-semibold">{a.nombre}</div>
+          {a.razonSocial && <div className="text-[11px] text-slate-500">{a.razonSocial}</div>}
+        </div>
+      ),
+    },
+    {
+      clave: 'canal',
+      titulo: 'Se presenta por',
+      filtro: (a) => (a.canal === 'portal' ? 'Plataforma' : 'Mail'),
+      celda: (a) =>
+        a.canal === 'portal' ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-800">
+            <MonitorUp className="h-3.5 w-3.5" /> Plataforma
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-800">
+            <Mail className="h-3.5 w-3.5" /> Mail
+          </span>
+        ),
+    },
     {
       clave: 'plazo',
       titulo: 'Plazo de pago',
@@ -76,50 +112,29 @@ export default function Companias() {
       filtro: (a) => `${a.plazoPagoDias} días`,
       celda: (a) => <span className="whitespace-nowrap">{a.plazoPagoDias} días</span>,
     },
-    { clave: 'email', titulo: 'Mail para presentar', celda: (a) => correo(a.email) },
-    { clave: 'reclamos', titulo: 'Mail para reclamar', celda: (a) => correo(a.emailReclamos) },
-    {
-      clave: 'canal',
-      titulo: 'Se presenta por',
-      filtro: (a) => (a.canal === 'portal' ? 'Plataforma' : 'Mail'),
-      celda: (a) => (
-        <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-          <select value={a.canal ?? 'mail'} onChange={(e) => cambiar(a, { canal: e.target.value as 'mail' | 'portal' })} className="rounded-md border border-slate-200 px-1 py-1 text-xs" aria-label={`Canal de ${a.nombre}`}>
-            <option value="mail">Mail</option>
-            <option value="portal">Plataforma</option>
-          </select>
-          {a.canal === 'portal' && (
-            <input
-              defaultValue={a.portalUrl ?? ''}
-              onBlur={(e) => e.target.value !== (a.portalUrl ?? '') && cambiar(a, { portalUrl: e.target.value.trim() })}
-              placeholder="Dirección de la plataforma"
-              className="w-48 rounded-md border border-slate-200 px-1.5 py-1 text-xs"
-              aria-label={`Plataforma de ${a.nombre}`}
-            />
-          )}
-        </div>
-      ),
-    },
     {
       clave: 'tolerancia',
       titulo: 'Tolerancia para reclamar',
       orden: (a) => a.toleranciaReclamo ?? 0,
-      celda: (a) => (
-        <label className="flex items-center gap-1 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="number"
-            min={0}
-            max={120}
-            defaultValue={a.toleranciaReclamo ?? 0}
-            onBlur={(e) => Number(e.target.value) !== (a.toleranciaReclamo ?? 0) && cambiar(a, { toleranciaReclamo: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-16 rounded-md border border-slate-200 px-1.5 py-1 text-right text-xs tabular-nums"
-            aria-label={`Días de tolerancia de ${a.nombre}`}
-          />
-          días
-        </label>
-      ),
+      celda: (a) => <span className={`whitespace-nowrap ${a.toleranciaReclamo ? '' : 'text-slate-400'}`}>{a.toleranciaReclamo ? `${a.toleranciaReclamo} días` : 'Sin tolerancia'}</span>,
+    },
+    {
+      clave: 'datos', movil: 'no',
+      titulo: 'Datos',
+      filtro: (a) => (faltan(a).length ? 'Incompletos' : 'Completos'),
+      celda: (a) =>
+        faltan(a).length ? (
+          <span className="text-xs font-semibold text-amber-700" title={`Falta: ${faltan(a).join(', ')}`}>
+            Falta {faltan(a).join(', ')}
+          </span>
+        ) : (
+          <span className="text-xs text-teal-700">Completos</span>
+        ),
     },
     { clave: 'facturas', titulo: 'Facturas', derecha: true, orden: (a) => facturas[a.id] ?? 0, celda: (a) => (facturas[a.id] ?? 0).toLocaleString('es-AR') },
+    { clave: 'cuit', titulo: 'CUIT', oculta: true, celda: (a) => <span className="whitespace-nowrap tabular-nums">{formatoCuit(a.cuit) || '—'}</span> },
+    { clave: 'email', titulo: 'Mail para presentar', oculta: true, celda: (a) => correo(a.email) },
+    { clave: 'reclamos', titulo: 'Mail para reclamar', oculta: true, celda: (a) => correo(a.emailReclamos) },
   ]
 
   function exportar(lista: Aseguradora[]) {
@@ -134,7 +149,7 @@ export default function Companias() {
     <>
       <EncabezadoPagina
         titulo="Compañías"
-        subtitulo="Razón social, CUIT, plazo de pago y correos de cada compañía de seguros"
+        subtitulo="Cómo se presenta y cuándo paga cada compañía. Tocar una para ver y cambiar sus datos."
         acciones={
           <>
             <input ref={entrada} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargar(e.target.files?.[0])} />
@@ -150,21 +165,11 @@ export default function Companias() {
         }
       />
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-marca/20 bg-marca/5 px-4 py-3 text-sm text-indigo-900">
-        {fuente.tipo === 'demo' ? <Info className="mt-0.5 h-4 w-4 shrink-0" /> : <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />}
-        <span>
-          {fuente.tipo === 'demo' ? (
-            <>
-              Para completar los correos, se carga la pestaña "CP" o "Info. Compañías" de la planilla: se lee solo en este navegador y
-              no se guarda.
-            </>
-          ) : fuente.tipo === 'google' ? (
-            <>Los datos que se carguen de la planilla quedan guardados en CobroSync para todo el sector.</>
-          ) : (
-            <>Los datos que se carguen de la planilla se leen solo en este navegador y desaparecen al recargar.</>
-          )}
-        </span>
-      </div>
+      {fuente.tipo !== 'google' && (
+        <p className="mb-3 flex items-center gap-1.5 text-xs text-slate-500">
+          <Info className="h-3.5 w-3.5" /> Lo que se cargue de la planilla se lee solo en este navegador y no se guarda.
+        </p>
+      )}
 
       {mensaje && (
         <div
@@ -175,10 +180,11 @@ export default function Companias() {
       )}
 
       <Tabla
-        id="companias"
+        id="companias-v2"
         filas={aseguradoras}
         columnas={columnas}
         clave={(a) => a.id}
+        onFila={(a) => setAbierta(a.id)}
         buscar={(a) => [a.nombre, a.razonSocial ?? '', a.cuit ?? '', a.email, a.emailReclamos ?? ''].join(' ')}
         textoBusqueda="Buscar por nombre, razón social, CUIT o correo"
         ordenInicial={{ clave: 'facturas', dir: 'desc' }}
@@ -189,6 +195,101 @@ export default function Companias() {
           </>
         )}
       />
+      {ficha && <FichaCompania a={ficha} facturas={facturas[ficha.id] ?? 0} onCambiar={(c) => cambiar(ficha, c)} onCerrar={() => setAbierta(null)} />}
     </>
+  )
+}
+
+/** Ficha de una compañía: todos sus datos, y lo que Auditoría cambia seguido (canal, plataforma, mails, tolerancia). */
+function FichaCompania({
+  a,
+  facturas,
+  onCambiar,
+  onCerrar,
+}: {
+  a: Aseguradora
+  facturas: number
+  onCambiar: (c: Partial<Aseguradora>) => void
+  onCerrar: () => void
+}) {
+  const campo = 'mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-noche focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20'
+  const texto = (clave: 'email' | 'emailReclamos' | 'portalUrl', titulo: string, ejemplo: string) => (
+    <label className="block text-xs font-semibold text-slate-600">
+      {titulo}
+      <input
+        key={`${a.id}-${clave}`}
+        defaultValue={a[clave] ?? ''}
+        onBlur={(e) => e.target.value.trim() !== (a[clave] ?? '') && onCambiar({ [clave]: e.target.value.trim() })}
+        placeholder={ejemplo}
+        className={campo}
+      />
+    </label>
+  )
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end bg-noche/30" role="dialog" aria-modal="true" aria-labelledby="titulo-ficha" onClick={onCerrar}>
+      <div className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="titulo-ficha" className="text-lg font-extrabold">
+              {a.nombre}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {a.razonSocial ?? 'Sin razón social'} · CUIT {formatoCuit(a.cuit) || 'sin cargar'} · {facturas.toLocaleString('es-AR')} facturas
+            </p>
+          </div>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1.5 text-slate-400 hover:bg-fondo">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <section className="mt-5 space-y-3 rounded-xl border border-slate-200 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Presentación</h3>
+          <div className="inline-flex rounded-lg border border-slate-200 bg-fondo p-0.5 text-sm font-semibold" role="group" aria-label="Cómo se presenta">
+            {(
+              [
+                ['mail', 'Por mail', Mail],
+                ['portal', 'Por plataforma', MonitorUp],
+              ] as const
+            ).map(([canal, titulo, Icono]) => {
+              const activo = (a.canal === 'portal') === (canal === 'portal')
+              return (
+                <button
+                  key={canal}
+                  type="button"
+                  aria-pressed={activo}
+                  onClick={() => !activo && onCambiar({ canal })}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${activo ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`}
+                >
+                  <Icono className="h-4 w-4" /> {titulo}
+                </button>
+              )
+            })}
+          </div>
+          {a.canal === 'portal' ? texto('portalUrl', 'Dirección de la plataforma', 'https://…') : texto('email', 'Mail para presentar', 'facturacion@compania.com')}
+          <p className="text-xs text-slate-500">Paga a los {a.plazoPagoDias} días de presentada.</p>
+        </section>
+
+        <section className="mt-4 space-y-3 rounded-xl border border-slate-200 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Reclamos</h3>
+          {texto('emailReclamos', 'Mail para reclamar', 'Si queda vacío, se usa el de presentar')}
+          <label className="block text-xs font-semibold text-slate-600">
+            Tolerancia antes de reclamar
+            <span className="mt-1 flex items-center gap-2">
+              <input
+                key={`${a.id}-tolerancia`}
+                type="number"
+                min={0}
+                max={120}
+                defaultValue={a.toleranciaReclamo ?? 0}
+                onBlur={(e) => Number(e.target.value) !== (a.toleranciaReclamo ?? 0) && onCambiar({ toleranciaReclamo: Math.max(0, Number(e.target.value) || 0) })}
+                className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-right text-sm tabular-nums"
+              />
+              <span className="font-normal text-slate-500">días después del vencimiento (para las que suelen pagar)</span>
+            </span>
+          </label>
+        </section>
+        <p className="mt-3 text-[11px] text-slate-500">Los cambios se guardan solos al salir de cada campo y valen para todo el sector.</p>
+      </div>
+    </div>
   )
 }

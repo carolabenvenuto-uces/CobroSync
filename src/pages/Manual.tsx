@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Building2, ChevronDown, ClipboardCheck, LifeBuoy, Store } from 'lucide-react'
 import { Isologo } from '../components/Logo'
+import { VentanaSoporte } from '../components/Soporte'
 import { BadgeEtapa, EtiquetaMipyme } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
 import { plazosActuales } from '../domain/plazos'
@@ -436,6 +437,12 @@ const SECCIONES: Seccion[] = [
     ),
   },
 
+  {
+    id: 'soporte',
+    sector: 'todos',
+    titulo: '¿Qué hacer si algo de la plataforma no funciona?',
+    contenido: () => <RespuestaSoporte />,
+  },
   // ---------- Preguntas ----------
   {
     id: 'preguntas',
@@ -464,11 +471,30 @@ const SECCIONES: Seccion[] = [
   },
 ]
 
+/** Respuesta de la pregunta de soporte: explica a quién va y abre la misma ventana del menú */
+function RespuestaSoporte() {
+  const [abierta, setAbierta] = useState(false)
+  return (
+    <div className="space-y-3">
+      <p>
+        Si una pantalla no carga, un botón no responde o un cambio no se guarda, se avisa con <strong>Soporte técnico</strong>, en el menú
+        (debajo de Manual de uso). Se elige la pantalla y el problema, y se cuenta qué pasó; el aviso le llega a quien da soporte a la
+        plataforma.
+      </p>
+      <p>Las dudas sobre una factura (un documento, un plazo, un reclamo) se consultan con Auditoría.</p>
+      <button type="button" onClick={() => setAbierta(true)} className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro">
+        <LifeBuoy className="h-4 w-4" /> Avisar un problema
+      </button>
+      {abierta && <VentanaSoporte onCerrar={() => setAbierta(false)} />}
+    </div>
+  )
+}
+
 /** Orden de las preguntas para cada sector: primero qué es CobroSync, después lo de todos los días, al final lo general */
 const ORDEN: Record<Exclude<Sector, 'todos'>, string[]> = {
-  sucursal: ['que-es', 'suc-mis-facturas', 'suc-subir', 'suc-plazo', 'suc-nc', 'notificaciones', 'suc-siniestros', 'colores', 'camino', 'tablas', 'preguntas'],
-  gerencia: ['que-es', 'ger-resumen', 'ger-avisos', 'ger-informes', 'notificaciones', 'colores', 'camino', 'tablas', 'preguntas'],
-  auditoria: ['que-es', 'aud-base', 'camino', 'colores', 'notificaciones', 'tablas', 'preguntas'],
+  sucursal: ['que-es', 'suc-mis-facturas', 'suc-subir', 'suc-plazo', 'suc-nc', 'notificaciones', 'suc-siniestros', 'colores', 'camino', 'tablas', 'soporte', 'preguntas'],
+  gerencia: ['que-es', 'ger-resumen', 'ger-avisos', 'ger-informes', 'notificaciones', 'colores', 'camino', 'tablas', 'soporte', 'preguntas'],
+  auditoria: ['que-es', 'aud-base', 'camino', 'colores', 'notificaciones', 'tablas', 'soporte', 'preguntas'],
 }
 
 const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
@@ -529,12 +555,6 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
       </div>
       )}
 
-      {rol && (
-        <p className="mb-6 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600">
-          <LifeBuoy className="h-4 w-4 shrink-0 text-marca" />
-          Si algo de la plataforma no funciona, el botón <strong className="text-noche">Soporte técnico</strong> está en el menú, debajo del Manual de uso.
-        </p>
-      )}
 
       {/* Cada pregunta se despliega al tocarla: así no hay que leer todo el manual */}
       <div className="mb-3">

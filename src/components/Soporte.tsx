@@ -1,6 +1,8 @@
 import { LifeBuoy, Send, X } from 'lucide-react'
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import type { Rol } from '../domain/tipos'
 import { PRODUCTO } from '../lib/marca'
 import { reportarProblemaEnGoogle } from '../services/google'
 
@@ -8,25 +10,81 @@ import { reportarProblemaEnGoogle } from '../services/google'
  * Soporte técnico: un mensaje que le llega por mail solo al correo de soporte de Ajustes.
  * Es para errores de la plataforma; las dudas sobre una factura van a Auditoría.
  */
+/** Pantallas de cada sector, como figuran en el menú, para elegir dónde pasó */
+const PANTALLAS: Record<Rol, [string, string][]> = {
+  sucursal: [
+    ['/app', 'Mis facturas'],
+    ['/app/siniestros', 'Mis siniestros'],
+  ],
+  auditoria: [
+    ['/app', 'Avisos'],
+    ['/app/control-diario', 'Control diario'],
+    ['/app/presentar', 'Presentar'],
+    ['/app/companias', 'Compañías'],
+    ['/app/pendientes', 'Pendientes de sucursales'],
+    ['/app/reclamos', 'Vencidas y reclamos'],
+    ['/app/resumen', 'Resumen'],
+    ['/app/sucursales', 'Control por sucursal'],
+    ['/app/saldos', 'Saldos por compañía'],
+    ['/app/impacto', 'Impacto económico'],
+    ['/app/planilla', 'Usar mi planilla'],
+    ['/app/ajustes', 'Ajustes'],
+  ],
+  gerencia: [
+    ['/app', 'Resumen'],
+    ['/app/sucursales', 'Control por sucursal'],
+    ['/app/saldos', 'Saldos por compañía'],
+    ['/app/impacto', 'Impacto económico'],
+    ['/app/control-diario', 'Detalle de facturas'],
+  ],
+}
+const COMUNES: [string, string][] = [
+  ['/app/notificaciones', 'Notificaciones'],
+  ['/app/manual', 'Manual de uso'],
+  ['ingreso', 'El ingreso a la plataforma'],
+]
+
+/** Problemas más comunes: ordenan el mensaje para que se entienda qué pasó */
+const PROBLEMAS = [
+  'La pantalla no carga o queda en blanco',
+  'Un botón no hace nada',
+  'No se puede subir un archivo',
+  'Un archivo subido no aparece o no se abre',
+  'Un cambio no se guarda',
+  'Un número, importe o estado no coincide',
+  'Aparece un mensaje de error',
+  'Otro problema',
+]
+
 export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
-  const { fuente } = useApp()
+  const { fuente, rol } = useApp()
+  const { pathname } = useLocation()
+  const pantallas = [...PANTALLAS[rol], ...COMUNES]
+  const [pantalla, setPantalla] = useState(() => pantallas.find(([ruta]) => ruta === pathname)?.[0] ?? '')
+  const [problema, setProblema] = useState('')
+  const [factura, setFactura] = useState('')
   const [texto, setTexto] = useState('')
   const [estado, setEstado] = useState<{ tipo: 'nada' | 'enviando' | 'ok' | 'error'; mensaje?: string }>({ tipo: 'nada' })
   const enviar = async () => {
-    if (!texto.trim()) return
+    if (!completo) return
     if (fuente.tipo !== 'google') {
       setEstado({ tipo: 'error', mensaje: 'El envío funciona en la versión conectada a la cuenta de la empresa.' })
       return
     }
     setEstado({ tipo: 'enviando' })
     try {
-      await reportarProblemaEnGoogle(texto, { pantalla: window.location.hash, navegador: navigator.userAgent })
+      const nombrePantalla = pantallas.find(([ruta]) => ruta === pantalla)?.[1] ?? pantalla
+      const mensaje = [`Problema: ${problema}`, `Pantalla: ${nombrePantalla}`, ...(factura.trim() ? [`Factura o siniestro: ${factura.trim()}`] : []), '', texto.trim()].join('\n')
+      await reportarProblemaEnGoogle(mensaje, { pantalla: `${nombrePantalla} (${window.location.hash})`, navegador: navigator.userAgent })
       setTexto('')
       setEstado({ tipo: 'ok' })
     } catch (e) {
       setEstado({ tipo: 'error', mensaje: e instanceof Error ? e.message : 'No se pudo enviar.' })
     }
   }
+  // Todo obligatorio salvo la factura: así el aviso llega con lo necesario para revisarlo
+  const completo = !!pantalla && !!problema && texto.trim().length >= 10
+  const campo = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-noche focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20'
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-noche/40 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-soporte" onClick={onCerrar}>
       <div className="w-full max-w-lg rounded-2xl bg-white p-5 text-sm text-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -49,23 +107,56 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
           <div className="mt-4 rounded-lg bg-teal-50 px-4 py-3 font-semibold text-teal-800">Enviado. Gracias por avisar.</div>
         ) : (
           <>
-            <textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              rows={4}
-              autoFocus
-              placeholder="Qué pasó, en qué pantalla y, si corresponde, con qué factura"
-              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-slate-600">
+                ¿En qué pantalla?
+                <select value={pantalla} onChange={(e) => setPantalla(e.target.value)} className={campo}>
+                  <option value="" disabled>
+                    Seleccionar pantalla
+                  </option>
+                  {pantallas.map(([ruta, nombre]) => (
+                    <option key={ruta} value={ruta}>
+                      {nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-slate-600">
+                ¿Qué pasó?
+                <select value={problema} onChange={(e) => setProblema(e.target.value)} className={campo}>
+                  <option value="" disabled>
+                    Seleccionar problema
+                  </option>
+                  {PROBLEMAS.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">
+              Número de factura o siniestro <span className="font-normal text-slate-400">(si el problema es con una en particular)</span>
+              <input value={factura} onChange={(e) => setFactura(e.target.value)} placeholder="Por ejemplo: 35-11032" className={campo} />
+            </label>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">
+              Contar qué se estaba haciendo y qué pasó
+              <textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                rows={3}
+                placeholder="Por ejemplo: al tocar Subir PDF en la factura 35-11032 aparece «No se pudo guardar» y el archivo no queda."
+                className={campo}
+              />
+            </label>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={enviar}
-                disabled={!texto.trim() || estado.tipo === 'enviando'}
+                disabled={!completo || estado.tipo === 'enviando'}
                 className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
               >
                 <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar'}
               </button>
+              {!completo && <span className="text-xs text-slate-500">Elegir la pantalla y el problema, y contar qué pasó.</span>}
               {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
             </div>
             <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>

@@ -247,7 +247,7 @@ export default function Resumen() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {unaSucursal ? (
           <Card>
-            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
+            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver control por sucursal</Link>}>
               Documentación de {sucursal}
             </CardTitulo>
             {unaSucursal && (
@@ -270,7 +270,7 @@ export default function Resumen() {
           </Card>
         ) : (
           <Card>
-            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver ranking</Link>}>
+            <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver control por sucursal</Link>}>
               Sucursales con mayor importe retenido por documentación
             </CardTitulo>
             <ul className="divide-y divide-slate-100 text-sm">

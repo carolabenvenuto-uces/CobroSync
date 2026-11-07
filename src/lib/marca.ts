@@ -10,8 +10,8 @@ export const PRODUCTO = 'CobroSync'
 export const VERSION = '1.0'
 export const AUTORA = 'Carola Benvenuto'
 export const ESTUDIO = 'CBenvenuto'
-/** Firma corta, debajo del logo */
-export const FIRMA = `by ${AUTORA}`
+/** Firma corta y discreta, al lado de la versión (la plataforma es de SVA; la autoría completa va en el pie) */
+export const FIRMA = 'by CB'
 /** Línea de autoría completa (pie, ingreso, manual) */
 export const AUTORIA = `${PRODUCTO} v${VERSION} · Diseño y desarrollo: ${AUTORA}`
 export const ANIO = 2026

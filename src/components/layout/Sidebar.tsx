@@ -2,7 +2,6 @@ import { useMemo, type ComponentType } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut,
-  BarChart3,
   BookUser,
   Bell,
   Building2,
@@ -13,7 +12,7 @@ import {
   LayoutDashboard,
   Megaphone,
   BookOpen,
-  Trophy,
+  Store,
   Send,
   Settings,
   Upload,
@@ -30,7 +29,6 @@ import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
 import { Marca } from '../Logo'
 import { Campana } from '../Notificaciones'
-import { formatoFecha } from '../../lib/formato'
 
 interface ItemMenu {
   ruta: string
@@ -51,7 +49,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Informes',
       items: [
         { ruta: '/app', etiqueta: 'Resumen', icono: LayoutDashboard },
-        { ruta: '/app/sucursales', etiqueta: 'Ranking de sucursales', icono: Trophy },
+        { ruta: '/app/sucursales', etiqueta: 'Control por sucursal', icono: Store },
         { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2 },
         { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
       ],
@@ -80,7 +78,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Informes',
       items: [
         { ruta: '/app/resumen', etiqueta: 'Resumen', icono: LayoutDashboard },
-        { ruta: '/app/sucursales', etiqueta: 'Ranking de sucursales', icono: Trophy },
+        { ruta: '/app/sucursales', etiqueta: 'Control por sucursal', icono: Store },
         { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2 },
         { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
       ],
@@ -152,6 +150,21 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           </button>
         </div>
 
+        {/* Quién está usando la plataforma, arriba, con el logo de SVA */}
+        <div className="mx-3 mb-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
+            {usuario.slice(0, 1)}
+          </div>
+          <div className="min-w-0 flex-1 text-sm font-semibold text-white">
+            <div className="truncate">{usuario}</div>
+            <div className="truncate text-[11px] font-normal text-slate-400">
+              {NOMBRE_ROL[rol]}
+              {rol === 'sucursal' && ` · ${sucursal}`}
+            </div>
+          </div>
+          <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
+        </div>
+
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">
           <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
@@ -197,84 +210,61 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           })}
         </nav>
 
-        {/* Quién usa la demo: rol y, para Sucursal, cuál */}
-        <div className="border-t border-white/10 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
-              {usuario.slice(0, 1)}
-            </div>
-            <div className="min-w-0 flex-1 text-sm font-semibold text-white">
-              <div className="truncate">{usuario}</div>
-              {cuenta && <div className="truncate text-[11px] font-normal text-slate-400">{cuenta.email}</div>}
-            </div>
-            <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="h-9 w-auto shrink-0" />
-          </div>
-          {fuente.tipo === 'google' ? (
-            <div className="mt-1 truncate text-[11px] text-slate-400">
-              {NOMBRE_ROL[rol]}
-              {rol === 'sucursal' && ` · ${sucursal}`}
-            </div>
-          ) : (
-            <>
-          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Ver como
-            <select
-              value={rol}
-              onChange={(e) => setRol(e.target.value as Rol)}
-              className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
-            >
-              {(['sucursal', 'auditoria', 'gerencia'] as Rol[]).map((r) => (
-                <option key={r} value={r}>
-                  {NOMBRE_ROL[r]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {rol === 'sucursal' && (
-            <label className="mt-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              Mi sucursal
-              <select
-                value={sucursal}
-                onChange={(e) => setSucursal(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
-              >
-                {(datos?.meta.sucursales ?? []).map((s) => (
-                  <option key={s.nombre}>{s.nombre}</option>
-                ))}
-              </select>
-            </label>
-          )}
-            </>
-          )}
-          <div className="mt-3 space-y-1 text-[11px] text-slate-400">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-              {fuente.tipo === 'planilla' ? `Planilla: ${fuente.archivo}` : 'Datos'}
-              {hoy && ` al ${formatoFecha(hoy)}`}
-            </div>
-            {fuente.tipo === 'planilla' && (
-              <button type="button" onClick={usarDemo} className="underline hover:text-white">
-                Volver a los datos de siempre
-              </button>
-            )}
-            {fuente.tipo !== 'google' && (
+        {/* Abajo, solo el manual. En la demo, además, el cambio de vista (en la prueba cada uno entra con su cuenta) */}
+        <div className="border-t border-white/10 px-5 py-3 text-[12px] text-slate-400">
+          <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 py-1 hover:text-white">
+            <BookOpen className="h-4 w-4" />
+            Manual de uso
+          </Link>
+          {fuente.tipo !== 'google' && (
+            <details className="mt-1">
+              <summary className="cursor-pointer select-none py-1 text-[11px] text-slate-500 hover:text-slate-300">Vista de demostración</summary>
+              <label className="mt-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Ver como
+                <select
+                  value={rol}
+                  onChange={(e) => setRol(e.target.value as Rol)}
+                  className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
+                >
+                  {(['sucursal', 'auditoria', 'gerencia'] as Rol[]).map((r) => (
+                    <option key={r} value={r}>
+                      {NOMBRE_ROL[r]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {rol === 'sucursal' && (
+                <label className="mt-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Mi sucursal
+                  <select
+                    value={sucursal}
+                    onChange={(e) => setSucursal(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
+                  >
+                    {(datos?.meta.sucursales ?? []).map((s) => (
+                      <option key={s.nombre}>{s.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {fuente.tipo === 'planilla' && (
+                <button type="button" onClick={usarDemo} className="mt-2 block underline hover:text-white">
+                  Volver a los datos de ejemplo
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
                   cerrarSesion()
                   navigate('/')
                 }}
-                className="flex items-center gap-2 hover:text-white"
+                className="mt-2 flex items-center gap-2 hover:text-white"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Cambiar de usuario
               </button>
-            )}
-            <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 hover:text-white">
-              <BookOpen className="h-3.5 w-3.5" />
-              Manual de uso
-            </Link>
-          </div>
+            </details>
+          )}
         </div>
       </aside>
     </>

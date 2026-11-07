@@ -9,7 +9,7 @@ import { atendidaPorOtra } from '../domain/pedidos'
 import { esMipyme } from '../domain/plazos'
 import { calcularSemaforo } from '../domain/semaforo'
 import type { Aseguradora, Comprobante } from '../domain/tipos'
-import { descargarDocumentosDeGoogle } from '../services/google'
+import { descargarDocumentosDeGoogle, guardarAseguradorasEnGoogle } from '../services/google'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -24,7 +24,7 @@ const MINUTOS_TOMADA = 20
  * documentación la compañía pidió reenviar.
  */
 export default function Presentar() {
-  const { datos, hoy, usuario, fuente, abrirLegajo, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, hoy, usuario, fuente, abrirLegajo, actualizarComprobante, registrarEvento, actualizarAseguradoras } = useApp()
   const comprobantes = useComprobantes()
   const { aseguradoras } = datos!
   const compania = (id: string) => aseguradoras.find((a) => a.id === id)
@@ -34,6 +34,17 @@ export default function Presentar() {
   const [mail, setMail] = useState<{ asunto: string; texto: string; para?: string } | null>(null)
   const [mensaje, setMensaje] = useState<{ texto: string; error?: boolean } | null>(null)
   const [descargando, setDescargando] = useState<string | null>(null)
+
+  // Cómo recibe las facturas cada compañía: se puede cambiar acá mismo (es lo mismo que en Compañías)
+  async function cambiarCanal(id: string, canal: 'mail' | 'portal') {
+    const lista = aseguradoras.map((x) => (x.id === id ? { ...x, canal } : x))
+    actualizarAseguradoras(lista)
+    try {
+      if (fuente.tipo === 'google') await guardarAseguradorasEnGoogle(lista.filter((x) => x.id === id), true)
+    } catch (e) {
+      setMensaje({ texto: e instanceof Error ? e.message : 'No se pudo guardar el cambio.', error: true })
+    }
+  }
 
   const filas = useMemo(
     () => comprobantes.filter((c) => c.tipo === 'FC' && (c.reenviar || calcularSemaforo(c, hoy).etapa === 'pres_pendiente')),
@@ -252,6 +263,26 @@ export default function Presentar() {
                       )}
                     </p>
                   </div>
+                  {a && (
+                    <div className="inline-flex rounded-lg border border-slate-200 bg-fondo p-0.5 text-xs font-semibold" role="group" aria-label="Cómo se presenta">
+                      {(
+                        [
+                          ['mail', 'Mail', Mail],
+                          ['portal', 'Plataforma', MonitorUp],
+                        ] as const
+                      ).map(([canal, texto, Icono]) => (
+                        <button
+                          key={canal}
+                          type="button"
+                          onClick={() => a.canal !== canal && cambiarCanal(a.id, canal)}
+                          aria-pressed={(a.canal === 'portal') === (canal === 'portal')}
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${(a.canal === 'portal') === (canal === 'portal') ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`}
+                        >
+                          <Icono className="h-3.5 w-3.5" /> {texto}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <button type="button" onClick={() => setAbierta(null)} aria-label="Cerrar" className="rounded-lg p-1.5 hover:bg-fondo">
                     <X className="h-5 w-5" />
                   </button>

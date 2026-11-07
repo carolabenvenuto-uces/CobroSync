@@ -41,6 +41,8 @@ var HOJAS = {
       'acreditado', 'importeCobrado', 'percepciones', 'actualizado',
       // Columnas agregadas después (siempre al final, para no correr las que ya tienen datos)
       'fechaAprobacion', 'pedidos', 'atendiendo', 'reenviar',
+      // Monto aprobado de la orden (lo carga Auditoría, por siniestro, en la primera factura)
+      'montoOrden',
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
@@ -57,7 +59,7 @@ var HOJAS = {
 
 var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada', 'pedidos', 'atendiendo'];
 var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'];
-var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones']; // vacío = sin dato
+var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones', 'montoOrden']; // vacío = sin dato
 // Los plazos de la documentación (común y MiPyME) están en la pestaña Config y se cambian
 // desde Ajustes en la aplicación: ver plazos_().
 var RECLAMOS_SIN_RESPUESTA = 3; // con 3 reclamos sin respuesta, Auditoría pide apoyo a Gerencia

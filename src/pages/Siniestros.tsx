@@ -21,7 +21,24 @@ const ESTILO_DOC: Record<Documento['estado'], string> = {
 }
 const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', observado: 'observada', en_revision: 'en revisión', ok: 'aprobada' }
 
+/** En qué está el siniestro, con su color (el mismo significado que en toda la plataforma) */
+type EstadoSiniestro = 'documentacion' | 'refacturar' | 'revision' | 'presentado' | 'vencido' | 'cobrado' | 'anulado'
+const ESTADO_SINIESTRO: Record<EstadoSiniestro, { texto: string; punto: string; chip: string }> = {
+  documentacion: { texto: 'Falta documentación', punto: 'bg-sem-amarillo', chip: 'bg-amber-50 text-amber-900 border-amber-200' },
+  refacturar: { texto: 'Pendiente de facturar', punto: 'bg-orange-500', chip: 'bg-orange-50 text-orange-900 border-orange-200' },
+  revision: { texto: 'En Auditoría', punto: 'bg-marca', chip: 'bg-marca/10 text-indigo-900 border-marca/20' },
+  presentado: { texto: 'Presentado', punto: 'bg-etapa-compania', chip: 'bg-blue-50 text-blue-900 border-blue-200' },
+  vencido: { texto: 'Vencido', punto: 'bg-red-800', chip: 'bg-red-50 text-red-900 border-red-200' },
+  cobrado: { texto: 'Cobrado', punto: 'bg-sem-verde', chip: 'bg-teal-50 text-teal-900 border-teal-200' },
+  anulado: { texto: 'Anulado', punto: 'bg-slate-400', chip: 'bg-slate-100 text-slate-700 border-slate-200' },
+}
+const ORDEN_ESTADOS: EstadoSiniestro[] = ['documentacion', 'refacturar', 'revision', 'presentado', 'vencido', 'cobrado', 'anulado']
+
 interface Grupo {
+  estado: EstadoSiniestro
+  /** monto aprobado de la orden (lo carga Auditoría) y lo que falta facturar contra él */
+  montoOrden: number | null
+  neto: number
   clave: string
   siniestro: string
   companiaId: string
@@ -49,7 +66,7 @@ export default function Siniestros() {
   const { datos, hoy, sucursal, rol, abrirLegajo } = useApp()
   const comprobantes = useComprobantes()
   const [busqueda, setBusqueda] = useState('')
-  const [estado, setEstado] = useState<'curso' | 'cobrados' | 'todos'>('todos')
+  const [estado, setEstado] = useState<EstadoSiniestro | ''>('')
   const [companiaElegida, setCompaniaElegida] = useState('')
   const [elegido, setElegido] = useState<string | null>(null)
   const [cantidad, setCantidad] = useState(POR_PAGINA)
@@ -74,6 +91,9 @@ export default function Siniestros() {
         info: [],
         enCurso: false,
         saldo: 0,
+        estado: 'documentacion' as EstadoSiniestro,
+        montoOrden: null,
+        neto: 0,
       }
       g.facturas.push(c)
       if (c.fecha > g.ultimaFecha) g.ultimaFecha = c.fecha
@@ -117,6 +137,23 @@ export default function Siniestros() {
       const vigentes = g.facturas.filter((f) => f.estado !== 'anulada')
       g.enCurso = vigentes.some((f) => f.estado !== 'cobrada')
       g.saldo = vigentes.reduce((t, f) => t + saldoSinCobro(f), 0)
+      g.neto = g.facturas.reduce((t, f) => t + f.total, 0) - g.notas.reduce((t, n) => t + Math.abs(n.total), 0)
+      g.montoOrden = g.facturas.map((f) => f.montoOrden ?? null).find((m) => m != null) ?? null
+      const etapas = vigentes.map((f) => calcularSemaforo(f, hoy).etapa)
+      const faltaFacturar = (g.montoOrden != null && g.montoOrden - g.neto > 1) || g.pendientes.some((x) => x.tipo === 'refacturar')
+      g.estado = !vigentes.length
+        ? 'anulado'
+        : etapas.includes('vencida')
+          ? 'vencido'
+          : etapas.some((e) => e === 'doc_pendiente' || e === 'doc_atrasada' || e === 'doc_observada')
+            ? 'documentacion'
+            : faltaFacturar
+              ? 'refacturar'
+              : etapas.some((e) => e === 'en_revision' || e === 'pres_pendiente')
+                ? 'revision'
+                : etapas.includes('al_dia')
+                  ? 'presentado'
+                  : 'cobrado'
     }
     // Lo más reciente primero
     return [...mapa.values()].sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha))
@@ -140,7 +177,7 @@ export default function Siniestros() {
   const visibles = useMemo(
     () =>
       grupos.filter(
-        (g) => (estado === 'todos' || (estado === 'curso' ? g.enCurso : !g.enCurso)) && (!companiaElegida || g.companiaId === companiaElegida) && coincide(g),
+        (g) => (!estado || g.estado === estado) && (!companiaElegida || g.companiaId === companiaElegida) && coincide(g),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [grupos, estado, companiaElegida, texto],
@@ -170,12 +207,17 @@ export default function Siniestros() {
     const facturado = g.facturas.reduce((t, f) => t + f.total, 0)
     const acreditado = g.notas.reduce((t, n) => t + Math.abs(n.total), 0)
     const cobrado = g.facturas.reduce((t, f) => t + (f.estado === 'cobrada' ? f.total - (f.acreditado ?? 0) : 0), 0)
+    const pendiente = g.montoOrden != null ? g.montoOrden - g.neto : null
     return (
       <article>
         <button type="button" onClick={() => setElegido(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-marca lg:hidden">
           <ArrowLeft className="h-4 w-4" /> Volver a la lista
         </button>
-        <h2 className="text-lg font-extrabold">{g.siniestro ? `Siniestro ${g.siniestro}` : 'Sin número de siniestro'}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-extrabold">{g.siniestro ? `Siniestro ${g.siniestro}` : `Pendiente de documentación · ${formatoComprobante(g.facturas[0])}`}</h2>
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${ESTADO_SINIESTRO[g.estado].chip}`}>{ESTADO_SINIESTRO[g.estado].texto}</span>
+        </div>
+        {!g.siniestro && <p className="text-xs text-slate-500">El número de siniestro se completa al subir la orden firmada.</p>}
         <p className="text-sm text-slate-500">
           {g.compania}
           {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
@@ -195,7 +237,10 @@ export default function Siniestros() {
           ))}
         </dl>
 
-        <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Comprobantes</h3>
+        {/* Contra la orden: cuánto se aprobó y cuánto falta facturar (después de notas de crédito y refacturaciones) */}
+        <MontoOrden g={g} pendiente={pendiente} />
+
+        <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-slate-500">Movimientos</h3>
         <ul className="space-y-2">
           {g.facturas.map((f) => (
             <li key={f.id} className="rounded-xl border border-slate-200">
@@ -206,7 +251,21 @@ export default function Siniestros() {
                 </span>
                 <span className="tabular-nums">{formatoPesos(f.total)}</span>
                 <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
-                <span className="flex w-full flex-wrap gap-1">{f.documentos.map(documento)}</span>
+                {/* Solo lo que hay que hacer (falta u observado); lo demás ya lo dice la etiqueta. Los PDF se pueden abrir */}
+                {f.documentos.some((d) => d.estado === 'faltante' || d.estado === 'observado') && (
+                  <span className="flex w-full flex-wrap gap-1">{f.documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map(documento)}</span>
+                )}
+                {f.documentos.some((d) => d.url || d.adjuntos?.length) && (
+                  <span className="flex gap-3 text-xs">
+                    {f.documentos
+                      .filter((d) => d.url || d.adjuntos?.length)
+                      .map((d) => (
+                        <a key={d.tipo} href={d.url ?? d.adjuntos?.[0]?.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold text-marca hover:underline">
+                          Ver {NOMBRE_DOCUMENTO[d.tipo].toLowerCase()}
+                        </a>
+                      ))}
+                  </span>
+                )}
               </button>
               {/* Las notas de crédito, colgadas de la factura que acreditan */}
               {g.notas
@@ -261,8 +320,8 @@ export default function Siniestros() {
         sucursal={rol !== 'sucursal'}
       />
 
-      {/* Búsqueda y dos filtros simples */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      {/* Búsqueda y compañía */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <label className="relative min-w-0 flex-1 basis-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -289,16 +348,28 @@ export default function Siniestros() {
             </option>
           ))}
         </select>
-        <select
-          aria-label="Estado"
-          value={estado}
-          onChange={(e) => setEstado(e.target.value as typeof estado)}
-          className="rounded-lg border border-slate-200 bg-white py-2.5 pl-2 pr-7 text-sm shadow-sm"
-        >
-          <option value="todos">Todos</option>
-          <option value="curso">En curso (con algo sin cobrar)</option>
-          <option value="cobrados">Terminados (cobrados o anulados)</option>
-        </select>
+
+      </div>
+
+      {/* Filtro por estado: un botón por color */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        <button type="button" onClick={() => setEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold ${!estado ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}>
+          Todos · {grupos.length}
+        </button>
+        {ORDEN_ESTADOS.map((e) => {
+          const n = grupos.filter((g) => g.estado === e).length
+          if (!n) return null
+          return (
+            <button
+              key={e}
+              type="button"
+              onClick={() => setEstado(estado === e ? '' : e)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${estado === e ? 'border-marca bg-marca text-white' : `${ESTADO_SINIESTRO[e].chip} hover:brightness-95`}`}
+            >
+              <span className={`h-2 w-2 rounded-full ${ESTADO_SINIESTRO[e].punto}`} /> {ESTADO_SINIESTRO[e].texto} · {n}
+            </button>
+          )
+        })}
       </div>
 
       {/* Lista a la izquierda, detalle a la derecha (en el celular, uno por vez) */}
@@ -315,13 +386,10 @@ export default function Siniestros() {
                   onClick={() => setElegido(g.clave)}
                   className={`flex w-full items-start gap-3 px-4 py-2.5 text-left ${mostrado?.clave === g.clave ? 'bg-marca/10' : 'hover:bg-fondo'}`}
                 >
-                  <span
-                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${g.enCurso ? 'bg-marca' : 'bg-sem-verde'}`}
-                    title={g.enCurso ? 'En curso' : 'Terminado'}
-                  />
+                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${ESTADO_SINIESTRO[g.estado].punto}`} title={ESTADO_SINIESTRO[g.estado].texto} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">{g.siniestro || 'Sin número de siniestro'}</span>
+                      <span className="truncate text-sm font-semibold">{g.siniestro || `Pendiente de doc. · ${formatoComprobante(g.facturas[0])}`}</span>
                       <span className="shrink-0 text-[11px] text-slate-500">{formatoFecha(g.ultimaFecha)}</span>
                     </span>
                     <span className="block truncate text-xs text-slate-500">
@@ -360,5 +428,74 @@ export default function Siniestros() {
         </div>
       </div>
     </>
+  )
+}
+
+/** Monto aprobado de la orden y lo que falta facturar contra él. Auditoría lo carga; la sucursal lo ve. */
+function MontoOrden({ g, pendiente }: { g: Grupo; pendiente: number | null }) {
+  const { rol, actualizarComprobante, registrarEvento } = useApp()
+  const [editando, setEditando] = useState(false)
+  const [valor, setValor] = useState('')
+  const primera = g.facturas[0]
+  const guardar = () => {
+    const n = Number(valor.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, ''))
+    if (!Number.isFinite(n) || n <= 0) return
+    actualizarComprobante(primera.id, { montoOrden: Math.round(n * 100) / 100 })
+    registrarEvento(primera.id, 'mensaje', `Cargó el monto aprobado de la orden: ${formatoPesos(n)}`)
+    setEditando(false)
+  }
+  const tono =
+    pendiente == null ? 'border-slate-200 bg-fondo' : pendiente > 1 ? 'border-orange-200 bg-orange-50' : pendiente < -1 ? 'border-red-200 bg-red-50' : 'border-teal-200 bg-teal-50'
+  return (
+    <div className={`mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm ${tono}`}>
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Monto aprobado de la orden</div>
+        {editando ? (
+          <span className="mt-1 flex items-center gap-2">
+            <input
+              autoFocus
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && guardar()}
+              placeholder="$ 0,00"
+              className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm"
+            />
+            <button type="button" onClick={guardar} className="rounded-md bg-marca px-2.5 py-1 text-xs font-semibold text-white">
+              Guardar
+            </button>
+            <button type="button" onClick={() => setEditando(false)} className="text-xs text-slate-500">
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <span className="font-bold tabular-nums">
+            {g.montoOrden != null ? formatoPesos(g.montoOrden) : <span className="font-normal text-slate-500">Sin cargar</span>}
+            {rol === 'auditoria' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setValor(g.montoOrden != null ? String(g.montoOrden).replace('.', ',') : '')
+                  setEditando(true)
+                }}
+                className="ml-2 text-xs font-semibold text-marca hover:underline"
+              >
+                {g.montoOrden != null ? 'Cambiar' : 'Cargar'}
+              </button>
+            )}
+          </span>
+        )}
+      </div>
+      {pendiente != null && (
+        <div className="text-right">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {pendiente > 1 ? 'Pendiente de facturar' : pendiente < -1 ? 'Facturado de más' : 'Facturación'}
+          </div>
+          <div className={`font-bold tabular-nums ${pendiente > 1 ? 'text-orange-800' : pendiente < -1 ? 'text-red-800' : 'text-teal-800'}`}>
+            {Math.abs(pendiente) > 1 ? formatoPesos(Math.abs(pendiente)) : 'Completa'}
+          </div>
+          <div className="text-[11px] text-slate-500">Facturado neto (sin notas de crédito): {formatoPesos(g.neto)}</div>
+        </div>
+      )}
+    </div>
   )
 }

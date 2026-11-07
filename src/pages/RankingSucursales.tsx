@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BotonExportar, Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
+import { BotonExportar, Card, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
 import { textoCritica, textoPlazo } from '../domain/plazos'
@@ -10,9 +9,9 @@ import { descargarExcel } from '../lib/exportar'
 import { formatoPesos, MESES } from '../lib/formato'
 
 /**
- * Ranking de sucursales: quién tiene más documentación pendiente y cuánta plata retiene.
- * Se ordena por plata retenida hoy (lo que importa para cobrar), no por promedios,
- * para que una sucursal con pocas facturas no quede arriba por un par de casos.
+ * Control por sucursal: para cada sucursal, en orden alfabético, cuánto tiene pendiente y qué
+ * porcentaje se sube dentro del plazo. Es un control de Auditoría, no una competencia: no hay
+ * posiciones ni gráfico.
  */
 export default function RankingSucursales() {
   const { datos, hoy, anio, parametros } = useApp()
@@ -23,8 +22,8 @@ export default function RankingSucursales() {
 
   const ranking = useMemo(
     () =>
-      rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'anio' ? null : periodo, parametros).sort(
-        (a, b) => b.retenido - a.retenido || b.pendientes - a.pendientes,
+      rankingSucursales(comprobantes, meta.sucursales, hoy, anio, periodo === 'anio' ? null : periodo, parametros).sort((a, b) =>
+        a.sucursal.nombre.localeCompare(b.sucursal.nombre, 'es'),
       ),
     [comprobantes, meta.sucursales, hoy, anio, periodo, parametros],
   )
@@ -32,40 +31,38 @@ export default function RankingSucursales() {
 
   const totalRetenido = ranking.reduce((s, r) => s + r.retenido, 0)
 
-  const grafico = ranking.map((r) => ({
-    sucursal: r.sucursal.nombre,
-    enPlazo: r.pendientes - r.atrasados - r.criticos,
-    atrasados: r.atrasados,
-    criticos: r.criticos,
-  }))
+  const pct = (parte: number, total: number) => (total ? Math.round((parte / total) * 100) : null)
+  const fueraDePlazo = (r: (typeof ranking)[number]) => pct(r.atrasados + r.criticos, r.pendientes)
 
   function exportar() {
     descargarExcel(
-      `ranking-sucursales-${periodo === 'anio' ? anio : `${anio}-${periodo}`}`,
+      `control-por-sucursal-${periodo === 'anio' ? anio : `${anio}-${periodo}`}`,
       [
         'Sucursal',
+        `Facturas del período (${textoPeriodo})`,
+        '% subidas dentro del plazo',
         'Doc. pendiente hoy',
         `En plazo (hasta ${textoPlazo()})`,
         'Atrasadas (pasaron el plazo)',
         `Críticas (${textoCritica()})`,
+        '% de lo pendiente fuera de plazo',
         'Importe retenido hoy',
         '% de lo retenido',
-        `Facturas del período (${textoPeriodo})`,
-        '% subidas dentro del plazo',
         'Compromisos vencidos',
         'NC sin aviso',
         'Costo estimado de la demora',
       ],
       ranking.map((r) => [
         r.sucursal.nombre,
+        r.facturas,
+        r.dentroDePlazoPct,
         r.pendientes,
         r.pendientes - r.atrasados - r.criticos,
         r.atrasados,
         r.criticos,
+        fueraDePlazo(r),
         r.retenido,
-        totalRetenido ? Math.round((r.retenido / totalRetenido) * 100) : 0,
-        r.facturas,
-        r.dentroDePlazoPct,
+        pct(r.retenido, totalRetenido) ?? 0,
         r.compromisosVencidos,
         r.ncSinInformar,
         r.costoDemora,
@@ -76,8 +73,8 @@ export default function RankingSucursales() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Ranking de sucursales"
-        subtitulo={`Documentación pendiente, ordenada por importe retenido. Facturas y subidas en plazo del ${textoPeriodo}.`}
+        titulo="Control por sucursal"
+        subtitulo={`Sucursales en orden alfabético. Facturas y subidas en plazo del ${textoPeriodo}; lo pendiente, a hoy.`}
         acciones={
           <>
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -101,65 +98,64 @@ export default function RankingSucursales() {
         }
       />
 
-      <Card>
-        <CardTitulo>Facturas con documentación pendiente hoy, por sucursal</CardTitulo>
-        <div style={{ height: 60 + grafico.length * 44 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={grafico} layout="vertical" margin={{ top: 0, right: 24, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-              <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
-              <YAxis type="category" dataKey="sucursal" tickLine={false} axisLine={false} fontSize={13} width={120} />
-              <Tooltip cursor={{ fill: '#F1F5F9' }} />
-              <Legend iconType="circle" />
-              <Bar dataKey="enPlazo" name={`En plazo (hasta ${textoPlazo()})`} stackId="p" fill="#F59E0B" />
-              <Bar dataKey="atrasados" name="Atrasadas (pasaron el plazo)" stackId="p" fill="#EF4444" />
-              <Bar dataKey="criticos" name={`Críticas (${textoCritica()})`} stackId="p" fill="#991B1B" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card className="mt-4 overflow-hidden p-0">
+      <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-fondo text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">#</th>
-                <th className="px-3 py-3 font-semibold">Sucursal</th>
-                <th className="px-3 py-3 text-right font-semibold">Importe retenido hoy</th>
-                <th className="px-3 py-3 text-right font-semibold">Doc. pendiente</th>
-                <th className="px-3 py-3 text-right font-semibold">Atrasadas</th>
-                <th className="px-3 py-3 text-right font-semibold">Críticas</th>
-                <th className="px-3 py-3 text-right font-semibold">Compromisos vencidos</th>
-                <th className="px-3 py-3 text-right font-semibold">NC sin aviso</th>
-                <th className="px-3 py-3 text-right font-semibold">Facturas ({periodo === 'anio' ? 'año' : 'mes'})</th>
-                <th className="px-4 py-3 text-right font-semibold">Subidas en plazo</th>
+            <thead className="text-xs uppercase tracking-wide">
+              <tr className="text-[11px]">
+                <th className="bg-fondo px-4 py-2" />
+                <th colSpan={2} className="border-l border-white bg-sky-50 px-3 py-2 text-center font-bold text-sky-800">
+                  Período ({periodo === 'anio' ? 'año' : 'mes'})
+                </th>
+                <th colSpan={4} className="border-l border-white bg-amber-50 px-3 py-2 text-center font-bold text-amber-800">
+                  Documentación pendiente hoy
+                </th>
+                <th colSpan={2} className="border-l border-white bg-violet-50 px-3 py-2 text-center font-bold text-violet-800">
+                  Seguimiento
+                </th>
+              </tr>
+              <tr className="text-slate-500">
+                <th className="bg-fondo px-4 py-3 font-semibold">Sucursal</th>
+                <th className="bg-sky-50/60 px-3 py-3 text-right font-semibold">Facturas</th>
+                <th className="bg-sky-50/60 px-3 py-3 text-right font-semibold">% subidas en plazo</th>
+                <th className="bg-amber-50/60 px-3 py-3 text-right font-semibold">Pendientes</th>
+                <th className="bg-amber-50/60 px-3 py-3 text-right font-semibold">Atrasadas / críticas</th>
+                <th className="bg-amber-50/60 px-3 py-3 text-right font-semibold">% fuera de plazo</th>
+                <th className="bg-amber-50/60 px-3 py-3 text-right font-semibold">Importe retenido</th>
+                <th className="bg-violet-50/60 px-3 py-3 text-right font-semibold">Compromisos vencidos</th>
+                <th className="bg-violet-50/60 px-4 py-3 text-right font-semibold">NC sin aviso</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {ranking.map((r, i) => {
+              {ranking.map((r) => {
+                const fuera = fueraDePlazo(r)
                 return (
                   <tr key={r.sucursal.nombre}>
-                    <td className="px-4 py-3 text-slate-400">{i + 1}</td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       <div className="font-semibold">{r.sucursal.nombre}</div>
                       <div className="text-xs text-slate-500">{r.sucursal.gerente}</div>
                     </td>
-                    <td className="px-3 py-3 text-right whitespace-nowrap">
-                      <div className="font-bold tabular-nums">{formatoPesos(r.retenido)}</div>
-                      <div className="text-xs text-slate-500">
-                        {totalRetenido ? Math.round((r.retenido / totalRetenido) * 100) : 0} % del total
-                      </div>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.facturas.toLocaleString('es-AR')}</td>
+                    <td className="px-3 py-3 text-right">
+                      <Porcentaje valor={r.dentroDePlazoPct} bueno />
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">{r.pendientes}</td>
-                    <td className={`px-3 py-3 text-right tabular-nums ${r.atrasados ? 'font-semibold text-sem-rojo' : 'text-slate-400'}`}>{r.atrasados}</td>
-                    <td className={`px-3 py-3 text-right tabular-nums ${r.criticos ? 'font-semibold text-red-800' : 'text-slate-400'}`}>{r.criticos}</td>
+                    <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                      <span className={r.atrasados ? 'font-semibold text-sem-rojo' : 'text-slate-400'}>{r.atrasados}</span>
+                      <span className="text-slate-300"> / </span>
+                      <span className={r.criticos ? 'font-semibold text-red-800' : 'text-slate-400'}>{r.criticos}</span>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <Porcentaje valor={fuera} />
+                    </td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <div className="font-bold tabular-nums">{formatoPesos(r.retenido)}</div>
+                      <div className="text-xs text-slate-500">{pct(r.retenido, totalRetenido) ?? 0} % del total</div>
+                    </td>
                     <td className={`px-3 py-3 text-right tabular-nums ${r.compromisosVencidos ? 'font-semibold' : 'text-slate-400'}`}>
                       {r.compromisosVencidos}
                     </td>
-                    <td className={`px-3 py-3 text-right tabular-nums ${r.ncSinInformar ? 'font-semibold' : 'text-slate-400'}`}>{r.ncSinInformar}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{r.facturas.toLocaleString('es-AR')}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{r.dentroDePlazoPct === null ? '—' : `${r.dentroDePlazoPct} %`}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${r.ncSinInformar ? 'font-semibold' : 'text-slate-400'}`}>{r.ncSinInformar}</td>
                   </tr>
                 )
               })}
@@ -168,9 +164,18 @@ export default function RankingSucursales() {
         </div>
       </Card>
       <p className="mt-3 text-xs text-slate-500">
-        Facturas y subidas en plazo corresponden al período elegido; lo pendiente y lo retenido, a hoy. El costo de la demora por
-        sucursal está en "Impacto económico".
+        "% fuera de plazo" es la parte de lo pendiente que ya pasó el plazo de {textoPlazo()}. El costo de la demora por sucursal está
+        en "Impacto económico".
       </p>
     </>
   )
+}
+
+/** Porcentaje con un chip de color suave: verde, ámbar o rojo según qué tan lejos está de lo esperado. */
+function Porcentaje({ valor, bueno = false }: { valor: number | null; bueno?: boolean }) {
+  if (valor === null) return <span className="text-slate-400">—</span>
+  // "bueno": cuanto más alto, mejor (subidas en plazo). Si no, cuanto más bajo, mejor (fuera de plazo).
+  const nivel = bueno ? (valor >= 80 ? 0 : valor >= 50 ? 1 : 2) : valor <= 20 ? 0 : valor <= 50 ? 1 : 2
+  const clase = ['bg-teal-50 text-teal-800', 'bg-amber-50 text-amber-800', 'bg-red-50 text-red-800'][nivel]
+  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${clase}`}>{valor} %</span>
 }

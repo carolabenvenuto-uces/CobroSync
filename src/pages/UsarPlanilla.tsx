@@ -263,7 +263,7 @@ export default function UsarPlanilla() {
               onClick={() => navigate('/app/sucursales')}
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-fondo"
             >
-              Ver ranking
+              Ver control por sucursal
             </button>
           </div>
           <p className="mt-4 text-xs text-slate-500">

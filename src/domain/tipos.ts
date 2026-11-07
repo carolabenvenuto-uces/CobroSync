@@ -212,6 +212,8 @@ export interface Comprobante {
   anulacionInformada?: { fecha: string; motivo: string; parcial?: boolean; importe?: number } | null
   /** lo que restan las notas de crédito parciales vinculadas */
   acreditado?: number | null
+  /** monto aprobado de la orden del siniestro (lo carga Auditoría en la primera factura del siniestro) */
+  montoOrden?: number | null
   /** lo que efectivamente cobró (si no se indica, el saldo) */
   importeCobrado?: number | null
   /** percepciones de IIBB de la factura (vienen del ERP): no se acreditan en la nota de crédito */

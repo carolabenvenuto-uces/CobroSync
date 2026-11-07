@@ -114,11 +114,14 @@ export default function Resumen() {
   return (
     <>
       {/* Encabezado que sale solo al imprimir */}
-      <div className="solo-impresion mb-4 border-b border-slate-300 pb-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">CobroSync · Resumen para Gerencia</div>
-        <div className="text-lg font-extrabold">
-          {sucursal === TODAS_LAS_SUCURSALES ? 'Todas las sucursales' : `Sucursal ${sucursal}`} · al {formatoFecha(hoy)}
+      <div className="solo-impresion mb-4 flex items-end justify-between gap-4 border-b border-slate-300 pb-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">CobroSync · Resumen para Gerencia</div>
+          <div className="text-lg font-extrabold">
+            {sucursal === TODAS_LAS_SUCURSALES ? 'Todas las sucursales' : `Sucursal ${sucursal}`} · al {formatoFecha(hoy)}
+          </div>
         </div>
+        <img src={`${import.meta.env.BASE_URL}grupo-sva.png`} alt="Grupo SVA" className="h-10 w-auto" />
       </div>
       <div className="no-imprimir">
         <EncabezadoPagina

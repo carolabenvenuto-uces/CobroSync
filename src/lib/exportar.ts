@@ -43,25 +43,42 @@ function columna(i: number): string {
 }
 
 // Estilos: 0 normal · 1 encabezado en negrita · 2 importe con 2 decimales · 3 fecha · 4 número entero (con miles)
+// · 5 título del informe · 6 subtítulo (gris, chico)
 const ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF0F172A"/><name val="Calibri"/></font><font><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font></fonts>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="5">
+<cellXfs count="7">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
 <xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`
 
+/**
+ * Encabezado del informe arriba de la tabla: logo de Grupo SVA (fila 1), título (fila 2) y
+ * subtítulo con la fecha (fila 3). La tabla empieza en la fila 5.
+ */
+export interface Cabecera {
+  titulo: string
+  subtitulo: string
+  /** PNG del logo y su tamaño en píxeles */
+  logo?: { png: Uint8Array; ancho: number; alto: number }
+}
+const FILAS_CABECERA = 4
+const ALTO_LOGO = 52
+
 /** Arma el XML de la hoja. Exportado para las pruebas. */
-export function hojaXml(encabezados: string[], filas: Celda[][]): string {
+export function hojaXml(encabezados: string[], filas: Celda[][], cabecera?: Cabecera): string {
+  const d = cabecera ? FILAS_CABECERA : 0
   const anchos = encabezados.map((e) => Math.max(8, e.length + 2))
   const fila = (valores: Celda[], r: number, encabezado: boolean) =>
     `<row r="${r}">${valores
@@ -82,14 +99,19 @@ export function hojaXml(encabezados: string[], filas: Celda[][]): string {
         return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapar(v)}</t></is></c>`
       })
       .join('')}</row>`
-  const cuerpo = [fila(encabezados, 1, true), ...filas.map((f, i) => fila(f, i + 2, false))].join('')
-  const ultima = `${columna(Math.max(0, encabezados.length - 1))}${filas.length + 1}`
+  const arriba = cabecera
+    ? `<row r="1" ht="${cabecera.logo ? 46 : 6}" customHeight="1"/>` +
+      `<row r="2"><c r="A2" t="inlineStr" s="5"><is><t>${escapar(cabecera.titulo)}</t></is></c></row>` +
+      `<row r="3"><c r="A3" t="inlineStr" s="6"><is><t>${escapar(cabecera.subtitulo)}</t></is></c></row>`
+    : ''
+  const cuerpo = arriba + [fila(encabezados, d + 1, true), ...filas.map((f, i) => fila(f, d + i + 2, false))].join('')
+  const ultima = `${columna(Math.max(0, encabezados.length - 1))}${d + filas.length + 1}`
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0" showGridLines="${cabecera ? 0 : 1}"><pane ySplit="${d + 1}" topLeftCell="A${d + 2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
 <cols>${anchos.map((a, i) => `<col min="${i + 1}" max="${i + 1}" width="${a}" customWidth="1"/>`).join('')}</cols>
 <sheetData>${cuerpo}</sheetData>
-<autoFilter ref="A1:${ultima}"/>
+<autoFilter ref="A${d + 1}:${ultima}"/>${cabecera?.logo ? '\n<drawing r:id="rId1"/>' : ''}
 </worksheet>`
 }
 
@@ -110,12 +132,14 @@ function crc32(datos: Uint8Array): number {
 }
 
 /** Arma el .xlsx completo. Exportado para las pruebas. */
-export function armarXlsx(encabezados: string[], filas: Celda[][], nombreHoja = 'CobroSync'): Uint8Array {
+export function armarXlsx(encabezados: string[], filas: Celda[][], nombreHoja = 'CobroSync', cabecera?: Cabecera): Uint8Array {
   const hoja = escapar(nombreHoja.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Hoja1')
-  const archivos: [string, string][] = [
+  const d = cabecera ? FILAS_CABECERA : 0
+  const logo = cabecera?.logo
+  const archivos: [string, string | Uint8Array][] = [
     [
       '[Content_Types].xml',
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${logo ? '<Default Extension="png" ContentType="image/png"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : ''}</Types>`,
     ],
     [
       '_rels/.rels',
@@ -123,15 +147,35 @@ export function armarXlsx(encabezados: string[], filas: Celda[][], nombreHoja = 
     ],
     [
       'xl/workbook.xml',
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${hoja}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${hoja}'!$A$1:$${columna(Math.max(0, encabezados.length - 1))}$${filas.length + 1}</definedName></definedNames></workbook>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${hoja}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${hoja}'!$A$${d + 1}:$${columna(Math.max(0, encabezados.length - 1))}$${d + filas.length + 1}</definedName></definedNames></workbook>`,
     ],
     [
       'xl/_rels/workbook.xml.rels',
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
     ],
     ['xl/styles.xml', ESTILOS],
-    ['xl/worksheets/sheet1.xml', hojaXml(encabezados, filas)],
+    ['xl/worksheets/sheet1.xml', hojaXml(encabezados, filas, cabecera)],
   ]
+  if (logo) {
+    // El logo como imagen flotante arriba a la izquierda, con su proporción
+    const emu = (px: number) => Math.round(px * 9525)
+    const ancho = Math.round((logo.ancho / logo.alto) * ALTO_LOGO)
+    archivos.push(
+      [
+        'xl/worksheets/_rels/sheet1.xml.rels',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`,
+      ],
+      [
+        'xl/drawings/drawing1.xml',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>${emu(4)}</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>${emu(4)}</xdr:rowOff></xdr:from><xdr:ext cx="${emu(ancho)}" cy="${emu(ALTO_LOGO)}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Grupo SVA"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${emu(ancho)}" cy="${emu(ALTO_LOGO)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>`,
+      ],
+      [
+        'xl/drawings/_rels/drawing1.xml.rels',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/></Relationships>`,
+      ],
+      ['xl/media/image1.png', logo.png],
+    )
+  }
 
   const codificar = new TextEncoder()
   const partes: Uint8Array[] = []
@@ -139,7 +183,7 @@ export function armarXlsx(encabezados: string[], filas: Celda[][], nombreHoja = 
   let desplazamiento = 0
   for (const [nombre, texto] of archivos) {
     const n = codificar.encode(nombre)
-    const datos = codificar.encode(texto)
+    const datos = typeof texto === 'string' ? codificar.encode(texto) : texto
     const crc = crc32(datos)
     const local = new Uint8Array(30 + n.length)
     const v = new DataView(local.buffer)
@@ -186,8 +230,46 @@ export function armarXlsx(encabezados: string[], filas: Celda[][], nombreHoja = 
   return salida
 }
 
-export function descargarExcel(nombreArchivo: string, encabezados: string[], filas: Celda[][]): void {
-  const bytes = armarXlsx(encabezados, filas)
+/** "control-por-sucursal-2026-3" → "Control por sucursal 3/2026" */
+function tituloDe(nombreArchivo: string): string {
+  const t = nombreArchivo
+    // fechas y períodos del nombre, como se leen: 2026-11-07 → 07/11/2026 · 2026-3 → 3/2026
+    .replace(/(\d{4})-(\d{2})-(\d{2})/g, '$3/$2/$1')
+    .replace(/(\d{4})-(\d{1,2})(?!\d|\/)/g, '$2/$1')
+    .replace(/-/g, ' ')
+    // los nombres de archivo van sin acentos; el título, con
+    .replace(/companias/g, 'compañías')
+    .replace(/compania/g, 'compañía')
+    .replace(/economico/g, 'económico')
+    .trim()
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+// El logo se baja una sola vez; si no se puede, el Excel sale igual, sin logo
+let logoSva: Promise<Cabecera['logo'] | undefined> | null = null
+function cargarLogo(): Promise<Cabecera['logo'] | undefined> {
+  logoSva ??= fetch(`${import.meta.env.BASE_URL}grupo-sva.png`)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('sin logo'))))
+    .then((b) => {
+      const png = new Uint8Array(b)
+      const v = new DataView(b)
+      // ancho y alto están en el encabezado IHDR del PNG
+      return { png, ancho: v.getUint32(16), alto: v.getUint32(20) }
+    })
+    .catch(() => undefined)
+  return logoSva
+}
+
+/** Descarga el Excel con el logo de Grupo SVA, el título del informe y la fecha arriba de la tabla. */
+export function descargarExcel(nombreArchivo: string, encabezados: string[], filas: Celda[][], titulo?: string): void {
+  const hoy = new Date()
+  const fecha = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`
+  void cargarLogo().then((logo) =>
+    bajar(nombreArchivo, armarXlsx(encabezados, filas, 'CobroSync', { titulo: titulo ?? tituloDe(nombreArchivo), subtitulo: `CobroSync · generado el ${fecha}`, logo })),
+  )
+}
+
+function bajar(nombreArchivo: string, bytes: Uint8Array): void {
   const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')

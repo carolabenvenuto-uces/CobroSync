@@ -1,12 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { reportarProblemaEnGoogle } from '../services/google'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Building2, ChevronDown, ClipboardCheck, LifeBuoy, Send, Store } from 'lucide-react'
+import { ArrowLeft, BookOpen, Building2, ChevronDown, ClipboardCheck, LifeBuoy, Store } from 'lucide-react'
 import { Isologo } from '../components/Logo'
 import { BadgeEtapa, EtiquetaMipyme } from '../components/ui/Badges'
 import { useApp } from '../context/AppContext'
 import { plazosActuales } from '../domain/plazos'
-import { AUTORIA, PRODUCTO, VERSION } from '../lib/marca'
+import { AUTORIA, VERSION } from '../lib/marca'
 
 /**
  * Manual de uso: qué hace CobroSync y cómo se usa cada pantalla, por sector.
@@ -465,82 +464,11 @@ const SECCIONES: Seccion[] = [
   },
 ]
 
-/** "¿Algo no funciona?": un mensaje que le llega por mail solo a la desarrolladora. */
-function ReportarProblema({ conGoogle }: { conGoogle: boolean }) {
-  const [texto, setTexto] = useState('')
-  const [estado, setEstado] = useState<{ tipo: 'nada' | 'enviando' | 'ok' | 'error'; mensaje?: string }>({ tipo: 'nada' })
-  const enviar = async () => {
-    if (!texto.trim()) return
-    if (!conGoogle) {
-      setEstado({ tipo: 'error', mensaje: 'El envío funciona en la versión conectada a la cuenta de la empresa.' })
-      return
-    }
-    setEstado({ tipo: 'enviando' })
-    try {
-      await reportarProblemaEnGoogle(texto, { pantalla: window.location.hash, navegador: navigator.userAgent })
-      setTexto('')
-      setEstado({ tipo: 'ok' })
-    } catch (e) {
-      setEstado({ tipo: 'error', mensaje: e instanceof Error ? e.message : 'No se pudo enviar.' })
-    }
-  }
-  const [abierto, setAbierto] = useState(false)
-  return (
-    <section id="soporte" className="mb-6 rounded-xl border border-marca/40 bg-marca/5 p-4 text-sm text-slate-700">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <LifeBuoy className="mt-0.5 h-6 w-6 shrink-0 text-marca" />
-          <div>
-            <div className="text-base font-extrabold text-noche">¿Algo no funciona?</div>
-            <div className="text-xs text-slate-600">
-              Un error de la plataforma (una pantalla que no carga, un botón que no responde): el mensaje le llega solo a soporte de {PRODUCTO}.
-              Las dudas sobre una factura, a Auditoría.
-            </div>
-          </div>
-        </div>
-        {!abierto && (
-          <button type="button" onClick={() => setAbierto(true)} className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro">
-            <Send className="h-4 w-4" /> Avisar un problema
-          </button>
-        )}
-      </div>
-      {abierto && (
-        <>
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            rows={3}
-            autoFocus
-            placeholder="Qué pasó, en qué pantalla y, si corresponde, con qué factura"
-            className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={enviar}
-              disabled={!texto.trim() || estado.tipo === 'enviando'}
-              className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar a soporte'}
-            </button>
-            <button type="button" onClick={() => setAbierto(false)} className="text-xs font-semibold text-slate-500 hover:text-noche">
-              Cancelar
-            </button>
-            {estado.tipo === 'ok' && <span className="text-xs font-semibold text-teal-700">Enviado. Gracias por avisar.</span>}
-            {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
-        </>
-      )}
-    </section>
-  )
-}
-
-/** Orden de las preguntas para cada sector: primero lo que se usa todos los días, al final lo general */
+/** Orden de las preguntas para cada sector: primero qué es CobroSync, después lo de todos los días, al final lo general */
 const ORDEN: Record<Exclude<Sector, 'todos'>, string[]> = {
-  sucursal: ['suc-mis-facturas', 'suc-subir', 'suc-plazo', 'suc-nc', 'notificaciones', 'suc-siniestros', 'colores', 'camino', 'tablas', 'que-es', 'preguntas'],
-  gerencia: ['ger-resumen', 'ger-avisos', 'ger-informes', 'notificaciones', 'colores', 'camino', 'tablas', 'que-es', 'preguntas'],
-  auditoria: ['aud-base', 'camino', 'colores', 'notificaciones', 'tablas', 'que-es', 'preguntas'],
+  sucursal: ['que-es', 'suc-mis-facturas', 'suc-subir', 'suc-plazo', 'suc-nc', 'notificaciones', 'suc-siniestros', 'colores', 'camino', 'tablas', 'preguntas'],
+  gerencia: ['que-es', 'ger-resumen', 'ger-avisos', 'ger-informes', 'notificaciones', 'colores', 'camino', 'tablas', 'preguntas'],
+  auditoria: ['que-es', 'aud-base', 'camino', 'colores', 'notificaciones', 'tablas', 'preguntas'],
 }
 
 const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
@@ -551,7 +479,7 @@ const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
 ]
 
 export default function Manual({ suelto = false }: { suelto?: boolean }) {
-  const { rol, fuente } = useApp()
+  const { rol } = useApp()
   // Cada usuario ve solo su manual. Las pestañas quedan para quien lo abre desde el ingreso, sin usuario.
   const conPestanas = !rol
   const [sector, setSector] = useState<Sector>(rol ?? 'todos')
@@ -601,7 +529,12 @@ export default function Manual({ suelto = false }: { suelto?: boolean }) {
       </div>
       )}
 
-      {rol && <ReportarProblema conGoogle={fuente.tipo === 'google'} />}
+      {rol && (
+        <p className="mb-6 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600">
+          <LifeBuoy className="h-4 w-4 shrink-0 text-marca" />
+          Si algo de la plataforma no funciona, el botón <strong className="text-noche">Soporte técnico</strong> está en el menú, debajo del Manual de uso.
+        </p>
+      )}
 
       {/* Cada pregunta se despliega al tocarla: así no hay que leer todo el manual */}
       <div className="mb-3">

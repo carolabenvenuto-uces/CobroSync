@@ -7,6 +7,8 @@
  *  - Pasó la semana sin respuesta → volver a reclamar.
  *  - Si la compañía no respondió a 3 reclamos (y pasó la semana del último) → Auditoría pide
  *    apoyo a gerencia para que intervenga.
+ *  - Si la compañía informa un error en la factura, queda "Con error" hasta que Auditoría lo marca
+ *    corregido; desde ahí se vuelve a reclamar el pago.
  */
 import { diffDias } from '../lib/fechas'
 import { plazosActuales, toleranciaReclamo } from './plazos'
@@ -17,7 +19,7 @@ import type { Comprobante, RespuestaReclamo } from './tipos'
 /** Reclamos sin respuesta a partir de los cuales se pide apoyo a gerencia. */
 export const RECLAMOS_PARA_ESCALAR = 3
 
-export type EstadoReclamo = 'tolerancia' | 'sin_reclamar' | 'reclamada' | 'volver' | 'escalar' | 'en_pagos' | 'reenviar' | 'refacturar'
+export type EstadoReclamo = 'tolerancia' | 'sin_reclamar' | 'reclamada' | 'volver' | 'escalar' | 'en_pagos' | 'reenviar' | 'refacturar' | 'con_error'
 
 /** Días que se espera el pago después de que la compañía dijo que la pasó al circuito de pagos. */
 export const ESPERA_PAGO_DIAS = 30
@@ -32,16 +34,18 @@ export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = {
   en_pagos: 'En circuito de pagos',
   reenviar: 'Reenviar documentación',
   refacturar: 'Esperando refacturación',
+  con_error: 'Con error a corregir',
 }
 
-export const NOMBRE_RESPUESTA: Record<'pagos' | 'documentacion' | 'refacturar', string> = {
+export const NOMBRE_RESPUESTA: Record<RespuestaReclamo, string> = {
   pagos: 'Pasa al circuito de pagos',
+  error: 'Informa un error en la factura',
   documentacion: 'Pide reenviar la documentación',
   refacturar: 'Pide refacturar',
 }
 
 /** Estados en los que Auditoría tiene que hacer algo. */
-export const RECLAMO_PARA_ACTUAR: EstadoReclamo[] = ['sin_reclamar', 'volver', 'escalar', 'reenviar']
+export const RECLAMO_PARA_ACTUAR: EstadoReclamo[] = ['sin_reclamar', 'volver', 'escalar', 'reenviar', 'con_error']
 
 export function ultimoReclamo(c: Comprobante): string | null {
   const fechas = c.reclamos.map((r) => r.fecha).filter(Boolean).sort()
@@ -69,6 +73,8 @@ export function estadoReclamo(c: Comprobante, fechaCorte: string): EstadoReclamo
   const conRespuesta = [...c.reclamos].reverse().find((r) => r.respuesta)
   const r = conRespuesta?.respuesta
   if (r) {
+    // Error informado por la compañía: hasta que se corrige, no tiene sentido seguir reclamando el pago
+    if (r.tipo === 'error' && !r.resuelto) return 'con_error'
     if (r.tipo === 'pagos' && diffDias(r.fecha, fechaCorte) < ESPERA_PAGO_DIAS) return 'en_pagos'
     if (r.tipo === 'refacturar' && (c.pedidos ?? []).some((p) => p.tipo === 'refacturar' && !p.cerrado)) return 'refacturar'
   }
@@ -105,4 +111,12 @@ export function cambiosPorRespuesta(
     ]
   }
   return { campos, evento: `Respuesta de la compañía: ${NOMBRE_RESPUESTA[tipo].toLowerCase()}${nota ? ` (${nota})` : ''}` }
+}
+
+/** Marca corregido el error que informó la compañía: la factura vuelve a "Volver a reclamar". */
+export function cambiosPorErrorCorregido(c: Comprobante, nota: string, hoy: string): { campos: Partial<Comprobante>; evento: string } | null {
+  const i = c.reclamos.map((r) => r.respuesta?.tipo === 'error' && !r.respuesta.resuelto).lastIndexOf(true)
+  if (i < 0) return null
+  const reclamos = c.reclamos.map((r, j) => (j === i && r.respuesta ? { ...r, respuesta: { ...r.respuesta, resuelto: hoy } } : r))
+  return { campos: { reclamos }, evento: `Error informado por la compañía corregido${nota ? `: ${nota}` : ''}. Se vuelve a reclamar el pago.` }
 }

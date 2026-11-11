@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -362,7 +362,12 @@ function sincronizarDesdePlanilla(lista) {
  * Agrega las compañías que todavía no estén en la pestaña "Aseguradoras" (al pasar la planilla
  * de control a CobroSync). No cambia las que ya están cargadas. Solo Auditoría.
  */
-function guardarAseguradoras(lista, completarExistentes) {
+/**
+ * Compañías: alta de las nuevas y, con completarExistentes, datos de las que ya están.
+ * Con exacto (desde la pantalla Compañías), lo que se manda se guarda tal cual, también vacío:
+ * así se puede borrar un mail o reactivar una compañía pausada.
+ */
+function guardarAseguradoras(lista, completarExistentes, exacto) {
   var usuario = usuarioActual_();
   if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar compañías.');
   return conBloqueo_(function () {
@@ -370,10 +375,19 @@ function guardarAseguradoras(lista, completarExistentes) {
     var existentes = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
     var nuevas = 0;
     lista.forEach(function (a) {
+      a = Object.assign({}, a);
+      if ('pausada' in a) a.pausada = a.pausada ? 'SI' : '';
       var actual = existentes[a.id];
       if (!actual) {
+        if (!String(a.id || '').trim() || !String(a.nombre || '').trim()) throw new Error('A la compañía nueva le falta el nombre.');
         escribirFila_(hoja, HOJAS.aseguradoras, null, a);
         nuevas++;
+        return;
+      }
+      actual.pausada = actual.pausada ? 'SI' : '';
+      if (exacto) {
+        Object.keys(a).forEach(function (k) { if (k !== 'id' && HOJAS.aseguradoras.columnas.indexOf(k) >= 0) actual[k] = a[k] === null || a[k] === undefined ? '' : a[k]; });
+        escribirFila_(hoja, HOJAS.aseguradoras, buscarFila_(hoja, a.id), actual);
         return;
       }
       // Con la pestaña CP o Info. Compañías: completa razón social, CUIT, plazo y correos
@@ -975,6 +989,7 @@ function filaAObjeto_(h, fila) {
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);
     else if (COLUMNAS_NUMERO_OPCIONAL.indexOf(col) >= 0) v = v === '' ? null : Number(v);
     else if (col === 'ncInformada') v = v === '' ? null : v === true || v === 'TRUE' || v === 'SI';
+    else if (col === 'pausada') v = v === true || /^(si|true)$/i.test(String(v));
     else if (col === 'recibeFce') v = v === '' || v === null || v === undefined ? null : !/^(no|false)$/i.test(String(v));
     else if (v === '') v = null;
     else if (typeof v === 'number') v = String(v);

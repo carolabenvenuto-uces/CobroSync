@@ -16,7 +16,7 @@ import {
   Camera,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { cambiosPorRespuesta, estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO, NOMBRE_RESPUESTA } from '../domain/reclamos'
+import { cambiosPorErrorCorregido, cambiosPorRespuesta, estadoReclamo, finDeEspera, NOMBRE_ESTADO_RECLAMO, NOMBRE_RESPUESTA } from '../domain/reclamos'
 import { atendidaPorOtra } from '../domain/pedidos'
 import { PedidosLegajo } from './PedidosLegajo'
 import { SacarFoto } from './SacarFoto'
@@ -922,6 +922,32 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   Pasó la semana sin respuesta de la compañía: hay que volver a reclamar.
                 </p>
               )}
+              {reclamo === 'con_error' && (
+                <div className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-900">
+                  <p>
+                    La compañía informó un error
+                    {(() => {
+                      const r = [...c.reclamos].reverse().find((x) => x.respuesta?.tipo === 'error')
+                      return r?.respuesta?.nota ? `: ${r.respuesta.nota}` : ''
+                    })()}
+                    . Corregirlo antes de volver a reclamar el pago.
+                  </p>
+                  {rol === 'auditoria' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const r = cambiosPorErrorCorregido(c, '', hoy)
+                        if (!r) return
+                        actualizarComprobante(c.id, r.campos)
+                        registrarEvento(c.id, 'reclamo', r.evento)
+                      }}
+                      className="mt-2 rounded-md bg-white px-2.5 py-1 font-semibold text-red-900 ring-1 ring-red-200 hover:bg-red-100"
+                    >
+                      Marcar el error como corregido
+                    </button>
+                  )}
+                </div>
+              )}
               {reclamo === 'escalar' && (
                 <p className="mt-2 rounded-md bg-sem-amarillo/15 p-2 text-xs text-amber-900">
                   La compañía no respondió a 3 reclamos: Auditoría le pide apoyo a gerencia para que intervenga.
@@ -938,17 +964,19 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       </option>
                     ))}
                   </select>
-                  <input value={notaRespuesta} onChange={(e) => setNotaRespuesta(e.target.value)} placeholder="Detalle (opcional): qué documento, qué monto…" className={`${claseSelect} w-full`} />
+                  <input value={notaRespuesta} onChange={(e) => setNotaRespuesta(e.target.value)} placeholder={respuestaReclamo === 'error' ? 'Qué error informó (obligatorio)' : 'Detalle (opcional): qué documento, qué monto…'} className={`${claseSelect} w-full`} />
                   <p className="text-[11px] text-slate-500">
                     {!respuestaReclamo
                       ? 'Elegir qué respondió la compañía.'
+                      : respuestaReclamo === 'error'
+                      ? 'Queda "Con error a corregir" hasta marcarlo corregido; después se vuelve a reclamar el pago. Detallar el error en el campo de arriba.'
                       : respuestaReclamo === 'pagos'
                       ? 'Se espera el cobro un mes antes de volver a reclamar.'
                       : respuestaReclamo === 'documentacion'
                         ? 'La factura vuelve a la lista de Presentar para reenviarla.'
                         : 'Se le pide a la sucursal que refacture; queda en Pedidos a sucursales.'}
                   </p>
-                  <button type="button" onClick={registrarRespuesta} disabled={!respuestaReclamo} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
+                  <button type="button" onClick={registrarRespuesta} disabled={!respuestaReclamo || (respuestaReclamo === 'error' && !notaRespuesta.trim())} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
                     Guardar la respuesta
                   </button>
                 </div>

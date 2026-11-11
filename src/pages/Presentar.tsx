@@ -11,6 +11,7 @@ import { calcularSemaforo } from '../domain/semaforo'
 import type { Aseguradora, Comprobante } from '../domain/tipos'
 import { descargarDocumentosDeGoogle, guardarAseguradorasEnGoogle } from '../services/google'
 import { diffDias, sumarDias } from '../lib/fechas'
+import { completarEnlace, separarLista } from '../lib/listas'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
@@ -249,14 +250,14 @@ export default function Presentar() {
                       {porPortal ? (
                         <>
                           Por su plataforma
-                          {a?.portalUrl && (
-                            <>
+                          {separarLista(a?.portalUrl).map((url, i, todos) => (
+                            <span key={url}>
                               {' · '}
-                              <a href={a.portalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-marca hover:underline">
-                                Abrir la plataforma <ExternalLink className="h-3 w-3" />
+                              <a href={completarEnlace(url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-marca hover:underline">
+                                Abrir la plataforma{todos.length > 1 ? ` ${i + 1}` : ''} <ExternalLink className="h-3 w-3" />
                               </a>
-                            </>
-                          )}
+                            </span>
+                          ))}
                         </>
                       ) : (
                         <>Por mail{a?.email ? ` a ${a.email}` : ' (falta el correo en Compañías)'}</>

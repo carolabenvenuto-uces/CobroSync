@@ -110,8 +110,9 @@ export function agregarAQuiterEnGoogle(filas: string[][]): Promise<{ configurada
 }
 
 /** Agrega compañías nuevas; con completarExistentes, también completa CUIT, razón social, plazo y correos. */
-export function guardarAseguradorasEnGoogle(lista: Aseguradora[], completarExistentes = false): Promise<number> {
-  return llamar('guardarAseguradoras', lista, completarExistentes)
+/** exacto: desde la pantalla Compañías, se guarda tal cual lo que se manda (también vacío) */
+export function guardarAseguradorasEnGoogle(lista: Aseguradora[], completarExistentes = false, exacto = false): Promise<number> {
+  return llamar('guardarAseguradoras', lista, completarExistentes, exacto)
 }
 
 /** Sube un PDF o una foto al Drive de la empresa, en la carpeta de la factura. */

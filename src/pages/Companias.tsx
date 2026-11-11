@@ -20,16 +20,18 @@ export function formatoCuit(cuit: string | undefined): string {
  * razón social, CUIT, plazo de pago y a qué correos se presenta y se reclama.
  */
 export default function Companias() {
-  const { datos, fuente, actualizarAseguradoras } = useApp()
+  const { datos, fuente, hoy, actualizarAseguradoras } = useApp()
   const { aseguradoras, comprobantes } = datos!
   const entrada = useRef<HTMLInputElement>(null)
   const [mensaje, setMensaje] = useState<{ texto: string; error?: boolean } | null>(null)
 
+  // Facturas del año en curso: el período se aclara en el título de la columna y en la ficha
+  const anio = hoy.slice(0, 4)
   const facturas = useMemo(() => {
     const r: Record<string, number> = {}
-    for (const c of comprobantes) if (c.tipo === 'FC') r[c.aseguradoraId] = (r[c.aseguradoraId] ?? 0) + 1
+    for (const c of comprobantes) if (c.tipo === 'FC' && c.fecha.startsWith(anio)) r[c.aseguradoraId] = (r[c.aseguradoraId] ?? 0) + 1
     return r
-  }, [comprobantes])
+  }, [comprobantes, anio])
 
   async function cargar(archivo: File | undefined) {
     if (!archivo) return
@@ -131,7 +133,7 @@ export default function Companias() {
           <span className="text-xs text-teal-700">Completos</span>
         ),
     },
-    { clave: 'facturas', titulo: 'Facturas', derecha: true, orden: (a) => facturas[a.id] ?? 0, celda: (a) => (facturas[a.id] ?? 0).toLocaleString('es-AR') },
+    { clave: 'facturas', titulo: `Facturas ${anio}`, derecha: true, orden: (a) => facturas[a.id] ?? 0, celda: (a) => (facturas[a.id] ?? 0).toLocaleString('es-AR') },
     { clave: 'cuit', titulo: 'CUIT', oculta: true, celda: (a) => <span className="whitespace-nowrap tabular-nums">{formatoCuit(a.cuit) || '—'}</span> },
     { clave: 'email', titulo: 'Mail para presentar', oculta: true, celda: (a) => correo(a.email) },
     { clave: 'reclamos', titulo: 'Mail para reclamar', oculta: true, celda: (a) => correo(a.emailReclamos) },
@@ -195,7 +197,7 @@ export default function Companias() {
           </>
         )}
       />
-      {ficha && <FichaCompania a={ficha} facturas={facturas[ficha.id] ?? 0} onCambiar={(c) => cambiar(ficha, c)} onCerrar={() => setAbierta(null)} />}
+      {ficha && <FichaCompania a={ficha} facturas={facturas[ficha.id] ?? 0} anio={anio} onCambiar={(c) => cambiar(ficha, c)} onCerrar={() => setAbierta(null)} />}
     </>
   )
 }
@@ -204,11 +206,13 @@ export default function Companias() {
 function FichaCompania({
   a,
   facturas,
+  anio,
   onCambiar,
   onCerrar,
 }: {
   a: Aseguradora
   facturas: number
+  anio: string
   onCambiar: (c: Partial<Aseguradora>) => void
   onCerrar: () => void
 }) {
@@ -234,7 +238,7 @@ function FichaCompania({
               {a.nombre}
             </h2>
             <p className="text-xs text-slate-500">
-              {a.razonSocial ?? 'Sin razón social'} · CUIT {formatoCuit(a.cuit) || 'sin cargar'} · {facturas.toLocaleString('es-AR')} facturas
+              {a.razonSocial ?? 'Sin razón social'} · CUIT {formatoCuit(a.cuit) || 'sin cargar'} · {facturas.toLocaleString('es-AR')} facturas en {anio}
             </p>
           </div>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1.5 text-slate-400 hover:bg-fondo">

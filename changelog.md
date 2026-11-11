@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Compañías:** la cantidad de facturas es la del año en curso y lo dice ("Facturas 2026" en la columna, "N facturas en 2026" en la ficha). Antes contaba todo lo cargado sin aclarar el período.
 - **Menú:** "v1.0 · by CB" sale de al lado del logo (en el celular quedaba cortado) y pasa al final del menú, en chico: "CobroSync v1.0 · by CB".
 - **Celular:** la franja violeta de arriba, con la marca y el botón del menú, queda fija al bajar.
 - **Soporte técnico:** la ventana se abre en el centro de la pantalla, más grande y con la cruz siempre visible (antes quedaba angosta al costado y en la computadora no se podía cerrar). Indica a quién le llega el aviso: el nombre se carga en Ajustes ("Nombre de quien da soporte"); el correo no se muestra.

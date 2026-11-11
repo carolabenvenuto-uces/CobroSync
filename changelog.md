@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Siniestros para Auditoría:** en Trabajo diario, la misma vista por siniestro que "Mis siniestros" de la sucursal, con todas las sucursales (o una), filtros por estado y compañía, y la carga del monto de la orden.
 - **Documentos en Drive:** cada PDF subido queda visible para las cuentas de la empresa con el link, así la sucursal y Gerencia lo abren desde CobroSync sin acceso a la unidad compartida (no ven la carpeta).
 - **Mis facturas:** la etiqueta de un documento ya subido ("✓ Factura en revisión", "Orden aprobada") abre el PDF al tocarla.
 - Usar mi planilla: en la plataforma real ya no dice que los datos se pierden al recargar (eso es solo en la demo); dice que quedan en la planilla de CobroSync.

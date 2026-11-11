@@ -317,7 +317,7 @@ export default function Siniestros() {
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo="Cada siniestro con todas sus facturas, sus documentos y sus notas de crédito"
+        subtitulo={rol === 'sucursal' ? 'Cada siniestro con todas sus facturas, sus documentos y sus notas de crédito' : 'Cada siniestro con sus facturas, documentos y notas de crédito. Auditoría carga el monto de la orden para ver cuánto falta facturar.'}
         sucursal={rol !== 'sucursal'}
       />
 

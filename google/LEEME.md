@@ -14,6 +14,7 @@ No hace falta instalar ningún programa: todo se hace desde el navegador.
 | Los PDF de facturas que todavía no están en el ERP | Pestaña **EnEspera** y carpeta "En espera" de cada sucursal; se unen al legajo al cargar el ERP |
 
 - La aplicación funciona con la cuenta del sector (la dueña de la planilla). Las sucursales **no** necesitan acceso a la planilla ni a la carpeta de Drive.
+- Cada PDF que se sube queda visible para **cuentas de la empresa que tengan el link** (no la carpeta: solo ese archivo), para que la sucursal y Gerencia lo abran desde CobroSync. La unidad compartida tiene que permitir compartir archivos dentro de la empresa; si no lo permite, el archivo se guarda igual pero solo lo abren quienes tienen acceso a la unidad.
 - Cada persona entra con su cuenta de la empresa. Su rol sale de la pestaña **Usuarios**.
 - Una sucursal solo ve y modifica sus facturas, y solo puede cambiar los documentos, el aviso de demora, la conversación y el aviso de notas de crédito.
 - Gerencia solo consulta.

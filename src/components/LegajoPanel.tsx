@@ -86,7 +86,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
 export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprobante; onCerrar: () => void }) {
-  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo } = useApp()
+  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo, sucursalPropia } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
   const documentos = documentosDelLegajo(c.documentos)
@@ -319,7 +319,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     registrarEvento(c.id, 'rechazo', `Observado: ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} (${motivo.toLowerCase()}). Por favor, volver a subir.`)
     setObservando(null)
   }
-  const paraRevisar = documentos.filter((d) => d.estado === 'en_revision').map((d) => d.tipo)
+  // Quién sube documentos: la sucursal, y Auditoría cuando la factura es de su propia sucursal
+  // (ellas mismas escanean). Lo que sube una persona de Auditoría lo aprueba otra.
+  const subeDocs = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && normalizarSucursal(c.sucursal) === normalizarSucursal(sucursalPropia))
+  const lohizoYo = (d: Documento) => rol === 'auditoria' && d.estado === 'en_revision' && d.subidoPor === usuario
+  const paraRevisar = documentos.filter((d) => d.estado === 'en_revision' && !lohizoYo(d)).map((d) => d.tipo)
 
   function presentar() {
     actualizarComprobante(c.id, {
@@ -464,13 +468,13 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div>
                   <h3 className="font-bold">Documentación</h3>
-                  {rol === 'sucursal' && abierta && (
+                  {subeDocs && abierta && (
                     <p className="text-[11px] text-slate-500">
                       PDF con el número de factura y el siniestro:{' '}
                       <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} siniestro {c.siniestro || '22365'}.pdf</code>
                     </p>
                   )}
-                  {rol === 'sucursal' && abierta && !c.siniestro && (
+                  {subeDocs && abierta && !c.siniestro && (
                     <label className="mt-2 block text-[11px] font-semibold text-slate-600">
                       Número de siniestro (figura en la orden; se pide al subirla)
                       <input
@@ -537,7 +541,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        {rol === 'sucursal' && abierta && (d.estado === 'faltante' || d.estado === 'observado') ? (
+                        {subeDocs && abierta && (d.estado === 'faltante' || d.estado === 'observado') ? (
                           <>
                           <label className={`${botonChico} cursor-pointer bg-marca text-white hover:bg-marca-oscuro`}>
                             <FileUp className="h-3.5 w-3.5" />
@@ -559,6 +563,21 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             >
                               Quitar
                             </button>
+                          </>
+                        ) : lohizoYo(d) ? (
+                          <>
+                            <span className="text-xs text-slate-500" title="Lo que escaneó una persona de Auditoría lo aprueba otra">
+                              Lo aprueba otra persona de Auditoría
+                            </span>
+                            {abierta && (
+                              <button
+                                type="button"
+                                onClick={() => quitar(d.tipo)}
+                                className={`${botonChico} border border-slate-200 bg-white text-slate-700 hover:border-sem-rojo hover:text-sem-rojo`}
+                              >
+                                Quitar
+                              </button>
+                            )}
                           </>
                         ) : rol === 'auditoria' && d.estado === 'en_revision' ? (
                           <>
@@ -593,7 +612,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </li>
                 ))}
               </ul>
-              {rol === 'sucursal' && abierta && pendientesDeSubir.length > 1 && (
+              {subeDocs && abierta && pendientesDeSubir.length > 1 && (
                 <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-marca/50 px-4 py-2.5 text-sm font-semibold text-marca hover:bg-marca/5">
                   <FileUp className="h-4 w-4" /> Subir un PDF con todo lo que falta
                   <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
@@ -1116,4 +1135,9 @@ function Dato({ titulo, valor }: { titulo: string; valor: string }) {
       <dd className="font-semibold">{valor}</dd>
     </div>
   )
+}
+
+/** "Rocamora " y "rocamora" son la misma sucursal */
+function normalizarSucursal(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
 }

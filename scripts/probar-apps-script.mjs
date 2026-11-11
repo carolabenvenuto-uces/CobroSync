@@ -164,6 +164,8 @@ setCfg('fechaInicio', '')
 fila('Usuarios', ['auditoria@svaauto.com.ar', 'Auditoría', 'Auditoría', ''])
 fila('Usuarios', ['Rocamora@SVAAUTO.com.ar', 'Facturación Rocamora', 'Sucursal', 'rocamora '])
 fila('Usuarios', ['gerencia.general@svaauto.com.ar', 'Gerencia General', 'Gerencia', ''])
+// Auditoría que además escanea lo de su propia sucursal
+fila('Usuarios', ['escaneo@svaauto.com.ar', 'Auditora de Rocamora', 'Auditoría', 'Rocamora'])
 fila('Sucursales', ['Rocamora', '35, 37', 'Gerente de Rocamora', 'gerente.rocamora@svaauto.com.ar'])
 fila('Sucursales', ['Warnes', '16, 14', 'Gerente de Warnes', 'gerente.warnes@svaauto.com.ar'])
 
@@ -243,6 +245,23 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
   const leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(!leido.documentos.some((d) => d.estado === 'ok' && c.documentos.find((o) => o.tipo === d.tipo).estado !== 'ok'), 'la sucursal aprobó documentos')
   esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
+})
+prueba('Auditoría con sucursal propia sube lo suyo, pero lo aprueba otra persona de Auditoría', () => {
+  como('escaneo@svaauto.com.ar')
+  const d = gs('obtenerDatos')
+  esperar(d.usuario.rol === 'auditoria' && d.usuario.sucursalPropia === 'Rocamora', 'no quedó como Auditoría con sucursal propia')
+  const c = d.datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal === 'Rocamora' && x.documentos.some((y) => y.estado === 'faltante'))
+  const tipo = c.documentos.find((y) => y.estado === 'faltante').tipo
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo, estado: 'en_revision', archivo: 'escaneo.pdf', url: 'u1' }] }])
+  let doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
+  esperar(doc.estado === 'en_revision' && doc.subidoPor === 'Auditora de Rocamora', 'no quedó firmado por quien lo subió')
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
+  doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
+  esperar(doc.estado === 'en_revision', 'se aprobó su propio escaneo')
+  como('auditoria@svaauto.com.ar')
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
+  doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
+  esperar(doc.estado === 'ok', 'la otra persona de Auditoría no pudo aprobarlo')
 })
 prueba('la sucursal puede quitar un documento subido por error, pero no uno aprobado', () => {
   como('rocamora@svaauto.com.ar')

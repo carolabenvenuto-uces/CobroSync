@@ -36,7 +36,9 @@ interface Fila {
  * Cada factura sigue teniendo su legajo, como siempre.
  */
 export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
-  const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento, sucursalPropia } = useApp()
+  // La sucursal, o Auditoría escaneando lo de su propia sucursal
+  const escanea = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && sucursal === sucursalPropia)
   const miSucursal = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
   const comprobantes = useComprobantes()
   const facturas = useMemo(
@@ -76,12 +78,12 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
         if (!r.ok) {
           // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en el ERP
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
-          const n = rol === 'sucursal' && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
+          const n = escanea && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
           if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
           // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
           const num = numerosDelNombre(archivo.name)[0]
           let error = r.error
-          if (num && esPdf(archivo) && corto && rol === 'sucursal' && miSucursal) {
+          if (num && esPdf(archivo) && corto && escanea && miSucursal) {
             const existe = comprobantes.find((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)
             if (existe) error = `La factura ${num.puntoVenta}-${num.numero} está ${existe.estado === 'anulada' ? 'anulada' : 'cobrada'}: no recibe documentos.`
             else if (!puntosDeVenta(miSucursal).includes(num.puntoVenta))

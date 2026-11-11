@@ -259,6 +259,8 @@ interface EstadoApp {
   cerrarSesion: () => void
   /** con Google: la cuenta con la que se entró */
   cuenta: UsuarioGoogle | null
+  /** Auditoría que además escanea la documentación de una sucursal (la suya); null si no */
+  sucursalPropia: string | null
 }
 
 const CLAVE_SESION = 'cobrosync-sesion-demo'
@@ -616,6 +618,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [fuente.tipo],
   )
 
+  // En la demo, Auditoría también escanea lo de Rocamora (como el sector real)
+  const sucursalPropia =
+    rol !== 'auditoria'
+      ? null
+      : usuarioGoogle
+        ? (usuarioGoogle.sucursalPropia ?? null)
+        : (datos?.meta.sucursales.find((s) => s.nombre === 'Rocamora')?.nombre ?? null)
+
   const destinatario = rol === 'sucursal' ? sucursal : rol
   const misNotificaciones = useMemo(
     () => (destinatario ? notificaciones.filter((n) => n.para === destinatario) : []),
@@ -688,6 +698,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       iniciarSesion,
       cerrarSesion,
       cuenta: usuarioGoogle,
+      sucursalPropia,
       legajoAbierto,
       abrirLegajo,
       misNotificaciones,
@@ -720,6 +731,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cargarDemo,
       sesionDemo,
       usuarioGoogle,
+      sucursalPropia,
       iniciarSesion,
       cerrarSesion,
       legajoAbierto,

@@ -86,6 +86,7 @@ function carpeta(ruta) {
         getName: () => f.nombre,
         getUrl: () => `https://drive.google.com/${f.padre.ruta}/${f.nombre}`,
         setDescription: () => {},
+        setSharing: (acceso, permiso) => { f.compartido = `${acceso}/${permiso}` },
         moveTo: (destino) => {
           f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1)
           destino.archivos.push(f)
@@ -105,6 +106,8 @@ const contexto = {
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
   DriveApp: {
+    Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK' },
+    Permission: { VIEW: 'VIEW' },
     getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive },
     getFileById: (id) => ({ getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b } }),
   },
@@ -363,6 +366,10 @@ prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura
   falla(() => gs('subirArchivo', c.id, 'orden', 'scan0001.pdf', 'application/pdf', datos), 'número de la factura')
   const r = gs('subirArchivo', c.id, 'orden', `${numero} orden.pdf`, 'application/pdf', datos)
   esperar(r.url.startsWith('https://drive.google.com/'), 'sin link')
+  const subido = raizDrive.getFoldersByName('Rocamora').next().getFoldersByName(c.fecha.slice(0, 7)).next().getFoldersByName(`FC ${c.puntoVenta}-${c.numero}`).next().getFiles()
+  let ultimo = null
+  while (subido.hasNext()) ultimo = subido.next()
+  esperar(ultimo && ultimo.compartido === 'DOMAIN_WITH_LINK/VIEW', 'el archivo no quedó visible para la empresa con el link')
   esperar(archivos.at(-1).startsWith(`CobroSync/Rocamora/${c.fecha.slice(0, 7)}/FC ${c.puntoVenta}-`), archivos.at(-1))
 })
 prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {

@@ -5,6 +5,8 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Documentos en Drive:** cada PDF subido queda visible para las cuentas de la empresa con el link, así la sucursal y Gerencia lo abren desde CobroSync sin acceso a la unidad compartida (no ven la carpeta).
+- **Mis facturas:** la etiqueta de un documento ya subido ("✓ Factura en revisión", "Orden aprobada") abre el PDF al tocarla.
 - Usar mi planilla: en la plataforma real ya no dice que los datos se pierden al recargar (eso es solo en la demo); dice que quedan en la planilla de CobroSync.
 - **Inicio de CobroSync (16/11/2026 en la plataforma real):** las facturas anteriores a esa fecha quedan como "Gestión anterior": su documentación está en el Drive de la empresa, no se le pide a la sucursal, no generan avisos ni mails y no cuentan como pendientes. Si ya se presentaron, siguen presentación, cobro y reclamos. La fecha se cambia en Ajustes (nueva clave fechaInicio en Config). En la demo no se aplica.
 - **Cerrar sesión en el menú**, debajo de Soporte técnico. En la plataforma real cierra la sesión de la cuenta de Google en ese navegador (útil en las computadoras compartidas); en la demo vuelve a la elección de usuario.

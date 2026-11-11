@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EnEsperaSucursal } from '../components/EnEspera'
-import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X, ExternalLink } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
 import { Chip, EtiquetaMipyme } from '../components/ui/Badges'
@@ -239,14 +239,19 @@ export default function MisFacturas() {
             const d = x.c.documentos.find((doc) => doc.tipo === tipo)
             const estado = d?.estado ?? 'faltante'
             const e = ESTADO_DOC[estado]
-            return (
-              <span
-                key={tipo}
-                title={estado === 'observado' && d?.motivo ? `${NOMBRE_DOC[tipo]}: ${d.motivo}` : `${NOMBRE_DOC[tipo]}: ${e.texto}`}
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`}
-              >
+            const texto = estado === 'faltante' ? `+ Falta ${tipo === 'factura' ? 'la factura' : 'la orden firmada'}` : `${e.marca} ${NOMBRE_DOC[tipo]} ${e.texto}`
+            const ayuda = estado === 'observado' && d?.motivo ? `${NOMBRE_DOC[tipo]}: ${d.motivo}` : `${NOMBRE_DOC[tipo]}: ${e.texto}`
+            const clase = `inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`
+            // Si el documento ya está subido, se abre el PDF desde acá (sin abrir toda la factura)
+            const url = d && estado !== 'faltante' ? (d.url ?? d.adjuntos?.find((x) => x.url)?.url) : undefined
+            return url ? (
+              <a key={tipo} href={url} target="_blank" rel="noreferrer" title={`${ayuda} · tocar para ver el PDF`} onClick={(ev) => ev.stopPropagation()} className={`${clase} hover:underline`}>
+                {texto} <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <span key={tipo} title={ayuda} className={clase}>
                 {/* Se lee sola, sin leyenda: "Falta la orden firmada", "Factura aprobada" */}
-                {estado === 'faltante' ? `+ Falta ${tipo === 'factura' ? 'la factura' : 'la orden firmada'}` : `${e.marca} ${NOMBRE_DOC[tipo]} ${e.texto}`}
+                {texto}
               </span>
             )
           })}

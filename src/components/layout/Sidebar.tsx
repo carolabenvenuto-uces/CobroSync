@@ -40,6 +40,8 @@ interface ItemMenu {
   contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver' | 'pedidos'
   /** solo la ve la administradora (Ajustes) */
   soloAdministradora?: boolean
+  /** solo si la persona de Auditoría tiene una sucursal propia (Mi sucursal) */
+  soloConSucursalPropia?: boolean
 }
 
 /**
@@ -66,6 +68,8 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Trabajo diario',
       items: [
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
+        // Solo si la persona de Auditoría tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
+        { ruta: '/app/mi-sucursal', etiqueta: 'Mi sucursal', icono: Store, soloConSucursalPropia: true },
         // La misma pantalla que "Mis siniestros" de la sucursal, con todas las sucursales y el monto de la orden
         { ruta: '/app/siniestros', etiqueta: 'Siniestros', icono: FolderOpen },
         { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
@@ -108,7 +112,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, cuenta } = useApp()
+  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, cuenta, sucursalPropia } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
@@ -174,7 +178,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">
           <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
-            const items = seccion.items.filter((it) => !it.soloAdministradora || administradora)
+            const items = seccion.items.filter((it) => (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
             if (!items.length) return null
             return (
               <div key={seccion.titulo || n} className={seccion.titulo ? '' : '-mt-4'}>
@@ -184,9 +188,11 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                   </div>
                 )}
                 <div className="space-y-1">
-                  {items.map(({ ruta, etiqueta, icono: Icono, contador }) => (
+                  {items.map(({ ruta, etiqueta: titulo, icono: Icono, contador }) => {
+                    const etiqueta = ruta === '/app/mi-sucursal' && sucursalPropia ? `Mi sucursal · ${sucursalPropia}` : titulo
+                    return (
                     <NavLink
-                      key={etiqueta}
+                      key={ruta}
                       to={ruta}
                       end={ruta === '/app'}
                       onClick={onCerrar}
@@ -209,7 +215,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                         </span>
                       )}
                     </NavLink>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )

@@ -15,6 +15,8 @@ export interface UsuarioGoogle {
   nombre: string
   rol: Rol
   sucursal: string | null
+  /** Auditoría que además escanea la documentación de una sucursal (la suya) */
+  sucursalPropia?: string | null
 }
 
 type Corredor = Record<string, (...args: unknown[]) => void> & {

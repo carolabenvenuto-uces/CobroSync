@@ -220,6 +220,13 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
           // subió por error mientras Auditoría no lo revisó (vuelve a "falta")
           var quita = d.estado === 'faltante' && i >= 0 && docs[i].estado === 'en_revision';
           if (usuario.rol === 'sucursal' && d.estado !== 'en_revision' && !quita && !(i >= 0 && docs[i].estado === d.estado)) return;
+          // Un archivo nuevo para revisar queda firmado por quien lo sube (lo firma el servidor)
+          var nuevo = d.estado === 'en_revision' && (i < 0 || docs[i].estado !== 'en_revision' || docs[i].url !== d.url || docs[i].archivo !== d.archivo);
+          if (nuevo) d.subidoPor = usuario.nombre;
+          // Lo que escaneó una persona de Auditoría lo aprueba otra: así se controla dos veces
+          if (usuario.rol === 'auditoria' && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
+            return;
+          }
           if (i >= 0) docs[i] = d; else docs.push(d);
         });
         c.documentos = docs;
@@ -456,24 +463,25 @@ function compartirEnLaEmpresa_(archivo) {
  */
 function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'sucursal') throw new Error('Solo las sucursales suben documentos de facturas de hoy.');
+  if (usuario.rol !== 'sucursal' && !usuario.sucursalPropia) throw new Error('Solo las sucursales suben documentos de facturas de hoy.');
+  var deQuien = usuario.rol === 'sucursal' ? usuario.sucursal : usuario.sucursalPropia;
   if (mime !== 'application/pdf' && !/\.pdf$/i.test(nombre)) throw new Error('Solo se aceptan PDF.');
   puntoVenta = Number(puntoVenta);
   numero = Number(numero);
-  var suc = leerHoja_(HOJAS.sucursales).filter(function (s) { return mismaSucursal_(s.nombre, usuario.sucursal); })[0];
+  var suc = leerHoja_(HOJAS.sucursales).filter(function (s) { return mismaSucursal_(s.nombre, deQuien); })[0];
   var pvs = suc ? String(suc.puntosVenta || '').split(/[^0-9]+/).filter(String).map(Number) : [];
   if (pvs.indexOf(puntoVenta) < 0) throw new Error('El punto de venta ' + puntoVenta + ' no es de la sucursal.');
   var yaEsta = leerHoja_(HOJAS.comprobantes).some(function (c) { return Number(c.puntoVenta) === puntoVenta && Number(c.numero) === numero; });
   if (yaEsta) throw new Error('La factura ' + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
-  var carpeta = subcarpeta_(subcarpeta_(raiz, usuario.sucursal), 'En espera');
+  var carpeta = subcarpeta_(subcarpeta_(raiz, deQuien), 'En espera');
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension));
   archivo.setDescription('Subido por ' + usuario.email + ' antes de cargar la factura (' + nombre + ')');
   compartirEnLaEmpresa_(archivo);
   var e = {
     id: 'esp-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000),
-    sucursal: usuario.sucursal, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: String(siniestro || ''),
+    sucursal: deQuien, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: String(siniestro || ''),
     archivo: archivo.getName(), url: archivo.getUrl(), subidoPor: usuario.nombre || usuario.email, fecha: hoy_(), nombreOriginal: nombre, asociado: '',
   };
   conBloqueo_(function () { escribirFila_(hojaEspera_(), HOJAS.espera, null, e); });
@@ -992,7 +1000,8 @@ function usuarioActual_() {
   if (!u) throw new Error('La cuenta ' + email + ' no tiene acceso. Auditoría puede habilitarla.');
   var rol = String(u.rol).toLowerCase().indexOf('geren') === 0 ? 'gerencia' : String(u.rol).toLowerCase().indexOf('audit') === 0 ? 'auditoria' : 'sucursal';
   if (rol === 'sucursal' && !u.sucursal) throw new Error('El usuario no tiene una sucursal asignada.');
-  return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null };
+  // Auditoría con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
+  return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null, sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null };
 }
 
 function hoja_(h) {

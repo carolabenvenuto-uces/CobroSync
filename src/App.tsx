@@ -14,6 +14,7 @@ import Manual from './pages/Manual'
 import { esAdministradora } from './domain/administracion'
 import Pedidos from './pages/Pedidos'
 import MisFacturas from './pages/MisFacturas'
+import MiSucursal from './pages/MiSucursal'
 import Pendientes from './pages/Pendientes'
 import Presentar from './pages/Presentar'
 import RankingSucursales from './pages/RankingSucursales'
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="presentar" element={auditoria(<Presentar />)} />
         <Route path="pedidos" element={auditoria(<Pedidos />)} />
         <Route path="siniestros" element={<Siniestros />} />
+        <Route path="mi-sucursal" element={<MiSucursal />} />
         {/* "Para resolver" quedó dentro de Mis facturas (tarjetas de rechazos y por vencer) */}
         <Route path="resolver" element={<Navigate to="/app" replace />} />
         <Route path="notificaciones" element={<BandejaNotificaciones />} />

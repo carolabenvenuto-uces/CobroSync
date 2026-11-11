@@ -20,6 +20,7 @@ const PANTALLAS: Record<Rol, [string, string][]> = {
   auditoria: [
     ['/app', 'Avisos'],
     ['/app/control-diario', 'Control diario'],
+    ['/app/siniestros', 'Siniestros'],
     ['/app/presentar', 'Presentar'],
     ['/app/companias', 'Compañías'],
     ['/app/pendientes', 'Pendientes de sucursales'],

@@ -66,6 +66,8 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Trabajo diario',
       items: [
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
+        // La misma pantalla que "Mis siniestros" de la sucursal, con todas las sucursales y el monto de la orden
+        { ruta: '/app/siniestros', etiqueta: 'Siniestros', icono: FolderOpen },
         { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
         { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
       ],

@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Cerrar sesión en el menú**, debajo de Soporte técnico. En la plataforma real cierra la sesión de la cuenta de Google en ese navegador (útil en las computadoras compartidas); en la demo vuelve a la elección de usuario.
 - **Compañías: alta, pausa y varios contactos.** Botón "Nueva compañía" (nombre obligatorio; razón social, CUIT y plazo opcionales). Una compañía que ya no se usa se pausa desde su ficha: no se borra, queda en "Pausadas" y se puede reactivar. En la ficha se cargan varios mails para presentar, varios para reclamar y varios enlaces a la plataforma, cada uno con su cruz para quitarlo; los enlaces se abren desde ahí y desde Presentar. Nueva columna pausada en la planilla.
 - **Reclamos: error informado por la compañía.** Nueva respuesta "Informa un error en la factura" (con el detalle obligatorio): la factura queda "Con error a corregir" y no se vuelve a reclamar hasta marcarla corregida, desde la factura o en lote. Las tarjetas pasan a ser cuatro: Reclamar, Corregir (errores y documentación a reenviar), Pedir apoyo (sin respuesta a 3 reclamos) y Esperando.
 - **Compañías:** la cantidad de facturas es la del año en curso y lo dice ("Facturas 2026" en la columna, "N facturas en 2026" en la ficha). Antes contaba todo lo cargado sin aclarar el período.

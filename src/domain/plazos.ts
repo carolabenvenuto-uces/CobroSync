@@ -28,6 +28,11 @@ export interface Plazos {
   puntosVentaMipyme: number[]
   /** días que se espera la respuesta de la compañía después de un reclamo */
   respuestaReclamo: number
+  /**
+   * Desde esta fecha de factura (yyyy-mm-dd) CobroSync pide la documentación. Las anteriores son
+   * "Gestión anterior": su documentación está en el Drive de la empresa. Vacía: se pide todo.
+   */
+  inicio?: string
 }
 
 export const PLAZOS_INICIALES: Plazos = {
@@ -38,6 +43,7 @@ export const PLAZOS_INICIALES: Plazos = {
   montoMinimoMipyme: 5_549_862,
   puntosVentaMipyme: [],
   respuestaReclamo: 7,
+  inicio: '',
 }
 
 let actuales: Plazos = PLAZOS_INICIALES
@@ -55,6 +61,11 @@ export function configurarPlazos(plazos: Plazos | undefined, aseguradoras: Asegu
 /** Días después del vencimiento antes de reclamarle a esta compañía (las que suelen pagar tienen más). */
 export function toleranciaReclamo(aseguradoraId: string): number {
   return tolerancias.get(aseguradoraId) ?? 0
+}
+
+/** Factura emitida antes de que empezara CobroSync: no se le pide documentación. */
+export function antesDelInicio(c: Pick<Comprobante, 'fecha'>): boolean {
+  return !!actuales.inicio && c.fecha < actuales.inicio
 }
 
 export function plazosActuales(): Plazos {

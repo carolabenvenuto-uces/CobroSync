@@ -1,4 +1,3 @@
-import { FIRMA, VERSION } from '../lib/marca'
 
 /**
  * Isologotipo: un imán con forma de C (lila) con los polos en verde agua, que atrae puntitos
@@ -28,10 +27,6 @@ export function Marca({ oscuro = false }: { oscuro?: boolean }) {
       <div className="leading-none">
         <div className={`text-lg font-extrabold tracking-tight ${oscuro ? 'text-white' : 'text-noche'}`}>
           Cobro<span className={oscuro ? 'text-[#B9AEFF]' : 'text-marca'}>Sync</span>
-          {/* versión chiquita, abajo al lado del nombre */}
-          <span className={`ml-1 align-baseline text-[9px] font-medium ${oscuro ? 'text-slate-500' : 'text-slate-400'}`}>
-            v{VERSION} · {FIRMA}
-          </span>
         </div>
       </div>
     </div>

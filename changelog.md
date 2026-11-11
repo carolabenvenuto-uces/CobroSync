@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Menú:** "v1.0 · by CB" sale de al lado del logo (en el celular quedaba cortado) y pasa al final del menú, en chico: "CobroSync v1.0 · by CB".
 - **Celular:** la franja violeta de arriba, con la marca y el botón del menú, queda fija al bajar.
 - **Soporte técnico:** la ventana se abre en el centro de la pantalla, más grande y con la cruz siempre visible (antes quedaba angosta al costado y en la computadora no se podía cerrar). Indica a quién le llega el aviso: el nombre se carga en Ajustes ("Nombre de quien da soporte"); el correo no se muestra.
 - **Tarjetas que filtran (Control diario / Detalle de facturas y Vencidas y reclamos):** cada tarjeta tiene su color; la elegida se pinta de ese color y dice "Filtrando", y las otras quedan apagadas. Debajo se indica qué se está mostrando, con un botón "Ver todas" para quitar el filtro.

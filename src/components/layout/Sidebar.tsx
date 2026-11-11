@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from 'react'
+import { FIRMA, PRODUCTO, VERSION } from '../../lib/marca'
 import { VentanaSoporte } from '../Soporte'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -273,6 +274,10 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               </button>
             </details>
           )}
+          {/* Versión y siglas de la autora, discretas al pie del menú (el nombre completo está en el pie de página) */}
+          <div className="mt-2 border-t border-white/10 pt-2 text-[10px] tracking-wide text-slate-500">
+            {PRODUCTO} v{VERSION} · {FIRMA}
+          </div>
         </div>
       </aside>
     </>

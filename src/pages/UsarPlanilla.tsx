@@ -112,12 +112,20 @@ export default function UsarPlanilla() {
         subtitulo="Pendientes, alertas e informes con los datos reales de la planilla de control"
       />
 
+      {/* En la plataforma real lo que se carga se guarda en la planilla de CobroSync; solo la demo lo procesa en el navegador */}
       <div className="mb-4 flex items-start gap-3 rounded-lg border border-esmeralda/30 bg-esmeralda/5 px-4 py-3 text-sm text-teal-900">
         <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          <strong>El archivo no sale de esta computadora.</strong> Se lee y se procesa en este navegador: no se sube a
-          ningún servidor ni se guarda. Al recargar la página o cerrarla, los datos desaparecen y vuelve la demo.
-        </span>
+        {conGoogle ? (
+          <span>
+            <strong>Los datos quedan en la cuenta de la empresa.</strong> Al guardar, las facturas se agregan a la planilla de CobroSync;
+            las que ya están no se duplican ni se borran.
+          </span>
+        ) : (
+          <span>
+            <strong>El archivo no sale de esta computadora.</strong> Se lee y se procesa en este navegador: no se sube a ningún servidor
+            ni se guarda. Al recargar la página o cerrarla, los datos desaparecen y vuelve la demo.
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

@@ -4,6 +4,7 @@ import { BadgeEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { saldoSinCobro } from '../domain/importes'
+import { antesDelInicio } from '../domain/plazos'
 import { calcularSemaforo, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import { esperaALaSucursal } from '../domain/sucursales'
 import type { Comprobante, Documento } from '../domain/tipos'
@@ -252,7 +253,7 @@ export default function Siniestros() {
                 <span className="tabular-nums">{formatoPesos(f.total)}</span>
                 <BadgeEtapa etapa={calcularSemaforo(f, hoy).etapa} />
                 {/* Solo lo que hay que hacer (falta u observado); lo demás ya lo dice la etiqueta. Los PDF se pueden abrir */}
-                {f.documentos.some((d) => d.estado === 'faltante' || d.estado === 'observado') && (
+                {!antesDelInicio(f) && f.documentos.some((d) => d.estado === 'faltante' || d.estado === 'observado') && (
                   <span className="flex w-full flex-wrap gap-1">{f.documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map(documento)}</span>
                 )}
                 {f.documentos.some((d) => d.url || d.adjuntos?.length) && (

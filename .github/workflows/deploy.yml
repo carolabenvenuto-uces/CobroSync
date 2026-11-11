@@ -59,7 +59,9 @@ jobs:
 
       - name: Probar la versión para Google (con un Google simulado)
         run: |
-          npx playwright install --with-deps chromium
+          # Sin --with-deps: las librerías ya vienen en el runner y así no depende de los
+          # servidores de paquetes de Ubuntu (que a veces fallan y trababan el build)
+          npx playwright install chromium
           npm run test:google
 
       - name: Guardar el paquete para Google

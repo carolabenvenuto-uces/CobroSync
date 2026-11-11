@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Tarjetas que filtran (Control diario / Detalle de facturas y Vencidas y reclamos):** cada tarjeta tiene su color; la elegida se pinta de ese color y dice "Filtrando", y las otras quedan apagadas. Debajo se indica qué se está mostrando, con un botón "Ver todas" para quitar el filtro.
 - **Soporte técnico guiado:** se elige la pantalla (viene marcada la que está abierta) y el problema de una lista (no carga, un botón no responde, no se puede subir un archivo, un cambio no se guarda, un dato no coincide, un mensaje de error u otro), se puede indicar la factura o el siniestro y se cuenta qué pasó. Sin pantalla, problema y explicación no se envía.
 - Manual: "¿Qué hacer si algo de la plataforma no funciona?" es una pregunta más (al final), con el botón para avisar el problema.
 - **Compañías más simple:** la tabla muestra nombre, cómo se presenta, plazo de pago, tolerancia, si faltan datos y cantidad de facturas. Al tocar una compañía se abre su ficha, donde se cambia el canal, la plataforma, los mails y la tolerancia. CUIT y correos siguen disponibles en "Columnas".

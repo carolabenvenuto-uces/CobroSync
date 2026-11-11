@@ -4,6 +4,7 @@ import { Mail, Megaphone } from 'lucide-react'
 import { claseSelect } from '../components/ui/Estados'
 import { listaParaMail, TextoMail } from '../components/TextoMail'
 import { EncabezadoPagina } from '../components/ui/Card'
+import { AvisoFiltroTarjeta, TarjetaFiltro, type TonoTarjeta } from '../components/ui/TarjetaFiltro'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
@@ -21,10 +22,10 @@ import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /** Las tarjetas de arriba: qué hay que hacer con cada vencida (el título es el filtro "Acción") */
-const ACCIONES: { titulo: string; ayuda: string; estados: EstadoReclamo[] }[] = [
-  { titulo: 'Reclamar', ayuda: 'Nunca reclamadas o ya sin respuesta en el plazo', estados: ['sin_reclamar', 'volver'] },
-  { titulo: 'Resolver', ayuda: 'Pedir apoyo a gerencia o reenviar documentación', estados: ['escalar', 'reenviar'] },
-  { titulo: 'Esperando', ayuda: 'Reclamadas, en pagos, en tolerancia o por refacturar', estados: ['reclamada', 'en_pagos', 'tolerancia', 'refacturar'] },
+const ACCIONES: { titulo: string; ayuda: string; tono: TonoTarjeta; estados: EstadoReclamo[] }[] = [
+  { titulo: 'Reclamar', tono: 'rojo', ayuda: 'Nunca reclamadas o ya sin respuesta en el plazo', estados: ['sin_reclamar', 'volver'] },
+  { titulo: 'Resolver', tono: 'ambar', ayuda: 'Pedir apoyo a gerencia o reenviar documentación', estados: ['escalar', 'reenviar'] },
+  { titulo: 'Esperando', tono: 'gris', ayuda: 'Reclamadas, en pagos, en tolerancia o por refacturar', estados: ['reclamada', 'en_pagos', 'tolerancia', 'refacturar'] },
 ]
 const accionDe = (e: EstadoReclamo) => ACCIONES.find((a) => a.estados.includes(e))?.titulo ?? ''
 
@@ -204,9 +205,13 @@ export default function Reclamos() {
           const lista = vencidas.filter((x) => ac.estados.includes(x.estado))
           const activa = params.get('accion') === ac.titulo
           return (
-            <button
+            <TarjetaFiltro
               key={ac.titulo}
-              type="button"
+              titulo={ac.titulo}
+              cantidad={lista.length}
+              tono={ac.tono}
+              activa={activa}
+              otraActiva={!activa && ACCIONES.some((o) => params.get('accion') === o.titulo)}
               onClick={() => {
                 const nuevos = new URLSearchParams(params)
                 nuevos.delete('estado')
@@ -214,12 +219,7 @@ export default function Reclamos() {
                 else nuevos.set('accion', ac.titulo)
                 setParams(nuevos, { replace: true })
               }}
-              className={`rounded-xl border bg-white p-3 text-left transition hover:shadow-sm ${activa ? 'border-marca ring-2 ring-marca/20' : 'border-slate-200'}`}
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{ac.titulo}</span>
-                <span className="text-xl font-extrabold tabular-nums text-noche">{lista.length.toLocaleString('es-AR')}</span>
-              </div>
               <div className="text-xs text-slate-500">
                 {formatoPesos(lista.reduce((t, x) => t + x.c.total, 0))} · {ac.ayuda}
               </div>
@@ -234,10 +234,18 @@ export default function Reclamos() {
                 })}
                 {lista.length === 0 && <span className="text-xs text-slate-400">Nada por ahora</span>}
               </div>
-            </button>
+            </TarjetaFiltro>
           )
         })}
       </div>
+      <AvisoFiltroTarjeta
+        texto={ACCIONES.find((a) => params.get('accion') === a.titulo) ? `las facturas para "${params.get('accion')}"` : null}
+        onQuitar={() => {
+          const nuevos = new URLSearchParams(params)
+          nuevos.delete('accion')
+          setParams(nuevos, { replace: true })
+        }}
+      />
 
       {mensaje && !seleccion.length && <p className="mb-3 text-sm text-teal-800">{mensaje}</p>}
       {rol === 'auditoria' && seleccion.length > 0 && (

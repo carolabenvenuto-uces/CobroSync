@@ -244,7 +244,17 @@ export default function Ajustes() {
               placeholder="nombre@empresa.com.ar"
               className={`${claseSelect} mt-1 block w-full max-w-md`}
             />
-            <span className="mt-1 block font-normal text-slate-500">Los reportes del Manual de uso llegan solo a este correo, no al resto del sector.</span>
+            <span className="mt-1 block font-normal text-slate-500">Los avisos de Soporte técnico llegan solo a este correo, no al resto del sector.</span>
+          </label>
+          <label className="mt-4 block text-xs font-semibold text-slate-500">
+            Nombre de quien da soporte
+            <input
+              value={avisos.nombreSoporte ?? ''}
+              onChange={(e) => setAvisos({ ...avisos, nombreSoporte: e.target.value })}
+              placeholder="Nombre y apellido"
+              className={`${claseSelect} mt-1 block w-full max-w-md`}
+            />
+            <span className="mt-1 block font-normal text-slate-500">Aparece en la ventana de Soporte técnico, para que se sepa a quién se le escribe. El correo no se muestra.</span>
           </label>
         </Card>
       </div>

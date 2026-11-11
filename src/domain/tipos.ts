@@ -248,7 +248,9 @@ export interface MetaDemo {
   /** plazos de la documentación (Ajustes); si falta, los de siempre */
   plazos?: Plazos
   /** avisos por mail (solo lo ve Auditoría) */
-  avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string }
+  avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string; nombreSoporte?: string }
+  /** quién da soporte a la plataforma (lo ven todos los sectores) */
+  soporte?: { nombre: string }
   /** textos de las notificaciones a Gerencia (Ajustes) */
   textos?: Partial<TextosAvisos>
 }

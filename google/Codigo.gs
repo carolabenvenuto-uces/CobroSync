@@ -68,7 +68,8 @@ var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
   ['carpetaDriveId', '', 'Id de la carpeta de la unidad compartida donde se guardan los documentos'],
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
-  ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde el Manual de uso'],
+  ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde Soporte técnico'],
+  ['nombreSoporte', '', 'Nombre de quien da soporte a la plataforma; se muestra en la ventana de Soporte técnico'],
   ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
   ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
   ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
@@ -120,7 +121,9 @@ function obtenerDatos() {
         sucursales: sucursales,
         plazos: plazos_(),
         textos: { apoyo: String(config_('textoAvisoApoyo') || ''), critica: String(config_('textoAvisoCritica') || '') },
-        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || '') } : undefined,
+        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || ''), nombreSoporte: String(config_('nombreSoporte') || '') } : undefined,
+        // A quién le llegan los avisos de Soporte técnico (solo el nombre; el correo no se muestra)
+        soporte: { nombre: String(config_('nombreSoporte') || '') },
       },
     },
   };
@@ -702,7 +705,7 @@ function descargarDocumentos(ids, nombre) {
 }
 
 /**
- * Manual de uso → "Reportar un problema técnico": le llega un mail solo a la desarrolladora
+ * Soporte técnico (menú): le llega un mail solo a la desarrolladora
  * (el correo de soporte de la pestaña Config), con quién lo manda y desde qué pantalla.
  */
 function reportarProblema(texto, contexto) {
@@ -747,6 +750,7 @@ function guardarAjustes(a) {
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
       correoSoporte: String(a.avisos.correoSoporte || ''),
+      nombreSoporte: String(a.avisos.nombreSoporte || ''),
       textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
       textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
     };

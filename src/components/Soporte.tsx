@@ -1,5 +1,6 @@
 import { LifeBuoy, Send, X } from 'lucide-react'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import type { Rol } from '../domain/tipos'
@@ -57,7 +58,8 @@ const PROBLEMAS = [
 ]
 
 export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
-  const { fuente, rol } = useApp()
+  const { fuente, rol, datos } = useApp()
+  const nombreSoporte = datos?.meta.soporte?.nombre?.trim() || datos?.meta.avisos?.nombreSoporte?.trim() || ''
   const { pathname } = useLocation()
   const pantallas = [...PANTALLAS[rol], ...COMUNES]
   const [pantalla, setPantalla] = useState(() => pantallas.find(([ruta]) => ruta === pathname)?.[0] ?? '')
@@ -85,9 +87,10 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
   // Todo obligatorio salvo la factura: así el aviso llega con lo necesario para revisarlo
   const completo = !!pantalla && !!problema && texto.trim().length >= 10
   const campo = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-noche focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20'
-  return (
+  // Se dibuja directo en la página (no dentro del menú), para que ocupe el centro de la pantalla
+  return createPortal(
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-noche/40 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-soporte" onClick={onCerrar}>
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 text-sm text-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 text-sm text-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3">
           <LifeBuoy className="mt-0.5 h-6 w-6 shrink-0 text-marca" />
           <div className="flex-1">
@@ -97,6 +100,9 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
             <p className="mt-0.5 text-xs text-slate-600">
               Para errores de {PRODUCTO}: una pantalla que no carga, un botón que no responde, un dato que no se guarda. Las dudas sobre una
               factura, a Auditoría.
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              El aviso le llega a <strong className="text-noche">{nombreSoporte || 'quien da soporte a la plataforma'}</strong>.
             </p>
           </div>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 text-slate-400 hover:bg-fondo">
@@ -142,7 +148,7 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                rows={3}
+                rows={6}
                 placeholder="Por ejemplo: al tocar Subir PDF en la factura 35-11032 aparece «No se pudo guardar» y el archivo no queda."
                 className={campo}
               />
@@ -163,6 +169,7 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

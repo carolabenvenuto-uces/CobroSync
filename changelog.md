@@ -5,6 +5,8 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Celular:** la franja violeta de arriba, con la marca y el botón del menú, queda fija al bajar.
+- **Soporte técnico:** la ventana se abre en el centro de la pantalla, más grande y con la cruz siempre visible (antes quedaba angosta al costado y en la computadora no se podía cerrar). Indica a quién le llega el aviso: el nombre se carga en Ajustes ("Nombre de quien da soporte"); el correo no se muestra.
 - **Tarjetas que filtran (Control diario / Detalle de facturas y Vencidas y reclamos):** cada tarjeta tiene su color; la elegida se pinta de ese color y dice "Filtrando", y las otras quedan apagadas. Debajo se indica qué se está mostrando, con un botón "Ver todas" para quitar el filtro.
 - **Soporte técnico guiado:** se elige la pantalla (viene marcada la que está abierta) y el problema de una lista (no carga, un botón no responde, no se puede subir un archivo, un cambio no se guarda, un dato no coincide, un mensaje de error u otro), se puede indicar la factura o el siniestro y se cuenta qué pasó. Sin pantalla, problema y explicación no se envía.
 - Manual: "¿Qué hacer si algo de la plataforma no funciona?" es una pregunta más (al final), con el botón para avisar el problema.

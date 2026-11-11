@@ -249,7 +249,7 @@ export default function Reclamos() {
 
       {mensaje && !seleccion.length && <p className="mb-3 text-sm text-teal-800">{mensaje}</p>}
       {rol === 'auditoria' && seleccion.length > 0 && (
-        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-marca/40 bg-white p-3 shadow-sm">
+        <div className="sticky top-16 z-20 lg:top-0 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-marca/40 bg-white p-3 shadow-sm">
           <span className="text-sm">
             <strong>{seleccion.length}</strong> elegidas · <strong>{formatoPesos(seleccion.reduce((t, x) => t + x.c.total, 0))}</strong>
             {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}

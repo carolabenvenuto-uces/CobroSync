@@ -428,7 +428,22 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, tipoDocumento + '_' + hoy_() + extension));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
+  compartirEnLaEmpresa_(archivo);
   return { archivo: archivo.getName(), url: archivo.getUrl() };
+}
+
+/**
+ * Cada documento queda visible para cualquier cuenta de la empresa que tenga el link: así la sucursal
+ * y Gerencia lo abren desde CobroSync sin tener acceso a la unidad compartida (no ven la carpeta,
+ * solo el archivo que abren). Si la unidad no permite compartir así, el archivo se guarda igual y
+ * lo pueden abrir solo quienes tienen acceso a la unidad.
+ */
+function compartirEnLaEmpresa_(archivo) {
+  try {
+    archivo.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {
+    console.warn('No se pudo compartir ' + archivo.getName() + ' con la empresa: ' + e);
+  }
 }
 
 // ── PDF en espera: facturas de hoy que todavía no están en el ERP ──────────────────
@@ -455,6 +470,7 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension));
   archivo.setDescription('Subido por ' + usuario.email + ' antes de cargar la factura (' + nombre + ')');
+  compartirEnLaEmpresa_(archivo);
   var e = {
     id: 'esp-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000),
     sucursal: usuario.sucursal, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: String(siniestro || ''),

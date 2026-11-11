@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -68,7 +68,8 @@ var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
   ['carpetaDriveId', '', 'Id de la carpeta de la unidad compartida donde se guardan los documentos'],
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
-  ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde el Manual de uso'],
+  ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde Soporte técnico'],
+  ['nombreSoporte', '', 'Nombre de quien da soporte a la plataforma; se muestra en la ventana de Soporte técnico'],
   ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
   ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
   ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
@@ -120,7 +121,9 @@ function obtenerDatos() {
         sucursales: sucursales,
         plazos: plazos_(),
         textos: { apoyo: String(config_('textoAvisoApoyo') || ''), critica: String(config_('textoAvisoCritica') || '') },
-        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || '') } : undefined,
+        avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || ''), nombreSoporte: String(config_('nombreSoporte') || '') } : undefined,
+        // A quién le llegan los avisos de Soporte técnico (solo el nombre; el correo no se muestra)
+        soporte: { nombre: String(config_('nombreSoporte') || '') },
       },
     },
   };
@@ -359,7 +362,12 @@ function sincronizarDesdePlanilla(lista) {
  * Agrega las compañías que todavía no estén en la pestaña "Aseguradoras" (al pasar la planilla
  * de control a CobroSync). No cambia las que ya están cargadas. Solo Auditoría.
  */
-function guardarAseguradoras(lista, completarExistentes) {
+/**
+ * Compañías: alta de las nuevas y, con completarExistentes, datos de las que ya están.
+ * Con exacto (desde la pantalla Compañías), lo que se manda se guarda tal cual, también vacío:
+ * así se puede borrar un mail o reactivar una compañía pausada.
+ */
+function guardarAseguradoras(lista, completarExistentes, exacto) {
   var usuario = usuarioActual_();
   if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar compañías.');
   return conBloqueo_(function () {
@@ -367,10 +375,19 @@ function guardarAseguradoras(lista, completarExistentes) {
     var existentes = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
     var nuevas = 0;
     lista.forEach(function (a) {
+      a = Object.assign({}, a);
+      if ('pausada' in a) a.pausada = a.pausada ? 'SI' : '';
       var actual = existentes[a.id];
       if (!actual) {
+        if (!String(a.id || '').trim() || !String(a.nombre || '').trim()) throw new Error('A la compañía nueva le falta el nombre.');
         escribirFila_(hoja, HOJAS.aseguradoras, null, a);
         nuevas++;
+        return;
+      }
+      actual.pausada = actual.pausada ? 'SI' : '';
+      if (exacto) {
+        Object.keys(a).forEach(function (k) { if (k !== 'id' && HOJAS.aseguradoras.columnas.indexOf(k) >= 0) actual[k] = a[k] === null || a[k] === undefined ? '' : a[k]; });
+        escribirFila_(hoja, HOJAS.aseguradoras, buscarFila_(hoja, a.id), actual);
         return;
       }
       // Con la pestaña CP o Info. Compañías: completa razón social, CUIT, plazo y correos
@@ -702,7 +719,7 @@ function descargarDocumentos(ids, nombre) {
 }
 
 /**
- * Manual de uso → "Reportar un problema técnico": le llega un mail solo a la desarrolladora
+ * Soporte técnico (menú): le llega un mail solo a la desarrolladora
  * (el correo de soporte de la pestaña Config), con quién lo manda y desde qué pantalla.
  */
 function reportarProblema(texto, contexto) {
@@ -747,6 +764,7 @@ function guardarAjustes(a) {
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
       correoSoporte: String(a.avisos.correoSoporte || ''),
+      nombreSoporte: String(a.avisos.nombreSoporte || ''),
       textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
       textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
     };
@@ -971,6 +989,7 @@ function filaAObjeto_(h, fila) {
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);
     else if (COLUMNAS_NUMERO_OPCIONAL.indexOf(col) >= 0) v = v === '' ? null : Number(v);
     else if (col === 'ncInformada') v = v === '' ? null : v === true || v === 'TRUE' || v === 'SI';
+    else if (col === 'pausada') v = v === true || /^(si|true)$/i.test(String(v));
     else if (col === 'recibeFce') v = v === '' || v === null || v === undefined ? null : !/^(no|false)$/i.test(String(v));
     else if (v === '') v = null;
     else if (typeof v === 'number') v = String(v);

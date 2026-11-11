@@ -92,8 +92,8 @@ export interface Ajustes {
   /** ids de las compañías que NO reciben factura de crédito MiPyME */
   companiasSinFce: string[]
   /** correoSoporte: la desarrolladora; recibe los reportes de problemas técnicos del Manual */
-  avisos: { porMail: boolean; correosGerencia: string; correoSoporte?: string }
+  avisos: { porMail: boolean; correosGerencia: string; correoSoporte?: string; nombreSoporte?: string }
   textos: TextosAvisos
 }
 
-export const AVISOS_INICIALES = { porMail: false, correosGerencia: '', correoSoporte: '' }
+export const AVISOS_INICIALES = { porMail: false, correosGerencia: '', correoSoporte: '', nombreSoporte: '' }

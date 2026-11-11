@@ -72,9 +72,9 @@ export interface Aseguradora {
   /** razón social y CUIT como figuran en la factura (pestaña "CP") */
   razonSocial?: string
   cuit?: string
-  /** a dónde se presentan las facturas */
+  /** a dónde se presentan las facturas (uno o varios, separados por coma) */
   email: string
-  /** a dónde se reclaman las vencidas */
+  /** a dónde se reclaman las vencidas (uno o varios, separados por coma) */
   emailReclamos?: string
   /** días que tarda en pagar desde la presentación (7 o 30) */
   plazoPagoDias: number
@@ -82,10 +82,12 @@ export interface Aseguradora {
   recibeFce?: boolean
   /** cómo se le presentan las facturas: por mail o en su plataforma (si no se indica, mail) */
   canal?: 'mail' | 'portal'
-  /** dirección de la plataforma de la compañía, si presenta por portal */
+  /** enlaces a la plataforma de la compañía (uno o varios, separados por coma) */
   portalUrl?: string
   /** días después del vencimiento antes de reclamar (compañías que suelen pagar; si no se indica, 0) */
   toleranciaReclamo?: number
+  /** ya no se trabaja con ella: queda guardada pero oculta en Compañías, y se puede reactivar */
+  pausada?: boolean
 }
 
 export interface Sucursal {
@@ -141,7 +143,7 @@ export interface Evento {
  * Qué respondió la compañía a un reclamo: pasa al circuito de pagos, pide reenviar la
  * documentación o pide refacturar (monto u otro dato mal).
  */
-export type RespuestaReclamo = 'pagos' | 'documentacion' | 'refacturar'
+export type RespuestaReclamo = 'pagos' | 'documentacion' | 'refacturar' | 'error'
 
 /** Un reclamo a la compañía por una factura vencida. */
 export interface Reclamo {
@@ -149,7 +151,8 @@ export interface Reclamo {
   medio: 'mail' | 'portal' | 'telefono'
   autor: string
   nota: string
-  respuesta?: { fecha: string; tipo: RespuestaReclamo; nota?: string } | null
+  /** resuelto: fecha en que Auditoría corrigió el error que informó la compañía */
+  respuesta?: { fecha: string; tipo: RespuestaReclamo; nota?: string; resuelto?: string } | null
 }
 
 /**
@@ -248,7 +251,9 @@ export interface MetaDemo {
   /** plazos de la documentación (Ajustes); si falta, los de siempre */
   plazos?: Plazos
   /** avisos por mail (solo lo ve Auditoría) */
-  avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string }
+  avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string; nombreSoporte?: string }
+  /** quién da soporte a la plataforma (lo ven todos los sectores) */
+  soporte?: { nombre: string }
   /** textos de las notificaciones a Gerencia (Ajustes) */
   textos?: Partial<TextosAvisos>
 }

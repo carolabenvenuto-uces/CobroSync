@@ -215,6 +215,21 @@ prueba('la sucursal carga documentos pero no puede cambiar el importe', () => {
   esperar(leido.total === c.total, 'la sucursal pudo cambiar el importe')
   esperar(leido.documentos.every((d) => d.estado === 'en_revision'), 'no se guardaron los documentos')
 })
+prueba('Auditoría da de alta una compañía, le carga varios mails, la pausa y la reactiva', () => {
+  como('auditoria@svaauto.com.ar')
+  gs('guardarAseguradoras', [{ id: 'seguros-del-sur', nombre: 'Seguros del Sur', email: '', canal: 'portal', plazoPagoDias: 30 }])
+  gs('guardarAseguradoras', [{ id: 'seguros-del-sur', email: 'a@sur.example, b@sur.example', portalUrl: 'https://portal.sur.example' }], true, true)
+  gs('guardarAseguradoras', [{ id: 'seguros-del-sur', pausada: true }], true, true)
+  let a = gs('obtenerDatos').datos.aseguradoras.find((x) => x.id === 'seguros-del-sur')
+  esperar(a && a.pausada === true && a.email === 'a@sur.example, b@sur.example' && a.plazoPagoDias === 30, 'no quedó pausada con sus datos')
+  gs('guardarAseguradoras', [{ id: 'seguros-del-sur', pausada: false, email: '' }], true, true)
+  a = gs('obtenerDatos').datos.aseguradoras.find((x) => x.id === 'seguros-del-sur')
+  esperar(a.pausada === false && !a.email && a.portalUrl === 'https://portal.sur.example', 'no se reactivó o no se pudo vaciar el mail')
+  como('rocamora@svaauto.com.ar')
+  let error = ''
+  try { gs('guardarAseguradoras', [{ id: 'otra', nombre: 'Otra' }]) } catch (e) { error = String(e) }
+  esperar(error, 'una sucursal pudo dar de alta una compañía')
+})
 prueba('la sucursal no puede aprobar sus propios documentos', () => {
   como('rocamora@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.documentos.some((d) => d.estado === 'faltante'))

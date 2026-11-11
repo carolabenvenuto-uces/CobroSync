@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { configurarPlazos } from '../src/domain/plazos'
 import { atendidaPorOtra, pedidosAbiertos } from '../src/domain/pedidos'
-import { cambiosPorRespuesta, estadoReclamo } from '../src/domain/reclamos'
+import { cambiosPorErrorCorregido, cambiosPorRespuesta, estadoReclamo } from '../src/domain/reclamos'
 import type { Comprobante } from '../src/domain/tipos'
 
 const CORTE = '2026-10-31'
@@ -62,5 +62,12 @@ describe('pedidos a sucursales', () => {
     expect(atendidaPorOtra(c, 'Carola', new Date('2026-10-31T12:00:00Z'))).toBe('Melina')
     expect(atendidaPorOtra(c, 'Melina', new Date('2026-10-31T12:00:00Z'))).toBe(null)
     expect(atendidaPorOtra(c, 'Carola', new Date('2026-10-31T12:30:00Z'))).toBe(null)
+  })
+  it('"error en la factura" queda a corregir y, corregido, vuelve a reclamarse', () => {
+    const r = cambiosPorRespuesta(base({ reclamos: [reclamo('2026-10-20')] }), 'error', 'CUIT mal', CORTE, 'A')!
+    const c = base(r.campos)
+    expect(estadoReclamo(c, CORTE)).toBe('con_error')
+    const corregido = cambiosPorErrorCorregido(c, '', CORTE)!
+    expect(estadoReclamo(base(corregido.campos), CORTE)).toBe('volver')
   })
 })

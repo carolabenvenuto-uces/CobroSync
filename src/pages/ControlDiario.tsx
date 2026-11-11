@@ -4,6 +4,7 @@ import { EnEsperaAuditoria } from '../components/EnEspera'
 import { FileSpreadsheet, Info, X } from 'lucide-react'
 import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
+import { AvisoFiltroTarjeta, TarjetaFiltro, type TonoTarjeta } from '../components/ui/TarjetaFiltro'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { ultimoReclamo } from '../domain/reclamos'
@@ -22,10 +23,10 @@ import { leerArchivo } from '../services/planilla'
 const ORDEN_ETAPAS: Etapa[] = [...ETAPAS_ACTIVAS, 'cobrado', 'no_aplica']
 
 /** Las tarjetas de arriba: a quién le toca cada factura pendiente (el texto es el del filtro "Le toca a") */
-const QUIEN: { quien: string; titulo: string; etapas: Etapa[] }[] = [
-  { quien: 'Sucursal', titulo: 'Le toca a la sucursal', etapas: ['doc_pendiente', 'doc_atrasada', 'doc_observada'] },
-  { quien: 'Auditoría', titulo: 'Le toca a Auditoría', etapas: ['en_revision', 'pres_pendiente'] },
-  { quien: 'Compañía', titulo: 'En la compañía', etapas: ['al_dia', 'vencida'] },
+const QUIEN: { quien: string; titulo: string; tono: TonoTarjeta; etapas: Etapa[] }[] = [
+  { quien: 'Sucursal', titulo: 'Le toca a la sucursal', tono: 'ambar', etapas: ['doc_pendiente', 'doc_atrasada', 'doc_observada'] },
+  { quien: 'Auditoría', titulo: 'Le toca a Auditoría', tono: 'indigo', etapas: ['en_revision', 'pres_pendiente'] },
+  { quien: 'Compañía', titulo: 'En la compañía', tono: 'celeste', etapas: ['al_dia', 'vencida'] },
 ]
 const mesDeFecha = (iso: string) => `${iso.slice(0, 7)} · ${MESES[Number(iso.slice(5, 7)) - 1]}`
 
@@ -357,16 +358,15 @@ export default function ControlDiario() {
           const lista = filas.filter((x) => q.etapas.includes(x.s.etapa))
           const activa = params.get('quien') === q.quien
           return (
-            <button
+            <TarjetaFiltro
               key={q.quien}
-              type="button"
+              titulo={q.titulo}
+              cantidad={lista.length}
+              tono={q.tono}
+              activa={activa}
+              otraActiva={!activa && QUIEN.some((o) => params.get('quien') === o.quien)}
               onClick={() => setParams(activa ? {} : { quien: q.quien })}
-              className={`rounded-xl border bg-white p-3 text-left transition hover:shadow-sm ${activa ? 'border-marca ring-2 ring-marca/20' : 'border-slate-200'}`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{q.titulo}</span>
-                <span className="text-xl font-extrabold tabular-nums text-noche">{lista.length.toLocaleString('es-AR')}</span>
-              </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {q.etapas.map((e) => {
                   const n = lista.filter((x) => x.s.etapa === e).length
@@ -379,10 +379,14 @@ export default function ControlDiario() {
                 })}
                 {lista.length === 0 && <span className="text-xs text-slate-400">Nada pendiente</span>}
               </div>
-            </button>
+            </TarjetaFiltro>
           )
         })}
       </div>
+      <AvisoFiltroTarjeta
+        texto={QUIEN.find((q) => params.get('quien') === q.quien)?.titulo.toLowerCase().replace(/^./, (l) => l.toUpperCase()) ?? null}
+        onQuitar={() => setParams({})}
+      />
 
       {!soloConsulta && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">

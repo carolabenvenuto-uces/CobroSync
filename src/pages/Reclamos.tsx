@@ -4,9 +4,11 @@ import { Mail, Megaphone } from 'lucide-react'
 import { claseSelect } from '../components/ui/Estados'
 import { listaParaMail, TextoMail } from '../components/TextoMail'
 import { EncabezadoPagina } from '../components/ui/Card'
+import { AvisoFiltroTarjeta, TarjetaFiltro, type TonoTarjeta } from '../components/ui/TarjetaFiltro'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import {
+  cambiosPorErrorCorregido,
   cambiosPorRespuesta,
   estadoReclamo,
   NOMBRE_ESTADO_RECLAMO,
@@ -21,10 +23,11 @@ import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /** Las tarjetas de arriba: qué hay que hacer con cada vencida (el título es el filtro "Acción") */
-const ACCIONES: { titulo: string; ayuda: string; estados: EstadoReclamo[] }[] = [
-  { titulo: 'Reclamar', ayuda: 'Nunca reclamadas o ya sin respuesta en el plazo', estados: ['sin_reclamar', 'volver'] },
-  { titulo: 'Resolver', ayuda: 'Pedir apoyo a gerencia o reenviar documentación', estados: ['escalar', 'reenviar'] },
-  { titulo: 'Esperando', ayuda: 'Reclamadas, en pagos, en tolerancia o por refacturar', estados: ['reclamada', 'en_pagos', 'tolerancia', 'refacturar'] },
+const ACCIONES: { titulo: string; ayuda: string; tono: TonoTarjeta; estados: EstadoReclamo[] }[] = [
+  { titulo: 'Reclamar', tono: 'rojo', ayuda: 'Nunca reclamadas o sin respuesta en el plazo', estados: ['sin_reclamar', 'volver'] },
+  { titulo: 'Corregir', tono: 'ambar', ayuda: 'La compañía informó un error o pide reenviar documentación', estados: ['con_error', 'reenviar'] },
+  { titulo: 'Pedir apoyo', tono: 'indigo', ayuda: 'Sin respuesta a 3 reclamos: se le pide a gerencia', estados: ['escalar'] },
+  { titulo: 'Esperando', tono: 'gris', ayuda: 'Reclamadas, en pagos, en tolerancia o por refacturar', estados: ['reclamada', 'en_pagos', 'tolerancia', 'refacturar'] },
 ]
 const accionDe = (e: EstadoReclamo) => ACCIONES.find((a) => a.estados.includes(e))?.titulo ?? ''
 
@@ -37,6 +40,7 @@ const ESTILO: Record<EstadoReclamo, string> = {
   en_pagos: 'bg-etapa-compania/10 text-blue-800',
   reenviar: 'bg-sem-rojo/10 text-red-800',
   refacturar: 'bg-sem-amarillo/20 text-amber-900',
+  con_error: 'bg-red-100 text-red-900',
 }
 
 /**
@@ -76,6 +80,22 @@ export default function Reclamos() {
 
   const seleccion = vencidas.filter((x) => elegidas.has(x.c.id))
   const companiasElegidas = [...new Set(seleccion.map((x) => x.c.aseguradoraId))]
+
+  // Errores que informó la compañía y que Auditoría ya corrigió: vuelven a "Volver a reclamar"
+  const conError = seleccion.filter((x) => x.estado === 'con_error')
+  function corregirErrores() {
+    let n = 0
+    for (const x of conError) {
+      const r = cambiosPorErrorCorregido(x.c, nota, hoy)
+      if (!r) continue
+      actualizarComprobante(x.c.id, r.campos)
+      registrarEvento(x.c.id, 'reclamo', r.evento)
+      n++
+    }
+    setMensaje(`Listo: ${n} ${n === 1 ? 'error corregido' : 'errores corregidos'}. Ya se puede volver a reclamar el pago.`)
+    setElegidas(new Set())
+    setNota('')
+  }
 
   // Lo que respondió la compañía, para todas las elegidas que ya tienen un reclamo
   function registrarRespuesta() {
@@ -199,14 +219,18 @@ export default function Reclamos() {
       <EncabezadoPagina titulo="Vencidas y reclamos" sucursal />
 
       {/* Arriba, qué hay que hacer: cada tarjeta filtra la tabla */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {ACCIONES.map((ac) => {
           const lista = vencidas.filter((x) => ac.estados.includes(x.estado))
           const activa = params.get('accion') === ac.titulo
           return (
-            <button
+            <TarjetaFiltro
               key={ac.titulo}
-              type="button"
+              titulo={ac.titulo}
+              cantidad={lista.length}
+              tono={ac.tono}
+              activa={activa}
+              otraActiva={!activa && ACCIONES.some((o) => params.get('accion') === o.titulo)}
               onClick={() => {
                 const nuevos = new URLSearchParams(params)
                 nuevos.delete('estado')
@@ -214,12 +238,7 @@ export default function Reclamos() {
                 else nuevos.set('accion', ac.titulo)
                 setParams(nuevos, { replace: true })
               }}
-              className={`rounded-xl border bg-white p-3 text-left transition hover:shadow-sm ${activa ? 'border-marca ring-2 ring-marca/20' : 'border-slate-200'}`}
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{ac.titulo}</span>
-                <span className="text-xl font-extrabold tabular-nums text-noche">{lista.length.toLocaleString('es-AR')}</span>
-              </div>
               <div className="text-xs text-slate-500">
                 {formatoPesos(lista.reduce((t, x) => t + x.c.total, 0))} · {ac.ayuda}
               </div>
@@ -234,14 +253,22 @@ export default function Reclamos() {
                 })}
                 {lista.length === 0 && <span className="text-xs text-slate-400">Nada por ahora</span>}
               </div>
-            </button>
+            </TarjetaFiltro>
           )
         })}
       </div>
+      <AvisoFiltroTarjeta
+        texto={ACCIONES.find((a) => params.get('accion') === a.titulo) ? `las facturas para "${params.get('accion')}"` : null}
+        onQuitar={() => {
+          const nuevos = new URLSearchParams(params)
+          nuevos.delete('accion')
+          setParams(nuevos, { replace: true })
+        }}
+      />
 
       {mensaje && !seleccion.length && <p className="mb-3 text-sm text-teal-800">{mensaje}</p>}
       {rol === 'auditoria' && seleccion.length > 0 && (
-        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-marca/40 bg-white p-3 shadow-sm">
+        <div className="sticky top-16 z-20 lg:top-0 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-marca/40 bg-white p-3 shadow-sm">
           <span className="text-sm">
             <strong>{seleccion.length}</strong> elegidas · <strong>{formatoPesos(seleccion.reduce((t, x) => t + x.c.total, 0))}</strong>
             {companiasElegidas.length > 1 && <span className="text-slate-500"> · {companiasElegidas.length} compañías</span>}
@@ -265,6 +292,15 @@ export default function Reclamos() {
             >
               Registrar respuesta
             </button>
+            {conError.length > 0 && (
+              <button
+                type="button"
+                onClick={corregirErrores}
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-900 hover:bg-red-100"
+              >
+                Error corregido ({conError.length})
+              </button>
+            )}
           </div>
           {registrando && (
             <div className="flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
@@ -286,11 +322,11 @@ export default function Reclamos() {
                   ))}
                 </select>
               )}
-              <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={`${claseSelect} min-w-48 flex-1`} />
+              <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={registrando === 'respuesta' && respuesta === 'error' ? 'Qué error informó (obligatorio)' : 'Nota (opcional)'} className={`${claseSelect} min-w-48 flex-1`} />
               <button
                 type="button"
                 onClick={registrando === 'reclamo' ? registrarReclamos : registrarRespuesta}
-                disabled={registrando === 'respuesta' && !respuesta}
+                disabled={registrando === 'respuesta' && (!respuesta || (respuesta === 'error' && !nota.trim()))}
                 className="rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
               >
                 Confirmar en {seleccion.length} {seleccion.length === 1 ? 'factura' : 'facturas'}

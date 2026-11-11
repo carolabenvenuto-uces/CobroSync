@@ -26,8 +26,8 @@ export function AppLayout() {
       <Sidebar abierto={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior solo en celulares, con el botón para abrir el menú */}
-        <div className="no-imprimir flex items-center justify-between bg-noche px-4 py-3 lg:hidden">
+        {/* Barra superior solo en celulares, fija al bajar: la marca y el botón del menú siempre a mano */}
+        <div className="no-imprimir sticky top-0 z-30 flex h-16 items-center justify-between bg-noche px-4 shadow-md lg:hidden">
           <Marca oscuro />
           <button
             type="button"

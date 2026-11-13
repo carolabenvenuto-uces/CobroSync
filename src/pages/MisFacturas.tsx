@@ -240,7 +240,13 @@ export default function MisFacturas() {
             const estado = d?.estado ?? 'faltante'
             const e = ESTADO_DOC[estado]
             const texto = estado === 'faltante' ? `+ Falta ${tipo === 'factura' ? 'la factura' : 'la orden firmada'}` : `${e.marca} ${NOMBRE_DOC[tipo]} ${e.texto}`
-            const ayuda = estado === 'observado' && d?.motivo ? `${NOMBRE_DOC[tipo]}: ${d.motivo}` : `${NOMBRE_DOC[tipo]}: ${e.texto}`
+            const enDriveAnterior = estado === 'ok' && !!d && !d.url && !d.archivo
+            const ayuda =
+              estado === 'observado' && d?.motivo
+                ? `${NOMBRE_DOC[tipo]}: ${d.motivo}`
+                : enDriveAnterior
+                  ? `${NOMBRE_DOC[tipo]}: guardado en Drive de ${x.c.sucursal} · gestión anterior`
+                  : `${NOMBRE_DOC[tipo]}: ${e.texto}`
             const clase = `inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`
             // Si el documento ya está subido, se abre el PDF desde acá (sin abrir toda la factura)
             const url = d && estado !== 'faltante' ? (d.url ?? d.adjuntos?.find((x) => x.url)?.url) : undefined

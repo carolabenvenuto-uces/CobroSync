@@ -65,7 +65,6 @@ export type Etapa =
   | 'vencida' // presentada y vencida sin cobrar: hay que reclamar
   | 'cobrado'
   | 'no_aplica' // NC y facturas anuladas
-  | 'anterior' // factura anterior a CobroSync, sin presentar en la plataforma: su documentación está en el Drive
 
 export interface Aseguradora {
   id: string

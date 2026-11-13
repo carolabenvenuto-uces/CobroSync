@@ -206,19 +206,3 @@ describe('facturas vencidas y reclamos', () => {
   })
 })
 
-describe('inicio de CobroSync', () => {
-  it('antes del inicio no se pide documentación; si ya se presentó, sigue por cobro y reclamos', () => {
-    configurarPlazos({ ...PLAZOS_INICIALES, inicio: '2026-10-25' }, [])
-    const sinDocs: Documento[] = [
-      { tipo: 'factura', estado: 'faltante' },
-      { tipo: 'orden', estado: 'faltante' },
-    ]
-    expect(calcularSemaforo(factura({ fecha: '2026-10-01', documentos: sinDocs }), CORTE).etapa).toBe('anterior')
-    expect(
-      calcularSemaforo(factura({ fecha: '2026-09-01', documentos: sinDocs, fechaPresentacion: '2026-09-05', vencimiento: '2026-10-05', estado: 'presentada' }), CORTE).etapa,
-    ).toBe('vencida')
-    expect(calcularSemaforo(factura({ fecha: '2026-10-26', documentos: sinDocs }), CORTE).etapa).toBe('doc_pendiente')
-    configurarPlazos(undefined, [])
-  })
-})
-

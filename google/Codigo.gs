@@ -70,7 +70,6 @@ var CONFIG_INICIAL = [
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
   ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde Soporte técnico'],
   ['nombreSoporte', '', 'Nombre de quien da soporte a la plataforma; se muestra en la ventana de Soporte técnico'],
-  ['fechaInicio', '2026-11-16', 'Desde esta fecha (de factura) CobroSync pide la documentación. Las anteriores quedan como "Gestión anterior": su documentación está en el Drive de la empresa, no se pide ni genera avisos. Se cambia en Ajustes'],
   ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
   ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
   ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
@@ -347,6 +346,16 @@ function sincronizarDesdePlanilla(lista) {
       }
       if (!c.fechaAprobacion && p.fechaAprobacion && (c.documentos || []).every(function (d) { return d.estado === 'ok'; })) {
         c.fechaAprobacion = p.fechaAprobacion;
+        cambio = true;
+      }
+      // La documentación llegó al Drive de siempre y se anotó en la planilla (mientras se usan las dos):
+      // lo que faltaba en CobroSync queda aprobado, sin tocar lo que se subió o se observó en la plataforma
+      var docsPlanilla = (p.documentos || []).length > 0 && (p.documentos || []).every(function (d) { return d.estado === 'ok'; });
+      if (c.tipo === 'FC' && docsPlanilla && (c.documentos || []).some(function (d) { return d.estado === 'faltante'; })) {
+        c.documentos = (c.documentos || []).map(function (d) { return d.estado === 'faltante' ? { tipo: d.tipo, estado: 'ok' } : d; });
+        if (!c.fechaDrive && p.fechaDrive) c.fechaDrive = p.fechaDrive;
+        if (!c.fechaAprobacion && c.documentos.every(function (d) { return d.estado === 'ok'; })) c.fechaAprobacion = p.fechaAprobacion || p.fechaDrive || hoy_();
+        if (c.estado === 'pendiente_drive') c.estado = 'en_gestion';
         cambio = true;
       }
       if (c.estado !== 'cobrada' && p.estado === 'cobrada') {
@@ -692,20 +701,9 @@ function plazos_() {
     montoMinimoMipyme: n('montoMinimoMipyme', 5549862),
     puntosVentaMipyme: String(config_('puntosVentaMipyme') || '').split(/[^0-9]+/).filter(String).map(Number),
     respuestaReclamo: n('diasRespuestaReclamo', 7),
-    inicio: inicio_(),
   };
 }
 
-/** Fecha de inicio de CobroSync (yyyy-mm-dd); acepta también dd/mm/aaaa. Vacía: se pide todo. */
-var inicioLeido_ = null;
-function inicio_() {
-  if (inicioLeido_ !== null) return inicioLeido_;
-  var v = String(config_('fechaInicio') || '').trim();
-  var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) v = m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
-  inicioLeido_ = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
-  return inicioLeido_;
-}
 
 /** Compañías marcadas con recibeFce = NO (las demás son grandes empresas y reciben FCE). */
 function companiasSinFce_() {
@@ -800,7 +798,6 @@ function guardarAjustes(a) {
       montoMinimoMipyme: a.plazos.montoMinimoMipyme,
       puntosVentaMipyme: (a.plazos.puntosVentaMipyme || []).join(', '),
       diasRespuestaReclamo: a.plazos.respuestaReclamo || 7,
-      fechaInicio: String(a.plazos.inicio || ''),
       avisosPorMail: a.avisos.porMail ? 'SI' : 'NO',
       correosGerencia: String(a.avisos.correosGerencia || ''),
       correoSoporte: String(a.avisos.correoSoporte || ''),
@@ -808,7 +805,6 @@ function guardarAjustes(a) {
       textoAvisoApoyo: a.textos ? String(a.textos.apoyo || '') : String(config_('textoAvisoApoyo') || ''),
       textoAvisoCritica: a.textos ? String(a.textos.critica || '') : String(config_('textoAvisoCritica') || ''),
     };
-    inicioLeido_ = null;
     var cfg = hoja_(HOJAS.config);
     var claves = cfg.getLastRow() > 1 ? cfg.getRange(2, 1, cfg.getLastRow() - 1, 1).getValues().map(function (f) { return f[0]; }) : [];
     Object.keys(valores).forEach(function (k) {
@@ -1092,8 +1088,6 @@ function mismaSucursal_(a, b) {
 }
 
 function esperaALaSucursal_(c) {
-  // Gestión anterior a CobroSync: su documentación está en el Drive de la empresa
-  if (inicio_() && String(c.fecha) < inicio_()) return false;
   if (c.tipo !== 'FC' || c.estado === 'anulada' || c.estado === 'cobrada' || c.fechaPresentacion || (c.anulacionInformada && !c.anulacionInformada.parcial)) return false;
   var docs = c.documentos || [];
   return docs.length === 0 || docs.some(function (d) { return d.estado === 'faltante' || d.estado === 'observado'; });

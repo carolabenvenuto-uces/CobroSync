@@ -20,7 +20,7 @@ import { agregarAQuiterEnGoogle, conectadoAGoogle } from '../services/google'
 import { leerArchivo } from '../services/planilla'
 
 /** "2026-10 · Octubre": así el filtro de mes queda ordenado. */
-const ORDEN_ETAPAS: Etapa[] = [...ETAPAS_ACTIVAS, 'cobrado', 'anterior', 'no_aplica']
+const ORDEN_ETAPAS: Etapa[] = [...ETAPAS_ACTIVAS, 'cobrado', 'no_aplica']
 
 /** Las tarjetas de arriba: a quién le toca cada factura pendiente (el texto es el del filtro "Le toca a") */
 const QUIEN: { quien: string; titulo: string; tono: TonoTarjeta; etapas: Etapa[] }[] = [

@@ -15,7 +15,7 @@
  * pantallas, y tienen sus propios tests (tests/semaforo.test.ts).
  */
 import { diffDias } from '../lib/fechas'
-import { esMipyme, plazoSucursal, antesDelInicio } from './plazos'
+import { esMipyme, plazoSucursal } from './plazos'
 import type {
   ColorSemaforo,
   Comprobante,
@@ -88,17 +88,7 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
 
   // Facturas anteriores a CobroSync: no se pide documentación (está en el Drive de la empresa).
   // Si ya se presentaron, siguen por presentación y cobro como cualquier otra.
-  const anterior = antesDelInicio(c)
-  if (anterior && c.fechaPresentacion === null) {
-    return {
-      color: 'neutro',
-      etapa: 'anterior',
-      responsable: null,
-      detalle: ['Gestión anterior a CobroSync: la documentación está en el Drive de la empresa'],
-    }
-  }
-
-  const documentos = anterior ? [] : documentosDelLegajo(c.documentos)
+  const documentos = documentosDelLegajo(c.documentos)
   const conProblemas = documentos.filter((d) => d.estado === 'observado')
   const faltantes = documentos.filter((d) => d.estado === 'faltante')
   const paraRevisar = documentos.filter((d) => d.estado === 'en_revision')

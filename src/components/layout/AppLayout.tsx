@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
 import { AvisoNotificacion } from '../Notificaciones'
 import { AvisoCarga } from '../AvisoCarga'
+import { Solapas } from './Solapas'
 import { Marca } from '../Logo'
 import { AUTORIA } from '../../lib/marca'
 import { Cargando, ErrorCarga, SinAcceso } from '../ui/Estados'
@@ -41,7 +42,16 @@ export function AppLayout() {
         </div>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          {error ? <ErrorCarga mensaje={error} /> : datos ? <Outlet /> : <Cargando />}
+          {error ? (
+            <ErrorCarga mensaje={error} />
+          ) : datos ? (
+            <>
+              <Solapas />
+              <Outlet />
+            </>
+          ) : (
+            <Cargando />
+          )}
         </main>
 
         <footer className="flex items-center justify-between gap-4 border-t border-slate-200 px-8 py-4 text-xs text-slate-500">

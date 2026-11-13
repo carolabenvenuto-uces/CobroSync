@@ -158,7 +158,7 @@ export default function Avisos() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Avisos"
+        titulo="Inicio"
         subtitulo="Lo que necesita atención, separado por quién tiene que actuar. Cada aviso abre sus facturas."
         sucursal
       />

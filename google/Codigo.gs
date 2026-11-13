@@ -124,6 +124,7 @@ function obtenerDatos() {
         avisos: usuario.rol === 'auditoria' ? { porMail: config_('avisosPorMail') === 'SI', correosGerencia: String(config_('correosGerencia') || ''), correoSoporte: String(config_('correoSoporte') || ''), nombreSoporte: String(config_('nombreSoporte') || '') } : undefined,
         // A quién le llegan los avisos de Soporte técnico (solo el nombre; el correo no se muestra)
         soporte: { nombre: String(config_('nombreSoporte') || '') },
+        planilla: usuario.rol === 'auditoria' ? { conectada: !!config_('planillaControlId'), ultimaLectura: PropertiesService.getScriptProperties().getProperty('ultimaLecturaPlanilla') || '' } : undefined,
       },
     },
   };
@@ -313,6 +314,10 @@ function agregarComprobantes(lista) {
 function sincronizarDesdePlanilla(lista) {
   var usuario = usuarioActual_();
   if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar la planilla.');
+  return sincronizarLista_(lista, usuario.nombre);
+}
+
+function sincronizarLista_(lista, autor) {
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     var actuales = leerHoja_(HOJAS.comprobantes);
@@ -368,7 +373,7 @@ function sincronizarDesdePlanilla(lista) {
         cambio = true;
       }
       if (cambio) {
-        (c.eventos = c.eventos || []).push({ fecha: hoy_(), autor: usuario.nombre, area: 'auditoria', tipo: 'mensaje', texto: 'Actualizado desde la planilla de control' });
+        (c.eventos = c.eventos || []).push({ fecha: hoy_(), autor: autor, area: 'auditoria', tipo: 'mensaje', texto: 'Actualizado desde la planilla de control' });
         escribirFila_(hoja, HOJAS.comprobantes, existente.fila, c);
         resultado.actualizadas++;
       }
@@ -876,7 +881,116 @@ function agregarAQuiter(filas) {
 /** Disparador de cada hora (y botón "Actualizar mi planilla ahora"). */
 function actualizarPlanillaDeControl() {
   var libro = planillaDeControl_();
-  return libro ? completarDiario_(libro) : 0;
+  if (!libro) return 0;
+  // Primero se trae lo nuevo de la planilla (mientras se usan las dos) y después se le completa lo de CobroSync
+  try {
+    traerDiario_(libro);
+  } catch (e) {
+    console.warn('No se pudo leer la planilla de control: ' + e);
+  }
+  return completarDiario_(libro);
+}
+
+/** Botón "Traer los cambios de mi planilla ahora" (Ajustes → Planilla). Solo Cobranzas. */
+function traerDeMiPlanilla() {
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede leer la planilla.');
+  var libro = planillaDeControl_();
+  if (!libro) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
+  var r = traerDiario_(libro);
+  PropertiesService.getScriptProperties().setProperty('ultimaLecturaPlanilla', ahora_());
+  return r;
+}
+
+/**
+ * Lee la hoja Diario de la planilla de control y la pasa a CobroSync, con el mismo criterio que
+ * "Usar mi planilla": agrega las facturas nuevas y, en las que ya están, completa Drive (documentación
+ * aprobada), presentación, cobro y anulación. No toca lo que se hizo en la plataforma.
+ * Columnas: A Fecha · B Ref. · C Sucursal · D CTE. · E Número · F Compañía · G Siniestro · H Total ·
+ * I Drive · K Presentación · M Vto. · N Cobro · O Estado · R Observaciones · S/T/U reclamos (opcionales)
+ */
+function traerDiario_(libro) {
+  var hoja = libro.getSheetByName(config_('pestanaDiario') || 'Diario');
+  if (!hoja || hoja.getLastRow() < 2) return { nuevas: 0, actualizadas: 0, omitidas: 0 };
+  var filas = hoja.getRange(1, 1, hoja.getLastRow(), 21).getDisplayValues();
+  var aseguradoras = leerHoja_(HOJAS.aseguradoras);
+  var porId = {};
+  aseguradoras.forEach(function (a) { porId[a.id] = a; });
+  var nuevasCompanias = [];
+  var lista = [];
+  filas.forEach(function (f) {
+    var fecha = fechaPlanilla_(f[0]);
+    var sucursal = String(f[2] || '').trim();
+    if (!fecha || !sucursal) return;
+    var compania = String(f[5] || '').trim();
+    var tipo = /^NC/i.test(String(f[3] || '').trim()) ? 'NC' : 'FC';
+    var partes = String(f[4] || '').split('-').map(function (x) { return Number(String(x).replace(/\D/g, '')) || 0; });
+    var idCompania = slugPlanilla_(compania) || 'sin-compania';
+    var aseguradora = porId[idCompania];
+    if (!aseguradora) {
+      aseguradora = { id: idCompania, nombre: compania || 'Sin compañía', email: '', canal: 'portal', plazoPagoDias: /patronal/i.test(compania) ? 7 : 30 };
+      porId[idCompania] = aseguradora;
+      nuevasCompanias.push(aseguradora);
+    }
+    var drive = fechaPlanilla_(f[8]);
+    var presentacion = fechaPlanilla_(f[10]);
+    var cobro = fechaPlanilla_(f[13]);
+    var estadoTexto = String(f[14] || '').trim().toLowerCase();
+    var estado = tipo === 'NC' ? 'nota_credito'
+      : /^anul/.test(estadoTexto) ? 'anulada'
+      : /^cobr/.test(estadoTexto) || cobro ? 'cobrada'
+      : presentacion || /^vencid/.test(estadoTexto) || /^al d/.test(estadoTexto) ? 'presentada'
+      : drive || /^p\. pend/.test(estadoTexto) ? 'en_gestion' : 'pendiente_drive';
+    var completo = drive !== null || /^p\. pend/.test(estadoTexto) || presentacion !== null;
+    var total = importePlanilla_(f[7]);
+    var ref = String(f[1] || '').trim();
+    lista.push({
+      id: ref ? 'ref-' + ref : 'pl-' + tipo + '-' + (partes[0] || 0) + '-' + (partes[1] || 0),
+      ref: ref, tipo: tipo, fecha: fecha, sucursal: sucursal, puntoVenta: partes[0] || 0, numero: partes[1] || 0,
+      aseguradoraId: aseguradora.id, siniestro: String(f[6] || '').trim(), patente: '',
+      total: tipo === 'NC' ? -Math.abs(total) : total,
+      fechaDrive: drive, subidoPor: null,
+      fechaAprobacion: tipo === 'NC' || !completo ? null : (drive || presentacion),
+      fechaPresentacion: estado === 'anulada' ? null : presentacion,
+      vencimiento: estado === 'anulada' || !presentacion ? null : (fechaPlanilla_(f[12]) || sumarDias_(presentacion, aseguradora.plazoPagoDias || 30)),
+      fechaCobro: estado === 'cobrada' ? cobro : null,
+      estado: estado, ncReferencia: null, ncInformada: tipo === 'NC' ? true : null, compromiso: null,
+      reclamos: [], observaciones: String(f[17] || '').trim(),
+      documentos: tipo === 'NC' ? [] : ['factura', 'orden'].map(function (t) { return { tipo: t, estado: completo ? 'ok' : 'faltante' }; }),
+      eventos: [],
+    });
+  });
+  if (nuevasCompanias.length) {
+    var hojaAseg = hoja_(HOJAS.aseguradoras);
+    nuevasCompanias.forEach(function (a) { escribirFila_(hojaAseg, HOJAS.aseguradoras, null, a); });
+  }
+  var r = sincronizarLista_(lista, 'Planilla de control');
+  PropertiesService.getScriptProperties().setProperty('ultimaLecturaPlanilla', ahora_());
+  return r;
+}
+
+/** "02-01-26", "02/01/26" o "02/01/2026" → "2026-01-02" (como se ve en la planilla) */
+function fechaPlanilla_(v) {
+  var m = /^\s*(\d{1,2})[-\/](\d{1,2})[-\/](\d{2}|\d{4})\s*$/.exec(String(v || ''));
+  if (!m) return null;
+  return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+}
+
+/** "3.222.184,35", "(1.156.894,74)" o "$ 1.000" → número */
+function importePlanilla_(v) {
+  var t = String(v || '').trim();
+  var negativo = t.charAt(0) === '-' || (t.charAt(0) === '(' && t.charAt(t.length - 1) === ')');
+  var n = Number(t.replace(/[^\d,]/g, '').replace(',', '.'));
+  return isFinite(n) ? (negativo ? -n : n) : 0;
+}
+
+function slugPlanilla_(t) {
+  return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function sumarDias_(fecha, dias) {
+  var d = new Date(fecha + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + Number(dias || 0));
+  return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
 }
 
 function actualizarMiPlanilla() {

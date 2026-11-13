@@ -5,6 +5,9 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Menú de Cobranzas en 7 lugares:** Inicio, Control diario (por factura o por siniestro), Presentar, Seguimiento (solapas Sucursales y Compañías), Mi sucursal, Informes (Resumen, Por sucursal, Saldos, Impacto) y Ajustes (Plazos y avisos, Compañías, Planilla). Las notificaciones pasan a una campanita con el número, al lado del nombre.
+- **La planilla de control se lee sola cada hora:** CobroSync suma las facturas nuevas y actualiza Drive, presentación, cobro y anulación de la hoja Diario, sin tocar lo hecho en la plataforma. En Ajustes → Planilla se ve la última lectura y se puede traer los cambios en el momento. La carga a mano del Excel queda guardada para cuando haga falta.
+- **Presentar:** en la ventana de cada compañía están a mano sus enlaces a la plataforma y sus mails (para abrir o copiar), y los de reclamos.
 - **Planilla y CobroSync a la par:** al volver a pasar la planilla, si una factura ahora tiene fecha de Drive (la documentación llegó al Drive de siempre), en CobroSync queda aprobada y sigue el circuito; también se actualizan presentación, cobro y anulación. No se pisa lo que se subió u observó en la plataforma.
 - **Facturas de antes de CobroSync, como en la planilla:** se quita la fecha de inicio y el estado "Gestión anterior". Cada factura sigue su estado real: si la planilla tiene fecha de Drive, la documentación figura aprobada y la factura sigue el circuito (para presentar, presentada, cobrada); si no la tiene, falta documentación y la sucursal la puede subir. Los documentos aprobados que vinieron de la planilla dicen "Guardado en Drive de (sucursal) · gestión anterior".
 - **Usar mi planilla:** una factura sin número de referencia ya no se duplica al volver a pasar la planilla (se reconoce por tipo, punto de venta y número).

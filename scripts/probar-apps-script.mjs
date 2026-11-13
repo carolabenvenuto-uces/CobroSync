@@ -27,6 +27,7 @@ function crearHoja(nombre) {
     appendRow: (v) => filas.push(v.map(comoTexto)),
     getRange: (r, c, nr = 1, nc = 1) => ({
       getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => filas[r - 1 + i]?.[c - 1 + j] ?? '')),
+      getDisplayValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => String(filas[r - 1 + i]?.[c - 1 + j] ?? ''))),
       setValues: (vals) => {
         vals.forEach((fila, i) => {
           filas[r - 1 + i] ??= []
@@ -101,9 +102,11 @@ function carpeta(ruta) {
   return yo
 }
 const raizDrive = carpeta('CobroSync')
+const propiedades = {}
 const contexto = {
   SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => propiedades[k] ?? null, setProperty: (k, v) => (propiedades[k] = v) }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
   DriveApp: {
     Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK' },
@@ -629,6 +632,20 @@ prueba('cada hora se completan Drive, Presentación, Cobro y la X de Anula en Di
   esperar(revisadas === enDiario.length, 'faltaron filas')
   esperar(f.at(-1).slice(8).every((v) => v === ''), 'tocó una fila de otra sucursal')
   esperar(gs('actualizarPlanillaDeControl') === 0, 'la segunda vez volvió a escribir')
+})
+prueba('CobroSync trae solo las facturas nuevas que se anotaron en la planilla (y no las duplica)', () => {
+  como('auditoria@svaauto.com.ar')
+  diario.appendRow(['10-11-26', '7777777', 'Rocamora', 'FC E', '35 - 00099999', 'Compañía Nueva', '029-9-1', '1.234,50', '11-11-26', '', '', '', '', '', 'P. Pend.', ''])
+  const r = gs('traerDeMiPlanilla')
+  esperar(r.nuevas === 1, JSON.stringify(r))
+  const d = gs('obtenerDatos')
+  const c = d.datos.comprobantes.find((x) => x.ref === '7777777')
+  esperar(c && c.fecha === '2026-11-10' && c.numero === 99999 && c.total === 1234.5 && c.documentos.every((x) => x.estado === 'ok'), JSON.stringify(c))
+  esperar(d.datos.aseguradoras.some((a) => a.id === 'compania-nueva'), 'no dio de alta la compañía nueva')
+  esperar(d.datos.meta.planilla && d.datos.meta.planilla.ultimaLectura, 'no quedó la hora de la última lectura')
+  esperar(gs('traerDeMiPlanilla').nuevas === 0, 'la duplicó al leer otra vez')
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('traerDeMiPlanilla'), 'Solo Cobranzas')
 })
 prueba('nunca se borra un dato de la planilla', () => {
   const i = enDiario.findIndex((c) => !c.fechaCobro)

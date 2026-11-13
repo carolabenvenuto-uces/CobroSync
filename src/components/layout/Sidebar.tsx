@@ -5,8 +5,7 @@ import { VentanaSoporte } from '../Soporte'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut,
-  BookUser,
-  Bell,
+  BarChart3,
   Building2,
   ClipboardList,
   FileText,
@@ -19,7 +18,6 @@ import {
   Store,
   Send,
   Settings,
-  Upload,
   X,
 } from 'lucide-react'
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
@@ -33,6 +31,7 @@ import type { Rol } from '../../domain/tipos'
 import { calcularAvisos } from '../../pages/Avisos'
 import { Marca } from '../Logo'
 import { Campana } from '../Notificaciones'
+import { grupoDe } from './Solapas'
 
 interface ItemMenu {
   ruta: string
@@ -62,42 +61,24 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
     },
     { titulo: 'Detalle', items: [{ ruta: '/app/control-diario', etiqueta: 'Detalle de facturas', icono: FileText }] },
   ],
+  // Cobranzas: 7 lugares. Lo que antes eran pantallas sueltas ahora son solapas (ver Solapas.tsx)
   auditoria: [
-    // Junto a Notificaciones: lo que hay que mirar primero
-    { titulo: '', items: [{ ruta: '/app', etiqueta: 'Avisos', icono: Bell, contador: 'alertas' }] },
     {
-      titulo: 'Trabajo diario',
+      titulo: '',
       items: [
+        { ruta: '/app', etiqueta: 'Inicio', icono: LayoutDashboard, contador: 'alertas' },
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
+        { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
+        { ruta: '/app/pendientes', etiqueta: 'Seguimiento', icono: Megaphone, contador: 'pendientes' },
         // Solo si la persona de Cobranzas tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
         { ruta: '/app/mi-sucursal', etiqueta: 'Mi sucursal', icono: Store, soloConSucursalPropia: true },
-        // La misma pantalla que "Mis siniestros" de la sucursal, con todas las sucursales y el monto de la orden
-        { ruta: '/app/siniestros', etiqueta: 'Siniestros', icono: FolderOpen },
-        { ruta: '/app/presentar', etiqueta: 'Presentar', icono: Send, contador: 'presentar' },
-        { ruta: '/app/companias', etiqueta: 'Compañías', icono: BookUser },
       ],
     },
     {
-      titulo: 'Seguimiento y reclamos',
+      titulo: 'De vez en cuando',
       items: [
-        { ruta: '/app/pendientes', etiqueta: 'Pendientes de sucursales', icono: ClipboardList, contador: 'pendientes' },
-        { ruta: '/app/reclamos', etiqueta: 'Vencidas y reclamos', icono: Megaphone, contador: 'reclamos' },
-      ],
-    },
-    {
-      titulo: 'Informes',
-      items: [
-        { ruta: '/app/resumen', etiqueta: 'Resumen', icono: LayoutDashboard },
-        { ruta: '/app/sucursales', etiqueta: 'Control por sucursal', icono: Store },
-        { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2 },
-        { ruta: '/app/impacto', etiqueta: 'Impacto económico', icono: HandCoins },
-      ],
-    },
-    {
-      titulo: 'Configuración',
-      items: [
-        { ruta: '/app/planilla', etiqueta: 'Usar mi planilla', icono: Upload },
-        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings, soloAdministradora: true },
+        { ruta: '/app/resumen', etiqueta: 'Informes', icono: BarChart3 },
+        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
       ],
     },
   ],
@@ -173,11 +154,11 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               {rol === 'sucursal' && ` · ${sucursal}`}
             </div>
           </div>
+          <Campana onCerrar={onCerrar} compacta />
           <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </div>
 
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">
-          <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
             const items = seccion.items.filter((it) => (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
             if (!items.length) return null
@@ -191,16 +172,17 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                 <div className="space-y-1">
                   {items.map(({ ruta, etiqueta: titulo, icono: Icono, contador }) => {
                     const etiqueta = ruta === '/app/mi-sucursal' && sucursalPropia ? `Mi sucursal · ${sucursalPropia}` : titulo
+                    const destino = ruta === '/app/ajustes' && !administradora ? '/app/companias' : ruta
                     return (
                     <NavLink
                       key={ruta}
-                      to={ruta}
+                      to={destino}
                       end={ruta === '/app'}
                       onClick={onCerrar}
                       className={({ isActive }) =>
                         `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                           // Pedidos es la otra pestaña de Pendientes de sucursales
-                          isActive || (ruta === '/app/pendientes' && pathname === '/app/pedidos') ? 'bg-marca text-white' : 'hover:bg-white/5 hover:text-white'
+                          isActive || (ruta !== '/app' && (grupoDe(pathname) ?? []).includes(ruta)) ? 'bg-marca text-white' : 'hover:bg-white/5 hover:text-white'
                         }`
                       }
                     >

@@ -254,6 +254,8 @@ export interface MetaDemo {
   avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string; nombreSoporte?: string }
   /** quién da soporte a la plataforma (lo ven todos los sectores) */
   soporte?: { nombre: string }
+  /** solo Cobranzas: si la planilla de control está conectada y cuándo se leyó por última vez */
+  planilla?: { conectada: boolean; ultimaLectura: string }
   /** textos de las notificaciones a Gerencia (Ajustes) */
   textos?: Partial<TextosAvisos>
 }

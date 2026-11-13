@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CalendarCheck, ChevronRight, Download, ExternalLink, Mail, MonitorUp, Search, X } from 'lucide-react'
+import { ArrowLeft, CalendarCheck, Check, ChevronRight, Copy, Download, ExternalLink, Mail, MonitorUp, Search, X } from 'lucide-react'
 import { EtiquetaMipyme } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
@@ -246,23 +247,7 @@ export default function Presentar() {
                     <h2 id="titulo-compania" className="font-extrabold">
                       {a?.nombre ?? id} · {lista.length} {lista.length === 1 ? 'factura' : 'facturas'}
                     </h2>
-                    <p className="text-xs text-slate-500">
-                      {porPortal ? (
-                        <>
-                          Por su plataforma
-                          {separarLista(a?.portalUrl).map((url, i, todos) => (
-                            <span key={url}>
-                              {' · '}
-                              <a href={completarEnlace(url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-marca hover:underline">
-                                Abrir la plataforma{todos.length > 1 ? ` ${i + 1}` : ''} <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </span>
-                          ))}
-                        </>
-                      ) : (
-                        <>Por mail{a?.email ? ` a ${a.email}` : ' (falta el correo en Compañías)'}</>
-                      )}
-                    </p>
+                    {a ? <ContactosCompania a={a} porPortal={porPortal} /> : null}
                   </div>
                   {a && (
                     <div className="inline-flex rounded-lg border border-slate-200 bg-fondo p-0.5 text-xs font-semibold" role="group" aria-label="Cómo se presenta">
@@ -382,5 +367,64 @@ export default function Presentar() {
 
       {mail && <TextoMail titulo="Mail de presentación" {...mail} onCerrar={() => setMail(null)} />}
     </>
+  )
+}
+
+/**
+ * Los mails y enlaces de la compañía, a mano para presentar (y para reclamar). Se cambian en
+ * Ajustes → Compañías; acá solo se usan: abrir la plataforma, copiar un mail o escribirle.
+ */
+function ContactosCompania({ a, porPortal }: { a: Aseguradora; porPortal: boolean }) {
+  const [copiado, setCopiado] = useState<string | null>(null)
+  const copiar = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiado(texto)
+      window.setTimeout(() => setCopiado(null), 1500)
+    } catch {
+      // sin portapapeles: queda el mail a la vista para copiarlo a mano
+    }
+  }
+  const enlaces = separarLista(a.portalUrl)
+  const mails = separarLista(a.email)
+  const reclamos = separarLista(a.emailReclamos).filter((m) => !mails.includes(m))
+  const chipMail = (m: string) => (
+    <span key={m} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white py-0.5 pl-2 pr-1 text-xs">
+      <a href={`mailto:${m}`} className="text-noche hover:underline">
+        {m}
+      </a>
+      <button type="button" onClick={() => void copiar(m)} className="rounded-full p-0.5 text-slate-400 hover:bg-fondo hover:text-marca" title="Copiar">
+        {copiado === m ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </span>
+  )
+  return (
+    <div className="mt-1 space-y-1 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-semibold text-slate-600">{porPortal ? 'Por su plataforma:' : 'Por mail:'}</span>
+        {enlaces.map((url, i) => (
+          <a
+            key={url}
+            href={completarEnlace(url)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border border-marca/30 bg-marca/5 px-2 py-0.5 font-semibold text-marca hover:bg-marca/10"
+          >
+            {enlaces.length > 1 ? `Plataforma ${i + 1}` : 'Abrir la plataforma'} <ExternalLink className="h-3 w-3" />
+          </a>
+        ))}
+        {mails.map(chipMail)}
+        {!enlaces.length && !mails.length && <span className="text-amber-700">Sin mails ni enlaces cargados</span>}
+      </div>
+      {reclamos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-semibold text-slate-600">Para reclamos:</span>
+          {reclamos.map(chipMail)}
+        </div>
+      )}
+      <Link to="/app/companias" className="inline-block text-[11px] text-slate-400 hover:text-marca hover:underline">
+        Sumar o cambiar mails y enlaces (Ajustes → Compañías)
+      </Link>
+    </div>
   )
 }

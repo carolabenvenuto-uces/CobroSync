@@ -15,9 +15,27 @@ import { EncabezadoPagina } from './ui/Card'
  * Cobranzas (observaciones, mensajes, rechazos); a Cobranzas, lo que hicieron las sucursales; a
  * Gerencia, solo los escalamientos.
  */
-export function Campana({ onCerrar }: { onCerrar?: () => void }) {
+export function Campana({ onCerrar, compacta = false }: { onCerrar?: () => void; compacta?: boolean }) {
   const { misNotificaciones } = useApp()
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
+  // Al lado del nombre, como en cualquier app: la campanita con lo que no se leyó
+  if (compacta)
+    return (
+      <NavLink
+        to="/app/notificaciones"
+        onClick={onCerrar}
+        aria-label={sinLeer ? `Notificaciones: ${sinLeer} sin leer` : 'Notificaciones'}
+        title="Notificaciones"
+        className={({ isActive }) => `relative shrink-0 rounded-lg p-1.5 ${isActive ? 'bg-marca text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+      >
+        <Bell className="h-5 w-5" />
+        {sinLeer > 0 && (
+          <span className="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-sem-rojo px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">
+            {sinLeer > 99 ? '99+' : sinLeer}
+          </span>
+        )}
+      </NavLink>
+    )
   return (
     <NavLink
       to="/app/notificaciones"

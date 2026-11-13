@@ -24,7 +24,7 @@ const USUARIOS = {
   sucursal: { email: 'facturacion@svaauto.com.ar', nombre: 'Facturación Rocamora', rol: 'sucursal', sucursal: 'Rocamora' },
   gerencia: { email: 'gerencia@svaauto.com.ar', nombre: 'Gerencia', rol: 'gerencia', sucursal: null },
 }
-const ESPERADO = { auditoria: 'Avisos', sucursal: 'Mis facturas', gerencia: 'Resumen' }
+const ESPERADO = { auditoria: 'Inicio', sucursal: 'Mis facturas', gerencia: 'Resumen' }
 
 const navegador = await chromium.launch()
 let fallas = 0
@@ -115,7 +115,7 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
   )
   await pagina.goto(url, { waitUntil: 'load' })
   try {
-    await pagina.getByRole('heading', { name: /Avisos/ }).first().waitFor({ timeout: 15000 })
+    await pagina.getByRole('heading', { name: /Inicio/ }).first().waitFor({ timeout: 15000 })
     await pagina.evaluate(() => { location.hash = '#/app/control-diario?estado=En%20revisi%C3%B3n' })
     await pagina.locator('tbody tr').first().click()
     await pagina.getByRole('button', { name: /Aprobar todo/ }).click()
@@ -131,7 +131,7 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
       document.dispatchEvent(new Event('visibilitychange'))
     }, datos.comprobantes.find((c) => c.sucursal === 'Rocamora'))
     await pagina.waitForFunction((n) => {
-      const b = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Notificaciones'))
+      const b = [...document.querySelectorAll('a')].find((x) => (x.getAttribute('aria-label') || x.textContent).includes('Notificaciones'))
       return Number(b.textContent.replace(/\D/g, '') || 0) > n
     }, antes, { timeout: 5000 })
     console.log(`ok   cobranzas: sin recargar, llega la notificación de un cambio de la sucursal (${antes} → ${await contar()})`)

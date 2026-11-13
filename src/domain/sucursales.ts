@@ -45,7 +45,7 @@ export function avisoA(nivel: NivelEscaneo, sucursal: Sucursal | undefined): str
 }
 
 export function compromisoVencido(c: Comprobante, fechaCorte: string): boolean {
-  return c.compromiso !== null && c.compromiso.fecha < fechaCorte && esperaALaSucursal(c, fechaCorte)
+  return !!c.compromiso && c.compromiso.fecha < fechaCorte && esperaALaSucursal(c, fechaCorte)
 }
 
 export interface ResumenSucursal {

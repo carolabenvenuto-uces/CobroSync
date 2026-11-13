@@ -44,8 +44,35 @@ function llamar<T>(funcion: string, ...args: unknown[]): Promise<T> {
   })
 }
 
-export function cargarDesdeGoogle(): Promise<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }> {
-  return llamar('obtenerDatos')
+/**
+ * Completa lo que puede llegar vacío desde Google: al pasar los datos a la página, Google puede
+ * omitir los campos sin valor, y el resto del código espera null o una lista vacía.
+ */
+export function completarComprobante(c: Comprobante): Comprobante {
+  return {
+    ...c,
+    siniestro: c.siniestro ?? '',
+    patente: c.patente ?? '',
+    observaciones: c.observaciones ?? '',
+    fechaDrive: c.fechaDrive ?? null,
+    subidoPor: c.subidoPor ?? null,
+    fechaPresentacion: c.fechaPresentacion ?? null,
+    vencimiento: c.vencimiento ?? null,
+    fechaCobro: c.fechaCobro ?? null,
+    ncReferencia: c.ncReferencia ?? null,
+    ncInformada: c.ncInformada ?? null,
+    compromiso: c.compromiso ?? null,
+    anulacionInformada: c.anulacionInformada ?? null,
+    reclamos: Array.isArray(c.reclamos) ? c.reclamos.filter(Boolean) : [],
+    documentos: Array.isArray(c.documentos) ? c.documentos.filter(Boolean) : [],
+    eventos: Array.isArray(c.eventos) ? c.eventos.filter(Boolean) : [],
+    pedidos: Array.isArray(c.pedidos) ? c.pedidos.filter(Boolean) : c.pedidos,
+  }
+}
+
+export async function cargarDesdeGoogle(): Promise<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }> {
+  const r = await llamar<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }>('obtenerDatos')
+  return { ...r, datos: { ...r.datos, comprobantes: (r.datos.comprobantes ?? []).map(completarComprobante) } }
 }
 
 /**
@@ -70,8 +97,9 @@ export function aplicarCambiosEnGoogle(
 }
 
 /** Lo que cambiaron los demás desde la última consulta. */
-export function obtenerCambiosDeGoogle(desde: string): Promise<{ comprobantes: Comprobante[]; ahora: string }> {
-  return llamar('obtenerCambios', desde)
+export async function obtenerCambiosDeGoogle(desde: string): Promise<{ comprobantes: Comprobante[]; ahora: string }> {
+  const r = await llamar<{ comprobantes: Comprobante[]; ahora: string }>('obtenerCambios', desde)
+  return { ...r, comprobantes: (r.comprobantes ?? []).map(completarComprobante) }
 }
 
 export function marcarLeidasEnGoogle(ids: string[]): Promise<boolean> {

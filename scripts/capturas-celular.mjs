@@ -14,15 +14,16 @@ for (const [rol, sucursal, rutas] of casos) {
   const p = await ctx.newPage()
   await p.goto(base + '/', { waitUntil: 'load' })
   await p.evaluate(({ rol, sucursal }) => sessionStorage.setItem('cobrosync-sesion-demo', JSON.stringify({ rol, sucursal: sucursal === 'TODAS' ? 'Todas' : sucursal })), { rol, sucursal })
+  await p.reload({ waitUntil: 'load' })
   for (const r of rutas) {
-    await p.goto(base + r, { waitUntil: 'load' })
+    await p.evaluate((h) => { location.hash = h }, r)
     await p.waitForTimeout(2500)
     const n = `${rol}${r.replace(/\//g, '_')}`
     await p.screenshot({ path: `capturas-celular/${n}.png`, fullPage: false })
     await p.screenshot({ path: `capturas-celular/${n}_abajo.png`, fullPage: true }).catch(() => {})
   }
   // menú abierto
-  await p.goto(base + '/app', { waitUntil: 'load' })
+  await p.evaluate(() => { location.hash = '/app' })
   await p.waitForTimeout(1500)
   await p.getByRole('button', { name: 'Abrir menú' }).click().catch(() => {})
   await p.waitForTimeout(800)

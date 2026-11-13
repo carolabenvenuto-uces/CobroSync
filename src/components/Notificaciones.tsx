@@ -12,7 +12,7 @@ import { EncabezadoPagina } from './ui/Card'
 
 /**
  * Acceso a la bandeja desde el menú, con la cantidad sin leer. A la sucursal le avisa lo que hizo
- * Auditoría (observaciones, mensajes, rechazos); a Auditoría, lo que hicieron las sucursales; a
+ * Cobranzas (observaciones, mensajes, rechazos); a Cobranzas, lo que hicieron las sucursales; a
  * Gerencia, solo los escalamientos.
  */
 export function Campana({ onCerrar }: { onCerrar?: () => void }) {
@@ -61,7 +61,7 @@ export default function BandejaNotificaciones() {
   const marcas = useMarcadores(cuenta?.email ?? `${rol}-${usuario}`)
   const navigate = useNavigate()
   // Sucursal: todas, rechazos o documentación faltante (lo no leído ya se distingue en negrita).
-  // Auditoría y Gerencia: todas o sin leer.
+  // Cobranzas y Gerencia: todas o sin leer.
   const [ver, setVer] = useState<'todas' | 'sin_leer' | 'rechazos' | 'documentacion' | 'destacadas'>('todas')
   const [buscar, setBuscar] = useState('')
   const [elegida, setElegida] = useState<string | null>(null)
@@ -98,8 +98,8 @@ export default function BandejaNotificaciones() {
   const actual = misNotificaciones.find((n) => n.id === elegida) ?? null
 
   const remitente = (n: Notificacion) => {
-    if (rol === 'sucursal') return 'Auditoría'
-    if (rol === 'gerencia') return n.sucursal ? `Auditoría · ${n.sucursal}` : 'Auditoría'
+    if (rol === 'sucursal') return 'Cobranzas'
+    if (rol === 'gerencia') return n.sucursal ? `Cobranzas · ${n.sucursal}` : 'Cobranzas'
     return n.sucursal ?? porId.get(n.comprobanteId)?.sucursal ?? 'Sucursal'
   }
 
@@ -223,7 +223,7 @@ export default function BandejaNotificaciones() {
         titulo="Notificaciones"
         subtitulo={
           rol === 'sucursal'
-            ? 'Respuestas y pedidos de Auditoría. Cada mensaje se abre con su factura.'
+            ? 'Respuestas y pedidos de Cobranzas. Cada mensaje se abre con su factura.'
             : rol === 'gerencia'
               ? 'Escalamientos: documentación crítica y reclamos sin respuesta'
               : 'Lo que hicieron las sucursales: subidas, respuestas, fechas estimadas y notas de crédito'

@@ -16,7 +16,7 @@ const MOTIVOS_NC = [
 
 /**
  * La sucursal avisa que una factura se anula con una nota de crédito.
- * Hoy Auditoría se entera tarde (o nunca); acá queda registrado y avisado.
+ * Hoy Cobranzas se entera tarde (o nunca); acá queda registrado y avisado.
  */
 export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
   const { datos, hoy, actualizarComprobante, registrarEvento } = useApp()
@@ -70,7 +70,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
 
         {listo ? (
           <div className="mt-4 space-y-4 text-sm">
-            <p>Listo: Auditoría ya lo ve. {parcial ? 'La factura sigue vigente por el saldo.' : 'La factura deja de figurar como pendiente de documentación.'} Cuando la nota de crédito llegue con el ERP, queda vinculada a esta factura.</p>
+            <p>Listo: Cobranzas ya lo ve. {parcial ? 'La factura sigue vigente por el saldo.' : 'La factura deja de figurar como pendiente de documentación.'} Cuando la nota de crédito llegue con el ERP, queda vinculada a esta factura.</p>
             <button type="button" onClick={onCerrar} className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white">
               Cerrar
             </button>
@@ -144,7 +144,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
               disabled={!facturaId || !motivo || !parcialValido}
               className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white hover:bg-marca-oscuro disabled:bg-slate-200"
             >
-              Informar a auditoría
+              Informar a cobranzas
             </button>
           </div>
         )}

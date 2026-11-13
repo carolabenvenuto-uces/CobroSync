@@ -7,7 +7,7 @@
  * solo para MiPyME.
  *
  * La compañía tiene pocos días para aceptar o rechazar una factura MiPyME: por eso su documentación
- * tiene un plazo más corto. Los números se cambian en Ajustes (Auditoría) y se guardan en la
+ * tiene un plazo más corto. Los números se cambian en Ajustes (Cobranzas) y se guardan en la
  * pestaña Config de Google.
  */
 import type { Aseguradora, Comprobante } from './tipos'
@@ -97,7 +97,7 @@ export function textoCritica(p: Plazos = actuales): string {
   return `más de ${p.criticaComun} días (MiPyME: ${p.criticaMipyme})`
 }
 
-/** Lo que se cambia en la pantalla Ajustes (Auditoría). */
+/** Lo que se cambia en la pantalla Ajustes (Cobranzas). */
 export interface Ajustes {
   plazos: Plazos
   /** ids de las compañías que NO reciben factura de crédito MiPyME */

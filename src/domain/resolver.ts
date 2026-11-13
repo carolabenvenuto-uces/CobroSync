@@ -1,6 +1,6 @@
 /**
  * "Para resolver" de la sucursal: lo que necesita su atención primero.
- *  - documentos observados por Auditoría (hay que reemplazarlos)
+ *  - documentos observados por Cobranzas (hay que reemplazarlos)
  *  - facturas que pasaron el plazo (salvo que la sucursal avisó una fecha que todavía no llegó)
  *  - facturas a las que les vence el plazo en 2 días o menos
  * Las MiPyME van arriba de todo. Se separa en dos temas: rechazos (algo observado) y documentación.
@@ -15,7 +15,7 @@ export interface ParaResolver {
   /** más alto = más urgente (sin contar si es MiPyME) */
   orden: number
   motivo: string
-  /** rechazo: un documento observado (por Auditoría o por la compañía); documentacion: falta subir */
+  /** rechazo: un documento observado (por Cobranzas o por la compañía); documentacion: falta subir */
   tema: 'rechazo' | 'documentacion'
   mipyme: boolean
 }
@@ -39,7 +39,7 @@ export function paraResolver(comprobantes: Comprobante[], hoy: string): ParaReso
         orden: 3,
         tema: 'rechazo',
         mipyme,
-        motivo: `${deLaCompania ? 'Rechazada por la compañía' : 'Observada por Auditoría'}: reemplazar ${detalle || 'un documento'}`,
+        motivo: `${deLaCompania ? 'Rechazada por la compañía' : 'Observada por Cobranzas'}: reemplazar ${detalle || 'un documento'}`,
       })
       continue
     }

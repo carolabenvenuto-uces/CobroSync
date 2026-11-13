@@ -4,8 +4,8 @@
  * Etapas, con el vocabulario de la planilla de control:
  *  Doc. pendiente → falta documentación y la sucursal está dentro de su plazo (ver plazos.ts)
  *  Doc. atrasada  → falta documentación y pasó el plazo (D. Pend. atrasada)
- *  Doc. observada → Auditoría observó un documento (ilegible, sin firma…)
- *  En revisión    → la sucursal subió todo y Auditoría tiene que tildarlo
+ *  Doc. observada → Cobranzas observó un documento (ilegible, sin firma…)
+ *  En revisión    → la sucursal subió todo y Cobranzas tiene que tildarlo
  *  Pres. pendiente→ legajo completo, falta presentarlo (P. Pend.)
  *  Al día         → presentada y todavía no venció
  *  Vencida        → presentada, vencida y sin cobrar: hay que reclamar
@@ -42,7 +42,7 @@ export const NOMBRE_ESTADO_DOCUMENTO: Record<EstadoDocumento, string> = {
   observado: 'Observado',
 }
 
-/** Motivos con los que Auditoría puede observar un documento. */
+/** Motivos con los que Cobranzas puede observar un documento. */
 export const MOTIVOS_OBSERVACION = ['Ilegible o cortado', 'Sin firma del cliente', 'No corresponde a esta factura', 'Incompleto'] as const
 
 export interface ResultadoSemaforo {
@@ -75,7 +75,7 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
     return { color: 'neutro', etapa: 'no_aplica', responsable: null, detalle: ['Factura anulada con nota de crédito'] }
   }
   if (c.estado === 'cobrada') return { color: 'verde', etapa: 'cobrado', responsable: null, detalle: ['Cobrada'] }
-  // La sucursal avisó que se anula toda la factura: ya no se le pide documentación; Auditoría confirma
+  // La sucursal avisó que se anula toda la factura: ya no se le pide documentación; Cobranzas confirma
   // (una NC parcial no frena nada: la factura sigue vigente por su saldo)
   if (c.anulacionInformada && !c.anulacionInformada.parcial) {
     return {
@@ -104,7 +104,7 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
   const paraRevisar = documentos.filter((d) => d.estado === 'en_revision')
   const dias = diffDias(c.fecha, fechaCorte)
 
-  // Un documento observado por Auditoría bloquea siempre: la sucursal tiene que reemplazarlo.
+  // Un documento observado por Cobranzas bloquea siempre: la sucursal tiene que reemplazarlo.
   if (conProblemas.length > 0) {
     return {
       color: 'rojo',
@@ -136,7 +136,7 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
     }
   }
 
-  // La sucursal subió todo: Auditoría revisa y tilda cada documento.
+  // La sucursal subió todo: Cobranzas revisa y tilda cada documento.
   if (paraRevisar.length > 0) {
     return {
       color: 'amarillo',

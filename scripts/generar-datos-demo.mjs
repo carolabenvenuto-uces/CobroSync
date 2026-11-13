@@ -125,7 +125,7 @@ const MOTIVOS_COMPROMISO = [
   'El cliente retira el auto la semana próxima',
 ]
 
-// Motivos con los que Auditoría (o la compañía) observa un documento
+// Motivos con los que Cobranzas (o la compañía) observa un documento
 const MOTIVOS_OBSERVACION = {
   orden: ['Sin firma del cliente', 'Ilegible o cortado', 'No corresponde a esta factura', 'Incompleto'],
   factura: ['Ilegible o cortado'],
@@ -146,7 +146,7 @@ const patente = () =>
   azar() < 0.8 ? `${letra()}${letra()}${entre(100, 999)}${letra()}${letra()}` : `${letra()}${letra()}${letra()}${entre(100, 999)}`
 // Siniestro con el formato de cada compañía (9 = dígito, A = letra) y números al azar
 const siniestroCon = (formato) => formato.replace(/9/g, () => String(entre(0, 9))).replace(/A/g, letra)
-// Lo que Auditoría tilda en cada legajo
+// Lo que Cobranzas tilda en cada legajo
 // La firma del cliente va en la orden: se suben dos documentos
 const TIPOS_DOC = ['factura', 'orden']
 const NOMBRE_DOC = { factura: 'factura', orden: 'orden firmada' }
@@ -186,7 +186,7 @@ function crearFactura(fecha) {
   if (!fechaDrive) {
     documentos = TIPOS_DOC.map((tipo) => ({ tipo, estado: 'faltante' }))
   } else {
-    // Auditoría revisa al día siguiente de la subida: lo subido ayer o hoy está "para revisar".
+    // Cobranzas revisa al día siguiente de la subida: lo subido ayer o hoy está "para revisar".
     const revisado = diffDias(fechaDrive, FECHA_CORTE) >= 1
     // Los legajos viejos ya se corrigieron casi todos; los recientes tienen más observaciones.
     const factor = edad > 90 ? 0.01 : edad > 45 ? 0.08 : edad > 21 ? 0.5 : 1
@@ -200,7 +200,7 @@ function crearFactura(fecha) {
   }
   let completo = documentos.every((d) => d.estado === 'ok')
 
-  // Si Auditoría observó algo, queda en la conversación
+  // Si Cobranzas observó algo, queda en la conversación
   const observados = documentos.filter((d) => d.estado === 'observado')
   if (fechaDrive && observados.length > 0) {
     eventos.push({
@@ -217,7 +217,7 @@ function crearFactura(fecha) {
   // 3) Algunos legajos completos fueron rechazados por la compañía y corregidos después
   let fechaPresentacion = null
   if (completo && fechaDrive) {
-    // Auditoría presenta rápido una vez que el legajo está completo (en la planilla, casi nada queda "P. Pend.")
+    // Cobranzas presenta rápido una vez que el legajo está completo (en la planilla, casi nada queda "P. Pend.")
     let p = sumarDias(fechaDrive, Math.floor(expo(0.7)))
     let rechazadoSinResolver = false
     // Más rechazos en las últimas semanas, que todavía pueden estar sin respuesta
@@ -265,7 +265,7 @@ function crearFactura(fecha) {
     if (c <= FECHA_CORTE && azar() < 0.97) fechaCobro = c
   }
 
-  // Día en que Auditoría aprobó toda la documentación (al día siguiente de la subida, o al presentar)
+  // Día en que Cobranzas aprobó toda la documentación (al día siguiente de la subida, o al presentar)
   const fechaAprobacion =
     completo && fechaDrive
       ? fechaPresentacion && fechaPresentacion < sumarDias(fechaDrive, 1)
@@ -397,7 +397,7 @@ for (const fecha of fechasDeFactura) {
       fechaCobro: null,
       estado: 'nota_credito',
       ncReferencia: factura.id,
-      // Las viejas ya las revisó auditoría; las recientes pueden estar sin informar
+      // Las viejas ya las revisó cobranzas; las recientes pueden estar sin informar
       ncInformada: informada || diffDias(fechaNc, FECHA_CORTE) > 90,
       compromiso: null,
       reclamos: [],
@@ -553,7 +553,7 @@ for (const c of comprobantes) {
       eventos: [{ fecha, autor: 'Facturación', area: 'sucursal', tipo: 'nota_credito', texto: 'Informó una nota de crédito parcial: repuesto que no se utilizó' }],
     }
     f.acreditado = importe
-    f.eventos.push({ fecha, autor: 'Auditoría', area: 'auditoria', tipo: 'nota_credito', texto: `Nota de crédito parcial por $ ${importe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` })
+    f.eventos.push({ fecha, autor: 'Cobranzas', area: 'auditoria', tipo: 'nota_credito', texto: `Nota de crédito parcial por $ ${importe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` })
     comprobantes.push(nc)
   }
   comprobantes.sort((a, b) => a.fecha.localeCompare(b.fecha))

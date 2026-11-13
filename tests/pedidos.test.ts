@@ -57,7 +57,7 @@ describe('pedidos a sucursales', () => {
     const lista = pedidosAbiertos([c], CORTE)
     expect(lista.map((p) => [p.pedido.id, p.estado])).toEqual([['a', 'esperando'], ['b', 'respondido']])
   })
-  it('una factura tomada por otra persona de Auditoría avisa quién la tiene, hasta que vence', () => {
+  it('una factura tomada por otra persona de Cobranzas avisa quién la tiene, hasta que vence', () => {
     const c = base({ atendiendo: { por: 'Melina', hasta: '2026-10-31T12:20:00Z' } })
     expect(atendidaPorOtra(c, 'Carola', new Date('2026-10-31T12:00:00Z'))).toBe('Melina')
     expect(atendidaPorOtra(c, 'Melina', new Date('2026-10-31T12:00:00Z'))).toBe(null)

@@ -49,7 +49,7 @@ const ESTILO: Record<EstadoReclamo, string> = {
  */
 export default function Reclamos() {
   const { datos, hoy, rol, usuario, abrirLegajo, actualizarComprobante, registrarEvento } = useApp()
-  // Reclamos en lote: Auditoría elige varias vencidas, arma el mail y registra el reclamo en todas
+  // Reclamos en lote: Cobranzas elige varias vencidas, arma el mail y registra el reclamo en todas
   const [elegidas, setElegidas] = useState<Set<string>>(new Set())
   const [medio, setMedio] = useState<Reclamo['medio']>('mail')
   const [nota, setNota] = useState('')
@@ -81,7 +81,7 @@ export default function Reclamos() {
   const seleccion = vencidas.filter((x) => elegidas.has(x.c.id))
   const companiasElegidas = [...new Set(seleccion.map((x) => x.c.aseguradoraId))]
 
-  // Errores que informó la compañía y que Auditoría ya corrigió: vuelven a "Volver a reclamar"
+  // Errores que informó la compañía y que Cobranzas ya corrigió: vuelven a "Volver a reclamar"
   const conError = seleccion.filter((x) => x.estado === 'con_error')
   function corregirErrores() {
     let n = 0
@@ -102,7 +102,7 @@ export default function Reclamos() {
     if (!respuesta) return
     let n = 0
     for (const x of seleccion) {
-      const r = cambiosPorRespuesta(x.c, respuesta, nota, hoy, usuario || 'Auditoría')
+      const r = cambiosPorRespuesta(x.c, respuesta, nota, hoy, usuario || 'Cobranzas')
       if (!r) continue
       actualizarComprobante(x.c.id, r.campos)
       registrarEvento(x.c.id, 'reclamo', r.evento)
@@ -141,7 +141,7 @@ export default function Reclamos() {
     const una = companiasElegidas.length === 1 ? aseguradoras.find((a) => a.id === companiasElegidas[0]) : undefined
     setMail({
       asunto: `Reclamo de pago de facturas vencidas${una ? ` · ${una.razonSocial ?? una.nombre}` : ''}`,
-      texto: `Buenos días:\n\nLes escribimos por las siguientes facturas presentadas, que ya vencieron y figuran sin pago:\n\n${partes.join('\n\n')}\n\nLes pedimos que nos informen la fecha de pago o, si hay algún inconveniente, qué documentación necesitan.\nSaludos,\nAuditoría`,
+      texto: `Buenos días:\n\nLes escribimos por las siguientes facturas presentadas, que ya vencieron y figuran sin pago:\n\n${partes.join('\n\n')}\n\nLes pedimos que nos informen la fecha de pago o, si hay algún inconveniente, qué documentación necesitan.\nSaludos,\nCobranzas`,
       para: una?.emailReclamos || una?.email || undefined,
     })
   }

@@ -180,7 +180,7 @@ export default function UsarPlanilla() {
           </li>
           <li>
             Cada hora, en la hoja <strong>Diario</strong>, se completan para las sucursales del piloto las columnas que hoy se escriben a
-            mano: <strong>Drive</strong> (el día en que Auditoría aprobó toda la documentación), <strong>Presentación</strong>,{' '}
+            mano: <strong>Drive</strong> (el día en que Cobranzas aprobó toda la documentación), <strong>Presentación</strong>,{' '}
             <strong>Cobro</strong> y la <strong>X</strong> de la columna Anula si la factura se anuló con una nota de crédito. Cada factura
             se busca por la referencia. El Estado lo sigue calculando la planilla con esas fechas.
           </li>

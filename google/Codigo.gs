@@ -6,7 +6,7 @@
  * - Guarda los datos en esta misma planilla de Google (una pestaña por tipo de dato).
  * - Guarda los PDF y fotos de cada factura en una carpeta del Drive de la empresa.
  * - Reconoce a cada persona por su cuenta de la empresa y le da su rol
- *   (pestaña "Usuarios"): Gerencia, Auditoría o Sucursal.
+ *   (pestaña "Usuarios"): Gerencia, Cobranzas o Sucursal.
  * - Manda los avisos por mail (día 8 y día 22 sin documentación) y un resumen semanal
  *   a cada gerente de sucursal.
  *
@@ -41,7 +41,7 @@ var HOJAS = {
       'acreditado', 'importeCobrado', 'percepciones', 'actualizado',
       // Columnas agregadas después (siempre al final, para no correr las que ya tienen datos)
       'fechaAprobacion', 'pedidos', 'atendiendo', 'reenviar',
-      // Monto aprobado de la orden (lo carga Auditoría, por siniestro, en la primera factura)
+      // Monto aprobado de la orden (lo carga Cobranzas, por siniestro, en la primera factura)
       'montoOrden',
     ],
   },
@@ -62,7 +62,7 @@ var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'
 var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones', 'montoOrden']; // vacío = sin dato
 // Los plazos de la documentación (común y MiPyME) están en la pestaña Config y se cambian
 // desde Ajustes en la aplicación: ver plazos_().
-var RECLAMOS_SIN_RESPUESTA = 3; // con 3 reclamos sin respuesta, Auditoría pide apoyo a Gerencia
+var RECLAMOS_SIN_RESPUESTA = 3; // con 3 reclamos sin respuesta, Cobranzas pide apoyo a Gerencia
 
 var CONFIG_INICIAL = [
   ['dominio', 'svaauto.com.ar', 'Solo entran cuentas de este dominio'],
@@ -82,7 +82,7 @@ var CONFIG_INICIAL = [
   ['textoAvisoApoyo', '', 'Notificación a Gerencia cuando una compañía no responde 3 reclamos (vacío = texto original). Se cambia en Ajustes'],
   ['textoAvisoCritica', '', 'Notificación a Gerencia por facturas críticas (vacío = texto original). Se cambia en Ajustes'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
-  ['planillaControlId', '', 'Id de la planilla de control de Auditoría: CobroSync le agrega el ERP en Quiter y completa Diario'],
+  ['planillaControlId', '', 'Id de la planilla de control de Cobranzas: CobroSync le agrega el ERP en Quiter y completa Diario'],
   ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
   ['pestanaDiario', 'Diario', 'Pestaña de la planilla de control con Drive (I), Presentación (K), Cobro (N) y Anula (P)'],
 ];
@@ -133,13 +133,13 @@ function obtenerDatos() {
 /**
  * Guarda los cambios hechos en la aplicación, uno por uno, sobre lo que hay guardado en ese momento.
  * Así, si dos personas trabajan en la misma factura a la vez, no se pisan: por ejemplo, la sucursal
- * sube la orden mientras Auditoría escribe una observación, y quedan las dos cosas.
+ * sube la orden mientras Cobranzas escribe una observación, y quedan las dos cosas.
  *
  * Cada cambio es { id, campos?, documentos?, evento?, nuevo? }:
  * - campos: datos de la factura que cambian (estado, fechas, observaciones, reclamos…)
  * - documentos: solo los documentos que cambiaron (se reemplazan por tipo: factura u orden)
  * - evento: un mensaje nuevo para la conversación (se agrega, nunca reemplaza)
- * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Auditoría.
+ * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Cobranzas.
  */
 // siniestro: lo informa la sucursal al subir la orden (antes no se conoce)
 var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro'];
@@ -165,7 +165,7 @@ function aplicarCambios(cambios) {
 }
 
 /**
- * Pedidos de Auditoría a la sucursal. Auditoría los crea y los cierra; la sucursal solo puede
+ * Pedidos de Cobranzas a la sucursal. Cobranzas los crea y los cierra; la sucursal solo puede
  * responder los que están abiertos (no borrarlos ni inventarlos). El servidor firma cada respuesta.
  */
 function combinarPedidos_(actuales, nuevos, usuario) {
@@ -189,7 +189,7 @@ function combinarPedidos_(actuales, nuevos, usuario) {
 function aplicarUno_(hoja, usuario, op, tocadas) {
       var fila = buscarFila_(hoja, op.id);
       if (op.nuevo) {
-        if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar facturas nuevas.');
+        if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar facturas nuevas.');
         if (fila) return; // ya estaba
         escribirFila_(hoja, HOJAS.comprobantes, null, op.nuevo);
         tocadas[op.id] = hoja.getLastRow();
@@ -216,14 +216,14 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
         var docs = c.documentos || [];
         op.documentos.forEach(function (d) {
           var i = docs.map(function (x) { return x.tipo; }).indexOf(d.tipo);
-          // La sucursal sube para revisar: aprobar u observar es de Auditoría. Sí puede quitar lo que
-          // subió por error mientras Auditoría no lo revisó (vuelve a "falta")
+          // La sucursal sube para revisar: aprobar u observar es de Cobranzas. Sí puede quitar lo que
+          // subió por error mientras Cobranzas no lo revisó (vuelve a "falta")
           var quita = d.estado === 'faltante' && i >= 0 && docs[i].estado === 'en_revision';
           if (usuario.rol === 'sucursal' && d.estado !== 'en_revision' && !quita && !(i >= 0 && docs[i].estado === d.estado)) return;
           // Un archivo nuevo para revisar queda firmado por quien lo sube (lo firma el servidor)
           var nuevo = d.estado === 'en_revision' && (i < 0 || docs[i].estado !== 'en_revision' || docs[i].url !== d.url || docs[i].archivo !== d.archivo);
           if (nuevo) d.subidoPor = usuario.nombre;
-          // Lo que escaneó una persona de Auditoría lo aprueba otra: así se controla dos veces
+          // Lo que escaneó una persona de Cobranzas lo aprueba otra: así se controla dos veces
           if (usuario.rol === 'auditoria' && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
             return;
           }
@@ -231,7 +231,7 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
         });
         c.documentos = docs;
         // Fecha de la documentación completa (la que va a la columna Drive de la planilla):
-        // el día en que Auditoría aprueba lo último. Si después se observa algo, se vacía.
+        // el día en que Cobranzas aprueba lo último. Si después se observa algo, se vacía.
         var aprobada = c.tipo === 'FC' && docs.length > 0 && docs.every(function (x) { return x.estado === 'ok'; });
         if (!aprobada) c.fechaAprobacion = null;
         else if (!c.fechaAprobacion) c.fechaAprobacion = hoy_();
@@ -282,10 +282,10 @@ function leidasDe_(email) {
   return fila ? JSON.parse(hoja.getRange(fila, 2).getValues()[0][0] || '[]') : [];
 }
 
-/** Agrega facturas nuevas (por ejemplo, desde la exportación del ERP). Solo Auditoría. */
+/** Agrega facturas nuevas (por ejemplo, desde la exportación del ERP). Solo Cobranzas. */
 function agregarComprobantes(lista) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar facturas nuevas.');
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar facturas nuevas.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     var existentes = {};
@@ -309,11 +309,11 @@ function agregarComprobantes(lista) {
  * - en las que ya están, solo se completa lo que la planilla tenga más avanzado:
  *   fecha de presentación, vencimiento y cobro. Nunca se borra ni se vuelve atrás nada,
  *   y no se tocan documentos, conversación ni reclamos.
- * Solo Auditoría.
+ * Solo Cobranzas.
  */
 function sincronizarDesdePlanilla(lista) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar la planilla.');
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar la planilla.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
     var actuales = leerHoja_(HOJAS.comprobantes);
@@ -368,7 +368,7 @@ function sincronizarDesdePlanilla(lista) {
 
 /**
  * Agrega las compañías que todavía no estén en la pestaña "Aseguradoras" (al pasar la planilla
- * de control a CobroSync). No cambia las que ya están cargadas. Solo Auditoría.
+ * de control a CobroSync). No cambia las que ya están cargadas. Solo Cobranzas.
  */
 /**
  * Compañías: alta de las nuevas y, con completarExistentes, datos de las que ya están.
@@ -377,7 +377,7 @@ function sincronizarDesdePlanilla(lista) {
  */
 function guardarAseguradoras(lista, completarExistentes, exacto) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar compañías.');
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar compañías.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.aseguradoras);
     var existentes = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
@@ -488,10 +488,10 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   return e;
 }
 
-/** Al cargar el ERP: los PDF en espera que ya se unieron a su factura. Solo Auditoría. */
+/** Al cargar el ERP: los PDF en espera que ya se unieron a su factura. Solo Cobranzas. */
 function marcarEsperaAsociada(pares) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Auditoría carga el ERP.');
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas carga el ERP.');
   return conBloqueo_(function () {
     var hoja = hojaEspera_();
     var n = 0;
@@ -505,7 +505,7 @@ function marcarEsperaAsociada(pares) {
   });
 }
 
-/** Quitar un PDF en espera (por ejemplo, un número mal tipeado). Auditoría o la misma sucursal. */
+/** Quitar un PDF en espera (por ejemplo, un número mal tipeado). Cobranzas o la misma sucursal. */
 function descartarEspera(id) {
   var usuario = usuarioActual_();
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
@@ -604,7 +604,7 @@ function resumenSemanal() {
     var atrasadas = comprobantes
       .filter(function (c) { return mismaSucursal_(c.sucursal, s.nombre) && esperaALaSucursal_(c) && !compromisoVigente_(c, hoy) && diasEntre_(c.fecha, hoy) > plazoDe_(c, p, sinFce); })
       .sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
-    // Pedidos de Auditoría sin responder (errores de factura, refacturar) y notas de crédito sin avisar
+    // Pedidos de Cobranzas sin responder (errores de factura, refacturar) y notas de crédito sin avisar
     var pedidos = [];
     comprobantes.forEach(function (c) {
       if (!mismaSucursal_(c.sucursal, s.nombre)) return;
@@ -625,10 +625,10 @@ function resumenSemanal() {
       partes.push('Estas facturas pasaron el plazo para la documentación (' + p.comun + ' días; ' + p.mipyme + ' si es MiPyME)' + (criticas ? '. ' + criticas + ' ya son críticas' : '') +
         '. Importe retenido: ' + pesos(importe) + '. Se solicita revisar con el equipo que se suban esta semana:\n\n- ' + lineas.join('\n- '));
     }
-    if (pedidos.length) partes.push('Pedidos de Auditoría sin responder:\n\n- ' + pedidos.slice(0, 40).join('\n- '));
+    if (pedidos.length) partes.push('Pedidos de Cobranzas sin responder:\n\n- ' + pedidos.slice(0, 40).join('\n- '));
     var asunto = atrasadas.length
       ? 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + atrasadas.length + (atrasadas.length === 1 ? ' factura' : ' facturas') + ' sin documentación'
-      : 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + pedidos.length + (pedidos.length === 1 ? ' pedido' : ' pedidos') + ' de Auditoría';
+      : 'CobroSync · Resumen semanal de ' + s.nombre + ': ' + pedidos.length + (pedidos.length === 1 ? ' pedido' : ' pedidos') + ' de Cobranzas';
     enviar_(s.correoGerente, asunto, partes.join('\n\n'));
   });
 }
@@ -667,7 +667,7 @@ function pendientesParaGerencia_(comprobantes, hoy) {
   };
   var partes = [];
   if (Object.keys(sinRespuesta).length) {
-    partes.push('Auditoría solicita su apoyo: las siguientes compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
+    partes.push('Cobranzas solicita su apoyo: las siguientes compañías no respondieron 3 reclamos de facturas vencidas.\n' + lista(sinRespuesta));
   }
   if (Object.keys(criticas).length) {
     partes.push('Facturas críticas: llevan más de ' + p.criticaComun + ' días sin documentación (' + p.criticaMipyme + ' si es MiPyME). Se solicita su intervención para que cada sucursal complete la documentación esta semana.\n' + lista(criticas));
@@ -723,10 +723,10 @@ function criticaDe_(c, p, sinFce) { return esMipyme_(c, p, sinFce) ? p.criticaMi
 
 /**
  * Presentar: todos los PDF de las facturas elegidas en un solo .zip, cada uno con el número de la
- * factura en el nombre (FC E 21-11032 orden.pdf). Solo Auditoría.
+ * factura en el nombre (FC E 21-11032 orden.pdf). Solo Cobranzas.
  */
 function descargarDocumentos(ids, nombre) {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede descargar los documentos.');
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede descargar los documentos.');
   var hoja = hoja_(HOJAS.comprobantes);
   var blobs = [];
   var faltan = 0;
@@ -783,10 +783,10 @@ function reportarProblema(texto, contexto) {
   return true;
 }
 
-/** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Auditoría. */
+/** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Cobranzas. */
 function guardarAjustes(a) {
   var quien = usuarioActual_();
-  if (quien.rol !== 'auditoria') throw new Error('Solo Auditoría puede cambiar los ajustes.');
+  if (quien.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cambiar los ajustes.');
   var soporte = String(config_('correoSoporte') || '').trim().toLowerCase();
   if (soporte && quien.email !== soporte) throw new Error('Los ajustes los cambia solo la administradora.');
   return conBloqueo_(function () {
@@ -825,7 +825,7 @@ function guardarAjustes(a) {
   });
 }
 
-// ── La planilla de control de Auditoría se sigue llenando sola ─────────────────
+// ── La planilla de control de Cobranzas se sigue llenando sola ─────────────────
 
 /**
  * Mientras dure el piloto, la planilla de control sigue siendo la del sector, con su orden de
@@ -845,9 +845,9 @@ function planillaDeControl_() {
   return id ? SpreadsheetApp.openById(id) : null;
 }
 
-/** Botón de la aplicación al cargar el ERP: agrega a la pestaña Quiter las filas que no estén. Solo Auditoría. */
+/** Botón de la aplicación al cargar el ERP: agrega a la pestaña Quiter las filas que no estén. Solo Cobranzas. */
 function agregarAQuiter(filas) {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede cargar el ERP.');
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el ERP.');
   var libro = planillaDeControl_();
   if (!libro) return { configurada: false, agregadas: 0 };
   return conBloqueo_(function () {
@@ -882,7 +882,7 @@ function actualizarPlanillaDeControl() {
 }
 
 function actualizarMiPlanilla() {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Auditoría puede actualizar la planilla.');
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede actualizar la planilla.');
   if (!config_('planillaControlId')) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
   return { completadas: actualizarPlanillaDeControl(), ahora: ahora_() };
 }
@@ -997,10 +997,10 @@ function usuarioActual_() {
   var dominio = String(config_('dominio') || '').toLowerCase();
   if (!email || (dominio && email.split('@')[1] !== dominio)) throw new Error('Hay que ingresar con la cuenta de la empresa.');
   var u = leerHoja_(HOJAS.usuarios).filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
-  if (!u) throw new Error('La cuenta ' + email + ' no tiene acceso. Auditoría puede habilitarla.');
-  var rol = String(u.rol).toLowerCase().indexOf('geren') === 0 ? 'gerencia' : String(u.rol).toLowerCase().indexOf('audit') === 0 ? 'auditoria' : 'sucursal';
+  if (!u) throw new Error('La cuenta ' + email + ' no tiene acceso. Cobranzas puede habilitarla.');
+  var rol = String(u.rol).toLowerCase().indexOf('geren') === 0 ? 'gerencia' : /^(audit|cobran)/.test(String(u.rol).toLowerCase()) ? 'auditoria' : 'sucursal';
   if (rol === 'sucursal' && !u.sucursal) throw new Error('El usuario no tiene una sucursal asignada.');
-  // Auditoría con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
+  // Cobranzas con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
   return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null, sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null };
 }
 
@@ -1126,7 +1126,7 @@ function enviar_(para, asunto, cuerpo) {
   MailApp.sendEmail({
     to: para,
     subject: asunto,
-    body: cuerpo + (url ? '\n\nVer en CobroSync: ' + url : '') + '\n\n— Mensaje automático de CobroSync (Auditoría)',
-    name: 'CobroSync · Auditoría',
+    body: cuerpo + (url ? '\n\nVer en CobroSync: ' + url : '') + '\n\n— Mensaje automático de CobroSync (Cobranzas)',
+    name: 'CobroSync · Cobranzas',
   });
 }

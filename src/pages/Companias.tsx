@@ -259,7 +259,7 @@ export default function Companias() {
   )
 }
 
-/** Ficha de una compañía: todos sus datos, y lo que Auditoría cambia seguido (canal, plataforma, mails, tolerancia). */
+/** Ficha de una compañía: todos sus datos, y lo que Cobranzas cambia seguido (canal, plataforma, mails, tolerancia). */
 function FichaCompania({
   a,
   facturas,

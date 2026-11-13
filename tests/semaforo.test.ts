@@ -46,7 +46,7 @@ function factura(cambios: Partial<Comprobante> = {}): Comprobante {
 const sinOrden: Documento[] = completos.map((d) => (d.tipo === 'orden' ? { ...d, estado: 'faltante' } : d))
 
 describe('calcularSemaforo', () => {
-  it('un legajo completo sin presentar le toca a auditoría y se puede presentar', () => {
+  it('un legajo completo sin presentar le toca a cobranzas y se puede presentar', () => {
     const c = factura()
     const r = calcularSemaforo(c, CORTE)
     expect(r.etapa).toBe('pres_pendiente')
@@ -86,7 +86,7 @@ describe('calcularSemaforo', () => {
     configurarPlazos(PLAZOS_INICIALES, [])
   })
 
-  it('un documento observado por Auditoría bloquea aunque esté dentro del plazo', () => {
+  it('un documento observado por Cobranzas bloquea aunque esté dentro del plazo', () => {
     const c = factura({
       fecha: '2026-10-30',
       documentos: completos.map((d) => (d.tipo === 'orden' ? { ...d, estado: 'observado', motivo: 'Sin firma del cliente' } : d)),
@@ -97,7 +97,7 @@ describe('calcularSemaforo', () => {
     expect(puedePresentarse(c, CORTE)).toBe(false)
   })
 
-  it('subido y sin revisar: le toca a Auditoría tildarlo', () => {
+  it('subido y sin revisar: le toca a Cobranzas tildarlo', () => {
     const c = factura({ documentos: completos.map((d) => ({ ...d, estado: 'en_revision' })) })
     const r = calcularSemaforo(c, CORTE)
     expect(r.etapa).toBe('en_revision')

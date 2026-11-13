@@ -15,7 +15,7 @@ export interface UsuarioGoogle {
   nombre: string
   rol: Rol
   sucursal: string | null
-  /** Auditoría que además escanea la documentación de una sucursal (la suya) */
+  /** Cobranzas que además escanea la documentación de una sucursal (la suya) */
   sucursalPropia?: string | null
 }
 
@@ -59,7 +59,7 @@ export interface Cambio {
   documentos?: Documento[]
   /** mensaje nuevo para la conversación (lo firma el servidor) */
   evento?: Pick<Evento, 'tipo' | 'texto'>
-  /** factura nueva completa (solo Auditoría) */
+  /** factura nueva completa (solo Cobranzas) */
   nuevo?: Comprobante
 }
 
@@ -91,7 +91,7 @@ export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; aho
   return llamar('actualizarMiPlanilla')
 }
 
-/** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Auditoría. */
+/** Guarda los ajustes en la pestaña Config (plazos y avisos) y en Aseguradoras (recibe FCE). Solo Cobranzas. */
 /** Los documentos de varias facturas en un .zip (para presentarlas a la compañía). */
 export function descargarDocumentosDeGoogle(ids: string[], nombre: string): Promise<{ nombre: string; base64: string; cantidad: number; faltan: number }> {
   return llamar('descargarDocumentos', ids, nombre)

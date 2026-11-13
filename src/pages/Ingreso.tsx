@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import logoSvaClaro from '../assets/grupo-sva-claro.png'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Building2, ChevronRight, ClipboardCheck, LineChart } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -10,7 +11,7 @@ import { conectadoAGoogle } from '../services/google'
 
 const PERFILES: { rol: Rol; titulo: string; cuenta: string; detalle: string; icono: typeof LineChart }[] = [
   { rol: 'gerencia', titulo: 'Gerencia', cuenta: 'gerencia.general@svaauto.com.ar', detalle: 'Resumen, control por sucursal, saldos e impacto. Solo consulta.', icono: LineChart },
-  { rol: 'auditoria', titulo: 'Auditoría', cuenta: 'auditoria@svaauto.com.ar', detalle: 'Avisos, revisión de documentos, presentación y reclamos.', icono: ClipboardCheck },
+  { rol: 'auditoria', titulo: 'Cobranzas', cuenta: 'auditoria@svaauto.com.ar', detalle: 'Avisos, revisión de documentos, presentación y reclamos.', icono: ClipboardCheck },
   { rol: 'sucursal', titulo: 'Sucursal', cuenta: 'facturacion.sucursal@svaauto.com.ar', detalle: 'Carga de documentación de las facturas de la sucursal.', icono: Building2 },
 ]
 
@@ -92,7 +93,7 @@ export default function Ingreso() {
           </ul>
 
         </div>
-        <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="mx-auto mt-8 h-12 w-auto opacity-90" />
+        <img src={logoSvaClaro} alt="Grupo SVA" className="mx-auto mt-8 h-12 w-auto opacity-90" />
         <p className="mt-4 text-center text-xs text-slate-400">
           <Link to="/manual" className="font-semibold text-slate-200 hover:underline">
             Manual de uso

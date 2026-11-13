@@ -8,9 +8,9 @@ import { formatoFecha } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
 
 /**
- * Pedidos de Auditoría a la sucursal, dentro del legajo de la factura.
- * - Auditoría: pide algo (error en la factura, refacturar, otro) y lo cierra cuando está resuelto.
- * - Sucursal: ve lo que le pidieron y responde (con eso le llega a Auditoría).
+ * Pedidos de Cobranzas a la sucursal, dentro del legajo de la factura.
+ * - Cobranzas: pide algo (error en la factura, refacturar, otro) y lo cierra cuando está resuelto.
+ * - Sucursal: ve lo que le pidieron y responde (con eso le llega a Cobranzas).
  * Una nota de crédito que entró sin aviso pide, sola, que la sucursal confirme el motivo.
  */
 export function PedidosLegajo({ c }: { c: Comprobante }) {
@@ -30,8 +30,8 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
   function pedir() {
     if (!tipo) return
     if (!detalle.trim()) return
-    guardar([...pedidos, { id: idPedido(hoy), fecha: hoy, tipo, detalle: detalle.trim(), autor: usuario || 'Auditoría' }])
-    registrarEvento(c.id, 'mensaje', `Pedido de Auditoría (${NOMBRE_PEDIDO[tipo].toLowerCase()}): ${detalle.trim()}`)
+    guardar([...pedidos, { id: idPedido(hoy), fecha: hoy, tipo, detalle: detalle.trim(), autor: usuario || 'Cobranzas' }])
+    registrarEvento(c.id, 'mensaje', `Pedido de Cobranzas (${NOMBRE_PEDIDO[tipo].toLowerCase()}): ${detalle.trim()}`)
     setDetalle('')
     setNuevo(false)
   }
@@ -43,7 +43,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
     setRespuestas({ ...respuestas, [p.id]: '' })
   }
   function cerrar(p: Pedido) {
-    guardar(pedidos.map((x) => (x.id === p.id ? { ...x, cerrado: { fecha: hoy, autor: usuario || 'Auditoría' } } : x)))
+    guardar(pedidos.map((x) => (x.id === p.id ? { ...x, cerrado: { fecha: hoy, autor: usuario || 'Cobranzas' } } : x)))
     registrarEvento(c.id, 'mensaje', `Pedido resuelto: ${NOMBRE_PEDIDO[p.tipo].toLowerCase()}`)
   }
   // La sucursal confirma el motivo de una NC que entró sin aviso
@@ -57,7 +57,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
   return (
     <section className="rounded-lg border border-sem-rojo/40 bg-red-50/40 p-3">
       <h3 className="mb-2 flex items-center gap-2 font-bold">
-        <ClipboardList className="h-4 w-4 text-red-800" /> Pedidos de Auditoría
+        <ClipboardList className="h-4 w-4 text-red-800" /> Pedidos de Cobranzas
         {abiertos.length + (sinAviso ? 1 : 0) > 0 && <span className="rounded bg-sem-rojo px-1.5 text-xs font-bold text-white">{abiertos.length + (sinAviso ? 1 : 0)}</span>}
       </h3>
 

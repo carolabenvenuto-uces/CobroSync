@@ -106,7 +106,7 @@ export default function Presentar() {
       texto: `Buenos días:\n\nSe envían para su liquidación las siguientes facturas, con la orden de reparación o repuestos firmada por el cliente:\n\n${listaParaMail(
         lista.map((c) => ({ numero: formatoComprobante(c), siniestro: c.siniestro, total: c.total, extra: c.reenviar ? 'reenvío de documentación' : undefined })),
         formatoPesos,
-      )}\n\nQuedamos a disposición por cualquier consulta.\nSaludos,\nAuditoría`,
+      )}\n\nQuedamos a disposición por cualquier consulta.\nSaludos,\nCobranzas`,
       para: a?.email || undefined,
     })
   }

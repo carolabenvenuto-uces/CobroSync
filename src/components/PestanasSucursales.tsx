@@ -3,7 +3,7 @@ import { useApp, useComprobantes } from '../context/AppContext'
 import { esperaALaSucursal } from '../domain/sucursales'
 import { pedidosAbiertos } from '../domain/pedidos'
 
-/** Lo que Auditoría espera de las sucursales, en dos pantallas: la documentación y los pedidos. */
+/** Lo que Cobranzas espera de las sucursales, en dos pantallas: la documentación y los pedidos. */
 export function PestanasSucursales() {
   const { rol, hoy } = useApp()
   const comprobantes = useComprobantes()

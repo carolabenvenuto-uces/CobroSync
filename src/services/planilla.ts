@@ -152,7 +152,7 @@ function leerReclamos(f: string[]): Reclamo[] {
   const reclamada = cantidad > 0 || ultimo !== null || ['x', '✓', '✔', 'si', 'sí', 'true', 'verdadero'].includes(marca)
   if (!reclamada) return []
   const fecha = ultimo ?? ''
-  return Array.from({ length: Math.max(1, cantidad) }, (): Reclamo => ({ fecha, medio: 'mail', autor: 'Auditoría', nota: 'Registrado en la planilla' }))
+  return Array.from({ length: Math.max(1, cantidad) }, (): Reclamo => ({ fecha, medio: 'mail', autor: 'Cobranzas', nota: 'Registrado en la planilla' }))
 }
 
 export function importarPlanilla(texto: string, hoy: string): ResultadoImportacion {

@@ -27,7 +27,7 @@ type EstadoSiniestro = 'documentacion' | 'refacturar' | 'revision' | 'presentado
 const ESTADO_SINIESTRO: Record<EstadoSiniestro, { texto: string; punto: string; chip: string }> = {
   documentacion: { texto: 'Falta documentación', punto: 'bg-sem-amarillo', chip: 'bg-amber-50 text-amber-900 border-amber-200' },
   refacturar: { texto: 'Pendiente de facturar', punto: 'bg-orange-500', chip: 'bg-orange-50 text-orange-900 border-orange-200' },
-  revision: { texto: 'En Auditoría', punto: 'bg-marca', chip: 'bg-marca/10 text-indigo-900 border-marca/20' },
+  revision: { texto: 'En Cobranzas', punto: 'bg-marca', chip: 'bg-marca/10 text-indigo-900 border-marca/20' },
   presentado: { texto: 'Presentado', punto: 'bg-etapa-compania', chip: 'bg-blue-50 text-blue-900 border-blue-200' },
   vencido: { texto: 'Vencido', punto: 'bg-red-800', chip: 'bg-red-50 text-red-900 border-red-200' },
   cobrado: { texto: 'Cobrado', punto: 'bg-sem-verde', chip: 'bg-teal-50 text-teal-900 border-teal-200' },
@@ -37,7 +37,7 @@ const ORDEN_ESTADOS: EstadoSiniestro[] = ['documentacion', 'refacturar', 'revisi
 
 interface Grupo {
   estado: EstadoSiniestro
-  /** monto aprobado de la orden (lo carga Auditoría) y lo que falta facturar contra él */
+  /** monto aprobado de la orden (lo carga Cobranzas) y lo que falta facturar contra él */
   montoOrden: number | null
   neto: number
   clave: string
@@ -128,8 +128,8 @@ export default function Siniestros() {
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
             f.anulacionInformada.parcial
-              ? `Se avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Auditoría espera que aparezca en el ERP`
-              : `Se avisó que ${numero} se anula: Auditoría espera la nota de crédito del ERP`,
+              ? `Se avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Cobranzas espera que aparezca en el ERP`
+              : `Se avisó que ${numero} se anula: Cobranzas espera la nota de crédito del ERP`,
           )
         }
       }
@@ -317,7 +317,7 @@ export default function Siniestros() {
     <>
       <EncabezadoPagina
         titulo={rol === 'sucursal' ? `Mis siniestros · ${sucursal}` : 'Siniestros'}
-        subtitulo={rol === 'sucursal' ? 'Cada siniestro con todas sus facturas, sus documentos y sus notas de crédito' : 'Cada siniestro con sus facturas, documentos y notas de crédito. Auditoría carga el monto de la orden para ver cuánto falta facturar.'}
+        subtitulo={rol === 'sucursal' ? 'Cada siniestro con todas sus facturas, sus documentos y sus notas de crédito' : 'Cada siniestro con sus facturas, documentos y notas de crédito. Cobranzas carga el monto de la orden para ver cuánto falta facturar.'}
         sucursal={rol !== 'sucursal'}
       />
 
@@ -432,7 +432,7 @@ export default function Siniestros() {
   )
 }
 
-/** Monto aprobado de la orden y lo que falta facturar contra él. Auditoría lo carga; la sucursal lo ve. */
+/** Monto aprobado de la orden y lo que falta facturar contra él. Cobranzas lo carga; la sucursal lo ve. */
 function MontoOrden({ g, pendiente }: { g: Grupo; pendiente: number | null }) {
   const { rol, actualizarComprobante, registrarEvento } = useApp()
   const [editando, setEditando] = useState(false)

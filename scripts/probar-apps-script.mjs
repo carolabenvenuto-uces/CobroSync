@@ -50,7 +50,7 @@ function crearHoja(nombre) {
   return hoja
 }
 const hojas = {}
-const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Auditoría
+const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Cobranzas
 const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
 const libro = {
   getSheetByName: (n) => hojas[n] ?? null,
@@ -153,7 +153,7 @@ prueba('configurarPlanilla crea todas las pestañas', () => {
   esperar(hojas.Config.getLastRow() > 1, 'Config sin valores iniciales')
 })
 
-// Completar la configuración como lo haría Auditoría
+// Completar la configuración como lo haría Cobranzas
 const cfg = hojas.Config.filas
 const setCfg = (clave, valor) => (cfg.find((f) => f[0] === clave)[1] = valor)
 setCfg('carpetaDriveId', 'carpeta-123')
@@ -161,11 +161,11 @@ setCfg('correosGerencia', 'gerencia.general@svaauto.com.ar')
 setCfg('avisosPorMail', 'SI')
 // Las facturas de prueba son de este año: que se pida todo (sin "Gestión anterior")
 setCfg('fechaInicio', '')
-fila('Usuarios', ['auditoria@svaauto.com.ar', 'Auditoría', 'Auditoría', ''])
+fila('Usuarios', ['auditoria@svaauto.com.ar', 'Cobranzas', 'Cobranzas', ''])
 fila('Usuarios', ['Rocamora@SVAAUTO.com.ar', 'Facturación Rocamora', 'Sucursal', 'rocamora '])
 fila('Usuarios', ['gerencia.general@svaauto.com.ar', 'Gerencia General', 'Gerencia', ''])
-// Auditoría que además escanea lo de su propia sucursal
-fila('Usuarios', ['escaneo@svaauto.com.ar', 'Auditora de Rocamora', 'Auditoría', 'Rocamora'])
+// Cobranzas que además escanea lo de su propia sucursal
+fila('Usuarios', ['escaneo@svaauto.com.ar', 'Cobranzas de Rocamora', 'Cobranzas', 'Rocamora'])
 fila('Sucursales', ['Rocamora', '35, 37', 'Gerente de Rocamora', 'gerente.rocamora@svaauto.com.ar'])
 fila('Sucursales', ['Warnes', '16, 14', 'Gerente de Warnes', 'gerente.warnes@svaauto.com.ar'])
 
@@ -180,7 +180,7 @@ prueba('una cuenta de la empresa que no está en Usuarios no entra', () => {
   como('otro@svaauto.com.ar')
   falla(() => gs('obtenerDatos'), 'no tiene acceso')
 })
-prueba('Auditoría pasa la planilla y se guardan las facturas', () => {
+prueba('Cobranzas pasa la planilla y se guardan las facturas', () => {
   como('auditoria@svaauto.com.ar')
   const r = gs('sincronizarDesdePlanilla', lote)
   esperar(r.nuevas === lote.length && r.actualizadas === 0, JSON.stringify(r))
@@ -222,7 +222,7 @@ prueba('la sucursal carga documentos pero no puede cambiar el importe', () => {
   esperar(leido.total === c.total, 'la sucursal pudo cambiar el importe')
   esperar(leido.documentos.every((d) => d.estado === 'en_revision'), 'no se guardaron los documentos')
 })
-prueba('Auditoría da de alta una compañía, le carga varios mails, la pausa y la reactiva', () => {
+prueba('Cobranzas da de alta una compañía, le carga varios mails, la pausa y la reactiva', () => {
   como('auditoria@svaauto.com.ar')
   gs('guardarAseguradoras', [{ id: 'seguros-del-sur', nombre: 'Seguros del Sur', email: '', canal: 'portal', plazoPagoDias: 30 }])
   gs('guardarAseguradoras', [{ id: 'seguros-del-sur', email: 'a@sur.example, b@sur.example', portalUrl: 'https://portal.sur.example' }], true, true)
@@ -246,22 +246,22 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
   esperar(!leido.documentos.some((d) => d.estado === 'ok' && c.documentos.find((o) => o.tipo === d.tipo).estado !== 'ok'), 'la sucursal aprobó documentos')
   esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
 })
-prueba('Auditoría con sucursal propia sube lo suyo, pero lo aprueba otra persona de Auditoría', () => {
+prueba('Cobranzas con sucursal propia sube lo suyo, pero lo aprueba otra persona de Cobranzas', () => {
   como('escaneo@svaauto.com.ar')
   const d = gs('obtenerDatos')
-  esperar(d.usuario.rol === 'auditoria' && d.usuario.sucursalPropia === 'Rocamora', 'no quedó como Auditoría con sucursal propia')
+  esperar(d.usuario.rol === 'auditoria' && d.usuario.sucursalPropia === 'Rocamora', 'no quedó como Cobranzas con sucursal propia')
   const c = d.datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal === 'Rocamora' && x.documentos.some((y) => y.estado === 'faltante'))
   const tipo = c.documentos.find((y) => y.estado === 'faltante').tipo
   gs('aplicarCambios', [{ id: c.id, documentos: [{ tipo, estado: 'en_revision', archivo: 'escaneo.pdf', url: 'u1' }] }])
   let doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
-  esperar(doc.estado === 'en_revision' && doc.subidoPor === 'Auditora de Rocamora', 'no quedó firmado por quien lo subió')
+  esperar(doc.estado === 'en_revision' && doc.subidoPor === 'Cobranzas de Rocamora', 'no quedó firmado por quien lo subió')
   gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
   doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
   esperar(doc.estado === 'en_revision', 'se aprobó su propio escaneo')
   como('auditoria@svaauto.com.ar')
   gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
   doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
-  esperar(doc.estado === 'ok', 'la otra persona de Auditoría no pudo aprobarlo')
+  esperar(doc.estado === 'ok', 'la otra persona de Cobranzas no pudo aprobarlo')
 })
 prueba('la sucursal puede quitar un documento subido por error, pero no uno aprobado', () => {
   como('rocamora@svaauto.com.ar')
@@ -305,7 +305,7 @@ prueba('Gerencia solo consulta', () => {
   esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length, 'Gerencia no ve todo')
   falla(() => gs('aplicarCambios', [{ id: d.datos.comprobantes[0].id, campos: { observaciones: 'x' } }]), 'solo puede consultar')
 })
-prueba('Auditoría aprueba y registra el cobro', () => {
+prueba('Cobranzas aprueba y registra el cobro', () => {
   como('auditoria@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.estado === 'presentada')
   gs('aplicarCambios', [{ id: c.id, campos: { estado: 'cobrada', fechaCobro: '2026-11-04' } }, { id: c.id, evento: { tipo: 'mensaje', texto: 'Cobro registrado' } }])
@@ -322,7 +322,7 @@ prueba('dos personas en la misma factura a la vez: no se pisan', () => {
   gs('aplicarCambios', [{ id: c.id, campos: { observaciones: 'Revisar la orden' } }, { id: c.id, evento: { tipo: 'mensaje', texto: 'Ojo con la orden' } }])
   const final = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(final.documentos.find((d) => d.tipo === 'orden').archivo === 'orden firmada.jpg', 'se perdió la orden de la sucursal')
-  esperar(final.observaciones === 'Revisar la orden', 'se perdió la observación de Auditoría')
+  esperar(final.observaciones === 'Revisar la orden', 'se perdió la observación de Cobranzas')
   const textos = final.eventos.map((e) => e.texto)
   esperar(textos.includes('Subió la orden firmada') && textos.includes('Ojo con la orden'), `conversación: ${textos.join(' | ')}`)
   const deSucursal = final.eventos.find((e) => e.texto === 'Subió la orden firmada')
@@ -337,7 +337,7 @@ prueba('notas de crédito parciales y cobro por otro importe se guardan bien', (
   let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.anulacionInformada?.parcial === true && leido.anulacionInformada.importe === 1000, 'no se guardó el aviso de la sucursal')
   esperar(leido.acreditado === null, `la sucursal pudo cambiar el saldo: ${leido.acreditado}`)
-  // Auditoría vincula la NC parcial y registra el cobro por otro importe
+  // Cobranzas vincula la NC parcial y registra el cobro por otro importe
   gs('aplicarCambios', [{ id: c.id, campos: { acreditado: 1000, anulacionInformada: null, estado: 'cobrada', fechaCobro: '2026-11-04', importeCobrado: 5000.5, percepciones: 120.25 } }])
   leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leido.acreditado === 1000 && leido.importeCobrado === 5000.5 && leido.percepciones === 120.25, JSON.stringify([leido.acreditado, leido.importeCobrado, leido.percepciones]))
@@ -359,7 +359,7 @@ prueba('cada minuto llegan solo los cambios nuevos', () => {
   while (Date.now() < espera);
   como('rocamora@svaauto.com.ar')
   const propia = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
-  gs('aplicarCambios', [{ id: propia.id, evento: { tipo: 'mensaje', texto: 'Hola Auditoría' } }])
+  gs('aplicarCambios', [{ id: propia.id, evento: { tipo: 'mensaje', texto: 'Hola Cobranzas' } }])
   como('auditoria@svaauto.com.ar')
   const cambios = gs('obtenerCambios', desde).comprobantes
   esperar(cambios.length === 1 && cambios[0].id === propia.id, `trajo ${cambios.length}`)
@@ -391,7 +391,7 @@ prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura
   esperar(ultimo && ultimo.compartido === 'DOMAIN_WITH_LINK/VIEW', 'el archivo no quedó visible para la empresa con el link')
   esperar(archivos.at(-1).startsWith(`CobroSync/Rocamora/${c.fecha.slice(0, 7)}/FC ${c.puntoVenta}-`), archivos.at(-1))
 })
-prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {
+prueba('Cobranzas carga facturas nuevas del ERP y no se duplican', () => {
   como('auditoria@svaauto.com.ar')
   const nueva = { ...lote[0], id: 'erp-999', ref: '9999999' }
   esperar(gs('agregarComprobantes', [nueva, nueva]) === 1, 'duplicó o no agregó')
@@ -400,7 +400,7 @@ prueba('Auditoría carga facturas nuevas del ERP y no se duplican', () => {
   esperar(gs('obtenerDatos').datos.comprobantes.filter((x) => x.id === 'erp-1000').length === 1, 'se duplicó al cargar desde la app')
   como('rocamora@svaauto.com.ar')
   const r = gs('aplicarCambios', [{ id: 'erp-x', nuevo: { ...otra, id: 'erp-x' } }])
-  esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('Solo Auditoría'), JSON.stringify(r.errores))
+  esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('Solo Cobranzas'), JSON.stringify(r.errores))
   como('auditoria@svaauto.com.ar')
 })
 prueba('todos los días no sale ningún mail: solo se marca en CobroSync lo atrasado y lo crítico', () => {
@@ -431,7 +431,7 @@ prueba('el lunes: un resumen por sucursal con pendientes y un solo mail a Gerenc
   const f = hojas.Comprobantes.filas[iRec]
   f[HOJAS_COLUMNAS.indexOf('estado')] = 'presentada'
   f[HOJAS_COLUMNAS.indexOf('vencimiento')] = '2026-01-01'
-  f[HOJAS_COLUMNAS.indexOf('reclamos')] = JSON.stringify([1, 2, 3].map(() => ({ fecha: '2026-02-01', medio: 'mail', autor: 'Auditoría', nota: '' })))
+  f[HOJAS_COLUMNAS.indexOf('reclamos')] = JSON.stringify([1, 2, 3].map(() => ({ fecha: '2026-02-01', medio: 'mail', autor: 'Cobranzas', nota: '' })))
   mails.length = 0
   gs('resumenSemanal')
   const deSucursal = mails.filter((m) => m.subject.includes('Resumen semanal'))
@@ -442,7 +442,7 @@ prueba('el lunes: un resumen por sucursal con pendientes y un solo mail a Gerenc
   esperar(deSucursal[0].body.includes(' días'), 'el resumen de la sucursal no lista las facturas')
   esperar(aGerencia.length === 1 && mails.length === deSucursal.length + 1, `${aGerencia.length} mails a Gerencia, ${mails.length} en total`)
   const cuerpo = aGerencia[0].body
-  esperar(cuerpo.includes('Auditoría solicita su apoyo') && cuerpo.includes('Se solicita su intervención'), cuerpo.slice(0, 300))
+  esperar(cuerpo.includes('Cobranzas solicita su apoyo') && cuerpo.includes('Se solicita su intervención'), cuerpo.slice(0, 300))
   esperar(!cuerpo.includes(' E 3'), 'el mail a Gerencia lista facturas una por una')
 })
 prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () => {
@@ -457,7 +457,7 @@ prueba('si una sucursal no tiene nada pendiente, no le llega ningún mail', () =
   esperar(!mails.some((m) => m.to === 'gerente.warnes@svaauto.com.ar'), 'le llegó un mail a una sucursal sin pendientes')
   esperar(mails.some((m) => m.to === 'gerente.rocamora@svaauto.com.ar'), 'no le llegó a la que sí tiene')
 })
-prueba('pedidos: Auditoría pide; la sucursal responde pero no puede borrar ni inventar pedidos', () => {
+prueba('pedidos: Cobranzas pide; la sucursal responde pero no puede borrar ni inventar pedidos', () => {
   como('auditoria@svaauto.com.ar')
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.sucursal === 'Rocamora' && x.tipo === 'FC')
   gs('aplicarCambios', [{ id: c.id, campos: { pedidos: [{ id: 'p1', fecha: '2026-11-04', tipo: 'error_factura', detalle: 'El importe no coincide', autor: 'cualquiera' }] } }])
@@ -480,7 +480,7 @@ prueba('descargar los documentos de varias facturas en un .zip, con el número e
   esperar(r.nombre === 'Sancor 2026-11-04.zip' && r.cantidad === 1, JSON.stringify(r))
   esperar(nombres[0] === `FC E ${c.puntoVenta}-${c.numero} factura.pdf`, nombres[0])
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('descargarDocumentos', [c.id], 'x'), 'Solo Auditoría')
+  falla(() => gs('descargarDocumentos', [c.id], 'x'), 'Solo Cobranzas')
 })
 prueba('un reporte técnico le llega solo a la desarrolladora', () => {
   como('rocamora@svaauto.com.ar')
@@ -498,13 +498,13 @@ prueba('con el correo de soporte cargado, los ajustes los cambia solo esa cuenta
   falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'solo la administradora')
   setCfg('correoSoporte', '')
 })
-prueba('Ajustes: Auditoría cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
+prueba('Ajustes: Cobranzas cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Auditoría')
+  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Cobranzas')
   como('auditoria@svaauto.com.ar')
   const antes = gs('obtenerDatos')
   esperar(antes.datos.meta.plazos.comun === 10 && antes.datos.meta.plazos.mipyme === 5, JSON.stringify(antes.datos.meta.plazos))
-  esperar(antes.datos.meta.avisos && antes.datos.meta.avisos.porMail === true, 'Auditoría no recibe la configuración de avisos')
+  esperar(antes.datos.meta.avisos && antes.datos.meta.avisos.porMail === true, 'Cobranzas no recibe la configuración de avisos')
   gs('guardarAjustes', {
     plazos: { comun: 12, mipyme: 6, criticaComun: 25, criticaMipyme: 14, montoMinimoMipyme: 6000000, puntosVentaMipyme: [50] },
     companiasSinFce: ['allianz'],
@@ -623,10 +623,10 @@ prueba('nunca se borra un dato de la planilla', () => {
   gs('actualizarPlanillaDeControl')
   esperar(esFecha(diario.filas[i + 1][13]), 'se borró un dato cargado a mano')
 })
-prueba('solo Auditoría actualiza la planilla desde la aplicación', () => {
+prueba('solo Cobranzas actualiza la planilla desde la aplicación', () => {
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('actualizarMiPlanilla'), 'Solo Auditoría')
-  falla(() => gs('agregarAQuiter', [['1']]), 'Solo Auditoría')
+  falla(() => gs('actualizarMiPlanilla'), 'Solo Cobranzas')
+  falla(() => gs('agregarAQuiter', [['1']]), 'Solo Cobranzas')
   como('auditoria@svaauto.com.ar')
   esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'no respondió')
 })
@@ -641,7 +641,7 @@ prueba('PDF de una factura de hoy: queda en espera y se marca al unirse', () => 
   como('gerencia.general@svaauto.com.ar')
   esperar(!gs('obtenerDatos').datos.enEspera.some((x) => x.id === e.id), 'Gerencia ve los PDF en espera')
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('marcarEsperaAsociada', [{ id: e.id, comprobanteId: 'x' }]), 'Solo Auditoría')
+  falla(() => gs('marcarEsperaAsociada', [{ id: e.id, comprobanteId: 'x' }]), 'Solo Cobranzas')
   como('auditoria@svaauto.com.ar')
   esperar(gs('marcarEsperaAsociada', [{ id: e.id, comprobanteId: 'x' }]) === 1, 'no lo marcó')
   esperar(!gs('obtenerDatos').datos.enEspera.some((x) => x.id === e.id), 'sigue en espera después de unirse')

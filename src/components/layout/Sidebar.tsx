@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from 'react'
+import logoSvaClaro from '../../assets/grupo-sva-claro.png'
 import { FIRMA, PRODUCTO, VERSION } from '../../lib/marca'
 import { VentanaSoporte } from '../Soporte'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -40,12 +41,12 @@ interface ItemMenu {
   contador?: 'pendientes' | 'alertas' | 'reclamos' | 'presentar' | 'resolver' | 'pedidos'
   /** solo la ve la administradora (Ajustes) */
   soloAdministradora?: boolean
-  /** solo si la persona de Auditoría tiene una sucursal propia (Mi sucursal) */
+  /** solo si la persona de Cobranzas tiene una sucursal propia (Mi sucursal) */
   soloConSucursalPropia?: boolean
 }
 
 /**
- * Cada rol tiene su propio menú: Gerencia ve resúmenes, Auditoría ve todo el detalle
+ * Cada rol tiene su propio menú: Gerencia ve resúmenes, Cobranzas ve todo el detalle
  * y la Sucursal ve solo lo que tiene que hacer.
  */
 const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
@@ -68,7 +69,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
       titulo: 'Trabajo diario',
       items: [
         { ruta: '/app/control-diario', etiqueta: 'Control diario', icono: FileText },
-        // Solo si la persona de Auditoría tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
+        // Solo si la persona de Cobranzas tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
         { ruta: '/app/mi-sucursal', etiqueta: 'Mi sucursal', icono: Store, soloConSucursalPropia: true },
         // La misma pantalla que "Mis siniestros" de la sucursal, con todas las sucursales y el monto de la orden
         { ruta: '/app/siniestros', etiqueta: 'Siniestros', icono: FolderOpen },
@@ -172,7 +173,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               {rol === 'sucursal' && ` · ${sucursal}`}
             </div>
           </div>
-          <img src={`${import.meta.env.BASE_URL}grupo-sva-claro.png`} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
+          <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </div>
 
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">

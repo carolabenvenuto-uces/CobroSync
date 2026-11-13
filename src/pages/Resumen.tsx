@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import logoSva from '../assets/grupo-sva.png'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarDays, Printer } from 'lucide-react'
@@ -121,7 +122,7 @@ export default function Resumen() {
             {sucursal === TODAS_LAS_SUCURSALES ? 'Todas las sucursales' : `Sucursal ${sucursal}`} · al {formatoFecha(hoy)}
           </div>
         </div>
-        <img src={`${import.meta.env.BASE_URL}grupo-sva.png`} alt="Grupo SVA" className="h-10 w-auto" />
+        <img src={logoSva} alt="Grupo SVA" className="h-10 w-auto" />
       </div>
       <div className="no-imprimir">
         <EncabezadoPagina

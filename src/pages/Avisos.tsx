@@ -86,7 +86,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
       ],
     },
     {
-      sector: 'Auditoría',
+      sector: 'Cobranzas',
       explicacion: 'Lo que nos toca a nosotras',
       color: 'border-marca',
       avisos: [

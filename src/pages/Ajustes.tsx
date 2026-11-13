@@ -9,7 +9,7 @@ import { armarTexto, DATOS_DE_TEXTO, TEXTOS_INICIALES, type TextosAvisos } from 
 import { formatoPesos } from '../lib/formato'
 
 /**
- * Ajustes de Auditoría: los plazos de la documentación (común y MiPyME), cómo se reconoce una
+ * Ajustes de Cobranzas: los plazos de la documentación (común y MiPyME), cómo se reconoce una
  * factura MiPyME y los avisos por mail. Con Google se guardan en la pestaña Config.
  */
 export default function Ajustes() {
@@ -74,7 +74,7 @@ export default function Ajustes() {
     <>
       <EncabezadoPagina
         titulo="Ajustes"
-        subtitulo="Plazos de la documentación, facturas MiPyME, notificaciones y mails. Solo lo ve Auditoría."
+        subtitulo="Plazos de la documentación, facturas MiPyME, notificaciones y mails. Solo lo ve Cobranzas."
         acciones={
           <button
             type="button"

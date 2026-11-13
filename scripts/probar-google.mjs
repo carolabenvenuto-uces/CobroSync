@@ -20,7 +20,7 @@ const datos = {
 const url = pathToFileURL(join(raiz, 'dist-google', 'index.html')).href
 
 const USUARIOS = {
-  auditoria: { email: 'auditoria@svaauto.com.ar', nombre: 'Auditoría', rol: 'auditoria', sucursal: null },
+  auditoria: { email: 'auditoria@svaauto.com.ar', nombre: 'Cobranzas', rol: 'auditoria', sucursal: null },
   sucursal: { email: 'facturacion@svaauto.com.ar', nombre: 'Facturación Rocamora', rol: 'sucursal', sucursal: 'Rocamora' },
   gerencia: { email: 'gerencia@svaauto.com.ar', nombre: 'Gerencia', rol: 'gerencia', sucursal: null },
 }
@@ -84,7 +84,7 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
   await pagina.close()
 }
 
-// Guardado: como Auditoría, aprobar todo en una factura en revisión
+// Guardado: como Cobranzas, aprobar todo en una factura en revisión
 {
   const pagina = await navegador.newPage()
   await pagina.addInitScript(
@@ -121,9 +121,9 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
     await pagina.getByRole('button', { name: /Aprobar todo/ }).click()
     await pagina.waitForFunction(() => window.__llamadas.includes('aplicarCambios'), null, { timeout: 5000 })
     await pagina.getByText('Cambios guardados').waitFor({ timeout: 5000 })
-    console.log('ok   auditoría: aprobar documentos se manda a guardar en Google')
+    console.log('ok   cobranzas: aprobar documentos se manda a guardar en Google')
 
-    // Otra persona (una sucursal) escribe en una factura: sin recargar, a Auditoría le llega la notificación
+    // Otra persona (una sucursal) escribe en una factura: sin recargar, a Cobranzas le llega la notificación
     const contar = async () => Number((await pagina.getByRole('link', { name: /Notificaciones/ }).innerText()).replace(/\D/g, '') || 0)
     const antes = await contar()
     await pagina.evaluate((c) => {
@@ -134,7 +134,7 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
       const b = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Notificaciones'))
       return Number(b.textContent.replace(/\D/g, '') || 0) > n
     }, antes, { timeout: 5000 })
-    console.log(`ok   auditoría: sin recargar, llega la notificación de un cambio de la sucursal (${antes} → ${await contar()})`)
+    console.log(`ok   cobranzas: sin recargar, llega la notificación de un cambio de la sucursal (${antes} → ${await contar()})`)
   } catch (e) {
     fallas++
     console.log(`FAIL guardado: ${e.message}`)

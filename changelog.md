@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.9.1] - 2026-11-13
+
+### Corregido
+- **Menú:** el logo de SVA vuelve al lado del nombre; las notificaciones vuelven a ser un renglón del menú, como antes, para todos; más aire entre el nombre y el sector, y entre el recuadro del usuario y el menú (Inicio ya no queda pegado).
+- **Menú de Cobranzas:** sin el título "De vez en cuando"; Informes y Ajustes van en la misma lista.
+
 ## [0.9.0] - 2026-11-13 (inicio de la prueba piloto)
 
 ### Agregado

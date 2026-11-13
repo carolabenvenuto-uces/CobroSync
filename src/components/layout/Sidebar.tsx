@@ -72,11 +72,6 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         { ruta: '/app/pendientes', etiqueta: 'Seguimiento', icono: Megaphone, contador: 'pendientes' },
         // Solo si la persona de Cobranzas tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
         { ruta: '/app/mi-sucursal', etiqueta: 'Mi sucursal', icono: Store, soloConSucursalPropia: true },
-      ],
-    },
-    {
-      titulo: 'De vez en cuando',
-      items: [
         { ruta: '/app/resumen', etiqueta: 'Informes', icono: BarChart3 },
         { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
       ],
@@ -135,38 +130,38 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           abierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-5">
+        <div className="flex items-center justify-between gap-2 px-5 py-5">
           <Marca oscuro />
-          <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Quién está usando la plataforma, arriba: el nombre con su lugar (dos renglones si hace falta),
-            la campanita y, debajo, el logo de SVA, para que en el celular no quede todo apretado */}
-        <div className="mx-3 mb-3 rounded-xl bg-white/5 px-3 py-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
-              {usuario.slice(0, 1)}
-            </div>
-            <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
-              <div className="line-clamp-2 leading-tight">{usuario}</div>
-              <div className="truncate text-[11px] font-normal text-slate-400">
-                {NOMBRE_ROL[rol]}
-                {rol === 'sucursal' && ` · ${sucursal}`}
-              </div>
-            </div>
-            <Campana onCerrar={onCerrar} compacta />
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <img src={logoSvaClaro} alt="Grupo SVA" className="mt-2 h-6 w-auto opacity-90" />
         </div>
 
-        <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">
+        {/* Quién está usando la plataforma, arriba, con el logo de SVA (el nombre, en hasta dos renglones) */}
+        <div className="mx-3 mb-5 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
+            {usuario.slice(0, 1)}
+          </div>
+          <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
+            <div className="line-clamp-2 leading-tight">{usuario}</div>
+            <div className="mt-1 truncate text-[11px] font-normal leading-none text-slate-400">
+              {NOMBRE_ROL[rol]}
+              {rol === 'sucursal' && ` · ${sucursal}`}
+            </div>
+          </div>
+          <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
+        </div>
+
+        <nav className="scroll-oscuro flex-1 space-y-6 overflow-y-auto px-3 py-3">
+          {/* Notificaciones como un renglón más del menú, igual para todos */}
+          <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
             const items = seccion.items.filter((it) => (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
             if (!items.length) return null
             return (
-              <div key={seccion.titulo || n} className={seccion.titulo ? '' : '-mt-4'}>
+              <div key={seccion.titulo || n}>
                 {seccion.titulo && (
                   <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {seccion.titulo}

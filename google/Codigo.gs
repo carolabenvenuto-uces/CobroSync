@@ -70,7 +70,7 @@ var CONFIG_INICIAL = [
   ['correosGerencia', '', 'Correos de Gerencia General para los avisos críticos, separados por coma'],
   ['correoSoporte', '', 'Correo de la desarrolladora: recibe los reportes de problemas técnicos que se mandan desde Soporte técnico'],
   ['nombreSoporte', '', 'Nombre de quien da soporte a la plataforma; se muestra en la ventana de Soporte técnico'],
-  ['fechaInicio', '2026-11-16', 'Desde esta fecha (de factura) CobroSync pide la documentación. Las anteriores quedan como "Gestión anterior": su documentación está en el Drive de la empresa, no se pide ni genera avisos. Se cambia en Ajustes'],
+  ['fechaInicio', '2026-11-16', 'Desde esta fecha (de factura) CobroSync pide la documentación. A las anteriores no se les pide la documentación en la plataforma (está en el Drive de la empresa) ni generan avisos a la sucursal. Se cambia en Ajustes'],
   ['avisosPorMail', 'NO', 'SI para mandar los mails de los lunes (resumen a cada sucursal y pendientes a Gerencia General)'],
   ['plazoDocumentacion', '10', 'Días que tiene la sucursal para subir la documentación de una factura común'],
   ['plazoDocumentacionMipyme', '5', 'Ídem para una factura MiPyME (factura de crédito electrónica)'],
@@ -1092,7 +1092,7 @@ function mismaSucursal_(a, b) {
 }
 
 function esperaALaSucursal_(c) {
-  // Gestión anterior a CobroSync: su documentación está en el Drive de la empresa
+  // Anterior a CobroSync: su documentación no se pide en la plataforma
   if (inicio_() && String(c.fecha) < inicio_()) return false;
   if (c.tipo !== 'FC' || c.estado === 'anulada' || c.estado === 'cobrada' || c.fechaPresentacion || (c.anulacionInformada && !c.anulacionInformada.parcial)) return false;
   var docs = c.documentos || [];

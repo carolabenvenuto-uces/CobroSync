@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Facturas anteriores al inicio, más claras:** si la planilla tiene fecha de Drive, la documentación ya está en el Drive y la factura sigue el circuito normal (por ejemplo, "Para presentar" si falta presentarla). Solo las que no tienen fecha de Drive quedan aparte, como "Anterior a CobroSync" (antes decía "Gestión anterior").
 - **Usar mi planilla:** una factura sin número de referencia ya no se duplica al volver a pasar la planilla (se reconoce por tipo, punto de venta y número).
 - **Usar mi planilla:** si se cambia de pantalla mientras se guarda, la carga sigue y el avance se ve abajo en cualquier pantalla (al tocarlo vuelve a Usar mi planilla). Si se intenta cerrar o recargar la página mientras guarda, el navegador avisa antes.
 - **Arreglo: pantalla en blanco con los datos reales.** Google puede omitir los campos vacíos al pasar los datos a la página; ahora se completan al recibirlos (sin compromiso, sin reclamos, etc.) y la pantalla ya no se rompe.

@@ -213,7 +213,9 @@ describe('inicio de CobroSync', () => {
       { tipo: 'factura', estado: 'faltante' },
       { tipo: 'orden', estado: 'faltante' },
     ]
-    expect(calcularSemaforo(factura({ fecha: '2026-10-01', documentos: sinDocs }), CORTE).etapa).toBe('anterior')
+    expect(calcularSemaforo(factura({ fecha: '2026-10-01', documentos: sinDocs, fechaDrive: null }), CORTE).etapa).toBe('anterior')
+    // Con fecha de Drive en la planilla: la documentación está en el Drive y sigue el circuito (para presentar)
+    expect(calcularSemaforo(factura({ fecha: '2026-10-01', documentos: sinDocs, fechaDrive: '2026-10-05' }), CORTE).etapa).toBe('pres_pendiente')
     expect(
       calcularSemaforo(factura({ fecha: '2026-09-01', documentos: sinDocs, fechaPresentacion: '2026-09-05', vencimiento: '2026-10-05', estado: 'presentada' }), CORTE).etapa,
     ).toBe('vencida')

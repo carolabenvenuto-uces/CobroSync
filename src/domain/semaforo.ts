@@ -88,13 +88,17 @@ export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoS
 
   // Facturas anteriores a CobroSync: no se pide documentación (está en el Drive de la empresa).
   // Si ya se presentaron, siguen por presentación y cobro como cualquier otra.
+  // Facturas anteriores al inicio de CobroSync: no se pide la documentación en la plataforma.
+  // - Si la planilla tiene fecha de Drive, la documentación ya está en el Drive de la empresa: sigue
+  //   el circuito normal desde ahí (para presentar, presentada, vencida, cobrada).
+  // - Si no tiene, queda aparte ("Anterior a CobroSync"): se sigue en la planilla, sin avisos.
   const anterior = antesDelInicio(c)
-  if (anterior && c.fechaPresentacion === null) {
+  if (anterior && c.fechaPresentacion === null && c.fechaDrive === null) {
     return {
       color: 'neutro',
       etapa: 'anterior',
       responsable: null,
-      detalle: ['Gestión anterior a CobroSync: la documentación está en el Drive de la empresa'],
+      detalle: [`Factura anterior a CobroSync sin fecha de Drive en la planilla: su documentación no se pide en la plataforma`],
     }
   }
 

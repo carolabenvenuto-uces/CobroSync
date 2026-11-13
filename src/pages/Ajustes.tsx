@@ -120,7 +120,7 @@ export default function Ajustes() {
               className={`${claseSelect} mt-1 block`}
             />
             <span className="mt-1 block font-normal text-slate-500">
-              Las facturas de antes de esta fecha quedan como "Gestión anterior": su documentación está en el Drive de la empresa, no se le
+              A las facturas de antes de esta fecha no se les pide la documentación en la plataforma (está en el Drive de la empresa), no se le
               pide a la sucursal ni genera avisos. Si ya se presentaron, se siguen la presentación, el cobro y los reclamos. Vacío: se pide
               todo.
             </span>

@@ -30,7 +30,7 @@ export interface Plazos {
   respuestaReclamo: number
   /**
    * Desde esta fecha de factura (yyyy-mm-dd) CobroSync pide la documentación. Las anteriores son
-   * "Gestión anterior": su documentación está en el Drive de la empresa. Vacía: se pide todo.
+   * documentación en el Drive de la empresa: no se pide en la plataforma. Vacía: se pide todo.
    */
   inicio?: string
 }

@@ -33,7 +33,7 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
   vencida: { punto: 'bg-red-800', fondo: 'bg-red-800/10 text-red-900', texto: 'Vencida', quien: 'Compañía' },
   cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-teal-800', texto: 'Cobrado', quien: '—' },
   no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'Anulada / NC', quien: '—' },
-  anterior: { punto: 'bg-slate-300', fondo: 'bg-slate-100 text-slate-600', texto: 'Gestión anterior', quien: '—' },
+  anterior: { punto: 'bg-slate-300', fondo: 'bg-slate-100 text-slate-600', texto: 'Anterior a CobroSync', quien: '—' },
 }
 
 /** Qué significa cada etapa, para mostrar como ayuda. */
@@ -47,7 +47,7 @@ export const AYUDA_ETAPA: Record<Etapa, string> = {
   vencida: 'Presentada, vencida y sin cobrar: hay que reclamar',
   cobrado: 'Cobrada',
   no_aplica: 'Nota de crédito o factura anulada',
-  anterior: 'Anterior a CobroSync: la documentación está en el Drive de la empresa y no se pide en la plataforma',
+  anterior: 'Factura anterior a CobroSync sin fecha de Drive en la planilla: su documentación no se pide en la plataforma y se sigue en la planilla',
 }
 
 /** Etapas abiertas, en el orden en que avanza una factura. */

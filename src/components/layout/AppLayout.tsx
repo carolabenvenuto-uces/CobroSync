@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
-import { AvisoNotificacion, Campana } from '../Notificaciones'
+import { AvisoNotificacion } from '../Notificaciones'
 import { AvisoCarga } from '../AvisoCarga'
 import { Solapas } from './Solapas'
 import { Marca } from '../Logo'
@@ -31,8 +31,6 @@ export function AppLayout() {
         {/* Barra superior solo en celulares, fija al bajar: la marca y el botón del menú siempre a mano */}
         <div className="no-imprimir sticky top-0 z-30 flex h-16 items-center justify-between bg-noche px-4 shadow-md lg:hidden">
           <Marca oscuro />
-          <div className="flex items-center gap-1">
-            <Campana compacta />
           <button
             type="button"
             onClick={() => setMenuAbierto(true)}
@@ -41,7 +39,6 @@ export function AppLayout() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          </div>
         </div>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">

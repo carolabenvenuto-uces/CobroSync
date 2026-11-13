@@ -14,7 +14,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 ## [0.9.1] - 2026-11-13
 
 ### Corregido
-- **Menú:** el logo de SVA vuelve al lado del nombre; la campanita pasa arriba, junto a la marca (y en el celular también en la barra de arriba); más aire entre el nombre y el sector, y entre el recuadro del usuario y el menú (Inicio ya no queda pegado).
+- **Menú:** el logo de SVA vuelve al lado del nombre; las notificaciones vuelven a ser un renglón del menú, como antes, para todos; más aire entre el nombre y el sector, y entre el recuadro del usuario y el menú (Inicio ya no queda pegado).
 - **Menú de Cobranzas:** sin el título "De vez en cuando"; Informes y Ajustes van en la misma lista.
 
 ## [0.9.0] - 2026-11-13 (inicio de la prueba piloto)

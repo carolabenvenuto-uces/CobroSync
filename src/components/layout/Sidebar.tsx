@@ -133,8 +133,6 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         <div className="flex items-center justify-between gap-2 px-5 py-5">
           <Marca oscuro />
           <div className="flex items-center gap-1">
-            {/* La campanita, arriba a la derecha de la marca, como en cualquier app */}
-            <Campana onCerrar={onCerrar} compacta />
             <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
               <X className="h-5 w-5" />
             </button>
@@ -157,6 +155,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </div>
 
         <nav className="scroll-oscuro flex-1 space-y-6 overflow-y-auto px-3 py-3">
+          {/* Notificaciones como un renglón más del menú, igual para todos */}
+          <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
             const items = seccion.items.filter((it) => (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
             if (!items.length) return null

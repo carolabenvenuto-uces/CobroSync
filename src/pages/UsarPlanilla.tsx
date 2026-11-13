@@ -1,9 +1,9 @@
-import { useState, type DragEvent } from 'react'
+import { useState, type DragEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, LockKeyhole, RotateCcw, Upload } from 'lucide-react'
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { useApp } from '../context/AppContext'
-import { actualizarPlanillaEnGoogle, guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle } from '../services/google'
+import { actualizarPlanillaEnGoogle, guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle, traerDeMiPlanillaEnGoogle } from '../services/google'
 import { importarPlanilla, leerArchivo, type ResultadoImportacion } from '../services/planilla'
 import { formatoFecha } from '../lib/formato'
 import { ponerEstadoCarga, useEstadoCarga } from '../lib/cargaPlanilla'
@@ -113,9 +113,16 @@ export default function UsarPlanilla() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Usar mi planilla"
-        subtitulo="Pendientes, alertas e informes con los datos reales de la planilla de control"
+        titulo={conGoogle ? 'Planilla de control' : 'Usar mi planilla'}
+        subtitulo={
+          conGoogle
+            ? 'CobroSync y tu planilla se mantienen al día entre sí mientras se usen las dos'
+            : 'Pendientes, alertas e informes con los datos reales de la planilla de control'
+        }
       />
+      {conGoogle && <ConexionPlanilla onCompletar={copiarAMiPlanilla} mensajeCompletar={copiando} />}
+
+      <ACargarAMano conGoogle={conGoogle}>
 
       {/* En la plataforma real lo que se carga se guarda en la planilla de CobroSync; solo la demo lo procesa en el navegador */}
       <div className="mb-4 flex items-start gap-3 rounded-lg border border-esmeralda/30 bg-esmeralda/5 px-4 py-3 text-sm text-teal-900">
@@ -176,35 +183,38 @@ export default function UsarPlanilla() {
         </label>
       </div>
 
+      {/* Con Google esto ya lo explica la tarjeta de arriba (Conectada a tu planilla) */}
+      {!conGoogle && (
       <Card className="mt-4">
-        <CardTitulo>Durante la prueba: la planilla se sigue llenando sola</CardTitulo>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
-          <li>
-            Al cargar el Excel del ERP en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
-            <strong>Quiter</strong> de la planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
-          </li>
-          <li>
-            Cada hora, en la hoja <strong>Diario</strong>, se completan para las sucursales del piloto las columnas que hoy se escriben a
-            mano: <strong>Drive</strong> (el día en que Cobranzas aprobó toda la documentación), <strong>Presentación</strong>,{' '}
-            <strong>Cobro</strong> y la <strong>X</strong> de la columna Anula si la factura se anuló con una nota de crédito. Cada factura
-            se busca por la referencia. El Estado lo sigue calculando la planilla con esas fechas.
-          </li>
-          <li>No se borra ningún dato, no se pisa ninguna fórmula y no se mueve ninguna fila. Las demás sucursales se completan a mano como siempre.</li>
-        </ul>
-        {conGoogle && (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void copiarAMiPlanilla()}
-              disabled={copiando === 'Actualizando…'}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-fondo disabled:opacity-60"
-            >
-              Actualizar mi planilla ahora
-            </button>
-            {copiando && <span className="text-xs text-slate-600">{copiando}</span>}
-          </div>
-        )}
-      </Card>
+          <CardTitulo>Durante la prueba: la planilla se sigue llenando sola</CardTitulo>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
+            <li>
+              Al cargar el Excel del ERP en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
+              <strong>Quiter</strong> de la planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
+            </li>
+            <li>
+              Cada hora, en la hoja <strong>Diario</strong>, se completan para las sucursales del piloto las columnas que hoy se escriben a
+              mano: <strong>Drive</strong> (el día en que Cobranzas aprobó toda la documentación), <strong>Presentación</strong>,{' '}
+              <strong>Cobro</strong> y la <strong>X</strong> de la columna Anula si la factura se anuló con una nota de crédito. Cada factura
+              se busca por la referencia. El Estado lo sigue calculando la planilla con esas fechas.
+            </li>
+            <li>No se borra ningún dato, no se pisa ninguna fórmula y no se mueve ninguna fila. Las demás sucursales se completan a mano como siempre.</li>
+          </ul>
+          {conGoogle && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void copiarAMiPlanilla()}
+                disabled={copiando === 'Actualizando…'}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-fondo disabled:opacity-60"
+              >
+                Actualizar mi planilla ahora
+              </button>
+              {copiando && <span className="text-xs text-slate-600">{copiando}</span>}
+            </div>
+          )}
+        </Card>
+      )}
 
       {error && (
         <div className="mt-4 rounded-lg border border-sem-rojo/30 bg-sem-rojo/5 px-4 py-3 text-sm text-red-800">{error}</div>
@@ -294,6 +304,79 @@ export default function UsarPlanilla() {
           </p>
         </Card>
       )}
+      </ACargarAMano>
     </>
+  )
+}
+
+/**
+ * Con Google: la planilla se lee sola cada hora (facturas nuevas, Drive, presentación, cobro) y a la
+ * planilla se le completa lo hecho en CobroSync. Acá se ve cuándo fue la última vez y se puede forzar.
+ */
+function ConexionPlanilla({ onCompletar, mensajeCompletar }: { onCompletar: () => Promise<void>; mensajeCompletar: string | null }) {
+  const { datos, usarDemo } = useApp()
+  const info = datos?.meta.planilla
+  const [trayendo, setTrayendo] = useState<string | null>(null)
+  async function traer() {
+    setTrayendo('Leyendo tu planilla…')
+    try {
+      const r = await traerDeMiPlanillaEnGoogle()
+      setTrayendo(
+        r.nuevas || r.actualizadas
+          ? `Listo: ${r.nuevas.toLocaleString('es-AR')} facturas nuevas y ${r.actualizadas.toLocaleString('es-AR')} actualizadas.`
+          : 'Listo: CobroSync ya estaba al día con tu planilla.',
+      )
+      usarDemo() // vuelve a leer los datos
+    } catch (e) {
+      setTrayendo(e instanceof Error ? e.message : String(e))
+    }
+  }
+  if (!info?.conectada)
+    return (
+      <Card className="mb-4 border-amber-200 bg-amber-50/50">
+        <CardTitulo>Tu planilla todavía no está conectada</CardTitulo>
+        <p className="text-sm text-slate-700">
+          Falta pegar el id de la planilla de control en la pestaña <strong>Config → planillaControlId</strong> de CobroSync · Datos.
+        </p>
+      </Card>
+    )
+  return (
+    <Card className="mb-4">
+      <CardTitulo>Conectada a tu planilla</CardTitulo>
+      <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+        <li>
+          <strong>Cada hora CobroSync lee tu planilla</strong> (hoja Diario): suma las facturas nuevas y actualiza Drive, presentación,
+          cobro y anulación. No toca lo que se hizo en la plataforma.
+        </li>
+        <li>
+          <strong>Y le completa lo hecho en CobroSync:</strong> Drive, Presentación, Cobro y la X de Anula, y las filas del ERP en Quiter.
+          No borra nada ni pisa fórmulas.
+        </li>
+      </ul>
+      <p className="mt-2 text-xs text-slate-500">
+        Última lectura: {info.ultimaLectura ? info.ultimaLectura.replace('T', ' ').slice(0, 16) : 'todavía no se leyó'}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={() => void traer()} disabled={trayendo === 'Leyendo tu planilla…'} className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-60">
+          <RotateCcw className="h-4 w-4" /> Traer los cambios de mi planilla ahora
+        </button>
+        <button type="button" onClick={() => void onCompletar()} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-fondo">
+          Completar mi planilla ahora
+        </button>
+      </div>
+      {trayendo && <p className="mt-2 text-sm text-slate-600">{trayendo}</p>}
+      {mensajeCompletar && <p className="mt-1 text-sm text-slate-600">{mensajeCompletar}</p>}
+    </Card>
+  )
+}
+
+/** Con Google, la carga a mano queda guardada (solo hace falta si algo falla); en la demo es la pantalla entera. */
+function ACargarAMano({ conGoogle, children }: { conGoogle: boolean; children: ReactNode }) {
+  if (!conGoogle) return <>{children}</>
+  return (
+    <details className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <summary className="cursor-pointer text-sm font-semibold text-slate-700">Cargar un Excel de la planilla a mano (solo si hace falta)</summary>
+      <div className="mt-4">{children}</div>
+    </details>
   )
 }

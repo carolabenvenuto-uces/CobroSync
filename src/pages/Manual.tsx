@@ -143,7 +143,7 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <>
         <p>
-          <Pantalla>Notificaciones</Pantalla>, arriba de todo en el menú, funciona como un correo: la bandeja a lo ancho, con lo no leído en
+          <Pantalla>Notificaciones</Pantalla>, la campanita arriba, al lado del nombre, funciona como un correo: la bandeja a lo ancho, con lo no leído en
           negrita y con un punto azul. Al abrir un mensaje se lee completo, con la factura y un botón para abrirla; "Volver a la bandeja" regresa
           a la lista.</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -406,27 +406,33 @@ const SECCIONES: Seccion[] = [
       <>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
+            <Pantalla>Inicio</Pantalla>: lo que hay que hacer hoy, separado por quién tiene que actuar. Cada aviso abre sus facturas.
+          </li>
+          <li>
             <Pantalla>Control diario</Pantalla>: la carga del Excel del ERP (las filas van solas a la pestaña Quiter de la planilla) y la
-            revisión de documentos: aprobar u observar cada uno.
+            revisión de documentos: aprobar u observar cada uno. Arriba se elige ver <strong>por factura</strong> o{' '}
+            <strong>por siniestro</strong> (todas las facturas, documentos y notas de crédito de un siniestro juntos).
           </li>
           <li>
             <Pantalla>Presentar</Pantalla>: una fila por compañía con lo aprobado y su canal (mail o plataforma). Al abrirla: elegir las
             facturas, <strong>descargar todos los documentos en un .zip</strong> (cada PDF con el número de factura en el nombre), armar el
-            mail o abrir la plataforma, y marcarlas como presentadas. Vuelven acá las que la compañía pidió reenviar.
+            mail o abrir la plataforma (los mails y enlaces de la compañía están ahí mismo), y marcarlas como presentadas. Vuelven acá las que la compañía pidió reenviar.
           </li>
           <li>
-            <Pantalla>Vencidas y reclamos</Pantalla>: los botones de arriba muestran cada estado; al marcar facturas aparece la barra para registrar
+            <Pantalla>Seguimiento</Pantalla>, solapa <strong>Compañías</strong>: las vencidas. Las tarjetas de arriba separan qué hay que
+            reclamar, corregir o pedir apoyo; al marcar facturas aparece la barra para registrar
             reclamos en lote y la respuesta de la compañía con un clic: pasa a pagos (se espera
             un mes), reenviar la documentación (vuelve a Presentar) o refacturar (pedido a la sucursal).
           </li>
           <li>
-            <Pantalla>Pendientes de sucursales</Pantalla>, pestaña <strong>Pedidos</strong>: lo que se les pidió (errores de factura, refacturaciones, notas de crédito sin
+            <Pantalla>Seguimiento</Pantalla>, solapa <strong>Sucursales</strong>: la documentación que falta. Y en <strong>Pedidos</strong>: lo que se les pidió (errores de factura, refacturaciones, notas de crédito sin
             avisar), con los días de espera. Lo respondido queda para revisar y dar por resuelto. Los pedidos sin responder también salen
             en el mail de los lunes de cada sucursal.
           </li>
           <li>
-            <Pantalla>Compañías</Pantalla>: por dónde se presenta a cada una y los días de tolerancia antes de reclamar a las que suelen
-            pagar.
+            <Pantalla>Ajustes</Pantalla>: en <strong>Compañías</strong>, los datos de cada una (cómo se presenta, mails, enlaces a la
+            plataforma, tolerancia, alta y pausa); en <strong>Planilla</strong>, la conexión con la planilla de control, que se lee sola cada
+            hora. <Pantalla>Informes</Pantalla> reúne el Resumen, el control por sucursal, los saldos y el impacto económico.
           </li>
         </ul>
         <Nota>

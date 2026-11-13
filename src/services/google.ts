@@ -115,6 +115,11 @@ export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nue
 }
 
 /** Completa ya mismo Drive, Presentación, Cobro y Estado en la hoja Diario de la planilla de control. */
+/** Lee ahora la hoja Diario de la planilla de control (lo mismo que se hace solo cada hora). */
+export function traerDeMiPlanillaEnGoogle(): Promise<{ nuevas: number; actualizadas: number; omitidas?: number }> {
+  return llamar('traerDeMiPlanilla')
+}
+
 export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; ahora: string }> {
   return llamar('actualizarMiPlanilla')
 }

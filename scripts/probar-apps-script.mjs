@@ -196,6 +196,15 @@ prueba('pasar la planilla otra vez no duplica y actualiza cobros', () => {
   const leida = gs('obtenerDatos').datos.comprobantes.find((c) => c.id === sinCobrar.id)
   esperar(leida.estado === 'cobrada' && leida.fechaCobro === '2026-11-03', 'el cobro no se guardó')
 })
+prueba('si la documentación se anotó en la planilla, al pasarla otra vez queda aprobada en CobroSync', () => {
+  como('auditoria@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal !== 'Rocamora' && x.documentos.length && x.documentos.every((d) => d.estado === 'faltante') && !x.fechaPresentacion)
+  const original = lote.find((x) => x.id === c.id)
+  const r = gs('sincronizarDesdePlanilla', [{ ...original, fechaDrive: '2026-11-10', fechaAprobacion: '2026-11-10', documentos: original.documentos.map((d) => ({ tipo: d.tipo, estado: 'ok' })) }])
+  esperar(r.actualizadas === 1, JSON.stringify(r))
+  const leida = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leida.documentos.every((d) => d.estado === 'ok') && leida.fechaAprobacion === '2026-11-10', 'no quedó aprobada')
+})
 prueba('una factura sin referencia no se duplica al pasar la planilla otra vez', () => {
   const base = lote.find((c) => c.tipo === 'FC')
   const sinRef = { ...base, ref: '', numero: 99999, id: `pl-FC-${base.puntoVenta}-99999` }

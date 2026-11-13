@@ -348,6 +348,16 @@ function sincronizarDesdePlanilla(lista) {
         c.fechaAprobacion = p.fechaAprobacion;
         cambio = true;
       }
+      // La documentación llegó al Drive de siempre y se anotó en la planilla (mientras se usan las dos):
+      // lo que faltaba en CobroSync queda aprobado, sin tocar lo que se subió o se observó en la plataforma
+      var docsPlanilla = (p.documentos || []).length > 0 && (p.documentos || []).every(function (d) { return d.estado === 'ok'; });
+      if (c.tipo === 'FC' && docsPlanilla && (c.documentos || []).some(function (d) { return d.estado === 'faltante'; })) {
+        c.documentos = (c.documentos || []).map(function (d) { return d.estado === 'faltante' ? { tipo: d.tipo, estado: 'ok' } : d; });
+        if (!c.fechaDrive && p.fechaDrive) c.fechaDrive = p.fechaDrive;
+        if (!c.fechaAprobacion && c.documentos.every(function (d) { return d.estado === 'ok'; })) c.fechaAprobacion = p.fechaAprobacion || p.fechaDrive || hoy_();
+        if (c.estado === 'pendiente_drive') c.estado = 'en_gestion';
+        cambio = true;
+      }
       if (c.estado !== 'cobrada' && p.estado === 'cobrada') {
         c.estado = 'cobrada';
         c.fechaCobro = p.fechaCobro;

@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Planilla y CobroSync a la par:** al volver a pasar la planilla, si una factura ahora tiene fecha de Drive (la documentación llegó al Drive de siempre), en CobroSync queda aprobada y sigue el circuito; también se actualizan presentación, cobro y anulación. No se pisa lo que se subió u observó en la plataforma.
 - **Facturas de antes de CobroSync, como en la planilla:** se quita la fecha de inicio y el estado "Gestión anterior". Cada factura sigue su estado real: si la planilla tiene fecha de Drive, la documentación figura aprobada y la factura sigue el circuito (para presentar, presentada, cobrada); si no la tiene, falta documentación y la sucursal la puede subir. Los documentos aprobados que vinieron de la planilla dicen "En el Drive de Cobranzas (registrado en la planilla, antes de CobroSync)".
 - **Usar mi planilla:** una factura sin número de referencia ya no se duplica al volver a pasar la planilla (se reconoce por tipo, punto de venta y número).
 - **Usar mi planilla:** si se cambia de pantalla mientras se guarda, la carga sigue y el avance se ve abajo en cualquier pantalla (al tocarlo vuelve a Usar mi planilla). Si se intenta cerrar o recargar la página mientras guarda, el navegador avisa antes.

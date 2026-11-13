@@ -519,6 +519,9 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                                   ),
                                 )}
                               </div>
+                            ) : !d.archivo && !d.url && d.estado === 'ok' ? (
+                              // Vino de la planilla: aprobado antes de CobroSync, el archivo está en el Drive de siempre
+                              <div className="text-xs text-slate-500">En el Drive de Cobranzas (registrado en la planilla, antes de CobroSync)</div>
                             ) : d.archivo &&
                             (d.url ? (
                               <a href={d.url} target="_blank" rel="noreferrer" className="block truncate text-xs text-marca hover:underline">

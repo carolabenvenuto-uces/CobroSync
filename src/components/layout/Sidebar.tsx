@@ -135,30 +135,30 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           abierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-5">
+        <div className="flex items-center justify-between gap-2 px-5 py-5">
           <Marca oscuro />
-          <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* La campanita, arriba a la derecha de la marca, como en cualquier app */}
+            <Campana onCerrar={onCerrar} compacta />
+            <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Quién está usando la plataforma, arriba: el nombre con su lugar (dos renglones si hace falta),
-            la campanita y, debajo, el logo de SVA, para que en el celular no quede todo apretado */}
-        <div className="mx-3 mb-3 rounded-xl bg-white/5 px-3 py-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
-              {usuario.slice(0, 1)}
-            </div>
-            <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
-              <div className="line-clamp-2 leading-tight">{usuario}</div>
-              <div className="truncate text-[11px] font-normal text-slate-400">
-                {NOMBRE_ROL[rol]}
-                {rol === 'sucursal' && ` · ${sucursal}`}
-              </div>
-            </div>
-            <Campana onCerrar={onCerrar} compacta />
+        {/* Quién está usando la plataforma, arriba, con el logo de SVA (el nombre, en hasta dos renglones) */}
+        <div className="mx-3 mb-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
+            {usuario.slice(0, 1)}
           </div>
-          <img src={logoSvaClaro} alt="Grupo SVA" className="mt-2 h-6 w-auto opacity-90" />
+          <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
+            <div className="line-clamp-2 leading-tight">{usuario}</div>
+            <div className="mt-1 truncate text-[11px] font-normal leading-none text-slate-400">
+              {NOMBRE_ROL[rol]}
+              {rol === 'sucursal' && ` · ${sucursal}`}
+            </div>
+          </div>
+          <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </div>
 
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">

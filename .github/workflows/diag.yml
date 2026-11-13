@@ -1,0 +1,23 @@
+name: Diagnostico temporal
+on:
+  push:
+    branches: ['diag/**']
+jobs:
+  ubicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:google
+      - name: Mostrar el codigo donde falla
+        run: |
+          python3 - dist-google/paquete/Index.html <<'PY'
+          import sys
+          l=open(sys.argv[1],encoding='utf-8').read().split('\n')
+          print('LINEAS',len(l))
+          for n,c in [(30,6907),(34,5968),(34,11758),(34,11656)]:
+              s=l[n-1]; print(f'==== {n}:{c}'); print(s[max(0,c-900):c+300])
+          PY

@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext'
 import { actualizarPlanillaEnGoogle, guardarAseguradorasEnGoogle, sincronizarPlanillaEnGoogle } from '../services/google'
 import { importarPlanilla, leerArchivo, type ResultadoImportacion } from '../services/planilla'
 import { formatoFecha } from '../lib/formato'
+import { ponerEstadoCarga, useEstadoCarga } from '../lib/cargaPlanilla'
 
 /** Fecha de hoy en la zona horaria del navegador, como "AAAA-MM-DD". */
 function hoyLocal(): string {
@@ -20,7 +21,10 @@ function hoyLocal(): string {
 export default function UsarPlanilla() {
   const { fuente, usarPlanilla, usarDemo } = useApp()
   const conGoogle = fuente.tipo === 'google'
-  const [pasando, setPasando] = useState<string | null>(null)
+  // La carga sigue aunque se cambie de pantalla (ver lib/cargaPlanilla)
+  const carga = useEstadoCarga()
+  const pasando = carga?.texto ?? null
+  const setPasando = (texto: string | null) => ponerEstadoCarga(texto === null ? null : { texto, enCurso: !texto.startsWith('Listo') })
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -76,8 +80,9 @@ export default function UsarPlanilla() {
       )
       usarDemo() // vuelve a leer los datos desde Google
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      setPasando(null)
+      const texto = e instanceof Error ? e.message : String(e)
+      setError(texto)
+      ponerEstadoCarga({ texto: `No se pudo terminar: ${texto}. Se puede volver a guardar: lo que ya pasó no se duplica.`, enCurso: false, error: true })
     }
   }
 
@@ -205,6 +210,14 @@ export default function UsarPlanilla() {
         <div className="mt-4 rounded-lg border border-sem-rojo/30 bg-sem-rojo/5 px-4 py-3 text-sm text-red-800">{error}</div>
       )}
 
+      {/* Volviendo a esta pantalla mientras sigue guardando (o al terminar): el avance */}
+      {conGoogle && !resumen && carga && (
+        <Card className="mt-4">
+          <CardTitulo>3. Pasar la planilla a CobroSync</CardTitulo>
+          <p className={`text-sm ${carga.error ? 'text-sem-rojo' : 'text-slate-700'}`}>{carga.texto}</p>
+        </Card>
+      )}
+
       {conGoogle && resumen && (
         <Card className="mt-4">
           <CardTitulo>3. Pasar la planilla a CobroSync</CardTitulo>
@@ -216,7 +229,7 @@ export default function UsarPlanilla() {
           </p>
           <button
             type="button"
-            disabled={pasando !== null && !pasando.startsWith('Listo')}
+            disabled={!!carga?.enCurso}
             onClick={() => void pasarAGoogle()}
             className="mt-3 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-60"
           >

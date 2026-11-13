@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Usar mi planilla:** si se cambia de pantalla mientras se guarda, la carga sigue y el avance se ve abajo en cualquier pantalla (al tocarlo vuelve a Usar mi planilla). Si se intenta cerrar o recargar la página mientras guarda, el navegador avisa antes.
 - **Arreglo: pantalla en blanco con los datos reales.** Google puede omitir los campos vacíos al pasar los datos a la página; ahora se completan al recibirlos (sin compromiso, sin reclamos, etc.) y la pantalla ya no se rompe.
 - **Auditoría pasa a llamarse Cobranzas** en toda la plataforma (menú, rol, mensajes, mails y manual), igual que la casilla cobranzas.seguros@. En Usuarios se puede poner "Cobranzas" o "Auditoría" como rol.
 - **Logo de Grupo SVA en la versión de Google:** no se veía porque la imagen se buscaba en una carpeta que Apps Script no tiene; ahora va incluido en el código (menú, ingreso, Resumen impreso y Excel).

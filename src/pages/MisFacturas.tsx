@@ -245,7 +245,7 @@ export default function MisFacturas() {
               estado === 'observado' && d?.motivo
                 ? `${NOMBRE_DOC[tipo]}: ${d.motivo}`
                 : enDriveAnterior
-                  ? `${NOMBRE_DOC[tipo]}: en el Drive de Cobranzas (registrado en la planilla, antes de CobroSync)`
+                  ? `${NOMBRE_DOC[tipo]}: guardado en Drive de ${x.c.sucursal} · gestión anterior`
                   : `${NOMBRE_DOC[tipo]}: ${e.texto}`
             const clase = `inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`
             // Si el documento ya está subido, se abre el PDF desde acá (sin abrir toda la factura)

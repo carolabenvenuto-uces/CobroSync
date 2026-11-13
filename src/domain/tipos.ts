@@ -80,8 +80,12 @@ export interface Aseguradora {
   plazoPagoDias: number
   /** es gran empresa y recibe factura de crédito MiPyME (si no se indica, sí) */
   recibeFce?: boolean
-  /** cómo se le presentan las facturas: por mail o en su plataforma (si no se indica, mail) */
-  canal?: 'mail' | 'portal'
+  /** cómo se le presentan las facturas: por mail, en su plataforma o por las dos (si no se indica, mail) */
+  canal?: 'mail' | 'portal' | 'ambas'
+  /** si va por las dos: siniestros que van por mail según cómo empiezan (uno o varios, separados por coma) */
+  siniestrosPorMail?: string
+  /** si va por las dos: siniestros que van por la plataforma según cómo empiezan */
+  siniestrosPorPlataforma?: string
   /** enlaces a la plataforma de la compañía (uno o varios, separados por coma) */
   portalUrl?: string
   /** días después del vencimiento antes de reclamar (compañías que suelen pagar; si no se indica, 0) */

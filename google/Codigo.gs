@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada', 'siniestrosPorMail', 'siniestrosPorPlataforma'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -396,6 +396,7 @@ function guardarAseguradoras(lista, completarExistentes, exacto) {
   if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar compañías.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.aseguradoras);
+    agregarColumnasNuevas_(hoja, HOJAS.aseguradoras);
     var existentes = indexar_(leerHoja_(HOJAS.aseguradoras), 'id');
     var nuevas = 0;
     lista.forEach(function (a) {
@@ -418,7 +419,7 @@ function guardarAseguradoras(lista, completarExistentes, exacto) {
       if (completarExistentes) {
         ['razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias'].forEach(function (k) { if (a[k]) actual[k] = a[k]; });
         // Cómo presenta y cuánta tolerancia tiene: se cambian desde la pantalla Compañías (también vacíos)
-        ['canal', 'portalUrl', 'toleranciaReclamo'].forEach(function (k) { if (k in a) actual[k] = a[k] === null || a[k] === undefined ? '' : a[k]; });
+        ['canal', 'portalUrl', 'toleranciaReclamo', 'siniestrosPorMail', 'siniestrosPorPlataforma'].forEach(function (k) { if (k in a) actual[k] = a[k] === null || a[k] === undefined ? '' : a[k]; });
         escribirFila_(hoja, HOJAS.aseguradoras, buscarFila_(hoja, a.id), actual);
       }
     });
@@ -1114,6 +1115,14 @@ function usuarioActual_() {
   if (rol === 'sucursal' && !u.sucursal) throw new Error('El usuario no tiene una sucursal asignada.');
   // Cobranzas con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
   return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null, sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null };
+}
+
+/** Si la pestaña es de una versión anterior, le agrega al final los encabezados de las columnas nuevas. */
+function agregarColumnasNuevas_(hoja, h) {
+  var ultima = hoja.getLastColumn();
+  if (ultima >= h.columnas.length) return;
+  hoja.getRange(1, ultima + 1, hoja.getMaxRows(), h.columnas.length - ultima).setNumberFormat('@');
+  hoja.getRange(1, 1, 1, h.columnas.length).setValues([h.columnas]).setFontWeight('bold');
 }
 
 function hoja_(h) {

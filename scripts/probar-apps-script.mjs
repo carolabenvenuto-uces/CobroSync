@@ -308,7 +308,7 @@ prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
 prueba('Gerencia solo consulta', () => {
   como('gerencia.general@svaauto.com.ar')
   const d = gs('obtenerDatos')
-  esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length, 'Gerencia no ve todo')
+  esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length + 1, 'Gerencia no ve todo') // + la factura sin referencia de la prueba anterior
   falla(() => gs('aplicarCambios', [{ id: d.datos.comprobantes[0].id, campos: { observaciones: 'x' } }]), 'solo puede consultar')
 })
 prueba('Cobranzas aprueba y registra el cobro', () => {

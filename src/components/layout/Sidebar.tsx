@@ -142,21 +142,23 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           </button>
         </div>
 
-        {/* Quién está usando la plataforma, arriba, con el logo de SVA */}
-        <div className="mx-3 mb-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
-            {usuario.slice(0, 1)}
-          </div>
-          <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
-            {/* El nombre completo: hasta dos renglones y, si igual no entra, al pasar el mouse */}
-            <div className="line-clamp-2 break-words leading-tight">{usuario}</div>
-            <div className="truncate text-[11px] font-normal text-slate-400">
-              {NOMBRE_ROL[rol]}
-              {rol === 'sucursal' && ` · ${sucursal}`}
+        {/* Quién está usando la plataforma, arriba: el nombre con su lugar (dos renglones si hace falta),
+            la campanita y, debajo, el logo de SVA, para que en el celular no quede todo apretado */}
+        <div className="mx-3 mb-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
+              {usuario.slice(0, 1)}
             </div>
+            <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
+              <div className="line-clamp-2 leading-tight">{usuario}</div>
+              <div className="truncate text-[11px] font-normal text-slate-400">
+                {NOMBRE_ROL[rol]}
+                {rol === 'sucursal' && ` · ${sucursal}`}
+              </div>
+            </div>
+            <Campana onCerrar={onCerrar} compacta />
           </div>
-          <Campana onCerrar={onCerrar} compacta />
-          <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
+          <img src={logoSvaClaro} alt="Grupo SVA" className="mt-2 h-6 w-auto opacity-90" />
         </div>
 
         <nav className="scroll-oscuro flex-1 space-y-5 overflow-y-auto px-3 py-2">

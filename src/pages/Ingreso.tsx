@@ -11,7 +11,7 @@ import { conectadoAGoogle } from '../services/google'
 
 const PERFILES: { rol: Rol; titulo: string; cuenta: string; detalle: string; icono: typeof LineChart }[] = [
   { rol: 'gerencia', titulo: 'Gerencia', cuenta: 'gerencia.general@svaauto.com.ar', detalle: 'Resumen, control por sucursal, saldos e impacto. Solo consulta.', icono: LineChart },
-  { rol: 'auditoria', titulo: 'Cobranzas', cuenta: 'auditoria@svaauto.com.ar', detalle: 'Avisos, revisión de documentos, presentación y reclamos.', icono: ClipboardCheck },
+  { rol: 'auditoria', titulo: 'Cobranzas', cuenta: 'auditoria@svaauto.com.ar', detalle: 'Inicio con lo del día, revisión de documentos, presentación y seguimiento.', icono: ClipboardCheck },
   { rol: 'sucursal', titulo: 'Sucursal', cuenta: 'facturacion.sucursal@svaauto.com.ar', detalle: 'Carga de documentación de las facturas de la sucursal.', icono: Building2 },
 ]
 

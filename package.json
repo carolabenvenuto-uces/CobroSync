@@ -1,7 +1,7 @@
 {
   "name": "cobrosync",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "CobroSync: gestión documental y cobranzas de facturas a compañías de seguros",
   "type": "module",
   "scripts": {

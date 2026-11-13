@@ -11,6 +11,15 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.10.0] - 2026-11-13
+
+### Agregado
+- **Compañías que reciben por mail y por plataforma:** en Ajustes → Compañías, nueva opción **Por las dos**. Se puede indicar cómo empiezan los siniestros que van por cada vía (por ejemplo, 2 por mail y 3 por plataforma) y Presentar separa las facturas solas; las que no coinciden aparecen con las dos opciones.
+- **Un mail por factura:** en Presentar, "Armar los mails" prepara un mail para cada factura elegida, con la factura, el siniestro, la patente y la compañía en el asunto y el detalle en el texto. Cada uno se abre en el correo, se copia, baja sus documentos y se marca como presentada.
+
+### Cambiado
+- **Presentar:** la vía de cada compañía ya no se cambia desde ahí; se define solo en Ajustes → Compañías.
+
 ## [0.9.1] - 2026-11-13
 
 ### Corregido

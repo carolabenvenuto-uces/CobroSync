@@ -14,7 +14,7 @@
  */
 export const PRODUCTO = 'CobroSync'
 /** Versión completa (pie, ingreso, manual) */
-export const VERSION = '0.9.1'
+export const VERSION = '0.10.0'
 /** Versión corta, al lado del logo: MAYOR.MENOR */
 export const VERSION_CORTA = VERSION.split('.').slice(0, 2).join('.')
 export const AUTORA = 'Carola Benvenuto'

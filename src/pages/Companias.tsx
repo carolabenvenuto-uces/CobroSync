@@ -3,6 +3,7 @@ import { ExternalLink, Info, Mail, MonitorUp, Pause, Play, Plus, Upload, X } fro
 import { EncabezadoPagina } from '../components/ui/Card'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp } from '../context/AppContext'
+import { nombreCanal, prefijos } from '../domain/canal'
 import type { Aseguradora } from '../domain/tipos'
 import { descargarExcel } from '../lib/exportar'
 import { completarEnlace, separarLista, unirLista } from '../lib/listas'
@@ -63,7 +64,8 @@ export default function Companias() {
   const faltan = (a: Aseguradora) =>
     [
       !a.cuit && 'CUIT',
-      a.canal === 'portal' ? !a.portalUrl && 'enlace a la plataforma' : !a.email && 'mail',
+      (a.canal === 'portal' || a.canal === 'ambas') && !a.portalUrl && 'enlace a la plataforma',
+      a.canal !== 'portal' && !a.email && 'mail',
       !(a.emailReclamos || a.email) && 'mail de reclamos',
     ].filter((x): x is string => !!x)
 
@@ -123,9 +125,14 @@ export default function Companias() {
     {
       clave: 'canal',
       titulo: 'Se presenta por',
-      filtro: (a) => (a.canal === 'portal' ? 'Plataforma' : 'Mail'),
+      filtro: (a) => nombreCanal(a),
       celda: (a) =>
-        a.canal === 'portal' ? (
+        a.canal === 'ambas' ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
+            <Mail className="h-3.5 w-3.5" />
+            <MonitorUp className="h-3.5 w-3.5" /> Mail y plataforma
+          </span>
+        ) : a.canal === 'portal' ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-800">
             <MonitorUp className="h-3.5 w-3.5" /> Plataforma
           </span>
@@ -293,14 +300,15 @@ function FichaCompania({
 
         <section className="mt-5 space-y-3 rounded-xl border border-slate-200 p-4">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Presentación</h3>
-          <div className="inline-flex rounded-lg border border-slate-200 bg-fondo p-0.5 text-sm font-semibold" role="group" aria-label="Cómo se presenta">
+          <div className="inline-flex flex-wrap rounded-lg border border-slate-200 bg-fondo p-0.5 text-sm font-semibold" role="group" aria-label="Cómo se presenta">
             {(
               [
-                ['mail', 'Por mail', Mail],
-                ['portal', 'Por plataforma', MonitorUp],
+                ['mail', 'Por mail'],
+                ['portal', 'Por plataforma'],
+                ['ambas', 'Por las dos'],
               ] as const
-            ).map(([canal, titulo, Icono]) => {
-              const activo = (a.canal === 'portal') === (canal === 'portal')
+            ).map(([canal, titulo]) => {
+              const activo = (a.canal ?? 'mail') === canal
               return (
                 <button
                   key={canal}
@@ -309,11 +317,21 @@ function FichaCompania({
                   onClick={() => !activo && onCambiar({ canal })}
                   className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${activo ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`}
                 >
-                  <Icono className="h-4 w-4" /> {titulo}
+                  {canal !== 'portal' && <Mail className="h-4 w-4" />}
+                  {canal !== 'mail' && <MonitorUp className="h-4 w-4" />} {titulo}
                 </button>
               )
             })}
           </div>
+          {a.canal === 'ambas' && (
+            <div className="space-y-2 rounded-lg bg-fondo p-3">
+              <p className="text-xs text-slate-600">
+                Si se sabe por el siniestro, Presentar separa solas las facturas. Poné cómo empieza el número (si son varios, separalos con coma). Las que no coincidan aparecen con las dos opciones.
+              </p>
+              <ComienzoSiniestro key={`${a.id}-mail`} titulo="Van por mail los siniestros que empiezan con" valor={a.siniestrosPorMail} onCambiar={(v) => onCambiar({ siniestrosPorMail: v })} />
+              <ComienzoSiniestro key={`${a.id}-portal`} titulo="Van por plataforma los que empiezan con" valor={a.siniestrosPorPlataforma} onCambiar={(v) => onCambiar({ siniestrosPorPlataforma: v })} />
+            </div>
+          )}
           <ListaEditable
             titulo="Enlaces a la plataforma"
             valor={a.portalUrl}
@@ -531,5 +549,29 @@ function AltaCompania({
         </div>
       </form>
     </div>
+  )
+}
+
+/** Cómo empiezan los siniestros de una vía (se guarda al salir del campo). */
+function ComienzoSiniestro({ titulo, valor, onCambiar }: { titulo: string; valor: string | undefined; onCambiar: (v: string) => void }) {
+  const [texto, setTexto] = useState(valor ?? '')
+  const guardar = () => {
+    const limpio = prefijos(texto).join(', ')
+    setTexto(limpio)
+    if (limpio !== (valor ?? '')) onCambiar(limpio)
+  }
+  return (
+    <label className="block text-xs font-semibold text-slate-600">
+      {titulo}
+      <input
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onBlur={guardar}
+        onKeyDown={(e) => e.key === 'Enter' && guardar()}
+        placeholder="Ej.: 2"
+        inputMode="numeric"
+        className="mt-1 block w-40 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal"
+      />
+    </label>
   )
 }

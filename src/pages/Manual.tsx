@@ -414,9 +414,12 @@ const SECCIONES: Seccion[] = [
             <strong>por siniestro</strong> (todas las facturas, documentos y notas de crédito de un siniestro juntos).
           </li>
           <li>
-            <Pantalla>Presentar</Pantalla>: una fila por compañía con lo aprobado y su canal (mail o plataforma). Al abrirla: elegir las
-            facturas, <strong>descargar todos los documentos en un .zip</strong> (cada PDF con el número de factura en el nombre), armar el
-            mail o abrir la plataforma (los mails y enlaces de la compañía están ahí mismo), y marcarlas como presentadas. Vuelven acá las que la compañía pidió reenviar.
+            <Pantalla>Presentar</Pantalla>: una fila por compañía con lo aprobado y su vía (mail, plataforma o las dos), tal como está
+            definida en Ajustes → Compañías. Si una compañía recibe por las dos y se sabe por el siniestro (por ejemplo, los que empiezan
+            con 2 por mail y con 3 por plataforma), aparece dividida en dos filas. Al abrirla: elegir las facturas,{' '}
+            <strong>descargar todos los documentos en un .zip</strong> (cada PDF con el número de factura en el nombre), armar los mails{' '}
+            (<strong>uno por factura</strong>, con la factura, el siniestro y la patente en el asunto) o abrir la plataforma, y marcarlas
+            como presentadas. Vuelven acá las que la compañía pidió reenviar.
           </li>
           <li>
             <Pantalla>Seguimiento</Pantalla>, solapa <strong>Compañías</strong>: las vencidas. Las tarjetas de arriba separan qué hay que

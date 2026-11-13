@@ -147,8 +147,9 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
             {usuario.slice(0, 1)}
           </div>
-          <div className="min-w-0 flex-1 text-sm font-semibold text-white">
-            <div className="truncate">{usuario}</div>
+          <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
+            {/* El nombre completo: hasta dos renglones y, si igual no entra, al pasar el mouse */}
+            <div className="line-clamp-2 break-words leading-tight">{usuario}</div>
             <div className="truncate text-[11px] font-normal text-slate-400">
               {NOMBRE_ROL[rol]}
               {rol === 'sucursal' && ` · ${sucursal}`}

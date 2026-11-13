@@ -54,16 +54,16 @@ export function AppLayout() {
           )}
         </main>
 
-        <footer className="flex items-center justify-between gap-4 border-t border-slate-200 px-8 py-4 text-xs text-slate-500">
+        {/* Pie: a la izquierda la conexión y el guardado; a la derecha la autoría (en el celular, una debajo de la otra) */}
+        <footer className="flex flex-col gap-1 border-t border-slate-200 px-4 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8">
           <span>
-          {fuente.tipo === 'demo'
-            ? ''
-            : fuente.tipo === 'google'
+            {fuente.tipo === 'google'
               ? `Conectado como ${fuente.email} · ${guardado.estado === 'guardando' ? 'Guardando…' : guardado.estado === 'error' ? `No se pudo guardar: ${guardado.mensaje}` : 'Cambios guardados'}`
-              : 'Datos de la planilla cargada: se procesan solo en este navegador'}{' '}
-          {fuente.tipo === 'demo' ? '' : ' · '}
-          {AUTORIA}
+              : fuente.tipo === 'planilla'
+                ? 'Datos de la planilla cargada: se procesan solo en este navegador'
+                : ''}
           </span>
+          <span className="text-slate-400 sm:text-right">{AUTORIA}</span>
         </footer>
       </div>
 

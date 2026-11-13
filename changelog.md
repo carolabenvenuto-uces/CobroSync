@@ -2,6 +2,23 @@
 
 Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al logo, en el ingreso y en el manual). Las versiones 0.x fueron el desarrollo previo al lanzamiento.
 
+## Cómo se numeran las versiones
+
+MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
+- **MAYOR**: un cambio grande en cómo se trabaja. Es 0 mientras dura la prueba piloto; **1.0.0** será el lanzamiento en todas las sucursales.
+- **MENOR**: algo nuevo que se suma (una pantalla, una función). Al subirlo, ARREGLO vuelve a 0.
+- **ARREGLO**: un error corregido o un detalle.
+
+Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
+
+## [0.9.0] - 2026-11-13 (inicio de la prueba piloto)
+
+### Agregado
+- **Números de versión con reglas:** MAYOR.MENOR.ARREGLO. Al lado del logo se ve la versión corta (v0.9) y al pie del menú la completa.
+
+### Corregido
+- **Nombre en el menú:** si es largo, ocupa hasta dos renglones y al pasar el mouse se ve completo.
+
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido

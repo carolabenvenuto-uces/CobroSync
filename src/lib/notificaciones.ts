@@ -1,7 +1,7 @@
 const NUMERO = /^(?:[^:]*?·\s*)?((?:FC|NC) E \d+-\d+):\s*/
 
 /**
- * Los avisos llegan como "Auditoría · FC E 21-11226: Observado: orden firmada (ilegible)". Para que
+ * Los avisos llegan como "Cobranzas · FC E 21-11226: Observado: orden firmada (ilegible)". Para que
  * se lea como un mail: la factura va aparte y el asunto es lo que pasó ("Observado").
  */
 export function partesDe(texto: string): { factura: string | null; asunto: string; cuerpo: string } {

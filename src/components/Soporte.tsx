@@ -9,7 +9,7 @@ import { reportarProblemaEnGoogle } from '../services/google'
 
 /**
  * Soporte técnico: un mensaje que le llega por mail solo al correo de soporte de Ajustes.
- * Es para errores de la plataforma; las dudas sobre una factura van a Auditoría.
+ * Es para errores de la plataforma; las dudas sobre una factura van a Cobranzas.
  */
 /** Pantallas de cada sector, como figuran en el menú, para elegir dónde pasó */
 const PANTALLAS: Record<Rol, [string, string][]> = {
@@ -100,7 +100,7 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
             </h2>
             <p className="mt-0.5 text-xs text-slate-600">
               Para errores de {PRODUCTO}: una pantalla que no carga, un botón que no responde, un dato que no se guarda. Las dudas sobre una
-              factura, a Auditoría.
+              factura, a Cobranzas.
             </p>
             <p className="mt-1 text-xs text-slate-600">
               El aviso le llega a <strong className="text-noche">{nombreSoporte || 'quien da soporte a la plataforma'}</strong>.

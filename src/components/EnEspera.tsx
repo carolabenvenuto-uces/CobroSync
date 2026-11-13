@@ -65,7 +65,7 @@ function Lista({ lista, conSucursal }: { lista: DocumentoEnEspera[]; conSucursal
 }
 
 /**
- * Auditoría: PDF que las sucursales subieron de facturas todavía no cargadas. Se unen solos al
+ * Cobranzas: PDF que las sucursales subieron de facturas todavía no cargadas. Se unen solos al
  * cargar el ERP; los que llevan varios días sin su factura suelen tener el número mal tipeado.
  */
 export function EnEsperaAuditoria() {
@@ -102,7 +102,7 @@ export function EnEsperaSucursal() {
         <span className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-marca" />
           <strong>{lista.length} PDF de facturas de hoy</strong>
-          <span className="text-slate-600">se unen a su factura cuando Auditoría cargue el ERP</span>
+          <span className="text-slate-600">se unen a su factura cuando Cobranzas cargue el ERP</span>
         </span>
         {abierta ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>

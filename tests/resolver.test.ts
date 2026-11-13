@@ -42,7 +42,7 @@ describe('prioridad y temas', () => {
         factura('7', '2026-10-27', { total: 10_000_000 }), // MiPyME por el monto: plazo 5, le queda 1 día
         factura('8', '2026-10-29', {
           documentos: [{ tipo: 'factura', estado: 'ok' }, { tipo: 'orden', estado: 'observado', motivo: 'Ilegible o cortado' }],
-          eventos: [{ fecha: '2026-10-30', autor: 'Auditoría', area: 'auditoria', tipo: 'rechazo', texto: 'Rechazo de Sancor: no se lee' }],
+          eventos: [{ fecha: '2026-10-30', autor: 'Cobranzas', area: 'auditoria', tipo: 'rechazo', texto: 'Rechazo de Sancor: no se lee' }],
         }),
       ],
       HOY,

@@ -5,9 +5,9 @@
  *  - Vencida y sin reclamar → hay que reclamar.
  *  - Reclamada hace menos de una semana (se cambia en Ajustes) → se espera la respuesta.
  *  - Pasó la semana sin respuesta → volver a reclamar.
- *  - Si la compañía no respondió a 3 reclamos (y pasó la semana del último) → Auditoría pide
+ *  - Si la compañía no respondió a 3 reclamos (y pasó la semana del último) → Cobranzas pide
  *    apoyo a gerencia para que intervenga.
- *  - Si la compañía informa un error en la factura, queda "Con error" hasta que Auditoría lo marca
+ *  - Si la compañía informa un error en la factura, queda "Con error" hasta que Cobranzas lo marca
  *    corregido; desde ahí se vuelve a reclamar el pago.
  */
 import { diffDias } from '../lib/fechas'
@@ -28,7 +28,7 @@ export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = {
   sin_reclamar: 'Sin reclamar',
   reclamada: 'Esperando respuesta',
   volver: 'Volver a reclamar',
-  // La compañía no respondió 3 reclamos: Auditoría le pide apoyo a gerencia (eso es una acción, no el estado)
+  // La compañía no respondió 3 reclamos: Cobranzas le pide apoyo a gerencia (eso es una acción, no el estado)
   escalar: 'Sin respuesta',
   tolerancia: 'En tolerancia',
   en_pagos: 'En circuito de pagos',
@@ -44,7 +44,7 @@ export const NOMBRE_RESPUESTA: Record<RespuestaReclamo, string> = {
   refacturar: 'Pide refacturar',
 }
 
-/** Estados en los que Auditoría tiene que hacer algo. */
+/** Estados en los que Cobranzas tiene que hacer algo. */
 export const RECLAMO_PARA_ACTUAR: EstadoReclamo[] = ['sin_reclamar', 'volver', 'escalar', 'reenviar', 'con_error']
 
 export function ultimoReclamo(c: Comprobante): string | null {

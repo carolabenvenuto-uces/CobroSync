@@ -5,7 +5,7 @@ import type { ColorSemaforo, EstadoComprobante, Etapa } from '../../domain/tipos
  * Cada etapa tiene su color y el nombre que se usa en la planilla de control,
  * para que se entienda a simple vista de quién depende la factura:
  *  rojo = documentación atrasada u observada · amarillo = doc. pendiente en plazo
- *  azul = presentación pendiente (Auditoría) · violeta = al día (compañía)
+ *  azul = presentación pendiente (Cobranzas) · violeta = al día (compañía)
  *  rojo oscuro = vencida · verde = cobrado · gris = no aplica
  */
 const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string; quien: string }> = {
@@ -21,13 +21,13 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
     punto: 'bg-sky-500',
     fondo: 'bg-sky-500/10 text-sky-800',
     texto: 'En revisión',
-    quien: 'Auditoría',
+    quien: 'Cobranzas',
   },
   pres_pendiente: {
     punto: 'bg-etapa-auditoria',
     fondo: 'bg-etapa-auditoria/10 text-indigo-800',
     texto: 'Pres. pendiente',
-    quien: 'Auditoría',
+    quien: 'Cobranzas',
   },
   al_dia: { punto: 'bg-etapa-compania', fondo: 'bg-etapa-compania/10 text-blue-800', texto: 'Al día', quien: 'Compañía' },
   vencida: { punto: 'bg-red-800', fondo: 'bg-red-800/10 text-red-900', texto: 'Vencida', quien: 'Compañía' },
@@ -40,8 +40,8 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
 export const AYUDA_ETAPA: Record<Etapa, string> = {
   doc_pendiente: 'Falta documentación de la sucursal, dentro del plazo (10 días; 5 si es MiPyME)',
   doc_atrasada: 'Falta documentación de la sucursal y ya pasó el plazo (10 días; 5 si es MiPyME)',
-  doc_observada: 'Auditoría observó un documento: la sucursal tiene que reemplazarlo',
-  en_revision: 'La sucursal subió todo: Auditoría tiene que revisarlo y tildarlo',
+  doc_observada: 'Cobranzas observó un documento: la sucursal tiene que reemplazarlo',
+  en_revision: 'La sucursal subió todo: Cobranzas tiene que revisarlo y tildarlo',
   pres_pendiente: 'Legajo completo: falta presentarlo a la compañía',
   al_dia: 'Presentada, todavía no venció',
   vencida: 'Presentada, vencida y sin cobrar: hay que reclamar',

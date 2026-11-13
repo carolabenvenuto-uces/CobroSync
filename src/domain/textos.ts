@@ -1,18 +1,18 @@
 /**
- * Textos de las notificaciones a Gerencia. Auditoría los puede cambiar en Ajustes; entre llaves van
+ * Textos de las notificaciones a Gerencia. Cobranzas los puede cambiar en Ajustes; entre llaves van
  * los datos que completa CobroSync: {compania}, {sucursal}, {facturas} ("una factura" o "5 facturas")
  * y {dias} (desde cuántos días es crítica).
  */
 export interface TextosAvisos {
-  /** la compañía no respondió 3 reclamos: Auditoría pide apoyo */
+  /** la compañía no respondió 3 reclamos: Cobranzas pide apoyo */
   apoyo: string
   /** facturas que pasaron a críticas por falta de documentación */
   critica: string
 }
 
 export const TEXTOS_INICIALES: TextosAvisos = {
-  apoyo: 'Auditoría solicita su apoyo con {compania}: la compañía no responde los reclamos de {facturas} vencidas.',
-  critica: 'Auditoría marcó como críticas {facturas} de {sucursal}: la documentación está pendiente hace más de {dias} días. Se solicita su intervención para que la sucursal la regularice.',
+  apoyo: 'Cobranzas solicita su apoyo con {compania}: la compañía no responde los reclamos de {facturas} vencidas.',
+  critica: 'Cobranzas marcó como críticas {facturas} de {sucursal}: la documentación está pendiente hace más de {dias} días. Se solicita su intervención para que la sucursal la regularice.',
 }
 
 export const DATOS_DE_TEXTO = ['{compania}', '{sucursal}', '{facturas}', '{dias}']

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import MisFacturas from './MisFacturas'
 
 /**
- * Auditoría que además escanea lo de su propia sucursal (por ejemplo, Rocamora): la misma pantalla
+ * Cobranzas que además escanea lo de su propia sucursal (por ejemplo, Rocamora): la misma pantalla
  * que usa cualquier sucursal, con sus facturas, la carga de varios archivos y los PDF en espera.
  * Al salir, el selector de sucursal vuelve a como estaba.
  */

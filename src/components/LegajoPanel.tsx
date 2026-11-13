@@ -81,7 +81,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
 /**
  * Panel lateral con el legajo de una factura.
  * - La sucursal sube la factura y la orden firmada (o un PDF con las dos).
- * - Auditoría revisa cada una y la tilda (aprobar) u observa con un motivo.
+ * - Cobranzas revisa cada una y la tilda (aprobar) u observa con un motivo.
  * - Cuando las tres están aprobadas, la factura queda para presentar.
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
@@ -92,7 +92,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const documentos = documentosDelLegajo(c.documentos)
   const leTocaALaSucursal = semaforo.responsable === 'sucursal'
   const reclamo = estadoReclamo(c, hoy)
-  // Revisión en serie: las otras facturas que esperan la revisión de Auditoría, de la más vieja a la más nueva
+  // Revisión en serie: las otras facturas que esperan la revisión de Cobranzas, de la más vieja a la más nueva
   const paraRevisarDespues = useMemo(
     () =>
       rol === 'auditoria'
@@ -125,7 +125,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [respuestaReclamo, setRespuestaReclamo] = useState<RespuestaReclamo | ''>('')
   const [notaRespuesta, setNotaRespuesta] = useState('')
 
-  // Que dos personas de Auditoría no trabajen la misma factura a la vez: al abrirla queda tomada
+  // Que dos personas de Cobranzas no trabajen la misma factura a la vez: al abrirla queda tomada
   // unos minutos a nombre de quien la abrió; la otra persona ve un aviso.
   const otraPersona = rol === 'auditoria' ? atendidaPorOtra(c, usuario) : null
   useEffect(() => {
@@ -137,7 +137,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   function registrarRespuesta() {
     if (!respuestaReclamo) return
-    const r = cambiosPorRespuesta(c, respuestaReclamo, notaRespuesta.trim(), hoy, usuario || 'Auditoría')
+    const r = cambiosPorRespuesta(c, respuestaReclamo, notaRespuesta.trim(), hoy, usuario || 'Cobranzas')
     if (!r) return
     actualizarComprobante(c.id, r.campos)
     registrarEvento(c.id, 'reclamo', r.evento)
@@ -238,17 +238,17 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     setFormulario('ninguno')
   }
 
-  // ── Auditoría: anulación informada por la sucursal ──
+  // ── Cobranzas: anulación informada por la sucursal ──
   function confirmarAnulacion() {
     actualizarComprobante(c.id, { estado: 'anulada' })
-    registrarEvento(c.id, 'nota_credito', 'Auditoría confirmó la anulación con nota de crédito')
+    registrarEvento(c.id, 'nota_credito', 'Cobranzas confirmó la anulación con nota de crédito')
   }
   function rechazarAnulacion() {
     actualizarComprobante(c.id, { anulacionInformada: null })
-    registrarEvento(c.id, 'mensaje', 'Auditoría indicó que la factura no se anula: sigue vigente')
+    registrarEvento(c.id, 'mensaje', 'Cobranzas indicó que la factura no se anula: sigue vigente')
   }
 
-  // ── Auditoría: registrar el cobro ──
+  // ── Cobranzas: registrar el cobro ──
   function registrarCobro() {
     const importe = Number(importeCobroTexto.replace(/\./g, '').replace(',', '.'))
     const saldo = saldoSinCobro(c)
@@ -262,7 +262,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     setFormulario('ninguno')
   }
 
-  // ── Auditoría: vincular una nota de crédito con su factura ──
+  // ── Cobranzas: vincular una nota de crédito con su factura ──
   const facturasParaNc =
     c.tipo === 'NC'
       ? (datos?.comprobantes ?? [])
@@ -287,7 +287,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     }
   }
 
-  // La sucursal se equivocó de archivo: lo quita mientras Auditoría todavía no lo revisó
+  // La sucursal se equivocó de archivo: lo quita mientras Cobranzas todavía no lo revisó
   function quitar(tipo: TipoDocumento) {
     const anterior = documentos.find((d) => d.tipo === tipo)
     const nuevos = documentos.map((d): Documento => (d.tipo === tipo ? { tipo, estado: 'faltante' } : d))
@@ -296,12 +296,12 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     registrarEvento(c.id, 'mensaje', `Quitó ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} subida por error${anterior?.archivo ? ` (${anterior.archivo})` : ''}`)
   }
 
-  // ── Auditoría: revisar y tildar ──
+  // ── Cobranzas: revisar y tildar ──
   function aprobar(tipos: TipoDocumento[]) {
     const todos = documentos.every((d) => d.estado === 'ok' || tipos.includes(d.tipo))
     guardarDocumentos(
       documentos.map((d): Documento => (tipos.includes(d.tipo) ? { ...d, estado: 'ok', motivo: undefined } : d)),
-      // La fecha que va a la columna "Drive" de la planilla: cuando Auditoría aprueba todo
+      // La fecha que va a la columna "Drive" de la planilla: cuando Cobranzas aprueba todo
       todos ? { fechaAprobacion: hoy } : {},
     )
     registrarEvento(
@@ -319,8 +319,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     registrarEvento(c.id, 'rechazo', `Observado: ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} (${motivo.toLowerCase()}). Por favor, volver a subir.`)
     setObservando(null)
   }
-  // Quién sube documentos: la sucursal, y Auditoría cuando la factura es de su propia sucursal
-  // (ellas mismas escanean). Lo que sube una persona de Auditoría lo aprueba otra.
+  // Quién sube documentos: la sucursal, y Cobranzas cuando la factura es de su propia sucursal
+  // (ellas mismas escanean). Lo que sube una persona de Cobranzas lo aprueba otra.
   const subeDocs = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && normalizarSucursal(c.sucursal) === normalizarSucursal(sucursalPropia))
   const lohizoYo = (d: Documento) => rol === 'auditoria' && d.estado === 'en_revision' && d.subidoPor === usuario
   const paraRevisar = documentos.filter((d) => d.estado === 'en_revision' && !lohizoYo(d)).map((d) => d.tipo)
@@ -559,15 +559,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                               type="button"
                               onClick={() => quitar(d.tipo)}
                               className={`${botonChico} border border-slate-200 bg-white text-slate-700 hover:border-sem-rojo hover:text-sem-rojo`}
-                              title="Para cambiar un archivo equivocado: quitarlo y subir el correcto. Se puede mientras Auditoría no lo revisó."
+                              title="Para cambiar un archivo equivocado: quitarlo y subir el correcto. Se puede mientras Cobranzas no lo revisó."
                             >
                               Quitar
                             </button>
                           </>
                         ) : lohizoYo(d) ? (
                           <>
-                            <span className="text-xs text-slate-500" title="Lo que escaneó una persona de Auditoría lo aprueba otra">
-                              Lo aprueba otra persona de Auditoría
+                            <span className="text-xs text-slate-500" title="Lo que escaneó una persona de Cobranzas lo aprueba otra">
+                              Lo aprueba otra persona de Cobranzas
                             </span>
                             {abierta && (
                               <button
@@ -663,7 +663,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     <input type="date" min={hoy} value={fechaDemora} onChange={(e) => setFechaDemora(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
                   </label>
                   <button type="button" onClick={avisarDemora} disabled={!motivoDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
-                    Avisar a Auditoría
+                    Avisar a Cobranzas
                   </button>
                 </div>
               )}
@@ -719,7 +719,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     </p>
                   ) : (
                     <p className="mt-1 text-slate-600">
-                      Todavía no está vinculada con una factura{f ? ` (posible: ${formatoComprobante(f)})` : ''}. Auditoría la revisa y la vincula.
+                      Todavía no está vinculada con una factura{f ? ` (posible: ${formatoComprobante(f)})` : ''}. Cobranzas la revisa y la vincula.
                     </p>
                   )}
                   {aviso && <p className="mt-1 text-xs text-slate-600">Motivo que informó la sucursal: {aviso.texto}</p>}
@@ -799,7 +799,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
             </section>
           )}
 
-          {/* Acciones de Auditoría */}
+          {/* Acciones de Cobranzas */}
           {rol === 'auditoria' && abierta && (
             <section className="space-y-3">
               {c.fechaPresentacion === null && (
@@ -969,7 +969,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               )}
               {reclamo === 'escalar' && (
                 <p className="mt-2 rounded-md bg-sem-amarillo/15 p-2 text-xs text-amber-900">
-                  La compañía no respondió a 3 reclamos: Auditoría le pide apoyo a gerencia para que intervenga.
+                  La compañía no respondió a 3 reclamos: Cobranzas le pide apoyo a gerencia para que intervenga.
                 </p>
               )}
               {rol === 'auditoria' && c.reclamos.length > 0 && !c.reclamos[c.reclamos.length - 1].respuesta && (
@@ -1056,7 +1056,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 value={mensaje}
                 onChange={(e) => setMensaje(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && enviarMensaje()}
-                placeholder={rol === 'sucursal' ? 'Mensaje para Auditoría…' : 'Mensaje para la sucursal…'}
+                placeholder={rol === 'sucursal' ? 'Mensaje para Cobranzas…' : 'Mensaje para la sucursal…'}
                 className={`${claseSelect} flex-1`}
               />
               <button type="button" onClick={enviarMensaje} className="rounded-lg bg-noche px-3 text-white hover:bg-noche-claro" aria-label="Enviar mensaje">
@@ -1081,7 +1081,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
             </ol>
           </section>
 
-          {/* Observaciones: como la columna de la planilla; Auditoría las edita */}
+          {/* Observaciones: como la columna de la planilla; Cobranzas las edita */}
           {rol === 'auditoria' ? (
             <section>
               <h3 className="mb-1 font-bold">Observaciones</h3>
@@ -1089,7 +1089,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 rows={2}
-                placeholder="Nota interna de Auditoría sobre esta factura"
+                placeholder="Nota interna de Cobranzas sobre esta factura"
                 className={`${claseSelect} w-full`}
               />
               {observaciones !== c.observaciones && (

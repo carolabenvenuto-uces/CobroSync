@@ -57,7 +57,7 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
   },
   {
     clave: 'rechazos',
-    titulo: 'Rechazos y pedidos de Auditoría',
+    titulo: 'Rechazos y pedidos de Cobranzas',
     ayuda: 'Documentos no aceptados, errores de factura, refacturaciones y notas de crédito sin avisar',
     icono: PencilLine,
     color: 'border-sem-rojo/60 bg-sem-rojo/5',
@@ -157,7 +157,7 @@ export default function MisFacturas() {
       .filter((u) => u.x)
   }, [comprobantes, filas, hoy])
   const motivo = new Map(urgentes.map((u) => [u.x.c.id, u.p]))
-  // Pedidos de Auditoría sin responder (también los de notas de crédito que entraron sin aviso)
+  // Pedidos de Cobranzas sin responder (también los de notas de crédito que entraron sin aviso)
   const pedidos = useMemo(() => pedidosParaSucursal(comprobantes, hoy), [comprobantes, hoy])
   const pedidoDe = new Map(pedidos.map((p) => [p.c.id, p]))
 
@@ -402,7 +402,7 @@ export default function MisFacturas() {
         })}
       </div>
 
-      {/* PDF de facturas de hoy, hasta que Auditoría cargue el ERP */}
+      {/* PDF de facturas de hoy, hasta que Cobranzas cargue el ERP */}
       <div className="-mt-1 mb-3">
         <EnEsperaSucursal />
       </div>
@@ -512,7 +512,7 @@ export default function MisFacturas() {
             </p>
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950">
               Si no es posible a tiempo: dentro de la factura, el botón <strong>"Avisar fecha estimada de entrega"</strong> permite indicar el motivo y
-              el día previsto. Así Auditoría sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha.
+              el día previsto. Así Cobranzas sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha.
             </p>
             <button type="button" onClick={cerrarAviso} className="mt-5 w-full rounded-lg bg-marca px-4 py-2.5 text-sm font-semibold text-white hover:bg-marca-oscuro">
               Entendido

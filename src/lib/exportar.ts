@@ -248,7 +248,9 @@ function tituloDe(nombreArchivo: string): string {
 // El logo se baja una sola vez; si no se puede, el Excel sale igual, sin logo
 let logoSva: Promise<Cabecera['logo'] | undefined> | null = null
 function cargarLogo(): Promise<Cabecera['logo'] | undefined> {
-  logoSva ??= fetch(`${import.meta.env.BASE_URL}grupo-sva.png`)
+  // El logo va dentro del código (así también funciona en la versión de Google, que no tiene carpeta pública)
+  logoSva ??= import('../assets/grupo-sva.png')
+    .then((m) => fetch(m.default))
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('sin logo'))))
     .then((b) => {
       const png = new Uint8Array(b)

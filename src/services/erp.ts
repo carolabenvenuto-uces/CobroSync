@@ -149,7 +149,7 @@ export function esNotaTotal(nc: number, f: Comprobante): boolean {
  * 1. Las facturas en las que la sucursal avisó una NC: total (el importe coincide con el saldo sin
  *    percepciones) o parcial (el importe coincide con el que avisó, con un margen del 2 %).
  * 2. Si nadie avisó y hay una sola factura que coincide como NC total, se deja vinculada pero
- *    "sin aviso": Auditoría la confirma. Las parciales sin aviso las vincula Auditoría a mano.
+ *    "sin aviso": Cobranzas la confirma. Las parciales sin aviso las vincula Cobranzas a mano.
  */
 function vincularNotasDeCredito(r: ResultadoErp, existentes: Comprobante[]) {
   const usadas = new Set<string>()

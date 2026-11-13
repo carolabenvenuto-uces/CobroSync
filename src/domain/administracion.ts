@@ -1,7 +1,7 @@
 /**
  * Ajustes es solo de la administradora (Carola): la cuenta cuyo correo está cargado como "correo de
  * soporte" en Ajustes. Mientras ese correo no está cargado, o fuera de la versión con Google,
- * cualquiera de Auditoría puede entrar (para poder configurarlo la primera vez).
+ * cualquiera de Cobranzas puede entrar (para poder configurarlo la primera vez).
  */
 import type { Rol } from './tipos'
 

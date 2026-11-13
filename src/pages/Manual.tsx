@@ -48,7 +48,7 @@ const SECCIONES: Seccion[] = [
       <>
         <p>
           CobroSync ordena el camino de cada factura a una compañía de seguros, desde que se emite hasta que se cobra: la sucursal sube la
-          documentación, Auditoría la revisa y la presenta a la compañía, y Gerencia ve en qué estado está todo y cuánto falta cobrar.
+          documentación, Cobranzas la revisa y la presenta a la compañía, y Gerencia ve en qué estado está todo y cuánto falta cobrar.
         </p>
         <p className="mt-2">Cada persona entra con la cuenta de la empresa y ve solo lo que corresponde a su sector:</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -56,7 +56,7 @@ const SECCIONES: Seccion[] = [
             <strong>Sucursal:</strong> sube la factura y la orden firmada, corrige lo que se rechaza e informa las notas de crédito.
           </li>
           <li>
-            <strong>Auditoría:</strong> revisa la documentación, presenta las facturas a las compañías y hace los reclamos.
+            <strong>Cobranzas:</strong> revisa la documentación, presenta las facturas a las compañías y hace los reclamos.
           </li>
           <li>
             <strong>Gerencia:</strong> sigue los saldos, los atrasos por sucursal y lo que necesita su intervención.
@@ -77,11 +77,11 @@ const SECCIONES: Seccion[] = [
             [
               ['doc_pendiente', 'Sucursal: falta subir la documentación, todavía dentro del plazo.'],
               ['doc_atrasada', 'Sucursal: falta la documentación y ya pasó el plazo.'],
-              ['doc_observada', 'Sucursal: Auditoría o la compañía no aceptó un documento; hay que reemplazarlo.'],
-              ['en_revision', 'Auditoría: la sucursal subió todo y Auditoría lo está revisando.'],
-              ['pres_pendiente', 'Auditoría: documentación aprobada, falta presentarla a la compañía.'],
+              ['doc_observada', 'Sucursal: Cobranzas o la compañía no aceptó un documento; hay que reemplazarlo.'],
+              ['en_revision', 'Cobranzas: la sucursal subió todo y Cobranzas lo está revisando.'],
+              ['pres_pendiente', 'Cobranzas: documentación aprobada, falta presentarla a la compañía.'],
               ['al_dia', 'Compañía: presentada, todavía no venció el plazo de pago.'],
-              ['vencida', 'Compañía: presentada, venció y no se cobró; Auditoría reclama.'],
+              ['vencida', 'Compañía: presentada, venció y no se cobró; Cobranzas reclama.'],
               ['cobrado', 'Cobrada.'],
             ] as const
           ).map(([etapa, texto]) => (
@@ -202,7 +202,7 @@ const SECCIONES: Seccion[] = [
           </p>
           <Nota>
             Si no es posible subirla a tiempo: dentro de la factura, el botón <strong>"Avisar fecha estimada de entrega"</strong> permite indicar
-            el motivo y el día previsto. Auditoría sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha. Si la fecha pasa
+            el motivo y el día previsto. Cobranzas sabe cuándo esperarla y la factura no figura como atrasada hasta esa fecha. Si la fecha pasa
             sin la documentación, se marca en rojo.
           </Nota>
           <p>Este aviso aparece la primera vez que se entra a Mis facturas y queda en el botón <strong>Plazos</strong>, arriba a la derecha.</p>
@@ -225,13 +225,13 @@ const SECCIONES: Seccion[] = [
             <strong>Para subir:</strong> todas las facturas a las que les falta la factura o la orden firmada.
           </li>
           <li>
-            <strong>En revisión:</strong> documentación ya enviada, que Auditoría está revisando. Sin tareas pendientes.
+            <strong>En revisión:</strong> documentación ya enviada, que Cobranzas está revisando. Sin tareas pendientes.
           </li>
           <li>
             <strong>Por vencer o vencidas:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
           </li>
           <li>
-            <strong>Rechazos y observaciones:</strong> documentos que Auditoría o la compañía no aceptaron. El motivo dice quién lo rechazó y
+            <strong>Rechazos y observaciones:</strong> documentos que Cobranzas o la compañía no aceptaron. El motivo dice quién lo rechazó y
             qué hay que cambiar.
           </li>
         </ul>
@@ -254,7 +254,7 @@ const SECCIONES: Seccion[] = [
             En la tarjeta <strong>Para subir</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
           </Paso>
           <Paso n={2}>El PDF de la factura y el de la orden firmada (o uno solo, si están escaneadas juntas).</Paso>
-          <Paso n={3}>La factura pasa a "En revisión". Si Auditoría la observa, llega una notificación y aparece en Rechazos y observaciones.</Paso>
+          <Paso n={3}>La factura pasa a "En revisión". Si Cobranzas la observa, llega una notificación y aparece en Rechazos y observaciones.</Paso>
         </Pasos>
         <h4 className="mt-4 font-bold">Muchos archivos de una vez</h4>
         <Pasos>
@@ -264,7 +264,7 @@ const SECCIONES: Seccion[] = [
           <Paso n={2}>
             Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}
             <code className="rounded bg-slate-100 px-1">35-11032 siniestro 22365.pdf</code> (si se quiere, <code className="rounded bg-slate-100 px-1">fc</code> u{' '}
-            <code className="rounded bg-slate-100 px-1">or</code> para decir qué es). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el ERP se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Auditoría carga el ERP.
+            <code className="rounded bg-slate-100 px-1">or</code> para decir qué es). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el ERP se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el ERP.
           </Paso>
           <Paso n={3}>
             Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y
@@ -287,13 +287,13 @@ const SECCIONES: Seccion[] = [
     titulo: '¿Cómo se informa una nota de crédito?',
     contenido: () => (
       <>
-        <p>Cuando una factura se anula, toda o una parte, hay que avisarlo para que Auditoría no la presente:</p>
+        <p>Cuando una factura se anula, toda o una parte, hay que avisarlo para que Cobranzas no la presente:</p>
         <Pasos>
           <Paso n={1}>
             En <Pantalla>Mis facturas</Pantalla>, el botón <strong>Informar una nota de crédito</strong>.
           </Paso>
           <Paso n={2}>La factura, si se anula completa o una parte (con el importe) y el motivo.</Paso>
-          <Paso n={3}>Auditoría espera que la nota de crédito aparezca en el sistema y la asocia a la factura.</Paso>
+          <Paso n={3}>Cobranzas espera que la nota de crédito aparezca en el sistema y la asocia a la factura.</Paso>
         </Pasos>
         <p>Si después se vuelve a facturar, en Mis siniestros figura "Falta refacturar" hasta que esté la factura nueva.</p>
       </>
@@ -397,11 +397,11 @@ const SECCIONES: Seccion[] = [
     },
   },
 
-  // ---------- Auditoría ----------
+  // ---------- Cobranzas ----------
   {
     id: 'aud-base',
     sector: 'auditoria',
-    titulo: '¿Qué pantallas usa Auditoría en el día a día?',
+    titulo: '¿Qué pantallas usa Cobranzas en el día a día?',
     contenido: () => (
       <>
         <ul className="list-disc space-y-1.5 pl-5">
@@ -456,7 +456,7 @@ const SECCIONES: Seccion[] = [
         </div>
         <div>
           <dt className="font-bold">Se subió un archivo equivocado, ¿se puede quitar?</dt>
-          <dd>Sí, mientras está en revisión: dentro de la factura, "Quitar" en ese documento. Una vez aprobado, hay que avisarle a Auditoría.</dd>
+          <dd>Sí, mientras está en revisión: dentro de la factura, "Quitar" en ese documento. Una vez aprobado, hay que avisarle a Cobranzas.</dd>
         </div>
         <div>
           <dt className="font-bold">¿Por qué no se puede subir un archivo?</dt>
@@ -481,7 +481,7 @@ function RespuestaSoporte() {
         (debajo de Manual de uso). Se elige la pantalla y el problema, y se cuenta qué pasó; el aviso le llega a quien da soporte a la
         plataforma.
       </p>
-      <p>Las dudas sobre una factura (un documento, un plazo, un reclamo) se consultan con Auditoría.</p>
+      <p>Las dudas sobre una factura (un documento, un plazo, un reclamo) se consultan con Cobranzas.</p>
       <button type="button" onClick={() => setAbierta(true)} className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro">
         <LifeBuoy className="h-4 w-4" /> Avisar un problema
       </button>
@@ -501,7 +501,7 @@ const PESTANAS: { clave: Sector; titulo: string; icono: typeof Store }[] = [
   { clave: 'todos', titulo: 'Para todos', icono: BookOpen },
   { clave: 'sucursal', titulo: 'Sucursal', icono: Store },
   { clave: 'gerencia', titulo: 'Gerencia', icono: Building2 },
-  { clave: 'auditoria', titulo: 'Auditoría', icono: ClipboardCheck },
+  { clave: 'auditoria', titulo: 'Cobranzas', icono: ClipboardCheck },
 ]
 
 export default function Manual({ suelto = false }: { suelto?: boolean }) {

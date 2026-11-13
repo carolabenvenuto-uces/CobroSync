@@ -25,7 +25,7 @@ const ORDEN_ETAPAS: Etapa[] = [...ETAPAS_ACTIVAS, 'cobrado', 'anterior', 'no_apl
 /** Las tarjetas de arriba: a quién le toca cada factura pendiente (el texto es el del filtro "Le toca a") */
 const QUIEN: { quien: string; titulo: string; tono: TonoTarjeta; etapas: Etapa[] }[] = [
   { quien: 'Sucursal', titulo: 'Le toca a la sucursal', tono: 'ambar', etapas: ['doc_pendiente', 'doc_atrasada', 'doc_observada'] },
-  { quien: 'Auditoría', titulo: 'Le toca a Auditoría', tono: 'indigo', etapas: ['en_revision', 'pres_pendiente'] },
+  { quien: 'Cobranzas', titulo: 'Le toca a Cobranzas', tono: 'indigo', etapas: ['en_revision', 'pres_pendiente'] },
   { quien: 'Compañía', titulo: 'En la compañía', tono: 'celeste', etapas: ['al_dia', 'vencida'] },
 ]
 const mesDeFecha = (iso: string) => `${iso.slice(0, 7)} · ${MESES[Number(iso.slice(5, 7)) - 1]}`
@@ -73,7 +73,7 @@ export default function ControlDiario() {
   }
   type Fila = (typeof filas)[number]
 
-  // Auditoría arranca en el mes en curso (si no viene un filtro desde un aviso).
+  // Cobranzas arranca en el mes en curso (si no viene un filtro desde un aviso).
   // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
   // Novedades: lo que entró con la última carga del ERP y lo que se movió desde ayer
   const ERP = 'Factura cargada desde el Excel del ERP'

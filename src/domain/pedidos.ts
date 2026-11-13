@@ -1,7 +1,7 @@
 /**
- * Pedidos de Auditoría a las sucursales: lo que más tiempo lleva hoy (perseguir avisos de notas de
+ * Pedidos de Cobranzas a las sucursales: lo que más tiempo lleva hoy (perseguir avisos de notas de
  * crédito y errores de facturación). Cada pedido queda en la factura, le aparece a la sucursal hasta
- * que responde, y Auditoría ve cuántos días lleva cada uno.
+ * que responde, y Cobranzas ve cuántos días lleva cada uno.
  *
  * Una nota de crédito que entra del ERP sin que la sucursal la haya avisado genera su pedido sola
  * (no hace falta crearlo): se resuelve cuando la sucursal confirma el motivo.
@@ -16,18 +16,18 @@ export const NOMBRE_PEDIDO: Record<TipoPedido, string> = {
   otro: 'Otro pedido',
 }
 
-/** Pedido de Auditoría o generado solo, con su estado para listarlo. */
+/** Pedido de Cobranzas o generado solo, con su estado para listarlo. */
 export interface PedidoAbierto {
   c: Comprobante
   pedido: Pedido
   /** generado solo por una NC sin aviso (no está guardado en la factura) */
   automatico: boolean
-  /** esperando a la sucursal, o la sucursal ya respondió y falta que Auditoría lo cierre */
+  /** esperando a la sucursal, o la sucursal ya respondió y falta que Cobranzas lo cierre */
   estado: 'esperando' | 'respondido'
   dias: number
 }
 
-/** La NC llegó del ERP y la sucursal no la avisó (ni Auditoría la dio por revisada). */
+/** La NC llegó del ERP y la sucursal no la avisó (ni Cobranzas la dio por revisada). */
 export function ncSinAviso(c: Comprobante): boolean {
   return c.tipo === 'NC' && c.ncInformada === false
 }
@@ -59,12 +59,12 @@ export function pedidosParaSucursal(comprobantes: Comprobante[], hoy: string): P
   return pedidosAbiertos(comprobantes, hoy).filter((p) => p.estado === 'esperando')
 }
 
-/** Un id nuevo para un pedido (fecha + azar corto: no se repite entre las dos personas de Auditoría). */
+/** Un id nuevo para un pedido (fecha + azar corto: no se repite entre las dos personas de Cobranzas). */
 export function idPedido(hoy: string): string {
   return `p-${hoy.replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-/** ¿Otra persona de Auditoría tiene abierta esta factura en este momento? */
+/** ¿Otra persona de Cobranzas tiene abierta esta factura en este momento? */
 export function atendidaPorOtra(c: Comprobante, yo: string | null | undefined, ahora = new Date()): string | null {
   const a = c.atendiendo
   if (!a || !a.por || a.por === yo) return null

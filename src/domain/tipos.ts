@@ -35,14 +35,14 @@ export type EstadoComprobante =
   | 'nota_credito' // estado propio de las NC
 
 /**
- * Lo que Auditoría tiene que ver de cada factura: la factura y la orden (de reparación o de repuestos)
+ * Lo que Cobranzas tiene que ver de cada factura: la factura y la orden (de reparación o de repuestos)
  * firmada por el cliente. La firma no se sube aparte: va en la orden.
  */
 export type TipoDocumento = 'factura' | 'orden'
 
 /**
- * faltante → la sucursal no lo subió · en_revision → subido, Auditoría tiene que revisarlo
- * ok → Auditoría lo aprobó (tildado) · observado → Auditoría lo rechazó, con un motivo
+ * faltante → la sucursal no lo subió · en_revision → subido, Cobranzas tiene que revisarlo
+ * ok → Cobranzas lo aprobó (tildado) · observado → Cobranzas lo rechazó, con un motivo
  */
 export type EstadoDocumento = 'faltante' | 'en_revision' | 'ok' | 'observado'
 
@@ -58,9 +58,9 @@ export type Responsable = 'sucursal' | 'auditoria' | 'compania'
 export type Etapa =
   | 'doc_pendiente' // D. Pend. dentro del plazo: le toca a la sucursal
   | 'doc_atrasada' // D. Pend. fuera de plazo: la sucursal está atrasada
-  | 'doc_observada' // Auditoría observó un documento (ilegible, sin firma…): la sucursal tiene que reemplazarlo
-  | 'en_revision' // la sucursal subió todo: Auditoría tiene que revisarlo y tildarlo
-  | 'pres_pendiente' // P. Pend.: legajo completo, le toca a Auditoría presentarlo
+  | 'doc_observada' // Cobranzas observó un documento (ilegible, sin firma…): la sucursal tiene que reemplazarlo
+  | 'en_revision' // la sucursal subió todo: Cobranzas tiene que revisarlo y tildarlo
+  | 'pres_pendiente' // P. Pend.: legajo completo, le toca a Cobranzas presentarlo
   | 'al_dia' // presentada, todavía no venció: le toca a la compañía
   | 'vencida' // presentada y vencida sin cobrar: hay que reclamar
   | 'cobrado'
@@ -152,13 +152,13 @@ export interface Reclamo {
   medio: 'mail' | 'portal' | 'telefono'
   autor: string
   nota: string
-  /** resuelto: fecha en que Auditoría corrigió el error que informó la compañía */
+  /** resuelto: fecha en que Cobranzas corrigió el error que informó la compañía */
   respuesta?: { fecha: string; tipo: RespuestaReclamo; nota?: string; resuelto?: string } | null
 }
 
 /**
- * Lo que Auditoría le pide a la sucursal sobre una factura (o una nota de crédito): corregir un
- * error, refacturar, avisar una NC. Queda abierto hasta que la sucursal responde y Auditoría lo cierra.
+ * Lo que Cobranzas le pide a la sucursal sobre una factura (o una nota de crédito): corregir un
+ * error, refacturar, avisar una NC. Queda abierto hasta que la sucursal responde y Cobranzas lo cierra.
  */
 export type TipoPedido = 'error_factura' | 'refacturar' | 'aviso_nc' | 'otro'
 
@@ -170,7 +170,7 @@ export interface Pedido {
   autor: string
   /** lo que contestó la sucursal (la factura nueva, la NC, una aclaración) */
   respuesta?: { fecha: string; autor: string; texto: string } | null
-  /** Auditoría lo dio por resuelto */
+  /** Cobranzas lo dio por resuelto */
   cerrado?: { fecha: string; autor: string } | null
 }
 
@@ -197,7 +197,7 @@ export interface Comprobante {
   fechaDrive: string | null
   /** quién de la sucursal subió los documentos */
   subidoPor: string | null
-  /** día en que Auditoría aprobó toda la documentación; vuelve a vacío si después se observa algo */
+  /** día en que Cobranzas aprobó toda la documentación; vuelve a vacío si después se observa algo */
   fechaAprobacion?: string | null
   fechaPresentacion: string | null
   /** se conoce recién cuando se presenta: presentación + plazo de pago */
@@ -206,7 +206,7 @@ export interface Comprobante {
   estado: EstadoComprobante
   /** en una NC, el id de la factura que anula */
   ncReferencia: string | null
-  /** en una NC: si la sucursal avisó a auditoría (o auditoría ya la revisó) */
+  /** en una NC: si la sucursal avisó a cobranzas (o cobranzas ya la revisó) */
   ncInformada: boolean | null
   compromiso: Compromiso | null
   /**
@@ -216,7 +216,7 @@ export interface Comprobante {
   anulacionInformada?: { fecha: string; motivo: string; parcial?: boolean; importe?: number } | null
   /** lo que restan las notas de crédito parciales vinculadas */
   acreditado?: number | null
-  /** monto aprobado de la orden del siniestro (lo carga Auditoría en la primera factura del siniestro) */
+  /** monto aprobado de la orden del siniestro (lo carga Cobranzas en la primera factura del siniestro) */
   montoOrden?: number | null
   /** lo que efectivamente cobró (si no se indica, el saldo) */
   importeCobrado?: number | null
@@ -227,9 +227,9 @@ export interface Comprobante {
   observaciones: string
   documentos: Documento[]
   eventos: Evento[]
-  /** pedidos de Auditoría a la sucursal (errores, refacturación) */
+  /** pedidos de Cobranzas a la sucursal (errores, refacturación) */
   pedidos?: Pedido[]
-  /** quién de Auditoría la está viendo ahora (para que dos personas no hagan lo mismo a la vez) */
+  /** quién de Cobranzas la está viendo ahora (para que dos personas no hagan lo mismo a la vez) */
   atendiendo?: { por: string; hasta: string } | null
   /** la compañía pidió que se reenvíe la documentación: vuelve a la lista de Presentar */
   reenviar?: boolean | null
@@ -251,7 +251,7 @@ export interface MetaDemo {
   sucursales: Sucursal[]
   /** plazos de la documentación (Ajustes); si falta, los de siempre */
   plazos?: Plazos
-  /** avisos por mail (solo lo ve Auditoría) */
+  /** avisos por mail (solo lo ve Cobranzas) */
   avisos?: { porMail: boolean; correosGerencia: string; correoSoporte?: string; nombreSoporte?: string }
   /** quién da soporte a la plataforma (lo ven todos los sectores) */
   soporte?: { nombre: string }

@@ -37,7 +37,7 @@ interface Fila {
  */
 export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento, sucursalPropia } = useApp()
-  // La sucursal, o Auditoría escaneando lo de su propia sucursal
+  // La sucursal, o Cobranzas escaneando lo de su propia sucursal
   const escanea = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && sucursal === sucursalPropia)
   const miSucursal = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
   const comprobantes = useComprobantes()
@@ -141,8 +141,8 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                   adjuntos: adjuntos.length > 1 ? adjuntos : undefined,
                   subidoPor: usuario,
                   fecha: hoy,
-                  // Si CobroSync la asignó por el nombre y nadie la cambió, Auditoría lo ve para revisarlo con atención
-                  // La factura sale del número del nombre: Auditoría igual lo revisa
+                  // Si CobroSync la asignó por el nombre y nadie la cambió, Cobranzas lo ve para revisarlo con atención
+                  // La factura sale del número del nombre: Cobranzas igual lo revisa
                   origen: 'varios-automatico',
                 }
               : d,
@@ -160,14 +160,14 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
         })
         registrarEvento(id, 'subida', `Subió ${subidos.join(' y ')} (carga de varios archivos: ${lista.map((f) => f.archivo.name).join(', ')})`)
       }
-      // Facturas de hoy: quedan en espera hasta que Auditoría cargue el ERP, y ahí se unen a su legajo
+      // Facturas de hoy: quedan en espera hasta que Cobranzas cargue el ERP, y ahí se unen a su legajo
       for (const f of deHoy) {
         setEstado({ texto: `Subiendo ${f.archivo.name}…` })
         await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, f.siniestro.trim(), await prepararArchivo(f.archivo))
       }
       setFilas((l) => l.filter((f) => !f.facturaId && !(f.deHoy && !f.error)))
       setEstado({
-        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el ERP` : ''}. Auditoría los revisa.`,
+        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el ERP` : ''}. Cobranzas los revisa.`,
       })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })
@@ -228,7 +228,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
                 <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
-                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Auditoría cargue el ERP.</li>
+                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Cobranzas cargue el ERP.</li>
               </ul>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">

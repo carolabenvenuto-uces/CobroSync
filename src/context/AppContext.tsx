@@ -1,7 +1,7 @@
 /**
  * Estado global de la app (lo que comparten todas las pantallas):
  * - los datos cargados
- * - el rol activo (Sucursal, Auditoría, Gerencia) y la persona que "usa" la demo
+ * - el rol activo (Sucursal, Cobranzas, Gerencia) y la persona que "usa" la demo
  * - los filtros del encabezado (sucursal y mes)
  *
  * React Context evita pasar estos valores "a mano" de componente en componente.
@@ -35,7 +35,7 @@ export const TODAS_LAS_SUCURSALES = 'Todas'
 
 export const NOMBRE_ROL: Record<Rol, string> = {
   sucursal: 'Sucursal',
-  auditoria: 'Auditoría',
+  auditoria: 'Cobranzas',
   gerencia: 'Gerencia',
 }
 
@@ -47,7 +47,7 @@ export const INICIO_ROL: Record<Rol, string> = {
 }
 
 
-/** Aviso para una persona: a Auditoría (para = 'auditoria'), a Gerencia (para = 'gerencia') o a una sucursal (para = su nombre). */
+/** Aviso para una persona: a Cobranzas (para = 'auditoria'), a Gerencia (para = 'gerencia') o a una sucursal (para = su nombre). */
 export interface Notificacion {
   id: string
   para: string
@@ -55,7 +55,7 @@ export interface Notificacion {
   texto: string
   comprobanteId: string
   leida: boolean
-  /** avisos que se juntan: a Gerencia (crítica, pedido de apoyo) y a Auditoría (documentos subidos en el día) */
+  /** avisos que se juntan: a Gerencia (crítica, pedido de apoyo) y a Cobranzas (documentos subidos en el día) */
   clase?: 'critica' | 'escalar' | 'subidas'
   sucursal?: string
   /** id de la compañía (los pedidos de apoyo se agrupan por compañía) */
@@ -71,7 +71,7 @@ export interface Notificacion {
 /**
  * A Gerencia le llega un aviso por sucursal y por tipo, no uno por factura:
  * "Alvarez Thomas: 15 facturas pasaron a documentación crítica". Al tocarlo se abre la lista.
- * A Auditoría, lo subido por cada sucursal en el día llega en un solo aviso con la lista de facturas.
+ * A Cobranzas, lo subido por cada sucursal en el día llega en un solo aviso con la lista de facturas.
  */
 export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<string, string> = {}): Notificacion[] {
   const grupos = new Map<string, Notificacion>()
@@ -127,7 +127,7 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
 
 /**
  * Las novedades de los últimos días de la demo arrancan como notificaciones sin leer:
- * 3 días para Auditoría y sucursales; 14 para Gerencia, que recibe menos avisos.
+ * 3 días para Cobranzas y sucursales; 14 para Gerencia, que recibe menos avisos.
  */
 function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): Notificacion[] {
   // Los textos y plazos de estos datos (todavía no se guardaron en el estado)
@@ -135,7 +135,7 @@ function notificacionesIniciales(d: DatosApp, leidas: Set<string> = new Set()): 
   configurarTextos(d.meta.textos)
   const lista: Notificacion[] = []
   for (const c of d.comprobantes) {
-    // Sin respuesta a 3 reclamos: Auditoría pide apoyo a Gerencia desde que terminó la espera
+    // Sin respuesta a 3 reclamos: Cobranzas pide apoyo a Gerencia desde que terminó la espera
     if (estadoReclamo(c, d.meta.fechaCorte) === 'escalar') {
       const desde = finDeEspera(c) ?? d.meta.fechaCorte
       if (diffDias(desde, d.meta.fechaCorte) <= 14) {
@@ -176,7 +176,7 @@ function huella(texto: string): string {
 }
 
 /**
- * Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés.
+ * Cada movimiento le avisa al otro lado: lo de la sucursal a Cobranzas y al revés.
  * A Gerencia le llegan solo los escalamientos: documentación crítica (más de 21 días)
  * y facturas vencidas con 3 reclamos sin respuesta.
  */
@@ -195,8 +195,8 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
   const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)
   if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion) {
-    const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Auditoría)/i.test(e.texto)
-    lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Auditoría · ${numero}: ${e.texto}` })
+    const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Cobranzas)/i.test(e.texto)
+    lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Cobranzas · ${numero}: ${e.texto}` })
   }
   if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', texto: `${numero}: ${e.texto}` })
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
@@ -231,7 +231,7 @@ interface EstadoApp {
   descartarEspera: (id: string) => Promise<void>
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */
   actualizarAseguradoras: (aseguradoras: Aseguradora[]) => void
-  /** Ajustes (Auditoría): plazos, compañías que reciben FCE y avisos por mail */
+  /** Ajustes (Cobranzas): plazos, compañías que reciben FCE y avisos por mail */
   guardarAjustes: (ajustes: Ajustes) => Promise<void>
   /** Agrega un evento a la conversación del legajo, firmado por el usuario actual. */
   registrarEvento: (id: string, tipo: Evento['tipo'], texto: string) => void
@@ -259,7 +259,7 @@ interface EstadoApp {
   cerrarSesion: () => void
   /** con Google: la cuenta con la que se entró */
   cuenta: UsuarioGoogle | null
-  /** Auditoría que además escanea la documentación de una sucursal (la suya); null si no */
+  /** Cobranzas que además escanea la documentación de una sucursal (la suya); null si no */
   sucursalPropia: string | null
 }
 
@@ -359,7 +359,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Una persona de sucursal solo ve su sucursal: si estaba en "Todas", elige la primera.
-  // Al volver a Auditoría o Gerencia, el filtro vuelve a "Todas".
+  // Al volver a Cobranzas o Gerencia, el filtro vuelve a "Todas".
   const setRol = useCallback(
     (nuevo: Rol) => {
       // Con Google el rol lo define la cuenta de la empresa: no se puede cambiar
@@ -524,7 +524,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (id: string, tipo: Evento['tipo'], texto: string) => {
       const area: AreaEvento = rol
       const evento: Evento = { fecha: hoy, autor: usuario, area, tipo, texto }
-      // Cada movimiento le avisa al otro lado: lo de la sucursal a Auditoría y al revés
+      // Cada movimiento le avisa al otro lado: lo de la sucursal a Cobranzas y al revés
       const comprobante = datos?.comprobantes.find((c) => c.id === id)
       const avisos = comprobante ? crearNotificaciones(comprobante, evento) : []
       if (avisos.length) setNotificaciones((lista) => agruparGerencia([...avisos, ...lista], nombresDe(datos)))
@@ -618,7 +618,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [fuente.tipo],
   )
 
-  // En la demo, Auditoría también escanea lo de Rocamora (como el sector real)
+  // En la demo, Cobranzas también escanea lo de Rocamora (como el sector real)
   const sucursalPropia =
     rol !== 'auditoria'
       ? null

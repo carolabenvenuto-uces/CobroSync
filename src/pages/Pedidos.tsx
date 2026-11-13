@@ -9,7 +9,7 @@ import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /**
- * Pedidos a sucursales: todo lo que Auditoría está esperando de las sucursales (errores de
+ * Pedidos a sucursales: todo lo que Cobranzas está esperando de las sucursales (errores de
  * factura, refacturaciones, notas de crédito sin avisar), con cuántos días lleva cada uno. Así no
  * hace falta acordarse a quién se le pidió qué: lo que la sucursal respondió queda para cerrar.
  */

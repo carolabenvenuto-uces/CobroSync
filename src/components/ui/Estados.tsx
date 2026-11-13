@@ -24,7 +24,7 @@ export function SinAcceso({ mensaje }: { mensaje: string }) {
         <h1 className="mt-4 text-xl font-extrabold text-noche">Todavía sin acceso</h1>
         <p className="mt-2 text-sm text-slate-600">{mensaje}</p>
         <p className="mt-4 text-xs text-slate-500">
-          Si la cuenta debería tener acceso, Auditoría puede agregarla. Si se ingresó con una cuenta personal, hay que cerrar sesión en
+          Si la cuenta debería tener acceso, Cobranzas puede agregarla. Si se ingresó con una cuenta personal, hay que cerrar sesión en
           Google y volver a entrar con la de la empresa.
         </p>
       </div>

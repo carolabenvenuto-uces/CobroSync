@@ -10,7 +10,7 @@ import { formatoPesos, MESES } from '../lib/formato'
 
 /**
  * Control por sucursal: para cada sucursal, en orden alfabético, cuánto tiene pendiente y qué
- * porcentaje se sube dentro del plazo. Es un control de Auditoría, no una competencia: no hay
+ * porcentaje se sube dentro del plazo. Es un control de Cobranzas, no una competencia: no hay
  * posiciones ni gráfico.
  */
 export default function RankingSucursales() {

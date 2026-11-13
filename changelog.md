@@ -5,6 +5,7 @@ Desde la 1.0, el número de versión es el que se ve en la aplicación (junto al
 ## [1.0.0] - 2026-11-04 (repaso antes de la presentación)
 
 ### Corregido
+- **Arreglo: pantalla en blanco con los datos reales.** Google puede omitir los campos vacíos al pasar los datos a la página; ahora se completan al recibirlos (sin compromiso, sin reclamos, etc.) y la pantalla ya no se rompe.
 - **Auditoría pasa a llamarse Cobranzas** en toda la plataforma (menú, rol, mensajes, mails y manual), igual que la casilla cobranzas.seguros@. En Usuarios se puede poner "Cobranzas" o "Auditoría" como rol.
 - **Logo de Grupo SVA en la versión de Google:** no se veía porque la imagen se buscaba en una carpeta que Apps Script no tiene; ahora va incluido en el código (menú, ingreso, Resumen impreso y Excel).
 - **Auditoría que escanea su propia sucursal:** en Usuarios, a una persona de Auditoría se le puede completar la sucursal (por ejemplo, Rocamora). Sigue viendo todo como Auditoría y tiene "Mi sucursal · Rocamora" para subir la documentación, cargar varios archivos y PDF en espera. Lo que sube una persona de Auditoría lo aprueba otra (el servidor firma quién subió cada archivo).

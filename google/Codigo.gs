@@ -318,7 +318,8 @@ function sincronizarDesdePlanilla(lista) {
     var hoja = hoja_(HOJAS.comprobantes);
     var actuales = leerHoja_(HOJAS.comprobantes);
     var filaPorRef = {};
-    actuales.forEach(function (c, i) { if (c.ref) filaPorRef[String(c.ref)] = { c: c, fila: i + 2 }; });
+    // Se busca por referencia; las que no tienen, por su id (tipo, punto de venta y número): así no se duplican al repetir la carga
+    actuales.forEach(function (c, i) { filaPorRef[c.ref ? 'ref:' + c.ref : 'id:' + c.id] = { c: c, fila: i + 2 }; });
     var resultado = { nuevas: 0, actualizadas: 0, omitidas: 0 };
     // Solo las sucursales cargadas en la pestaña Sucursales (las del piloto); el resto sigue en la planilla
     var delPiloto = leerHoja_(HOJAS.sucursales).map(function (s) { return s.nombre; });
@@ -328,10 +329,11 @@ function sincronizarDesdePlanilla(lista) {
         return;
       }
       var ref = String(p.ref || '');
-      var existente = ref ? filaPorRef[ref] : null;
+      var clave = ref ? 'ref:' + ref : 'id:' + p.id;
+      var existente = filaPorRef[clave];
       if (!existente) {
         escribirFila_(hoja, HOJAS.comprobantes, null, p);
-        if (ref) filaPorRef[ref] = { c: p, fila: hoja.getLastRow() };
+        filaPorRef[clave] = { c: p, fila: hoja.getLastRow() };
         resultado.nuevas++;
         return;
       }

@@ -198,6 +198,12 @@ prueba('pasar la planilla otra vez no duplica y actualiza cobros', () => {
   const leida = gs('obtenerDatos').datos.comprobantes.find((c) => c.id === sinCobrar.id)
   esperar(leida.estado === 'cobrada' && leida.fechaCobro === '2026-11-03', 'el cobro no se guardó')
 })
+prueba('una factura sin referencia no se duplica al pasar la planilla otra vez', () => {
+  const base = lote.find((c) => c.tipo === 'FC')
+  const sinRef = { ...base, ref: '', numero: 99999, id: `pl-FC-${base.puntoVenta}-99999` }
+  esperar(gs('sincronizarDesdePlanilla', [sinRef]).nuevas === 1, 'no se agregó')
+  esperar(gs('sincronizarDesdePlanilla', [sinRef]).nuevas === 0, 'se duplicó')
+})
 prueba('los datos vuelven con el mismo formato que usa la aplicación', () => {
   const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
   const original = lote.find((x) => x.id === c.id)
@@ -302,7 +308,7 @@ prueba('la sucursal no puede tocar facturas de otra sucursal', () => {
 prueba('Gerencia solo consulta', () => {
   como('gerencia.general@svaauto.com.ar')
   const d = gs('obtenerDatos')
-  esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length, 'Gerencia no ve todo')
+  esperar(d.usuario.rol === 'gerencia' && d.datos.comprobantes.length === lote.length + 1, 'Gerencia no ve todo') // + la factura sin referencia de la prueba anterior
   falla(() => gs('aplicarCambios', [{ id: d.datos.comprobantes[0].id, campos: { observaciones: 'x' } }]), 'solo puede consultar')
 })
 prueba('Cobranzas aprueba y registra el cobro', () => {

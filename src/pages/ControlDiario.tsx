@@ -6,7 +6,7 @@ import { BadgeEtapa, ETAPAS_ACTIVAS, nombreEtapa, quienEtapa } from '../componen
 import { EncabezadoPagina } from '../components/ui/Card'
 import { AvisoFiltroTarjeta, TarjetaFiltro, type TonoTarjeta } from '../components/ui/TarjetaFiltro'
 import { Tabla, type Columna } from '../components/ui/Tabla'
-import { useApp, useComprobantes } from '../context/AppContext'
+import { useApp } from '../context/AppContext'
 import { ultimoReclamo } from '../domain/reclamos'
 import { calcularSemaforo, enGrupo, GRUPOS_SALDO, type GrupoSaldo } from '../domain/semaforo'
 import { saldoFactura } from '../domain/importes'
@@ -41,12 +41,11 @@ function avisoNc(c: Comprobante): string {
  */
 export default function ControlDiario() {
   const { datos, hoy, rol, fuente, abrirLegajo, agregarDelErp, actualizarComprobante, registrarEvento } = useApp()
-  const filtradosPorSucursal = useComprobantes()
   const { aseguradoras, meta } = datos!
   const [params, setParams] = useSearchParams()
   const soloConsulta = rol === 'gerencia'
-  // Gerencia filtra la sucursal desde la columna: busca siempre en todas
-  const comprobantes = soloConsulta ? datos!.comprobantes : filtradosPorSucursal
+  // Todas las sucursales: la sucursal se filtra desde la columna de la tabla
+  const comprobantes = datos!.comprobantes
   const porSiniestro = useMemo(() => contarPorSiniestro(datos!.comprobantes), [datos])
   const entradaErp = useRef<HTMLInputElement>(null)
   const [mensajeErp, setMensajeErp] = useState<{ texto: string; error?: boolean } | null>(null)
@@ -75,23 +74,12 @@ export default function ControlDiario() {
 
   // Cobranzas arranca en el mes en curso (si no viene un filtro desde un aviso).
   // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
-  // Novedades: lo que entró con la última carga del ERP y lo que se movió desde ayer
+  // Cuándo se cargó el Excel del ERP por última vez (para la franja de arriba)
   const ERP = 'Factura cargada desde el Excel del ERP'
   const ultimaCarga = useMemo(
     () => comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (e.texto === ERP && e.fecha > n ? e.fecha : n), m), ''),
     [comprobantes],
   )
-  const ayer = useMemo(() => {
-    const d = new Date(`${hoy}T00:00:00Z`)
-    d.setUTCDate(d.getUTCDate() - 1)
-    return d.toISOString().slice(0, 10)
-  }, [hoy])
-  const novedad = (c: Comprobante): string => {
-    if (ultimaCarga && c.eventos.some((e) => e.texto === ERP && e.fecha === ultimaCarga)) return 'Nueva (último ERP)'
-    if (c.eventos.some((e) => e.fecha >= ayer && e.texto !== ERP)) return 'Con cambios desde ayer'
-    return ''
-  }
-  const cuentaNovedad = (n: string) => comprobantes.filter((c) => novedad(c) === n).length
 
   const filtrosIniciales =
     [...params.keys()].length > 0
@@ -143,16 +131,6 @@ export default function ControlDiario() {
     hasta ? <span className="block text-[11px] text-slate-400">{diffDias(desde, hasta)} {diffDias(desde, hasta) === 1 ? 'día' : 'días'}</span> : null
 
   const columnas: Columna<Fila>[] = [
-    {
-      clave: 'novedad',
-      titulo: 'Novedad',
-      oculta: true,
-      filtro: (x) => novedad(x.c),
-      celda: (x) => {
-        const n = novedad(x.c)
-        return n ? <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${n.startsWith('Nueva') ? 'bg-marca/10 text-marca' : 'bg-amber-100 text-amber-900'}`}>{n}</span> : null
-      },
-    },
     {
       clave: 'mes',
       titulo: 'Fecha',
@@ -309,27 +287,34 @@ export default function ControlDiario() {
             ? 'Todas las facturas y notas de crédito. Búsqueda por número, siniestro o patente; cada fila abre el detalle.'
             : 'Todas las facturas y notas de crédito, como la hoja "Diario" de la planilla'
         }
-        sucursal={!soloConsulta}
-        acciones={
-          <>
-            {rol === 'auditoria' && <EnEsperaAuditoria />}
-
-      {!soloConsulta && (
-              <>
-                <input ref={entradaErp} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
-                <button
-                  type="button"
-                  onClick={() => entradaErp.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche hover:bg-fondo"
-                  title="Excel de facturas exportado del ERP (.xlsx o CSV)"
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
-                </button>
-              </>
-            )}
-          </>
-        }
+        acciones={rol === 'auditoria' ? <EnEsperaAuditoria /> : undefined}
       />
+
+      {/* Lo primero del día: cargar el Excel del ERP */}
+      {!soloConsulta && (
+        <div
+          className={`mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 ${
+            ultimaCarga === hoy ? 'border-esmeralda/30 bg-esmeralda/5' : 'border-sem-amarillo/40 bg-amber-50'
+          }`}
+        >
+          <FileSpreadsheet className={`h-6 w-6 shrink-0 ${ultimaCarga === hoy ? 'text-teal-600' : 'text-amber-600'}`} />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-noche">Excel del ERP</div>
+            <div className={`text-sm ${ultimaCarga === hoy ? 'text-teal-800' : 'text-amber-900'}`}>
+              {ultimaCarga === hoy ? 'Cargado hoy.' : `Todavía no se cargó hoy${ultimaCarga ? ` · la última carga fue el ${formatoFecha(ultimaCarga)}` : ''}.`}
+            </div>
+          </div>
+          <input ref={entradaErp} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargarErp(e.target.files?.[0])} />
+          <button
+            type="button"
+            onClick={() => entradaErp.current?.click()}
+            className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
+            title="Excel de facturas exportado del ERP (.xlsx o CSV)"
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
+          </button>
+        </div>
+      )}
 
       {mensajeErp && (
         <div
@@ -387,22 +372,6 @@ export default function ControlDiario() {
         texto={QUIEN.find((q) => params.get('quien') === q.quien)?.titulo.toLowerCase().replace(/^./, (l) => l.toUpperCase()) ?? null}
         onQuitar={() => setParams({})}
       />
-
-      {!soloConsulta && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-slate-500">Novedades:</span>
-          {(['Nueva (último ERP)', 'Con cambios desde ayer'] as const).map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setParams(params.get('novedad') === n ? {} : { novedad: n })}
-              className={`rounded-full border px-3 py-1 font-semibold ${params.get('novedad') === n ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}
-            >
-              {n === 'Nueva (último ERP)' ? `Nuevas del último ERP${ultimaCarga ? ` (${formatoFecha(ultimaCarga)})` : ''}` : 'Con cambios desde ayer'}: {cuentaNovedad(n)}
-            </button>
-          ))}
-        </div>
-      )}
 
       {grupo && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">

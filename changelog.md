@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.12.0] - 2026-11-14
+
+### Cambiado
+- **Pestañas** (Control diario, Seguimiento, Informes, Ajustes y Documentación/Pedidos): ahora son un interruptor; la elegida se ve en blanco sobre una cápsula gris. Se sacaron las flechitas que aparecían a la derecha (era una barra de desplazamiento de más).
+- **Control diario:** arriba, una franja con el botón **Cargar Excel del ERP** bien a la vista y si ya se cargó hoy (verde) o todavía no (ámbar, con la fecha de la última carga).
+- **Control diario:** sin el filtro de sucursal de arriba (se filtra en la columna de la tabla) y sin "Novedades" (nuevas del último ERP y con cambios desde ayer).
+
 ## [0.11.4] - 2026-11-14
 
 ### Cambiado

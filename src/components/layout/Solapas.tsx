@@ -57,22 +57,25 @@ export function Solapas() {
   if (!grupo) return null
   const solapas = grupo.solapas.filter((s) => !s.soloAdministradora || admin)
   return (
-    <nav className="no-imprimir -mt-1 mb-5 flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Secciones">
-      {solapas.map((s) => (
-        <NavLink
-          key={s.ruta}
-          to={s.ruta}
-          className={({ isActive }) =>
-            `-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
-              isActive || (s.ruta === '/app/pendientes' && pathname === '/app/pedidos')
-                ? 'border-marca text-marca'
-                : 'border-transparent text-slate-500 hover:text-noche'
-            }`
-          }
-        >
-          {s.titulo}
-        </NavLink>
-      ))}
-    </nav>
+    // Interruptor: las opciones dentro de una cápsula gris; la elegida se "levanta" en blanco
+    <div className="no-imprimir -mt-1 mb-5 max-w-full overflow-x-auto">
+      <nav className="inline-flex gap-0.5 rounded-xl bg-slate-200/70 p-1" aria-label="Secciones">
+        {solapas.map((s) => (
+          <NavLink
+            key={s.ruta}
+            to={s.ruta}
+            className={({ isActive }) =>
+              `whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+                isActive || (s.ruta === '/app/pendientes' && pathname === '/app/pedidos')
+                  ? 'bg-white text-noche shadow-sm'
+                  : 'text-slate-500 hover:text-noche'
+              }`
+            }
+          >
+            {s.titulo}
+          </NavLink>
+        ))}
+      </nav>
+    </div>
   )
 }

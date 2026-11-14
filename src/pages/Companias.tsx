@@ -300,7 +300,7 @@ function FichaCompania({
 
         <section className="mt-5 space-y-3 rounded-xl border border-slate-200 p-4">
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Presentación</h3>
-          <div className="inline-flex flex-wrap rounded-lg border border-slate-200 bg-fondo p-0.5 text-sm font-semibold" role="group" aria-label="Cómo se presenta">
+          <div className="inline-flex flex-wrap gap-0.5 rounded-xl bg-slate-200/70 p-1 text-sm font-semibold" role="group" aria-label="Cómo se presenta">
             {(
               [
                 ['mail', 'Por mail'],
@@ -315,7 +315,7 @@ function FichaCompania({
                   type="button"
                   aria-pressed={activo}
                   onClick={() => !activo && onCambiar({ canal })}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${activo ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 ${activo ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`}
                 >
                   {canal !== 'portal' && <Mail className="h-4 w-4" />}
                   {canal !== 'mail' && <MonitorUp className="h-4 w-4" />} {titulo}

@@ -292,10 +292,17 @@ const SECCIONES: Seccion[] = [
           <Paso n={1}>
             En <Pantalla>Mis facturas</Pantalla>, el botón <strong>Informar una nota de crédito</strong>.
           </Paso>
-          <Paso n={2}>La factura, si se anula completa o una parte (con el importe) y el motivo.</Paso>
+          <Paso n={2}>
+            La factura, si se anula completa o una parte (con el importe), el motivo y <strong>si se vuelve a facturar</strong>: sí (por
+            cuánto, si ya se sabe) o no (por qué, por ejemplo si se anuló la orden).
+          </Paso>
           <Paso n={3}>Cobranzas espera que la nota de crédito aparezca en el sistema y la asocia a la factura.</Paso>
         </Pasos>
-        <p>Si después se vuelve a facturar, en Mis siniestros figura "Falta refacturar" hasta que esté la factura nueva.</p>
+        <p>
+          Si se vuelve a facturar, en Mis siniestros queda pendiente hasta que llegue la factura nueva. Si no, deja de figurar como pendiente.
+          Cuando la nota de crédito llegó sin avisarla, el siniestro pregunta lo mismo con los botones <strong>Se refactura</strong> y{' '}
+          <strong>No se refactura</strong>.
+        </p>
       </>
     ),
   },
@@ -313,7 +320,7 @@ const SECCIONES: Seccion[] = [
           <li>Búsqueda por número de siniestro, patente o número de factura; si hay un solo resultado, se abre solo.</li>
           <li>Filtros por compañía y por estado: en curso (algo sin cobrar) o terminados (cobrados o anulados).</li>
           <li>Las notas de crédito aparecen debajo de la factura que acreditan, con el importe en rojo y si anulan todo o una parte.</li>
-          <li>Si una nota de crédito deja algo por volver a facturar, se indica como pendiente.</li>
+          <li>Si hubo una nota de crédito, el siniestro pregunta si se vuelve a facturar; con la respuesta, queda pendiente o deja de estarlo.</li>
         </ul>
       </>
     ),

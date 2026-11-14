@@ -217,6 +217,8 @@ export interface Comprobante {
    * total (anula la factura) o parcial por un importe
    */
   anulacionInformada?: { fecha: string; motivo: string; parcial?: boolean; importe?: number } | null
+  /** después de una nota de crédito: si lo anulado se vuelve a facturar (lo dice la sucursal o Cobranzas) */
+  refacturacion?: Refacturacion | null
   /** lo que restan las notas de crédito parciales vinculadas */
   acreditado?: number | null
   /** monto aprobado de la orden del siniestro (lo carga Cobranzas en la primera factura del siniestro) */
@@ -292,4 +294,13 @@ export interface DatosApp {
   enEspera?: DocumentoEnEspera[]
   cobrosPrevistos: CobroPrevisto[]
   meta: MetaDemo
+}
+
+/** Si lo que anuló una nota de crédito se vuelve a facturar: sí (por cuánto, si se sabe) o no (por qué). */
+export interface Refacturacion {
+  decision: 'si' | 'no'
+  importe?: number | null
+  motivo?: string
+  fecha: string
+  autor: string
 }

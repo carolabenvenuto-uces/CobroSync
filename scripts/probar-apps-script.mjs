@@ -690,6 +690,15 @@ prueba('con una Administradora en Usuarios, Ajustes, compañías y planilla son 
   falla(() => gs('guardarAseguradoras', [{ id: cia, canal: 'mail' }], false, true), 'solo la administradora')
   falla(() => gs('traerDeMiPlanilla'), 'solo la administradora')
 })
+prueba('la sucursal dice si lo anulado se refactura y el servidor lo firma', () => {
+  como('rocamora@svaauto.com.ar')
+  const f = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
+  const r = gs('aplicarCambios', [{ id: f.id, campos: { refacturacion: { decision: 'no', motivo: 'Se anuló la orden', autor: 'otra persona', fecha: '2020-01-01' } } }])
+  const g = r.comprobantes[0].refacturacion
+  esperar(g && g.decision === 'no' && g.motivo === 'Se anuló la orden' && g.autor === 'Facturación Rocamora' && g.fecha !== '2020-01-01', JSON.stringify(g))
+  const otra = gs('aplicarCambios', [{ id: f.id, campos: { refacturacion: { decision: 'si', importe: '1500,5' } } }]).comprobantes[0].refacturacion
+  esperar(otra.decision === 'si' && otra.importe === null, JSON.stringify(otra)) // un importe que no es número no se guarda
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

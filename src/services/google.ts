@@ -74,6 +74,7 @@ export function completarComprobante(c: Comprobante): Comprobante {
     ncInformada: c.ncInformada ?? null,
     compromiso: c.compromiso ?? null,
     anulacionInformada: c.anulacionInformada ?? null,
+    refacturacion: c.refacturacion ?? null,
     reclamos: Array.isArray(c.reclamos) ? c.reclamos.filter(Boolean) : [],
     documentos: Array.isArray(c.documentos) ? c.documentos.filter(Boolean) : [],
     eventos: Array.isArray(c.eventos) ? c.eventos.filter(Boolean) : [],

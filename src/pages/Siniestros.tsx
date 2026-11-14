@@ -7,6 +7,8 @@ import { saldoSinCobro } from '../domain/importes'
 import { calcularSemaforo, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import { esperaALaSucursal } from '../domain/sucursales'
 import type { Comprobante, Documento } from '../domain/tipos'
+import { textoRefacturacion, tieneNotaDeCredito } from '../domain/refacturacion'
+import { ResponderRefacturacion } from '../components/ResponderRefacturacion'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 import { diffDias } from '../lib/fechas'
 
@@ -49,7 +51,7 @@ interface Grupo {
   notas: Comprobante[]
   ultimaFecha: string
   /** lo que le queda por hacer a la sucursal en este siniestro */
-  pendientes: { tipo: 'doc' | 'refacturar'; texto: string }[]
+  pendientes: { tipo: 'doc' | 'refacturar'; texto: string; /** la factura de la nota de crédito, si falta decir si se refactura */ preguntar?: Comprobante }[]
   /** tiene alguna factura sin cobrar (ni anulada) */
   enCurso: boolean
   /** saldo sin cobrar de las facturas vigentes */
@@ -119,11 +121,23 @@ export default function Siniestros() {
             if (d.estado === 'observado') g.pendientes.push({ tipo: 'doc', texto: `Reemplazar la ${NOMBRE_DOCUMENTO[d.tipo].toLowerCase()} de ${numero}${d.motivo ? ` (${d.motivo.toLowerCase()})` : ''}` })
           }
         }
-        if ((f.acreditado ?? 0) > 0 && !refacturada(f)) {
-          g.pendientes.push({ tipo: 'refacturar', texto: `${numero} tuvo una nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}: si esa parte se vuelve a facturar, falta la factura nueva` })
-        }
-        if (f.estado === 'anulada' && !refacturada(f) && diffDias(f.fecha, hoy) <= 60) {
-          g.pendientes.push({ tipo: 'refacturar', texto: `${numero} se anuló con una nota de crédito: si se refactura, falta la factura nueva` })
+        // Nota de crédito: lo que diga la sucursal (o Cobranzas) sobre si se vuelve a facturar
+        if (tieneNotaDeCredito(f) && !refacturada(f)) {
+          const r = f.refacturacion
+          const parcial = f.estado !== 'anulada'
+          if (r?.decision === 'no') {
+            g.info.push(`${numero}: ${textoRefacturacion(r, formatoPesos).toLowerCase()} (${r.autor ? `${r.autor}, ` : ''}${formatoFecha(r.fecha)})`)
+          } else if (r?.decision === 'si') {
+            g.pendientes.push({ tipo: 'refacturar', texto: `${numero} se vuelve a facturar${r.importe ? ` por ${formatoPesos(r.importe)}` : ''}: falta la factura nueva` })
+          } else if (parcial || diffDias(f.fecha, hoy) <= 60) {
+            g.pendientes.push({
+              tipo: 'refacturar',
+              texto: parcial
+                ? `${numero} tuvo una nota de crédito parcial por ${formatoPesos(f.acreditado ?? 0)}. ¿Esa parte se vuelve a facturar?`
+                : `${numero} se anuló con una nota de crédito. ¿Se vuelve a facturar?`,
+              preguntar: f,
+            })
+          }
         }
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
@@ -295,8 +309,11 @@ export default function Siniestros() {
             <div className="mb-1 font-bold">Pendiente</div>
             <ul className="space-y-1">
               {g.pendientes.map((a) => (
-                <li key={a.texto} className="flex items-start gap-1.5">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a.texto}
+                <li key={a.texto}>
+                  <span className="flex items-start gap-1.5">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a.texto}
+                  </span>
+                  {a.preguntar && rol !== 'gerencia' && <ResponderRefacturacion factura={a.preguntar} />}
                 </li>
               ))}
             </ul>
@@ -502,3 +519,4 @@ function MontoOrden({ g, pendiente }: { g: Grupo; pendiente: number | null }) {
     </div>
   )
 }
+

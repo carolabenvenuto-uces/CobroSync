@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.13.0] - 2026-11-14
+
+### Agregado
+- **¿Se vuelve a facturar?** Al informar una nota de crédito, la sucursal dice si lo anulado se refactura (por cuánto, si ya se sabe) o no (por qué: se anuló la orden, la compañía no reconoce el importe, se le factura al cliente u otro).
+- En **Siniestros** y en el detalle de la factura, si la nota de crédito llegó sin aviso, aparecen los botones **Se refactura** / **No se refactura**. Con "no", el siniestro deja de figurar como pendiente de facturar; con "sí", queda pendiente (con el importe) hasta que llega la factura nueva. Queda en el historial y le avisa a Cobranzas.
+- Servidor: columna nueva `refacturacion` en Comprobantes (el encabezado se agrega solo); la respuesta la firma el servidor.
+
 ## [0.12.1] - 2026-11-14
 
 ### Cambiado

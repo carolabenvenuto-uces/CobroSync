@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.11.1] - 2026-11-14
+
+### Cambiado
+- **Pantalla de ingreso:** en vez de titilar, el imán del logo queda quieto y atrae una fila de puntitos que avanza hacia él mientras se carga la plataforma.
+
 ## [0.11.0] - 2026-11-14
 
 ### Agregado

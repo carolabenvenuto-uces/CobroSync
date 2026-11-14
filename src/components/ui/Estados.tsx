@@ -1,12 +1,11 @@
 import { LockKeyhole } from 'lucide-react'
-import { Isologo } from '../Logo'
 
 /** Mensajes mientras se cargan los datos o si falla la carga. */
 export function Cargando({ pantallaCompleta = false }: { pantallaCompleta?: boolean }) {
   if (!pantallaCompleta) return <div className="p-10 text-center text-sm text-slate-500">Cargando datos…</div>
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-noche text-center">
-      <Isologo className="h-14 w-14 animate-pulse" claro />
+      <ImanCargando />
       <div className="text-2xl font-extrabold text-white">CobroSync</div>
       <div className="text-sm text-slate-300">Ingresando con la cuenta de la empresa…</div>
     </div>
@@ -42,3 +41,44 @@ export function ErrorCarga({ mensaje }: { mensaje: string }) {
 
 export const claseSelect =
   'rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-noche shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20'
+
+/**
+ * Pantalla de carga: el imán del logo quieto y una fila de puntitos verde agua que avanza hacia él
+ * y desaparece al llegar, como si los atrajera (los cobros), mientras se cargan los datos.
+ */
+function ImanCargando() {
+  const lila = '#B9AEFF'
+  const agua = '#3FD4C2'
+  const puntos = 6
+  const duracion = 1.8
+  return (
+    <svg viewBox="0 0 230 120" className="h-16 w-auto" role="img" aria-label="Cargando">
+      <style>{`
+        .iman-punto { animation: iman-atrae ${duracion}s cubic-bezier(.45,0,.75,1) infinite; transform-box: fill-box; transform-origin: center; opacity: 0; }
+        @keyframes iman-atrae {
+          0%   { transform: translateX(0) scale(.45); opacity: 0; }
+          20%  { opacity: .55; }
+          80%  { transform: translateX(-112px) scale(1); opacity: 1; }
+          100% { transform: translateX(-124px) scale(.6); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .iman-punto { animation: none; opacity: .8; }
+        }
+      `}</style>
+      <path d="M86 28 H58 A32 32 0 0 0 58 92 H86" fill="none" stroke={lila} strokeWidth="22" strokeLinejoin="round" />
+      <path d="M76 28 H94" stroke={agua} strokeWidth="22" />
+      <path d="M76 92 H94" stroke={agua} strokeWidth="22" />
+      {Array.from({ length: puntos }, (_, i) => (
+        <circle
+          key={i}
+          className="iman-punto"
+          cx="222"
+          cy="60"
+          r="5"
+          fill={agua}
+          style={{ animationDelay: `${(-(duracion / puntos) * i).toFixed(2)}s` }}
+        />
+      ))}
+    </svg>
+  )
+}

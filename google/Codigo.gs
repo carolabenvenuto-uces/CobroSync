@@ -43,6 +43,8 @@ var HOJAS = {
       'fechaAprobacion', 'pedidos', 'atendiendo', 'reenviar',
       // Monto aprobado de la orden (lo carga Cobranzas, por siniestro, en la primera factura)
       'montoOrden',
+      // Si lo anulado con nota de crédito se vuelve a facturar (JSON)
+      'refacturacion',
     ],
   },
   lecturas: { nombre: 'Lecturas', columnas: ['email', 'ids', 'actualizado'] },
@@ -57,7 +59,7 @@ var HOJAS = {
   },
 };
 
-var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada', 'pedidos', 'atendiendo'];
+var COLUMNAS_JSON = ['compromiso', 'reclamos', 'documentos', 'eventos', 'anulacionInformada', 'pedidos', 'atendiendo', 'refacturacion'];
 var COLUMNAS_NUMERO = ['puntoVenta', 'numero', 'total', 'plazoPagoDias', 'monto'];
 var COLUMNAS_NUMERO_OPCIONAL = ['acreditado', 'importeCobrado', 'percepciones', 'montoOrden']; // vacío = sin dato
 // Los plazos de la documentación (común y MiPyME) están en la pestaña Config y se cambian
@@ -142,13 +144,14 @@ function obtenerDatos() {
  * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Cobranzas.
  */
 // siniestro: lo informa la sucursal al subir la orden (antes no se conoce)
-var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro'];
+var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro', 'refacturacion'];
 
 function aplicarCambios(cambios) {
   var usuario = usuarioActual_();
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.comprobantes);
+    agregarColumnasNuevas_(hoja, HOJAS.comprobantes);
     var tocadas = {};
     var errores = [];
     cambios.forEach(function (op) {
@@ -208,6 +211,12 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
             // La sucursal solo cambia lo suyo; importes, presentación y cobro quedan como estaban
             if (CAMPOS_SUCURSAL.indexOf(k) < 0) return;
             if (k === 'estado' && !(op.campos.estado === 'en_gestion' && c.estado === 'pendiente_drive')) return;
+          }
+          // La respuesta de si se refactura la firma el servidor (quién y cuándo)
+          if (k === 'refacturacion' && op.campos[k]) {
+            var r = op.campos[k];
+            c[k] = { decision: r.decision === 'no' ? 'no' : 'si', importe: Number(r.importe) > 0 ? Number(r.importe) : null, motivo: String(r.motivo || '').slice(0, 300), fecha: hoy_(), autor: usuario.nombre };
+            return;
           }
           c[k] = op.campos[k];
         });

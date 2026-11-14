@@ -1,3 +1,5 @@
+import { ResponderRefacturacion } from './ResponderRefacturacion'
+import { textoRefacturacion, tieneNotaDeCredito } from '../domain/refacturacion'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Bell,
@@ -799,6 +801,26 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo cuando llega la nota de crédito del ERP (o al vincularla desde la NC).</p>
               )}
               {rol === 'sucursal' && <p className="mt-1 text-xs text-slate-500">Se aplica cuando llega la nota de crédito del ERP.</p>}
+            </section>
+          )}
+
+          {/* Nota de crédito: si lo anulado se vuelve a facturar */}
+          {c.tipo === 'FC' && tieneNotaDeCredito(c) && (
+            <section className={`rounded-lg border p-3 text-sm ${c.refacturacion ? 'border-slate-200 bg-slate-50' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+              {c.refacturacion ? (
+                <>
+                  <p className="font-semibold text-noche">{textoRefacturacion(c.refacturacion, formatoPesos)}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {c.refacturacion.autor ? `${c.refacturacion.autor} · ` : ''}
+                    {formatoFecha(c.refacturacion.fecha)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold">¿Lo anulado con la nota de crédito se vuelve a facturar?</p>
+                  {rol !== 'gerencia' ? <ResponderRefacturacion factura={c} /> : <p className="mt-0.5 text-xs">La sucursal todavía no lo dijo.</p>}
+                </>
+              )}
             </section>
           )}
 

@@ -4,6 +4,8 @@ import { useApp, useComprobantes } from '../context/AppContext'
 import { diffDias } from '../lib/fechas'
 import { formatoComprobante, formatoPesos } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
+import { MOTIVOS_NO_REFACTURA, textoRefacturacion } from '../domain/refacturacion'
+import type { Refacturacion } from '../domain/tipos'
 
 const MOTIVOS_NC = [
   'Factura emitida a la compañía equivocada',
@@ -33,6 +35,10 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
   const [comentario, setComentario] = useState('')
   const [parcial, setParcial] = useState(false)
   const [importeTexto, setImporteTexto] = useState('')
+  // ¿Lo anulado se vuelve a facturar? Sí (por cuánto, si se sabe) o no (por qué)
+  const [refactura, setRefactura] = useState<'si' | 'no' | ''>('')
+  const [importeNuevoTexto, setImporteNuevoTexto] = useState('')
+  const [motivoNo, setMotivoNo] = useState('')
   const [listo, setListo] = useState(false)
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
@@ -43,17 +49,27 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
   const importeParcial = Number(importeTexto.replace(/\./g, '').replace(',', '.')) || 0
   const facturaElegida = facturas.find((f) => f.id === facturaId)
   const parcialValido = !parcial || (importeParcial > 0 && (!facturaElegida || importeParcial < facturaElegida.total))
+  const importeNuevo = Number(importeNuevoTexto.replace(/\./g, '').replace(',', '.')) || 0
+  const refacturaValida = refactura === 'si' || (refactura === 'no' && !!motivoNo)
 
   function informar() {
     const factura = facturas.find((f) => f.id === facturaId)
     if (!factura) return
     const texto = `${motivo}${comentario ? `: ${comentario}` : ''}`
+    const refacturacion: Refacturacion = {
+      decision: refactura === 'no' ? 'no' : 'si',
+      importe: refactura === 'si' && importeNuevo > 0 ? importeNuevo : null,
+      motivo: refactura === 'no' ? motivoNo : undefined,
+      fecha: hoy,
+      autor: '',
+    }
+    const respuesta = textoRefacturacion(refacturacion, formatoPesos)
     if (parcial) {
-      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto, parcial: true, importe: importeParcial } })
-      registrarEvento(factura.id, 'nota_credito', `Informó una nota de crédito parcial por ${formatoPesos(importeParcial)}. ${texto}`)
+      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto, parcial: true, importe: importeParcial }, refacturacion })
+      registrarEvento(factura.id, 'nota_credito', `Informó una nota de crédito parcial por ${formatoPesos(importeParcial)}. ${texto}. ${respuesta}.`)
     } else {
-      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto }, compromiso: null })
-      registrarEvento(factura.id, 'nota_credito', `Informó que se anula toda la factura con nota de crédito. ${texto}`)
+      actualizarComprobante(factura.id, { anulacionInformada: { fecha: hoy, motivo: texto }, compromiso: null, refacturacion })
+      registrarEvento(factura.id, 'nota_credito', `Informó que se anula toda la factura con nota de crédito. ${texto}. ${respuesta}.`)
     }
     setListo(true)
   }
@@ -128,6 +144,44 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
                 ))}
               </select>
             </label>
+            <fieldset className="block text-xs font-semibold text-slate-500">
+              ¿Se vuelve a facturar?
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ['si', 'Sí, se refactura'],
+                    ['no', 'No se refactura'],
+                  ] as const
+                ).map(([valor, texto]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => setRefactura(valor)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${refactura === valor ? 'border-marca bg-marca/10 text-marca' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    {texto}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {refactura === 'si' && (
+              <label className="block text-xs font-semibold text-slate-500">
+                Por cuánto (si ya lo saben)
+                <input inputMode="decimal" value={importeNuevoTexto} onChange={(e) => setImporteNuevoTexto(e.target.value)} placeholder="Ej.: 1.200.000,00" className={`${claseSelect} mt-1 w-full`} />
+                <span className="mt-1 block font-normal text-slate-500">Queda pendiente la factura nueva hasta que llegue con el ERP.</span>
+              </label>
+            )}
+            {refactura === 'no' && (
+              <label className="block text-xs font-semibold text-slate-500">
+                Por qué no
+                <select className={`${claseSelect} mt-1 w-full`} value={motivoNo} onChange={(e) => setMotivoNo(e.target.value)}>
+                  <option value="" disabled>Seleccionar</option>
+                  {MOTIVOS_NO_REFACTURA.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block text-xs font-semibold text-slate-500">
               Comentario (opcional)
               <textarea
@@ -141,7 +195,7 @@ export function NotaCreditoModal({ onCerrar }: { onCerrar: () => void }) {
             <button
               type="button"
               onClick={informar}
-              disabled={!facturaId || !motivo || !parcialValido}
+              disabled={!facturaId || !motivo || !parcialValido || !refacturaValida}
               className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white hover:bg-marca-oscuro disabled:bg-slate-200"
             >
               Informar a cobranzas

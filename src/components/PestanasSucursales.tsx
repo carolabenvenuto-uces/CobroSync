@@ -13,18 +13,21 @@ export function PestanasSucursales() {
     { ruta: '/app/pedidos', titulo: 'Pedidos', cantidad: pedidosAbiertos(comprobantes, hoy).length },
   ]
   return (
-    <div className="mb-4 flex border-b border-slate-200">
-      {pestanas.map((p) => (
-        <NavLink
-          key={p.ruta}
-          to={p.ruta}
-          className={({ isActive }) =>
-            `-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${isActive ? 'border-marca text-marca' : 'border-transparent text-slate-500 hover:text-slate-800'}`
-          }
-        >
-          {p.titulo} <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{p.cantidad}</span>
-        </NavLink>
-      ))}
+    // Mismo interruptor que las solapas de arriba (ver layout/Solapas.tsx)
+    <div className="mb-4 max-w-full overflow-x-auto">
+      <div className="inline-flex gap-0.5 rounded-xl bg-slate-200/70 p-1">
+        {pestanas.map((p) => (
+          <NavLink
+            key={p.ruta}
+            to={p.ruta}
+            className={({ isActive }) =>
+              `whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${isActive ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'}`
+            }
+          >
+            {p.titulo} <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{p.cantidad}</span>
+          </NavLink>
+        ))}
+      </div>
     </div>
   )
 }

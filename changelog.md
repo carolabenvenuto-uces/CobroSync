@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.11.4] - 2026-11-14
+
+### Cambiado
+- **Ver como:** deja de ser un desplegable con recuadro; es un renglón más del pie del menú (como Ajustes) y al tocarlo se abre la lista hacia arriba. Mientras se mira como otro, el renglón dice a quién.
+- **Menú de la administradora:** sin Manual de uso ni Soporte técnico (aparecen cuando mira como otro usuario).
+
 ## [0.11.3] - 2026-11-14
 
 ### Cambiado

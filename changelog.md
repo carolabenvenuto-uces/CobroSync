@@ -11,6 +11,16 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.11.0] - 2026-11-14
+
+### Agregado
+- **Administradora:** nuevo rol para la pestaña Usuarios ("Administradora" o "Desarrolladora"). Trabaja como Cobranzas (con su sucursal propia, si tiene) y además es la única que entra a Ajustes.
+- **Ver como:** la administradora elige en el menú ver la plataforma como Cobranzas, Gerencia o cualquier sucursal, sin tocar la planilla. Arriba queda un aviso con "Volver a mi vista". Mientras tanto es solo para mirar: no se guarda nada ni se marcan notificaciones como leídas.
+
+### Cambiado
+- **Ajustes** (plazos y avisos, compañías y planilla) sale del menú de Cobranzas: solo lo ve y lo cambia la administradora, también del lado del servidor.
+- Mientras nadie tenga el rol Administradora en Usuarios, sigue valiendo la regla anterior (la cuenta del correo de soporte).
+
 ## [0.10.0] - 2026-11-13
 
 ### Agregado

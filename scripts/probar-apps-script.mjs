@@ -516,7 +516,7 @@ prueba('con el correo de soporte cargado, los ajustes los cambia solo esa cuenta
 })
 prueba('Ajustes: Cobranzas cambia los plazos y las compañías con FCE; la sucursal no puede', () => {
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'Solo Cobranzas')
+  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'solo la administradora')
   como('auditoria@svaauto.com.ar')
   const antes = gs('obtenerDatos')
   esperar(antes.datos.meta.plazos.comun === 10 && antes.datos.meta.plazos.mipyme === 5, JSON.stringify(antes.datos.meta.plazos))
@@ -645,7 +645,7 @@ prueba('CobroSync trae solo las facturas nuevas que se anotaron en la planilla (
   esperar(d.datos.meta.planilla && d.datos.meta.planilla.ultimaLectura, 'no quedó la hora de la última lectura')
   esperar(gs('traerDeMiPlanilla').nuevas === 0, 'la duplicó al leer otra vez')
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('traerDeMiPlanilla'), 'Solo Cobranzas')
+  falla(() => gs('traerDeMiPlanilla'), 'solo la administradora')
 })
 prueba('nunca se borra un dato de la planilla', () => {
   const i = enDiario.findIndex((c) => !c.fechaCobro)
@@ -655,7 +655,7 @@ prueba('nunca se borra un dato de la planilla', () => {
 })
 prueba('solo Cobranzas actualiza la planilla desde la aplicación', () => {
   como('rocamora@svaauto.com.ar')
-  falla(() => gs('actualizarMiPlanilla'), 'Solo Cobranzas')
+  falla(() => gs('actualizarMiPlanilla'), 'solo la administradora')
   falla(() => gs('agregarAQuiter', [['1']]), 'Solo Cobranzas')
   como('auditoria@svaauto.com.ar')
   esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'no respondió')
@@ -675,6 +675,20 @@ prueba('PDF de una factura de hoy: queda en espera y se marca al unirse', () => 
   como('auditoria@svaauto.com.ar')
   esperar(gs('marcarEsperaAsociada', [{ id: e.id, comprobanteId: 'x' }]) === 1, 'no lo marcó')
   esperar(!gs('obtenerDatos').datos.enEspera.some((x) => x.id === e.id), 'sigue en espera después de unirse')
+})
+prueba('con una Administradora en Usuarios, Ajustes, compañías y planilla son solo suyos', () => {
+  fila('Usuarios', ['desarrolladora@svaauto.com.ar', 'Carola', 'Administradora', 'Rocamora'])
+  como('desarrolladora@svaauto.com.ar')
+  const { usuario: u, datos: d } = gs('obtenerDatos')
+  const cia = d.aseguradoras[0].id
+  esperar(u.rol === 'auditoria' && u.administradora === true && u.sucursalPropia === 'Rocamora', JSON.stringify(u))
+  esperar(typeof gs('actualizarMiPlanilla').completadas === 'number', 'la administradora no pudo actualizar la planilla')
+  gs('guardarAseguradoras', [{ id: cia, canal: 'ambas' }], false, true)
+  como('auditoria@svaauto.com.ar')
+  esperar(gs('obtenerDatos').usuario.administradora === false, 'Cobranzas quedó como administradora')
+  falla(() => gs('guardarAjustes', { plazos: {}, companiasSinFce: [], avisos: {} }), 'solo la administradora')
+  falla(() => gs('guardarAseguradoras', [{ id: cia, canal: 'mail' }], false, true), 'solo la administradora')
+  falla(() => gs('traerDeMiPlanilla'), 'solo la administradora')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

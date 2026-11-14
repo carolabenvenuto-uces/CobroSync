@@ -17,6 +17,8 @@ export interface UsuarioGoogle {
   sucursal: string | null
   /** Cobranzas que además escanea la documentación de una sucursal (la suya) */
   sucursalPropia?: string | null
+  /** la administradora: Ajustes (plazos, compañías, planilla) y ver como los demás */
+  administradora?: boolean
 }
 
 type Corredor = Record<string, (...args: unknown[]) => void> & {
@@ -33,7 +35,16 @@ function corredor(): Corredor | null {
 export const conectadoAGoogle = (): boolean => corredor() !== null
 
 /** Llama a una función de google/Codigo.gs y espera la respuesta. */
+/** Lo que se puede pedir al servidor mientras la administradora mira como otro usuario (nada que guarde). */
+const SOLO_LECTURA = new Set(['obtenerDatos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
+let textoSoloMirar: string | null = null
+/** Con un texto, el servidor solo se consulta: todo lo que guarda se rechaza con ese texto. */
+export function fijarSoloMirar(texto: string | null) {
+  textoSoloMirar = texto
+}
+
 function llamar<T>(funcion: string, ...args: unknown[]): Promise<T> {
+  if (textoSoloMirar && !SOLO_LECTURA.has(funcion)) return Promise.reject(new Error(textoSoloMirar))
   const run = corredor()
   if (!run) return Promise.reject(new Error('No hay conexión con Google.'))
   return new Promise<T>((resolver, rechazar) => {

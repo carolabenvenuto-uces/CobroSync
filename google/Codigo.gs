@@ -312,8 +312,7 @@ function agregarComprobantes(lista) {
  * Solo Cobranzas.
  */
 function sincronizarDesdePlanilla(lista) {
-  var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar la planilla.');
+  var usuario = exigirAdministradora_();
   return sincronizarLista_(lista, usuario.nombre);
 }
 
@@ -392,8 +391,7 @@ function sincronizarLista_(lista, autor) {
  * así se puede borrar un mail o reactivar una compañía pausada.
  */
 function guardarAseguradoras(lista, completarExistentes, exacto) {
-  var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar compañías.');
+  var usuario = exigirAdministradora_();
   return conBloqueo_(function () {
     var hoja = hoja_(HOJAS.aseguradoras);
     agregarColumnasNuevas_(hoja, HOJAS.aseguradoras);
@@ -791,10 +789,7 @@ function reportarProblema(texto, contexto) {
 
 /** Pantalla Ajustes: plazos, compañías que reciben FCE y avisos por mail. Solo Cobranzas. */
 function guardarAjustes(a) {
-  var quien = usuarioActual_();
-  if (quien.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cambiar los ajustes.');
-  var soporte = String(config_('correoSoporte') || '').trim().toLowerCase();
-  if (soporte && quien.email !== soporte) throw new Error('Los ajustes los cambia solo la administradora.');
+  var quien = exigirAdministradora_();
   return conBloqueo_(function () {
     var valores = {
       plazoDocumentacion: a.plazos.comun,
@@ -894,7 +889,7 @@ function actualizarPlanillaDeControl() {
 
 /** Botón "Traer los cambios de mi planilla ahora" (Ajustes → Planilla). Solo Cobranzas. */
 function traerDeMiPlanilla() {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede leer la planilla.');
+  exigirAdministradora_();
   var libro = planillaDeControl_();
   if (!libro) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
   var r = traerDiario_(libro);
@@ -995,7 +990,7 @@ function sumarDias_(fecha, dias) {
 }
 
 function actualizarMiPlanilla() {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede actualizar la planilla.');
+  exigirAdministradora_();
   if (!config_('planillaControlId')) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
   return { completadas: actualizarPlanillaDeControl(), ahora: ahora_() };
 }
@@ -1111,10 +1106,35 @@ function usuarioActual_() {
   if (!email || (dominio && email.split('@')[1] !== dominio)) throw new Error('Hay que ingresar con la cuenta de la empresa.');
   var u = leerHoja_(HOJAS.usuarios).filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
   if (!u) throw new Error('La cuenta ' + email + ' no tiene acceso. Cobranzas puede habilitarla.');
-  var rol = String(u.rol).toLowerCase().indexOf('geren') === 0 ? 'gerencia' : /^(audit|cobran)/.test(String(u.rol).toLowerCase()) ? 'auditoria' : 'sucursal';
+  var textoRol = String(u.rol).toLowerCase();
+  // Administradora (o desarrolladora): trabaja como Cobranzas y además maneja los Ajustes y mira como los demás
+  var admin = /^(admin|desarroll)/.test(textoRol);
+  var rol = textoRol.indexOf('geren') === 0 ? 'gerencia' : admin || /^(audit|cobran)/.test(textoRol) ? 'auditoria' : 'sucursal';
   if (rol === 'sucursal' && !u.sucursal) throw new Error('El usuario no tiene una sucursal asignada.');
   // Cobranzas con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
-  return { email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null, sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null };
+  return {
+    email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null,
+    sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null,
+    administradora: rol === 'auditoria' && (admin || sinAdministradora_(email)),
+  };
+}
+
+/**
+ * Mientras nadie tiene el rol Administradora en Usuarios, sigue valiendo lo de antes: la cuenta del
+ * correo de soporte (o, si tampoco está cargado, cualquiera de Cobranzas, para la primera configuración).
+ */
+function sinAdministradora_(email) {
+  var hay = leerHoja_(HOJAS.usuarios).some(function (x) { return /^(admin|desarroll)/.test(String(x.rol).toLowerCase()); });
+  if (hay) return false;
+  var soporte = String(config_('correoSoporte') || '').trim().toLowerCase();
+  return !soporte || soporte === email;
+}
+
+/** Ajustes, compañías y planilla: solo la administradora. */
+function exigirAdministradora_() {
+  var u = usuarioActual_();
+  if (!u.administradora) throw new Error('Esto lo cambia solo la administradora.');
+  return u;
 }
 
 /** Si la pestaña es de una versión anterior, le agrega al final los encabezados de las columnas nuevas. */

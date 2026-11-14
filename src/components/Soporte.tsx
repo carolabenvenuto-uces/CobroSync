@@ -26,9 +26,6 @@ const PANTALLAS: Record<Rol, [string, string][]> = {
     ['/app/reclamos', 'Seguimiento: compañías'],
     ['/app/mi-sucursal', 'Mi sucursal'],
     ['/app/resumen', 'Informes'],
-    ['/app/ajustes', 'Ajustes: plazos y avisos'],
-    ['/app/companias', 'Ajustes: compañías'],
-    ['/app/planilla', 'Ajustes: planilla'],
   ],
   gerencia: [
     ['/app', 'Resumen'],
@@ -38,6 +35,12 @@ const PANTALLAS: Record<Rol, [string, string][]> = {
     ['/app/control-diario', 'Detalle de facturas'],
   ],
 }
+/** Las pantallas de Ajustes, solo de la administradora */
+const AJUSTES: [string, string][] = [
+  ['/app/ajustes', 'Ajustes: plazos y avisos'],
+  ['/app/companias', 'Ajustes: compañías'],
+  ['/app/planilla', 'Ajustes: planilla'],
+]
 const COMUNES: [string, string][] = [
   ['/app/notificaciones', 'Notificaciones'],
   ['/app/manual', 'Manual de uso'],
@@ -57,10 +60,10 @@ const PROBLEMAS = [
 ]
 
 export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
-  const { fuente, rol, datos } = useApp()
+  const { fuente, rol, datos, administradora } = useApp()
   const nombreSoporte = datos?.meta.soporte?.nombre?.trim() || datos?.meta.avisos?.nombreSoporte?.trim() || ''
   const { pathname } = useLocation()
-  const pantallas = [...PANTALLAS[rol], ...COMUNES]
+  const pantallas = [...PANTALLAS[rol], ...(administradora ? AJUSTES : []), ...COMUNES]
   const [pantalla, setPantalla] = useState(() => pantallas.find(([ruta]) => ruta === pathname)?.[0] ?? '')
   const [problema, setProblema] = useState('')
   const [factura, setFactura] = useState('')

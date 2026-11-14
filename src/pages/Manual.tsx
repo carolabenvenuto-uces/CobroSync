@@ -433,9 +433,13 @@ const SECCIONES: Seccion[] = [
             en el mail de los lunes de cada sucursal.
           </li>
           <li>
-            <Pantalla>Ajustes</Pantalla>: en <strong>Compañías</strong>, los datos de cada una (cómo se presenta, mails, enlaces a la
-            plataforma, tolerancia, alta y pausa); en <strong>Planilla</strong>, la conexión con la planilla de control, que se lee sola cada
-            hora. <Pantalla>Informes</Pantalla> reúne el Resumen, el control por sucursal, los saldos y el impacto económico.
+            <Pantalla>Informes</Pantalla> reúne el Resumen, el control por sucursal, los saldos y el impacto económico.
+          </li>
+          <li>
+            <Pantalla>Ajustes</Pantalla>, solo para la administradora: plazos y avisos; en <strong>Compañías</strong>, los datos de cada
+            una (cómo se presenta, mails, enlaces a la plataforma, tolerancia, alta y pausa); en <strong>Planilla</strong>, la conexión con
+            la planilla de control, que se lee sola cada hora. La administradora además puede <strong>ver como</strong> cualquier otro
+            usuario (Cobranzas, Gerencia o una sucursal) desde el menú, solo para mirar: mientras tanto no se guarda nada.
           </li>
         </ul>
         <Nota>

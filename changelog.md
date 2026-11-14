@@ -14,7 +14,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 ## [0.11.1] - 2026-11-14
 
 ### Cambiado
-- **Pantalla de ingreso:** en vez de titilar, el imán del logo queda quieto y atrae una fila de puntitos que avanza hacia él mientras se carga la plataforma.
+- **Pantalla de ingreso:** en vez de titilar, el imán del logo queda quieto y atrae varios puntitos de distintos tamaños y alturas (como los del logo), que van hacia él mientras se carga la plataforma.
 
 ## [0.11.0] - 2026-11-14
 

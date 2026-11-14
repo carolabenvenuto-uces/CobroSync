@@ -18,6 +18,7 @@ import {
   Store,
   Send,
   Settings,
+  Eye,
   X,
 } from 'lucide-react'
 import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
@@ -129,7 +130,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           abierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between gap-2 px-5 py-5">
+        <div className="flex items-center justify-between gap-2 px-5 py-4">
           <Marca oscuro />
           <div className="flex items-center gap-1">
             <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú">
@@ -139,7 +140,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </div>
 
         {/* Quién está usando la plataforma, arriba, con el logo de SVA (el nombre, en hasta dos renglones) */}
-        <div className="mx-3 mb-5 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+        <div className="mx-3 mb-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-esmeralda/20 text-sm font-bold text-esmeralda">
             {usuario.slice(0, 1)}
           </div>
@@ -153,37 +154,12 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </div>
 
-        {/* La administradora puede mirar la plataforma como cualquier otro usuario (solo para mirar) */}
-        {fuente.tipo === 'google' && esCuentaAdministradora && (
-          <label className="mx-3 mb-4 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Ver como
-            <select
-              value={vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''}
-              onChange={(e) => {
-                const [r, s] = e.target.value.split('|')
-                verComo(r ? { rol: r as Rol, sucursal: s || undefined } : null)
-                navigate('/app')
-                onCerrar()
-              }}
-              className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
-            >
-              <option value="">Mi vista (Administradora)</option>
-              <option value="auditoria|">Cobranzas</option>
-              <option value="gerencia|">Gerencia</option>
-              {(datos?.meta.sucursales ?? []).map((s) => (
-                <option key={s.nombre} value={`sucursal|${s.nombre}`}>
-                  Sucursal · {s.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <nav className="scroll-oscuro flex-1 space-y-6 overflow-y-auto px-3 py-3">
+        <nav className="scroll-oscuro flex-1 space-y-3 overflow-y-auto px-3 py-2">
           {/* Notificaciones como un renglón más del menú, igual para todos */}
           <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
-            const items = seccion.items.filter((it) => (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
+            // Ajustes va abajo de todo, junto a "Ver como" (en el pie del menú)
+            const items = seccion.items.filter((it) => it.ruta !== '/app/ajustes' && (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
             if (!items.length) return null
             return (
               <div key={seccion.titulo || n}>
@@ -202,7 +178,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                       end={ruta === '/app'}
                       onClick={onCerrar}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                           // Pedidos es la otra pestaña de Pendientes de sucursales
                           isActive || (ruta !== '/app' && (grupoDe(pathname) ?? []).includes(ruta)) ? 'bg-marca text-white' : 'hover:bg-white/5 hover:text-white'
                         }`
@@ -229,12 +205,49 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </nav>
 
         {/* Abajo, solo el manual. En la demo, además, el cambio de vista (en la prueba cada uno entra con su cuenta) */}
-        <div className="border-t border-white/10 px-5 py-3 text-[12px] text-slate-400">
-          <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 py-1 hover:text-white">
+        <div className="border-t border-white/10 px-5 py-2.5 text-[12px] text-slate-400">
+          {/* Lo de la administradora, abajo de todo: Ajustes y mirar como los demás */}
+          {administradora && (
+            <Link
+              to="/app/ajustes"
+              onClick={onCerrar}
+              className={`flex items-center gap-2 py-0.5 hover:text-white ${(grupoDe(pathname) ?? []).includes('/app/ajustes') ? 'font-semibold text-white' : ''}`}
+            >
+              <Settings className="h-4 w-4" />
+              Ajustes
+            </Link>
+          )}
+          {fuente.tipo === 'google' && esCuentaAdministradora && (
+            <label className="flex items-center gap-2 py-0.5">
+              <Eye className="h-4 w-4 shrink-0" />
+              <span className="sr-only">Ver como</span>
+              <select
+                value={vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''}
+                onChange={(e) => {
+                  const [r, s] = e.target.value.split('|')
+                  verComo(r ? { rol: r as Rol, sucursal: s || undefined } : null)
+                  navigate('/app')
+                  onCerrar()
+                }}
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-noche-claro px-1.5 py-0.5 text-[12px] text-white"
+                title="Ver la plataforma como otro usuario (solo para mirar)"
+              >
+                <option value="">Ver como: mi vista</option>
+                <option value="auditoria|">Ver como: Cobranzas</option>
+                <option value="gerencia|">Ver como: Gerencia</option>
+                {(datos?.meta.sucursales ?? []).map((s) => (
+                  <option key={s.nombre} value={`sucursal|${s.nombre}`}>
+                    Ver como: Sucursal · {s.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 py-0.5 hover:text-white">
             <BookOpen className="h-4 w-4" />
             Manual de uso
           </Link>
-          <button type="button" onClick={() => setSoporte(true)} className="flex w-full items-center gap-2 py-1 text-left hover:text-white">
+          <button type="button" onClick={() => setSoporte(true)} className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white">
             <LifeBuoy className="h-4 w-4" />
             Soporte técnico
           </button>
@@ -284,7 +297,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               href="https://accounts.google.com/Logout"
               target="_top"
               title="Cierra la sesión de la cuenta de Google en este navegador"
-              className="flex w-full items-center gap-2 py-1 hover:text-white"
+              className="flex w-full items-center gap-2 py-0.5 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
               Cerrar sesión
@@ -296,14 +309,14 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                 cerrarSesion()
                 navigate('/')
               }}
-              className="flex w-full items-center gap-2 py-1 text-left hover:text-white"
+              className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white"
             >
               <LogOut className="h-4 w-4" />
               Cerrar sesión
             </button>
           )}
           {/* Versión y siglas de la autora, discretas al pie del menú (el nombre completo está en el pie de página) */}
-          <div className="mt-2 border-t border-white/10 pt-2 text-[10px] tracking-wide text-slate-500">
+          <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10px] tracking-wide text-slate-500">
             {PRODUCTO} v{VERSION} · {FIRMA}
           </div>
         </div>

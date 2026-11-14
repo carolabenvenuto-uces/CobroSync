@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.12.1] - 2026-11-14
+
+### Cambiado
+- **Siniestros:** los botones de estado (Falta documentación, Pendiente de facturar…) quedan con su color apagado; el elegido se marca con su propio color, más fuerte, y los demás se apagan, como las tarjetas de "Le toca a…".
+
 ## [0.12.0] - 2026-11-14
 
 ### Cambiado

@@ -23,14 +23,15 @@ const TEXTO_DOC: Record<Documento['estado'], string> = { faltante: 'falta', obse
 
 /** En qué está el siniestro, con su color (el mismo significado que en toda la plataforma) */
 type EstadoSiniestro = 'documentacion' | 'refacturar' | 'revision' | 'presentado' | 'vencido' | 'cobrado' | 'anulado'
-const ESTADO_SINIESTRO: Record<EstadoSiniestro, { texto: string; punto: string; chip: string }> = {
-  documentacion: { texto: 'Falta documentación', punto: 'bg-sem-amarillo', chip: 'bg-amber-50 text-amber-900 border-amber-200' },
-  refacturar: { texto: 'Pendiente de facturar', punto: 'bg-orange-500', chip: 'bg-orange-50 text-orange-900 border-orange-200' },
-  revision: { texto: 'En Cobranzas', punto: 'bg-marca', chip: 'bg-marca/10 text-indigo-900 border-marca/20' },
-  presentado: { texto: 'Presentado', punto: 'bg-etapa-compania', chip: 'bg-blue-50 text-blue-900 border-blue-200' },
-  vencido: { texto: 'Vencido', punto: 'bg-red-800', chip: 'bg-red-50 text-red-900 border-red-200' },
-  cobrado: { texto: 'Cobrado', punto: 'bg-sem-verde', chip: 'bg-teal-50 text-teal-900 border-teal-200' },
-  anulado: { texto: 'Anulado', punto: 'bg-slate-400', chip: 'bg-slate-100 text-slate-700 border-slate-200' },
+// chip: el color apagado de siempre; fuerte: cómo se marca cuando está elegido (como las tarjetas)
+const ESTADO_SINIESTRO: Record<EstadoSiniestro, { texto: string; punto: string; chip: string; fuerte: string }> = {
+  documentacion: { texto: 'Falta documentación', punto: 'bg-sem-amarillo', chip: 'bg-amber-50 text-amber-900 border-amber-200', fuerte: 'bg-amber-100 text-amber-950 border-amber-500 ring-amber-200' },
+  refacturar: { texto: 'Pendiente de facturar', punto: 'bg-orange-500', chip: 'bg-orange-50 text-orange-900 border-orange-200', fuerte: 'bg-orange-100 text-orange-950 border-orange-500 ring-orange-200' },
+  revision: { texto: 'En Cobranzas', punto: 'bg-marca', chip: 'bg-marca/10 text-indigo-900 border-marca/20', fuerte: 'bg-indigo-100 text-indigo-950 border-marca ring-indigo-200' },
+  presentado: { texto: 'Presentado', punto: 'bg-etapa-compania', chip: 'bg-blue-50 text-blue-900 border-blue-200', fuerte: 'bg-blue-100 text-blue-950 border-blue-500 ring-blue-200' },
+  vencido: { texto: 'Vencido', punto: 'bg-red-800', chip: 'bg-red-50 text-red-900 border-red-200', fuerte: 'bg-red-100 text-red-950 border-red-600 ring-red-200' },
+  cobrado: { texto: 'Cobrado', punto: 'bg-sem-verde', chip: 'bg-teal-50 text-teal-900 border-teal-200', fuerte: 'bg-teal-100 text-teal-950 border-teal-500 ring-teal-200' },
+  anulado: { texto: 'Anulado', punto: 'bg-slate-400', chip: 'bg-slate-100 text-slate-700 border-slate-200', fuerte: 'bg-slate-200 text-slate-900 border-slate-500 ring-slate-200' },
 }
 const ORDEN_ESTADOS: EstadoSiniestro[] = ['documentacion', 'refacturar', 'revision', 'presentado', 'vencido', 'cobrado', 'anulado']
 
@@ -353,7 +354,7 @@ export default function Siniestros() {
 
       {/* Filtro por estado: un botón por color */}
       <div className="mb-3 flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold ${!estado ? 'border-marca bg-marca text-white' : 'border-slate-200 bg-white hover:bg-fondo'}`}>
+        <button type="button" onClick={() => setEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!estado ? 'border-slate-400 bg-white text-noche ring-2 ring-slate-200' : 'border-slate-200 bg-white opacity-60 hover:opacity-100'}`}>
           Todos · {grupos.length}
         </button>
         {ORDEN_ESTADOS.map((e) => {
@@ -364,7 +365,9 @@ export default function Siniestros() {
               key={e}
               type="button"
               onClick={() => setEstado(estado === e ? '' : e)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${estado === e ? 'border-marca bg-marca text-white' : `${ESTADO_SINIESTRO[e].chip} hover:brightness-95`}`}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                estado === e ? `${ESTADO_SINIESTRO[e].fuerte} ring-2` : `${ESTADO_SINIESTRO[e].chip} ${estado ? 'opacity-50 hover:opacity-90' : 'hover:brightness-95'}`
+              }`}
             >
               <span className={`h-2 w-2 rounded-full ${ESTADO_SINIESTRO[e].punto}`} /> {ESTADO_SINIESTRO[e].texto} · {n}
             </button>

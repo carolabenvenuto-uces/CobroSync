@@ -24,7 +24,6 @@ import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { calcularSemaforo } from '../../domain/semaforo'
 import { paraResolver } from '../../domain/resolver'
-import { esAdministradora } from '../../domain/administracion'
 import { pedidosAbiertos, pedidosParaSucursal } from '../../domain/pedidos'
 import { estadoReclamo, RECLAMO_PARA_ACTUAR } from '../../domain/reclamos'
 import type { Rol } from '../../domain/tipos'
@@ -73,7 +72,8 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         // Solo si la persona de Cobranzas tiene una sucursal propia en Usuarios (ellas escanean lo suyo)
         { ruta: '/app/mi-sucursal', etiqueta: 'Mi sucursal', icono: Store, soloConSucursalPropia: true },
         { ruta: '/app/resumen', etiqueta: 'Informes', icono: BarChart3 },
-        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings },
+        // Ajustes: solo la administradora (plazos, compañías y planilla)
+        { ruta: '/app/ajustes', etiqueta: 'Ajustes', icono: Settings, soloAdministradora: true },
       ],
     },
   ],
@@ -89,13 +89,12 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, cuenta, sucursalPropia } = useApp()
+  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, sucursalPropia, administradora, esCuentaAdministradora, vista, verComo } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
   const { pathname } = useLocation()
   const [soporte, setSoporte] = useState(false)
-  const administradora = esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte)
 
   const contadores = useMemo(() => {
     if (!datos) return { pendientes: 0, alertas: 0, reclamos: 0, presentar: 0, resolver: 0, pedidos: 0 }
@@ -147,12 +146,38 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           <div className="min-w-0 flex-1 text-sm font-semibold text-white" title={usuario}>
             <div className="line-clamp-2 leading-tight">{usuario}</div>
             <div className="mt-1 truncate text-[11px] font-normal leading-none text-slate-400">
-              {NOMBRE_ROL[rol]}
-              {rol === 'sucursal' && ` · ${sucursal}`}
+              {fuente.tipo === 'google' && esCuentaAdministradora ? 'Administradora' : NOMBRE_ROL[rol]}
+              {rol === 'sucursal' && !vista && ` · ${sucursal}`}
             </div>
           </div>
           <img src={logoSvaClaro} alt="Grupo SVA" className="h-8 w-auto shrink-0" />
         </div>
+
+        {/* La administradora puede mirar la plataforma como cualquier otro usuario (solo para mirar) */}
+        {fuente.tipo === 'google' && esCuentaAdministradora && (
+          <label className="mx-3 mb-4 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Ver como
+            <select
+              value={vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''}
+              onChange={(e) => {
+                const [r, s] = e.target.value.split('|')
+                verComo(r ? { rol: r as Rol, sucursal: s || undefined } : null)
+                navigate('/app')
+                onCerrar()
+              }}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-noche-claro px-2 py-1.5 text-sm font-medium normal-case tracking-normal text-white"
+            >
+              <option value="">Mi vista (Administradora)</option>
+              <option value="auditoria|">Cobranzas</option>
+              <option value="gerencia|">Gerencia</option>
+              {(datos?.meta.sucursales ?? []).map((s) => (
+                <option key={s.nombre} value={`sucursal|${s.nombre}`}>
+                  Sucursal · {s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <nav className="scroll-oscuro flex-1 space-y-6 overflow-y-auto px-3 py-3">
           {/* Notificaciones como un renglón más del menú, igual para todos */}
@@ -170,11 +195,10 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
                 <div className="space-y-1">
                   {items.map(({ ruta, etiqueta: titulo, icono: Icono, contador }) => {
                     const etiqueta = ruta === '/app/mi-sucursal' && sucursalPropia ? `Mi sucursal · ${sucursalPropia}` : titulo
-                    const destino = ruta === '/app/ajustes' && !administradora ? '/app/companias' : ruta
                     return (
                     <NavLink
                       key={ruta}
-                      to={destino}
+                      to={ruta}
                       end={ruta === '/app'}
                       onClick={onCerrar}
                       className={({ isActive }) =>

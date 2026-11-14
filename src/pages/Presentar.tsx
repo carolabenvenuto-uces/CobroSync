@@ -357,6 +357,7 @@ export default function Presentar() {
  * Ajustes → Compañías; acá solo se usan: abrir la plataforma, copiar un mail o escribirle.
  */
 function ContactosCompania({ a, via }: { a: Aseguradora; via: Via }) {
+  const { administradora } = useApp()
   const [copiado, setCopiado] = useState<string | null>(null)
   const copiar = async (texto: string) => {
     try {
@@ -405,9 +406,9 @@ function ContactosCompania({ a, via }: { a: Aseguradora; via: Via }) {
           {reclamos.map(chipMail)}
         </div>
       )}
-      <Link to="/app/companias" className="inline-block text-[11px] text-slate-400 hover:text-marca hover:underline">
+      {administradora && <Link to="/app/companias" className="inline-block text-[11px] text-slate-400 hover:text-marca hover:underline">
         Sumar o cambiar mails y enlaces (Ajustes → Compañías)
-      </Link>
+      </Link>}
     </div>
   )
 }

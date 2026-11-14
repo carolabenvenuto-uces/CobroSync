@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
-import { Menu } from 'lucide-react'
-import { useApp } from '../../context/AppContext'
+import { Eye, Menu } from 'lucide-react'
+import { NOMBRE_ROL, useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
 import { AvisoNotificacion } from '../Notificaciones'
 import { AvisoCarga } from '../AvisoCarga'
@@ -14,7 +14,7 @@ import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada } = useApp()
+  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada, vista, verComo } = useApp()
   const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
 
@@ -40,6 +40,19 @@ export function AppLayout() {
             <Menu className="h-5 w-5" />
           </button>
         </div>
+
+        {/* La administradora mirando como otro usuario: siempre a la vista, con la vuelta a la suya */}
+        {vista && (
+          <div className="no-imprimir sticky top-16 z-20 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950 sm:px-6 lg:top-0 lg:px-8">
+            <Eye className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+              Viendo como <strong>{vista.rol === 'sucursal' ? `Sucursal · ${vista.sucursal}` : NOMBRE_ROL[vista.rol]}</strong> · solo para mirar, no se guarda nada
+            </span>
+            <button type="button" onClick={() => verComo(null)} className="rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs font-semibold hover:bg-amber-100">
+              Volver a mi vista
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {error ? (

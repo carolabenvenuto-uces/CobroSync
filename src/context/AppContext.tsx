@@ -18,6 +18,7 @@ import {
   guardarAjustesEnGoogle,
   marcarLeidasEnGoogle,
   obtenerCambiosDeGoogle,
+  fijarSoloMirar,
   subirAGoogle,
   subirEnEsperaEnGoogle,
   marcarEsperaAsociadaEnGoogle,
@@ -261,7 +262,23 @@ interface EstadoApp {
   cuenta: UsuarioGoogle | null
   /** Cobranzas que además escanea la documentación de una sucursal (la suya); null si no */
   sucursalPropia: string | null
+  /** la administradora (Carola): Ajustes y la vista de los demás. Mientras mira como otro, es false */
+  administradora: boolean
+  /** la cuenta es de la administradora, aunque esté mirando como otro */
+  esCuentaAdministradora: boolean
+  /** la administradora mirando la plataforma como otro rol o sucursal (solo para mirar); null si es su vista */
+  vista: Vista | null
+  verComo: (vista: Vista | null) => void
 }
+
+/** Cómo ve la plataforma otro usuario: un rol y, si es una sucursal, cuál. */
+export interface Vista {
+  rol: Rol
+  sucursal?: string
+}
+
+/** Mientras la administradora mira como otro, no se guarda nada. */
+export const TEXTO_SOLO_MIRAR = 'Estás viendo la plataforma como otro usuario: solo para mirar, no se guarda nada. Volvé a tu vista para hacer cambios.'
 
 const CLAVE_SESION = 'cobrosync-sesion-demo'
 /** La sesión de la demo se recuerda mientras la pestaña está abierta (si el navegador lo permite). */
@@ -290,7 +307,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   configurarPlazos(datos?.meta.plazos, datos?.aseguradoras ?? [])
   configurarTextos(datos?.meta.textos)
   const [error, setError] = useState<string | null>(null)
-  const [rol, setRolInterno] = useState<Rol>('auditoria')
+  const [rolPropio, setRolInterno] = useState<Rol>('auditoria')
+  const [vista, setVista] = useState<Vista | null>(null)
+  const vistaRef = useRef<Vista | null>(null)
+  vistaRef.current = vista
+  const rol = vista?.rol ?? rolPropio
   const [sucursal, setSucursal] = useState(TODAS_LAS_SUCURSALES)
   const [mes, setMes] = useState(10)
   const [anio, setAnio] = useState(2026)
@@ -468,8 +489,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [usuarioGoogle, enviarCambios],
   )
 
+  /** Con la vista de otro usuario no se guarda nada: avisa y devuelve true. */
+  const soloMirar = useCallback(() => {
+    if (!vistaRef.current) return false
+    setGuardado({ estado: 'error', mensaje: TEXTO_SOLO_MIRAR })
+    return true
+  }, [])
+
   const actualizarComprobante = useCallback(
     (id: string, cambios: Partial<Comprobante>) => {
+      if (soloMirar()) return
       const previo = datosRef.current?.comprobantes.find((c) => c.id === id)
       const { documentos, ...campos } = cambios
       // Solo los documentos que realmente cambiaron
@@ -485,18 +514,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : actual,
       )
     },
-    [encolar],
+    [encolar, soloMirar],
   )
 
   const agregarComprobante = useCallback(
     (comprobante: Comprobante) => {
+      if (soloMirar()) return
       encolar({ id: comprobante.id, nuevo: comprobante })
       setDatos((actual) => (actual ? { ...actual, comprobantes: [...actual.comprobantes, comprobante] } : actual))
     },
-    [encolar],
+    [encolar, soloMirar],
   )
 
   const guardarAjustes = useCallback(async (a: Ajustes) => {
+    if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)
     if (conectadoAGoogle()) await guardarAjustesEnGoogle(a)
     const sinFce = new Set(a.companiasSinFce)
     // Las notificaciones de Gerencia se vuelven a escribir con los textos nuevos
@@ -516,12 +547,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const actualizarAseguradoras = useCallback((aseguradoras: Aseguradora[]) => {
-    setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
-  }, [])
+  const actualizarAseguradoras = useCallback(
+    (aseguradoras: Aseguradora[]) => {
+      if (soloMirar()) return
+      setDatos((actual) => (actual ? { ...actual, aseguradoras } : actual))
+    },
+    [soloMirar],
+  )
 
   const registrarEvento = useCallback(
     (id: string, tipo: Evento['tipo'], texto: string) => {
+      if (soloMirar()) return
       const area: AreaEvento = rol
       const evento: Evento = { fecha: hoy, autor: usuario, area, tipo, texto }
       // Cada movimiento le avisa al otro lado: lo de la sucursal a Cobranzas y al revés
@@ -538,7 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : actual,
       )
     },
-    [rol, hoy, usuario, datos, encolar],
+    [rol, hoy, usuario, datos, encolar, soloMirar],
   )
 
   // Con Google: cada minuto (y al volver a la pestaña) se traen los cambios de los demás
@@ -580,6 +616,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const subirEnEspera = useCallback(
     async (puntoVenta: number, numero: number, tipo: DocumentoEnEspera['tipo'], siniestro: string, archivo: File) => {
+      if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)
       const e: DocumentoEnEspera =
         fuente.tipo === 'google'
           ? await subirEnEsperaEnGoogle(puntoVenta, numero, tipo, siniestro, archivo)
@@ -591,6 +628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const descartarEspera = useCallback(
     async (id: string) => {
+      if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)
       if (fuente.tipo === 'google') await descartarEsperaEnGoogle(id)
       setDatos((actual) => (actual ? { ...actual, enEspera: (actual.enEspera ?? []).filter((e) => e.id !== id) } : actual))
     },
@@ -599,6 +637,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const agregarDelErp = useCallback(
     (nuevas: Comprobante[]) => {
+      if (soloMirar()) return 0
       const { comprobantes, unidos } = unirEnEspera(nuevas, datosRef.current?.enEspera ?? [], hoy)
       comprobantes.forEach(agregarComprobante)
       if (unidos.length) {
@@ -608,14 +647,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return new Set(unidos.map((u) => u.comprobanteId)).size
     },
-    [agregarComprobante, hoy, fuente.tipo],
+    [agregarComprobante, hoy, fuente.tipo, soloMirar],
   )
 
   const subirDocumento = useCallback(
-    async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) =>
+    async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => {
+      if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)
       // En la demo el archivo queda en el navegador, para poder abrirlo y revisarlo
-      fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name, url: URL.createObjectURL(archivo) },
+      return fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name, url: URL.createObjectURL(archivo) }
+    },
     [fuente.tipo],
+  )
+
+  // La administradora: la cuenta marcada así en Usuarios (con Google); en la demo, Cobranzas
+  const esCuentaAdministradora = usuarioGoogle ? !!usuarioGoogle.administradora : rolPropio === 'auditoria'
+  const administradora = esCuentaAdministradora && !vista
+
+  /** La administradora mira como otro rol o sucursal (o vuelve a su vista con null). */
+  const verComo = useCallback(
+    (v: Vista | null) => {
+      if (!esCuentaAdministradora) return
+      const nueva = v
+      setVista(nueva)
+      fijarSoloMirar(nueva ? TEXTO_SOLO_MIRAR : null)
+      setSucursal(nueva?.rol === 'sucursal' && nueva.sucursal ? nueva.sucursal : TODAS_LAS_SUCURSALES)
+      setLegajoAbierto(null)
+      setGuardado({ estado: 'ok' })
+    },
+    [esCuentaAdministradora],
   )
 
   // En la demo, Cobranzas también escanea lo de Rocamora (como el sector real)
@@ -634,6 +693,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Las leídas se guardan en la cuenta (con Google): valen en cualquier computadora o celular
   const recordarLeidas = useCallback(
     (ids: string[]) => {
+      // Mirando como otro: lo leído no se guarda en la cuenta
+      if (vistaRef.current) return
       ids.forEach((id) => leidas.current.add(id))
       if (usuarioGoogle && ids.length) marcarLeidasEnGoogle(ids).catch(() => {})
     },
@@ -699,6 +760,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cerrarSesion,
       cuenta: usuarioGoogle,
       sucursalPropia,
+      administradora,
+      esCuentaAdministradora,
+      vista,
+      verComo,
       legajoAbierto,
       abrirLegajo,
       misNotificaciones,
@@ -732,6 +797,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sesionDemo,
       usuarioGoogle,
       sucursalPropia,
+      administradora,
+      esCuentaAdministradora,
+      vista,
+      verComo,
       iniciarSesion,
       cerrarSesion,
       legajoAbierto,

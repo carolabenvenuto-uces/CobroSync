@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
-import { esAdministradora } from '../../domain/administracion'
 
 /**
  * Solapas de Cobranzas: pantallas que antes eran lugares sueltos del menú y ahora van juntas
@@ -39,8 +38,8 @@ const GRUPOS: Grupo[] = [
     rutas: ['/app/ajustes', '/app/companias', '/app/planilla'],
     solapas: [
       { ruta: '/app/ajustes', titulo: 'Plazos y avisos', soloAdministradora: true },
-      { ruta: '/app/companias', titulo: 'Compañías' },
-      { ruta: '/app/planilla', titulo: 'Planilla' },
+      { ruta: '/app/companias', titulo: 'Compañías', soloAdministradora: true },
+      { ruta: '/app/planilla', titulo: 'Planilla', soloAdministradora: true },
     ],
   },
 ]
@@ -51,12 +50,11 @@ export function grupoDe(pathname: string): string[] | null {
 }
 
 export function Solapas() {
-  const { rol, cuenta, datos } = useApp()
+  const { rol, administradora: admin } = useApp()
   const { pathname } = useLocation()
   if (rol !== 'auditoria') return null
   const grupo = GRUPOS.find((g) => g.rutas.includes(pathname))
   if (!grupo) return null
-  const admin = esAdministradora(rol, cuenta?.email, datos?.meta.avisos?.correoSoporte)
   const solapas = grupo.solapas.filter((s) => !s.soloAdministradora || admin)
   return (
     <nav className="no-imprimir -mt-1 mb-5 flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Secciones">

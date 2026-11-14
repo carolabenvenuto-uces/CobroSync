@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import logoSvaClaro from '../../assets/grupo-sva-claro.png'
 import { FIRMA, PRODUCTO, VERSION } from '../../lib/marca'
 import { VentanaSoporte } from '../Soporte'
@@ -19,9 +19,11 @@ import {
   Send,
   Settings,
   Eye,
+  Check,
+  ChevronUp,
   X,
 } from 'lucide-react'
-import { NOMBRE_ROL, useApp, useComprobantes } from '../../context/AppContext'
+import { NOMBRE_ROL, useApp, useComprobantes, type Vista } from '../../context/AppContext'
 import { esperaALaSucursal } from '../../domain/sucursales'
 import { calcularSemaforo } from '../../domain/semaforo'
 import { paraResolver } from '../../domain/resolver'
@@ -90,7 +92,7 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, sucursalPropia, administradora, esCuentaAdministradora, vista, verComo } = useApp()
+  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, sucursalPropia, administradora, esCuentaAdministradora, vista } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
@@ -217,40 +219,20 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               Ajustes
             </Link>
           )}
-          {fuente.tipo === 'google' && esCuentaAdministradora && (
-            <label className="flex items-center gap-2 py-0.5">
-              <Eye className="h-4 w-4 shrink-0" />
-              <span className="sr-only">Ver como</span>
-              <select
-                value={vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''}
-                onChange={(e) => {
-                  const [r, s] = e.target.value.split('|')
-                  verComo(r ? { rol: r as Rol, sucursal: s || undefined } : null)
-                  navigate('/app')
-                  onCerrar()
-                }}
-                className="min-w-0 flex-1 rounded-md border border-white/10 bg-noche-claro px-1.5 py-0.5 text-[12px] text-white"
-                title="Ver la plataforma como otro usuario (solo para mirar)"
-              >
-                <option value="">Ver como: mi vista</option>
-                <option value="auditoria|">Ver como: Cobranzas</option>
-                <option value="gerencia|">Ver como: Gerencia</option>
-                {(datos?.meta.sucursales ?? []).map((s) => (
-                  <option key={s.nombre} value={`sucursal|${s.nombre}`}>
-                    Ver como: Sucursal · {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
+          {fuente.tipo === 'google' && esCuentaAdministradora && <VerComo onElegir={onCerrar} />}
+          {/* La administradora no usa el manual ni el soporte (sí los ve cuando mira como otro usuario) */}
+          {!(fuente.tipo === 'google' && esCuentaAdministradora && !vista) && (
+            <>
+              <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 py-0.5 hover:text-white">
+                <BookOpen className="h-4 w-4" />
+                Manual de uso
+              </Link>
+              <button type="button" onClick={() => setSoporte(true)} className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white">
+                <LifeBuoy className="h-4 w-4" />
+                Soporte técnico
+              </button>
+            </>
           )}
-          <Link to="/app/manual" onClick={onCerrar} className="flex items-center gap-2 py-0.5 hover:text-white">
-            <BookOpen className="h-4 w-4" />
-            Manual de uso
-          </Link>
-          <button type="button" onClick={() => setSoporte(true)} className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white">
-            <LifeBuoy className="h-4 w-4" />
-            Soporte técnico
-          </button>
           {soporte && <VentanaSoporte onCerrar={() => setSoporte(false)} />}
           {fuente.tipo !== 'google' && (
             <details className="mt-1">
@@ -322,5 +304,74 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
         </div>
       </aside>
     </>
+  )
+}
+
+/**
+ * "Ver como" de la administradora: un renglón más del pie del menú (como Ajustes o Cerrar sesión);
+ * al tocarlo se abre la lista hacia arriba para elegir cómo mirar la plataforma.
+ */
+function VerComo({ onElegir }: { onElegir: () => void }) {
+  const { datos, vista, verComo } = useApp()
+  const navigate = useNavigate()
+  const [abierta, setAbierta] = useState(false)
+  const caja = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!abierta) return
+    const fuera = (e: MouseEvent) => !caja.current?.contains(e.target as Node) && setAbierta(false)
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && setAbierta(false)
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', tecla)
+    return () => {
+      document.removeEventListener('mousedown', fuera)
+      document.removeEventListener('keydown', tecla)
+    }
+  }, [abierta])
+
+  const opciones: { clave: string; texto: string; vista: Vista | null }[] = [
+    { clave: '', texto: 'Mi vista', vista: null },
+    { clave: 'auditoria|', texto: 'Cobranzas', vista: { rol: 'auditoria' } },
+    { clave: 'gerencia|', texto: 'Gerencia', vista: { rol: 'gerencia' } },
+    ...(datos?.meta.sucursales ?? []).map((s) => ({ clave: `sucursal|${s.nombre}`, texto: `Sucursal · ${s.nombre}`, vista: { rol: 'sucursal' as Rol, sucursal: s.nombre } })),
+  ]
+  const actual = vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''
+  const elegida = opciones.find((o) => o.clave === actual)
+
+  return (
+    <div ref={caja} className="relative">
+      <button
+        type="button"
+        onClick={() => setAbierta(!abierta)}
+        aria-expanded={abierta}
+        className={`flex w-full items-center gap-2 py-0.5 text-left hover:text-white ${vista ? 'text-white' : ''}`}
+        title="Ver la plataforma como otro usuario (solo para mirar)"
+      >
+        <Eye className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">
+          Ver como{vista && <span className="text-amber-300"> · {elegida?.texto}</span>}
+        </span>
+        <ChevronUp className={`h-3.5 w-3.5 shrink-0 transition-transform ${abierta ? '' : 'rotate-180'}`} />
+      </button>
+      {abierta && (
+        <div className="scroll-oscuro absolute bottom-full left-0 z-10 mb-1 max-h-72 w-full overflow-y-auto rounded-lg border border-white/10 bg-noche-claro py-1 shadow-xl">
+          {opciones.map((o) => (
+            <button
+              key={o.clave}
+              type="button"
+              onClick={() => {
+                setAbierta(false)
+                verComo(o.vista)
+                navigate('/app')
+                onElegir()
+              }}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-white/10 hover:text-white ${o.clave === actual ? 'font-semibold text-white' : 'text-slate-300'}`}
+            >
+              <span className="w-3.5 shrink-0">{o.clave === actual && <Check className="h-3.5 w-3.5" />}</span>
+              {o.texto}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

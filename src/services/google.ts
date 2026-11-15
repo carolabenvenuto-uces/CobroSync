@@ -37,7 +37,7 @@ export const conectadoAGoogle = (): boolean => corredor() !== null
 
 /** Llama a una función de google/Codigo.gs y espera la respuesta. */
 /** Lo que se puede pedir al servidor mientras la administradora mira como otro usuario (nada que guarde). */
-const SOLO_LECTURA = new Set(['obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
+const SOLO_LECTURA = new Set(['compararConPlanilla', 'obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
 let textoSoloMirar: string | null = null
 /** Con un texto, el servidor solo se consulta: todo lo que guarda se rechaza con ese texto. */
 export function fijarSoloMirar(texto: string | null) {
@@ -150,6 +150,34 @@ export function sincronizarPlanillaEnGoogle(lista: Comprobante[]): Promise<{ nue
 /** Lee ahora la hoja Diario de la planilla de control (lo mismo que se hace solo cada hora). */
 export function traerDeMiPlanillaEnGoogle(): Promise<{ nuevas: number; actualizadas: number; omitidas?: number }> {
   return llamar('traerDeMiPlanilla')
+}
+
+/** Una factura en la comparación con la planilla (lo que la identifica). */
+export interface FilaComparacion {
+  ref: string
+  comprobante: string
+  fecha: string
+  sucursal: string
+  compania: string
+  importe: number
+  campos?: { campo: string; planilla: string | number; cobrosync: string | number }[]
+}
+export interface ResultadoComparacion {
+  comparadas: number
+  iguales: number
+  conDiferencias: number
+  omitidas: number
+  porCampo: Record<string, number>
+  diferencias: FilaComparacion[]
+  soloPlanilla: FilaComparacion[]
+  soloCobroSync: FilaComparacion[]
+  cantidadSoloCobroSync: number
+  totales: Record<'planilla' | 'cobrosync', { cantidad: number; facturado: number; cobrado: number }>
+  ahora: string
+}
+/** Compara la hoja Diario de la planilla con CobroSync, factura por factura y campo por campo (no cambia nada). */
+export function compararConPlanillaEnGoogle(): Promise<ResultadoComparacion> {
+  return llamar('compararConPlanilla')
 }
 
 export function actualizarPlanillaEnGoogle(): Promise<{ completadas: number; ahora: string }> {

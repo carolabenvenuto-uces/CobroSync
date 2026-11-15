@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.14.0] - 2026-11-15
+
+### Agregado
+- **Comparar con mi planilla** (Ajustes → Planilla, solo la administradora): CobroSync lee la hoja Diario y la compara factura por factura (por la referencia) y dato por dato: fecha, sucursal, comprobante, compañía, siniestro, importe, Drive, presentación, cobro y estado. Muestra cuántas coinciden, cuántas tienen diferencias y en qué dato (tocando uno se filtra la lista), las que están solo en la planilla o solo en CobroSync, y los totales (cantidad, facturado y cobrado) de los dos lados. Todo se baja en Excel. No cambia ningún dato.
+
 ## [0.13.2] - 2026-11-15
 
 ### Mejorado

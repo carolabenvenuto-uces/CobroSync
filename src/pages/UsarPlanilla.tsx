@@ -1,3 +1,4 @@
+import { CompararPlanilla } from '../components/CompararPlanilla'
 import { useState, type DragEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, LockKeyhole, RotateCcw, Upload } from 'lucide-react'
@@ -19,7 +20,7 @@ function hoyLocal(): string {
  * informes con datos verdaderos. Se procesa solo en este navegador.
  */
 export default function UsarPlanilla() {
-  const { fuente, usarPlanilla, usarDemo } = useApp()
+  const { fuente, usarPlanilla, usarDemo, datos } = useApp()
   const conGoogle = fuente.tipo === 'google'
   // La carga sigue aunque se cambie de pantalla (ver lib/cargaPlanilla)
   const carga = useEstadoCarga()
@@ -121,6 +122,7 @@ export default function UsarPlanilla() {
         }
       />
       {conGoogle && <ConexionPlanilla onCompletar={copiarAMiPlanilla} mensajeCompletar={copiando} />}
+      {conGoogle && datos?.meta.planilla?.conectada && <CompararPlanilla />}
 
       <ACargarAMano conGoogle={conGoogle}>
 

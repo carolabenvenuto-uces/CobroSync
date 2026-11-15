@@ -653,6 +653,30 @@ prueba('CobroSync trae solo las facturas nuevas que se anotaron en la planilla (
   como('rocamora@svaauto.com.ar')
   falla(() => gs('traerDeMiPlanilla'), 'solo la administradora')
 })
+prueba('comparar con la planilla: campo por campo, sin cambiar nada', () => {
+  como('auditoria@svaauto.com.ar')
+  const antes = JSON.stringify(hojas['Comprobantes'].filas)
+  let r = gs('compararConPlanilla')
+  esperar(JSON.stringify(hojas['Comprobantes'].filas) === antes, 'la comparación cambió datos')
+  esperar(r.comparadas >= 1 && r.omitidas === 1, `comparadas ${r.comparadas}, omitidas ${r.omitidas}`)
+  esperar(!r.diferencias.some((d) => d.ref === '7777777'), 'la factura que vino de la planilla tiene diferencias: ' + JSON.stringify(r.diferencias.find((d) => d.ref === '7777777')))
+  // Un importe distinto en CobroSync aparece como diferencia de Importe
+  const h = hojas['Comprobantes']
+  const fila = h.filas.findIndex((f) => f[1] === '7777777')
+  h.filas[fila][h.filas[0].indexOf('total')] = '1300'
+  r = gs('compararConPlanilla')
+  const d = r.diferencias.find((x) => x.ref === '7777777')
+  esperar(d && d.campos.length === 1 && d.campos[0].campo === 'Importe' && d.campos[0].planilla === 1234.5 && d.campos[0].cobrosync === 1300, JSON.stringify(d))
+  esperar(r.comparadas === r.iguales + r.conDiferencias, 'no cierran las cuentas')
+  // Una fila de la planilla que no está en CobroSync
+  diario.appendRow(['12-11-26', '7777778', 'Rocamora', 'FC E', '35 - 00099998', 'Compañía Nueva', '1', '10,00', '', '', '', '', '', '', '', ''])
+  r = gs('compararConPlanilla')
+  esperar(r.soloPlanilla.some((x) => x.ref === '7777778'), 'no avisó la que falta en CobroSync')
+  diario.filas.pop()
+  h.filas[fila][h.filas[0].indexOf('total')] = '1234.5'
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('compararConPlanilla'), 'solo la administradora')
+})
 prueba('nunca se borra un dato de la planilla', () => {
   const i = enDiario.findIndex((c) => !c.fechaCobro)
   diario.filas[i + 1][13] = vm.runInContext('new Date(2026, 10, 1, 12)', contexto) // alguien lo cargó a mano

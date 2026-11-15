@@ -956,8 +956,21 @@ function traerDeMiPlanilla() {
  * I Drive · K Presentación · M Vto. · N Cobro · O Estado · R Observaciones · S/T/U reclamos (opcionales)
  */
 function traerDiario_(libro) {
+  var leido = leerDiario_(libro);
+  if (!leido) return { nuevas: 0, actualizadas: 0, omitidas: 0 };
+  if (leido.nuevasCompanias.length) {
+    var hojaAseg = hoja_(HOJAS.aseguradoras);
+    leido.nuevasCompanias.forEach(function (a) { escribirFila_(hojaAseg, HOJAS.aseguradoras, null, a); });
+  }
+  var r = sincronizarLista_(leido.lista, 'Planilla de control');
+  PropertiesService.getScriptProperties().setProperty('ultimaLecturaPlanilla', ahora_());
+  return r;
+}
+
+/** Las filas de la hoja Diario ya pasadas a comprobantes (sin guardar nada). null si la hoja está vacía. */
+function leerDiario_(libro) {
   var hoja = libro.getSheetByName(config_('pestanaDiario') || 'Diario');
-  if (!hoja || hoja.getLastRow() < 2) return { nuevas: 0, actualizadas: 0, omitidas: 0 };
+  if (!hoja || hoja.getLastRow() < 2) return null;
   var filas = hoja.getRange(1, 1, hoja.getLastRow(), 21).getDisplayValues();
   var aseguradoras = leerHoja_(HOJAS.aseguradoras);
   var porId = {};
@@ -1004,15 +1017,102 @@ function traerDiario_(libro) {
       reclamos: [], observaciones: String(f[17] || '').trim(),
       documentos: tipo === 'NC' ? [] : ['factura', 'orden'].map(function (t) { return { tipo: t, estado: completo ? 'ok' : 'faltante' }; }),
       eventos: [],
+      // Para la comparación: el nombre de la compañía y el estado como se ven en la planilla
+      _compania: compania,
     });
   });
-  if (nuevasCompanias.length) {
-    var hojaAseg = hoja_(HOJAS.aseguradoras);
-    nuevasCompanias.forEach(function (a) { escribirFila_(hojaAseg, HOJAS.aseguradoras, null, a); });
-  }
-  var r = sincronizarLista_(lista, 'Planilla de control');
-  PropertiesService.getScriptProperties().setProperty('ultimaLecturaPlanilla', ahora_());
-  return r;
+  return { lista: lista, nuevasCompanias: nuevasCompanias };
+}
+
+/**
+ * Compara la hoja Diario de la planilla de control con lo que hay en CobroSync, factura por factura
+ * (por la referencia) y campo por campo. No cambia nada. Solo la administradora.
+ * Devuelve el resumen, cuántas diferencias hay por campo y la lista de las que no coinciden.
+ */
+function compararConPlanilla() {
+  exigirAdministradora_();
+  var libro = planillaDeControl_();
+  if (!libro) throw new Error('Falta el id de la planilla de control en la pestaña Config (planillaControlId).');
+  var leido = leerDiario_(libro);
+  var lista = leido ? leido.lista : [];
+  var delPiloto = leerHoja_(HOJAS.sucursales).map(function (s) { return s.nombre; });
+  var esDelPiloto = function (suc) { return !delPiloto.length || delPiloto.some(function (n) { return mismaSucursal_(n, suc); }); };
+  var nombres = {};
+  leerHoja_(HOJAS.aseguradoras).forEach(function (a) { nombres[a.id] = a.nombre; });
+  var actuales = leerHoja_(HOJAS.comprobantes);
+  var porClave = {};
+  actuales.forEach(function (c) { porClave[c.ref ? 'ref:' + c.ref : 'id:' + c.id] = c; });
+  var vistas = {};
+
+  var numero = function (c) { return c.tipo + ' ' + c.puntoVenta + '-' + c.numero; };
+  // Cómo está cada una, en las palabras de la planilla
+  var situacion = function (c) {
+    if (c.tipo === 'NC') return 'Nota de crédito';
+    if (c.estado === 'anulada') return 'Anulada';
+    if (c.estado === 'cobrada') return 'Cobrada';
+    if (c.fechaPresentacion) return 'Presentada';
+    return 'Sin presentar';
+  };
+  var texto = function (v) { return v === null || v === undefined ? '' : String(v).trim(); };
+  var CAMPOS = [
+    { campo: 'Fecha', de: function (c) { return texto(c.fecha); } },
+    { campo: 'Sucursal', de: function (c) { return texto(c.sucursal); }, igual: function (a, b) { return mismaSucursal_(a, b); } },
+    { campo: 'Comprobante', de: numero },
+    { campo: 'Compañía', de: function (c) { return texto(c.aseguradoraId); }, ver: function (v, c) { return c._compania || nombres[v] || v; } },
+    { campo: 'Siniestro', de: function (c) { return texto(c.siniestro).replace(/\s+/g, ''); }, ver: function (v, c) { return texto(c.siniestro); } },
+    { campo: 'Importe', de: function (c) { return Number(c.total) || 0; }, igual: function (a, b) { return Math.abs(a - b) < 0.01; } },
+    { campo: 'Drive', de: function (c) { return texto(c.fechaDrive); } },
+    { campo: 'Presentación', de: function (c) { return texto(c.fechaPresentacion); } },
+    { campo: 'Cobro', de: function (c) { return c.estado === 'cobrada' ? texto(c.fechaCobro) : ''; } },
+    { campo: 'Estado', de: situacion },
+  ];
+
+  var resultado = {
+    comparadas: 0, iguales: 0, conDiferencias: 0, omitidas: 0, porCampo: {}, diferencias: [], soloPlanilla: [], soloCobroSync: [],
+    totales: { planilla: { cantidad: 0, facturado: 0, cobrado: 0 }, cobrosync: { cantidad: 0, facturado: 0, cobrado: 0 } },
+    ahora: ahora_(),
+  };
+  CAMPOS.forEach(function (k) { resultado.porCampo[k.campo] = 0; });
+  var MAX = 3000;
+  var sumar = function (t, c) {
+    t.cantidad++;
+    if (c.estado !== 'anulada') t.facturado += Number(c.total) || 0;
+    if (c.estado === 'cobrada') t.cobrado += Number(c.total) || 0;
+  };
+  var fila = function (c) { return { ref: texto(c.ref), comprobante: numero(c), fecha: c.fecha, sucursal: c.sucursal, compania: c._compania || nombres[c.aseguradoraId] || c.aseguradoraId, importe: Number(c.total) || 0 }; };
+
+  lista.forEach(function (p) {
+    if (!esDelPiloto(p.sucursal)) { resultado.omitidas++; return; }
+    sumar(resultado.totales.planilla, p);
+    var clave = p.ref ? 'ref:' + p.ref : 'id:' + p.id;
+    var c = porClave[clave];
+    if (!c) { if (resultado.soloPlanilla.length < MAX) resultado.soloPlanilla.push(fila(p)); return; }
+    vistas[clave] = true;
+    sumar(resultado.totales.cobrosync, c);
+    resultado.comparadas++;
+    var difs = [];
+    CAMPOS.forEach(function (k) {
+      var a = k.de(p), b = k.de(c);
+      var igual = k.igual ? k.igual(a, b) : a === b;
+      if (igual) return;
+      resultado.porCampo[k.campo]++;
+      difs.push({ campo: k.campo, planilla: k.ver ? k.ver(a, p) : a, cobrosync: k.ver ? k.ver(b, c) : b });
+    });
+    if (!difs.length) { resultado.iguales++; return; }
+    resultado.conDiferencias++;
+    if (resultado.diferencias.length < MAX) {
+      var f = fila(p);
+      f.campos = difs;
+      resultado.diferencias.push(f);
+    }
+  });
+  actuales.forEach(function (c) {
+    var clave = c.ref ? 'ref:' + c.ref : 'id:' + c.id;
+    if (vistas[clave] || !esDelPiloto(c.sucursal)) return;
+    if (resultado.soloCobroSync.length < MAX) resultado.soloCobroSync.push(fila(c));
+  });
+  resultado.cantidadSoloCobroSync = actuales.filter(function (c) { return !vistas[c.ref ? 'ref:' + c.ref : 'id:' + c.id] && esDelPiloto(c.sucursal); }).length;
+  return resultado;
 }
 
 /** "02-01-26", "02/01/26" o "02/01/2026" → "2026-01-02" (como se ve en la planilla) */

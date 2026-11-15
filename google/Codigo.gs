@@ -109,7 +109,7 @@ function obtenerDatosComprimidos() {
   var texto = JSON.stringify(datos);
   var gz = Utilities.gzip(Utilities.newBlob(texto, 'application/json', 'datos.json'));
   var b64 = Utilities.base64Encode(gz.getBytes());
-  console.log('Ingreso: datos en ' + (t1 - t0) + ' ms, comprimidos en ' + (Date.now() - t1) + ' ms; ' +
+  console.log('Ingreso: datos en ' + (t1 - t0) + ' ms (usuario ' + TIEMPOS_.usuario + ' ms, comprobantes ' + TIEMPOS_.comprobantes + ' ms), comprimidos en ' + (Date.now() - t1) + ' ms; ' +
     (datos.datos.comprobantes || []).length + ' comprobantes, ' + Math.round(texto.length / 1024) + ' KB → ' + Math.round(b64.length / 1024) + ' KB');
   return b64;
 }
@@ -138,9 +138,14 @@ function contactoAlta_() {
   try { return String(config_('correoSoporte') || ''); } catch (e) { return ''; }
 }
 
+var TIEMPOS_ = {};
 function obtenerDatosSinControl_() {
+  var t = Date.now();
   var usuario = usuarioActual_();
+  TIEMPOS_.usuario = Date.now() - t;
+  t = Date.now();
   var comprobantes = leerHoja_(HOJAS.comprobantes);
+  TIEMPOS_.comprobantes = Date.now() - t;
   if (usuario.rol === 'sucursal') {
     comprobantes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
   }
@@ -1192,7 +1197,7 @@ function fechaParaCelda_(iso) {
 
 /** Lo que hay en una celda de fecha → "AAAA-MM-DD" (acepta fecha, "30/10/2026" o "30-10-26"). */
 function fechaDeCelda_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
+  if (v instanceof Date) return fechaIso_(v);
   var m = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/.exec(String(v).trim());
   if (!m) return '';
   var a = m[3].length === 2 ? '20' + m[3] : m[3];
@@ -1317,11 +1322,21 @@ function leerJson_(v, porDefecto) {
   try { return JSON.parse(v); } catch (e) { return porDefecto; }
 }
 
+/**
+ * Fecha de la planilla → "aaaa-mm-dd" en hora de Buenos Aires (UTC−3, sin horario de verano).
+ * Se calcula a mano: Utilities.formatDate tarda mucho cuando son miles de celdas (era casi todo el
+ * tiempo del ingreso).
+ */
+function fechaIso_(d) {
+  var t = new Date(d.getTime() - 3 * 3600 * 1000);
+  return t.getUTCFullYear() + '-' + ('0' + (t.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + t.getUTCDate()).slice(-2);
+}
+
 function filaAObjeto_(h, fila) {
   var o = {};
   h.columnas.forEach(function (col, i) {
     var v = fila[i];
-    if (v instanceof Date) v = Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
+    if (v instanceof Date) v = fechaIso_(v);
     // Un error de fórmula en la celda (#N/A, #REF!…) se toma como vacío: no puede trabar la plataforma
     if (typeof v === 'string' && /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!)/.test(v)) v = '';
     if (COLUMNAS_JSON.indexOf(col) >= 0) v = leerJson_(v, col === 'compromiso' || col === 'anulacionInformada' || col === 'refacturacion' ? null : []);

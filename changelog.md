@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.14.1] - 2026-11-15
+
+### Mejorado
+- **Ingreso mucho más rápido:** el servidor pasaba cada fecha de la planilla a texto con una función de Google muy lenta (decenas de miles de fechas en cada ingreso: era casi todo el tiempo de espera). Ahora se calcula directamente. El registro de Ejecuciones muestra además cuánto tarda leer los comprobantes.
+
 ## [0.14.0] - 2026-11-15
 
 ### Agregado

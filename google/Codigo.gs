@@ -97,6 +97,23 @@ function doGet() {
 }
 
 /** Lo primero que pide la aplicación: quién es la persona y qué datos puede ver. */
+/**
+ * Lo mismo que obtenerDatos, pero comprimido (gzip en base64): con miles de facturas viaja mucho más
+ * rápido como un solo texto chico que como un objeto grande. La pantalla lo descomprime.
+ * En Ejecuciones de Apps Script queda cuánto tardó y cuánto pesó.
+ */
+function obtenerDatosComprimidos() {
+  var t0 = Date.now();
+  var datos = obtenerDatos();
+  var t1 = Date.now();
+  var texto = JSON.stringify(datos);
+  var gz = Utilities.gzip(Utilities.newBlob(texto, 'application/json', 'datos.json'));
+  var b64 = Utilities.base64Encode(gz.getBytes());
+  console.log('Ingreso: datos en ' + (t1 - t0) + ' ms, comprimidos en ' + (Date.now() - t1) + ' ms; ' +
+    (datos.datos.comprobantes || []).length + ' comprobantes, ' + Math.round(texto.length / 1024) + ' KB → ' + Math.round(b64.length / 1024) + ' KB');
+  return b64;
+}
+
 function obtenerDatos() {
   try {
     return obtenerDatosSinControl_();
@@ -846,6 +863,7 @@ function guardarAjustes(a) {
       if (i >= 0) cfg.getRange(i + 2, 2).setValue(String(valores[k]));
       else cfg.appendRow([k, String(valores[k]), '']);
     });
+    delete CACHE_HOJAS_.config;
     var sinFce = a.companiasSinFce || [];
     var hoja = hoja_(HOJAS.aseguradoras);
     var col = HOJAS.aseguradoras.columnas.indexOf('recibeFce') + 1;
@@ -1121,6 +1139,7 @@ function configurarPlanilla() {
   }
   var config = hoja_(HOJAS.config);
   if (config.getLastRow() < 2) config.getRange(2, 1, CONFIG_INICIAL.length, 3).setValues(CONFIG_INICIAL);
+  CACHE_HOJAS_ = {};
 }
 
 /** Programa los avisos diarios (8 h) y el resumen de los lunes (8 h). */
@@ -1137,7 +1156,7 @@ function usuarioActual_() {
   var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
   var dominio = String(config_('dominio') || '').toLowerCase();
   if (!email || (dominio && email.split('@')[1] !== dominio)) throw errorAcceso_('dominio', email);
-  var u = leerHoja_(HOJAS.usuarios).filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
+  var u = usuarios_().filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
   if (!u) throw errorAcceso_('usuario', email);
   var textoRol = String(u.rol).toLowerCase();
   // Administradora (o desarrolladora): trabaja como Cobranzas y además maneja los Ajustes y mira como los demás
@@ -1157,7 +1176,7 @@ function usuarioActual_() {
  * correo de soporte (o, si tampoco está cargado, cualquiera de Cobranzas, para la primera configuración).
  */
 function sinAdministradora_(email) {
-  var hay = leerHoja_(HOJAS.usuarios).some(function (x) { return /^(admin|desarroll)/.test(String(x.rol).toLowerCase()); });
+  var hay = usuarios_().some(function (x) { return /^(admin|desarroll)/.test(String(x.rol).toLowerCase()); });
   if (hay) return false;
   var soporte = String(config_('correoSoporte') || '').trim().toLowerCase();
   return !soporte || soporte === email;
@@ -1255,9 +1274,21 @@ function conBloqueo_(fn) {
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
+/**
+ * Lo leído en esta ejecución (Config y Usuarios), para no ir a la planilla una vez por cada dato.
+ * Apps Script arranca de cero en cada llamada, así que nunca queda viejo de una llamada a otra.
+ */
+var CACHE_HOJAS_ = {};
+
 function config_(clave) {
-  var fila = leerHoja_(HOJAS.config).filter(function (x) { return x.clave === clave; })[0];
+  if (!CACHE_HOJAS_.config) CACHE_HOJAS_.config = leerHoja_(HOJAS.config);
+  var fila = CACHE_HOJAS_.config.filter(function (x) { return x.clave === clave; })[0];
   return fila ? fila.valor : '';
+}
+
+function usuarios_() {
+  if (!CACHE_HOJAS_.usuarios) CACHE_HOJAS_.usuarios = leerHoja_(HOJAS.usuarios);
+  return CACHE_HOJAS_.usuarios;
 }
 
 function subcarpeta_(padre, nombre) {

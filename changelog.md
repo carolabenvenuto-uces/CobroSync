@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.13.2] - 2026-11-15
+
+### Mejorado
+- **Ingreso más rápido:** los datos viajan comprimidos (alrededor de 10 veces menos peso) y el servidor lee Config y Usuarios una sola vez por ingreso en lugar de una vez por cada dato (eran unas 20 lecturas de la planilla). En Ejecuciones de Apps Script queda cuánto tardó cada ingreso y cuánto pesó.
+- Si el Código.gs todavía es el anterior, la pantalla sigue entrando como antes.
+
 ## [0.13.1] - 2026-11-15
 
 ### Corregido

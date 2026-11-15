@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import zlib from 'node:zlib'
 import vm from 'node:vm'
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -116,7 +117,8 @@ const contexto = {
   },
   Utilities: {
     formatDate: (d) => d.toISOString().slice(0, 10),
-    newBlob: (_bytes, _mime, name) => ({ name }),
+    newBlob: (datos, _mime, name) => ({ name, datos }),
+    gzip: (blob) => ({ getBytes: () => zlib.gzipSync(Buffer.from(blob.datos)) }),
     base64Decode: (b) => Buffer.from(b, 'base64'),
     base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
     zip: (blobs, nombre) => ({ nombre, getBytes: () => Buffer.from(JSON.stringify(blobs.map((b) => b.name))) }),
@@ -128,7 +130,11 @@ const contexto = {
 }
 vm.createContext(contexto)
 vm.runInContext(codigo, contexto)
-const gs = (fn, ...args) => contexto[fn](...JSON.parse(JSON.stringify(args)))
+// Cada llamada es una ejecución nueva de Apps Script: lo leído en la anterior no queda
+const gs = (fn, ...args) => {
+  vm.runInContext('CACHE_HOJAS_ = {}', contexto)
+  return contexto[fn](...JSON.parse(JSON.stringify(args)))
+}
 const HOJAS_COLUMNAS = vm.runInContext('HOJAS.comprobantes.columnas', contexto)
 const como = (email) => (emailActual = email)
 
@@ -709,6 +715,13 @@ prueba('un error de fórmula (#N/A) en una columna no traba la plataforma', () =
   const d = gs('obtenerDatos').datos
   esperar(d.comprobantes.length > 0, 'no trajo comprobantes')
   h.filas[1][col] = ''
+})
+prueba('los datos comprimidos son los mismos que sin comprimir', () => {
+  como('auditoria@svaauto.com.ar')
+  const b64 = gs('obtenerDatosComprimidos')
+  const r = JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'))
+  const d = gs('obtenerDatos')
+  esperar(r.datos.comprobantes.length === d.datos.comprobantes.length && r.usuario.email === d.usuario.email, 'no coinciden')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

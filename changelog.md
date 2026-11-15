@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.14.2] - 2026-11-15
+
+### Corregido
+- **Siniestros que Google Sheets tomaba por fechas** ("20 02 92907" quedaba como la fecha 20/02/92907 y se veía "92907-02-20"; "6498-05" como mayo de 6498) y números que perdían los ceros de adelante. Ahora el número de referencia, el siniestro, la patente y las observaciones se guardan siempre como texto.
+- Los siniestros que ya habían quedado dañados se reparan solos con el dato de la planilla de control en la próxima lectura (cada hora o con "Traer los cambios de mi planilla ahora").
+- **Comparar con mi planilla:** el siniestro se toma como igual con o sin guiones o espacios y con o sin ceros adelante; si los números están en otro orden, es distinto.
+
 ## [0.14.1] - 2026-11-15
 
 ### Mejorado

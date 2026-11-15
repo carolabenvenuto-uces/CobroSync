@@ -1,3 +1,4 @@
+import { descomprimirJson } from '../lib/comprimido'
 /**
  * Conexión con Google (etapa 2, prueba piloto).
  *
@@ -36,7 +37,7 @@ export const conectadoAGoogle = (): boolean => corredor() !== null
 
 /** Llama a una función de google/Codigo.gs y espera la respuesta. */
 /** Lo que se puede pedir al servidor mientras la administradora mira como otro usuario (nada que guarde). */
-const SOLO_LECTURA = new Set(['obtenerDatos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
+const SOLO_LECTURA = new Set(['obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
 let textoSoloMirar: string | null = null
 /** Con un texto, el servidor solo se consulta: todo lo que guarda se rechaza con ese texto. */
 export function fijarSoloMirar(texto: string | null) {
@@ -82,8 +83,27 @@ export function completarComprobante(c: Comprobante): Comprobante {
   }
 }
 
-export async function cargarDesdeGoogle(): Promise<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }> {
-  const r = await llamar<{ usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }>('obtenerDatos')
+type DatosIniciales = { usuario: UsuarioGoogle; datos: DatosApp; ahora: string; leidas: string[] }
+
+/**
+ * Todo lo del ingreso. Primero lo pide comprimido (viaja mucho más rápido); si el servidor todavía no
+ * lo tiene (Código.gs anterior) o el navegador no sabe descomprimir, lo pide como siempre.
+ * Un error de acceso no se reintenta: se muestra.
+ */
+async function traerDatosIniciales(): Promise<DatosIniciales> {
+  if (typeof DecompressionStream !== 'undefined') {
+    try {
+      const b64 = await llamar<unknown>('obtenerDatosComprimidos')
+      if (typeof b64 === 'string' && b64) return await descomprimirJson<DatosIniciales>(b64)
+    } catch (e) {
+      if (String(e instanceof Error ? e.message : e).includes('CobroSync-acceso:')) throw e
+    }
+  }
+  return llamar<DatosIniciales>('obtenerDatos')
+}
+
+export async function cargarDesdeGoogle(): Promise<DatosIniciales> {
+  const r = await traerDatosIniciales()
   return { ...r, datos: { ...r.datos, comprobantes: (r.datos.comprobantes ?? []).map(completarComprobante) } }
 }
 

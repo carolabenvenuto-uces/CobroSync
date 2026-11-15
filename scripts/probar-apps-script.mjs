@@ -15,7 +15,8 @@ const demo = JSON.parse(readFileSync(join(raiz, 'public', 'datos-demo', 'comprob
 
 // ── Google simulado ──────────────────────────────────────────────────────────
 const esFecha = (v) => Object.prototype.toString.call(v) === '[object Date]' // sirve para fechas de Node y del script
-const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : esFecha(v) ? v : String(v)) // celdas con formato texto
+// celdas con formato texto; como en Sheets, un apóstrofo adelante fuerza texto y no queda en el dato
+const comoTexto = (v) => (v === true ? 'TRUE' : v === false ? 'FALSE' : esFecha(v) ? v : String(v).replace(/^'/, ''))
 function crearHoja(nombre) {
   const filas = []
   const formulas = {} // "fila,columna" → fórmula
@@ -676,6 +677,27 @@ prueba('comparar con la planilla: campo por campo, sin cambiar nada', () => {
   h.filas[fila][h.filas[0].indexOf('total')] = '1234.5'
   como('rocamora@svaauto.com.ar')
   falla(() => gs('compararConPlanilla'), 'solo la administradora')
+})
+prueba('un siniestro que Sheets convirtió en fecha se repara con la planilla, y no se vuelve a convertir', () => {
+  como('auditoria@svaauto.com.ar')
+  const h = hojas['Comprobantes']
+  const fila = h.filas.findIndex((f) => f[1] === '7777777')
+  const col = h.filas[0].indexOf('siniestro')
+  h.filas[fila][col] = vm.runInContext('new Date(Date.UTC(2026, 1, 20, 3))', contexto) // así quedaba "20 02 ..." en la planilla de datos
+  esperar(gs('compararConPlanilla').diferencias.some((d) => d.ref === '7777777' && d.campos.some((x) => x.campo === 'Siniestro')), 'no mostró el siniestro dañado')
+  gs('traerDeMiPlanilla')
+  esperar(h.filas[fila][col] === '029-9-1', `quedó "${h.filas[fila][col]}"`)
+  esperar(!gs('compararConPlanilla').diferencias.some((d) => d.ref === '7777777'), 'sigue con diferencias')
+})
+prueba('el siniestro se compara sin guiones, espacios ni ceros de adelante, pero nunca en otro orden', () => {
+  const h = hojas['Comprobantes']
+  const fila = h.filas.findIndex((f) => f[1] === '7777777')
+  const col = h.filas[0].indexOf('siniestro')
+  h.filas[fila][col] = '00029 9 1'
+  esperar(!gs('compararConPlanilla').diferencias.some((d) => d.ref === '7777777'), 'tomó como distinto el mismo siniestro')
+  h.filas[fila][col] = '1-9-029'
+  esperar(gs('compararConPlanilla').diferencias.some((d) => d.ref === '7777777'), 'tomó como igual un siniestro en otro orden')
+  h.filas[fila][col] = '029-9-1'
 })
 prueba('nunca se borra un dato de la planilla', () => {
   const i = enDiario.findIndex((c) => !c.fechaCobro)

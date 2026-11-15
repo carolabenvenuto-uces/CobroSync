@@ -397,6 +397,11 @@ function sincronizarLista_(lista, autor) {
       }
       var c = existente.c;
       var cambio = false;
+      // El siniestro que Google Sheets había convertido en fecha vuelve a ser el de la planilla de control
+      if (c._siniestroDanado && p.siniestro) {
+        c.siniestro = p.siniestro;
+        cambio = true;
+      }
       if (!c.fechaPresentacion && p.fechaPresentacion) {
         c.fechaPresentacion = p.fechaPresentacion;
         c.vencimiento = p.vencimiento;
@@ -1064,7 +1069,8 @@ function compararConPlanilla() {
     { campo: 'Sucursal', de: function (c) { return texto(c.sucursal); }, igual: function (a, b) { return mismaSucursal_(a, b); } },
     { campo: 'Comprobante', de: numero },
     { campo: 'Compañía', de: function (c) { return texto(c.aseguradoraId); }, ver: function (v, c) { return c._compania || nombres[v] || v; } },
-    { campo: 'Siniestro', de: function (c) { return texto(c.siniestro).replace(/\s+/g, ''); }, ver: function (v, c) { return texto(c.siniestro); } },
+    // Mismo siniestro con o sin guiones/espacios, o con ceros de menos adelante (Sheets los borra); el orden nunca cambia
+    { campo: 'Siniestro', de: function (c) { return texto(c.siniestro).replace(/[^0-9A-Za-z]/g, '').replace(/^0+/, '').toUpperCase(); }, ver: function (v, c) { return texto(c.siniestro); } },
     { campo: 'Importe', de: function (c) { return Number(c.total) || 0; }, igual: function (a, b) { return Math.abs(a - b) < 0.01; } },
     { campo: 'Drive', de: function (c) { return texto(c.fechaDrive); } },
     { campo: 'Presentación', de: function (c) { return texto(c.fechaPresentacion); } },
@@ -1336,7 +1342,11 @@ function filaAObjeto_(h, fila) {
   var o = {};
   h.columnas.forEach(function (col, i) {
     var v = fila[i];
-    if (v instanceof Date) v = fechaIso_(v);
+    if (v instanceof Date) {
+      // Un siniestro que la planilla había tomado por fecha: se nota para repararlo con la planilla de control
+      if (col === 'siniestro') o._siniestroDanado = true;
+      v = fechaIso_(v);
+    }
     // Un error de fórmula en la celda (#N/A, #REF!…) se toma como vacío: no puede trabar la plataforma
     if (typeof v === 'string' && /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!)/.test(v)) v = '';
     if (COLUMNAS_JSON.indexOf(col) >= 0) v = leerJson_(v, col === 'compromiso' || col === 'anulacionInformada' || col === 'refacturacion' ? null : []);
@@ -1357,11 +1367,19 @@ function filaAObjeto_(h, fila) {
   return o;
 }
 
+/**
+ * Columnas que son texto aunque parezcan número o fecha. Google Sheets convierte solo lo que escribimos:
+ * "20 02 92907" lo guardaba como la fecha 20/02/92907 y "004250654891" perdía los ceros de adelante.
+ * Con un apóstrofo adelante, la planilla lo guarda tal cual (el apóstrofo no queda en el dato).
+ */
+var COLUMNAS_TEXTO = ['ref', 'siniestro', 'patente', 'observaciones'];
+
 function escribirFila_(hoja, h, fila, o) {
   var valores = h.columnas.map(function (col) {
     if (col === 'actualizado') return ahora_();
     var v = o[col];
     if (COLUMNAS_JSON.indexOf(col) >= 0) return v === null || v === undefined ? '' : JSON.stringify(v);
+    if (h === HOJAS.comprobantes && COLUMNAS_TEXTO.indexOf(col) >= 0 && typeof v === 'string' && v !== '') return "'" + v;
     return v === null || v === undefined ? '' : v;
   });
   if (fila) hoja.getRange(fila, 1, 1, valores.length).setValues([valores]);

@@ -175,11 +175,11 @@ const lote = [...deLaPrueba.slice(0, 300), ...deLaPrueba.slice(300).filter((c) =
 
 prueba('una cuenta de afuera de la empresa no entra', () => {
   como('alguien@gmail.com')
-  falla(() => gs('obtenerDatos'), 'cuenta de la empresa')
+  falla(() => gs('obtenerDatos'), '"motivo":"dominio"')
 })
 prueba('una cuenta de la empresa que no está en Usuarios no entra', () => {
   como('otro@svaauto.com.ar')
-  falla(() => gs('obtenerDatos'), 'no tiene acceso')
+  falla(() => gs('obtenerDatos'), '"motivo":"usuario"')
 })
 prueba('Cobranzas pasa la planilla y se guardan las facturas', () => {
   como('auditoria@svaauto.com.ar')
@@ -698,6 +698,17 @@ prueba('la sucursal dice si lo anulado se refactura y el servidor lo firma', () 
   esperar(g && g.decision === 'no' && g.motivo === 'Se anuló la orden' && g.autor === 'Facturación Rocamora' && g.fecha !== '2020-01-01', JSON.stringify(g))
   const otra = gs('aplicarCambios', [{ id: f.id, campos: { refacturacion: { decision: 'si', importe: '1500,5' } } }]).comprobantes[0].refacturacion
   esperar(otra.decision === 'si' && otra.importe === null, JSON.stringify(otra)) // un importe que no es número no se guarda
+})
+prueba('un error de fórmula (#N/A) en una columna no traba la plataforma', () => {
+  const h = hojas['Comprobantes']
+  const col = h.filas[0].indexOf('refacturacion')
+  esperar(col >= 0, 'falta la columna refacturacion')
+  h.filas[1][col] = '#N/A'
+  h.filas[2][h.filas[0].indexOf('eventos')] = '{roto'
+  como('auditoria@svaauto.com.ar')
+  const d = gs('obtenerDatos').datos
+  esperar(d.comprobantes.length > 0, 'no trajo comprobantes')
+  h.filas[1][col] = ''
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

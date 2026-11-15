@@ -11,6 +11,14 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.13.1] - 2026-11-15
+
+### Corregido
+- **No se podía entrar a la plataforma** ("Unexpected token '#', "#N/A" is not valid JSON"): una celda de la pestaña Comprobantes con un error de fórmula trababa la carga. Ahora un error de fórmula o un texto que no es JSON se toma como vacío.
+
+### Cambiado
+- **Pantalla de sin acceso:** mensajes cortos según el caso. Sin usuario: "Todavía no tenés acceso · Para solicitarlo, escribí a" el correo de soporte de Ajustes. Cuenta de afuera de la empresa: "Cuenta no permitida", con "Cambiar de cuenta". Los errores técnicos ya no se muestran: aparece "No se pudo abrir CobroSync" con "Reintentar", y el detalle queda en el registro de Apps Script y en la consola.
+
 ## [0.13.0] - 2026-11-14
 
 ### Agregado

@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.13.1] - 2026-11-15
+
+### Corregido
+- **No se podía entrar a la plataforma** ("Unexpected token '#', "#N/A" is not valid JSON"): una celda de la pestaña Comprobantes con un error de fórmula trababa la carga. Ahora un error de fórmula o un texto que no es JSON se toma como vacío.
+
 ## [0.13.0] - 2026-11-14
 
 ### Agregado

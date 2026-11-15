@@ -699,6 +699,17 @@ prueba('la sucursal dice si lo anulado se refactura y el servidor lo firma', () 
   const otra = gs('aplicarCambios', [{ id: f.id, campos: { refacturacion: { decision: 'si', importe: '1500,5' } } }]).comprobantes[0].refacturacion
   esperar(otra.decision === 'si' && otra.importe === null, JSON.stringify(otra)) // un importe que no es número no se guarda
 })
+prueba('un error de fórmula (#N/A) en una columna no traba la plataforma', () => {
+  const h = hojas['Comprobantes']
+  const col = h.filas[0].indexOf('refacturacion')
+  esperar(col >= 0, 'falta la columna refacturacion')
+  h.filas[1][col] = '#N/A'
+  h.filas[2][h.filas[0].indexOf('eventos')] = '{roto'
+  como('auditoria@svaauto.com.ar')
+  const d = gs('obtenerDatos').datos
+  esperar(d.comprobantes.length > 0, 'no trajo comprobantes')
+  h.filas[1][col] = ''
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

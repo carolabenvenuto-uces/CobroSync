@@ -1168,12 +1168,20 @@ function leerHoja_(h) {
     .map(function (f) { return filaAObjeto_(h, f); });
 }
 
+/** Lee una celda con JSON; si está vacía o no es JSON válido, devuelve el valor por defecto (no se traba). */
+function leerJson_(v, porDefecto) {
+  if (!v) return porDefecto;
+  try { return JSON.parse(v); } catch (e) { return porDefecto; }
+}
+
 function filaAObjeto_(h, fila) {
   var o = {};
   h.columnas.forEach(function (col, i) {
     var v = fila[i];
     if (v instanceof Date) v = Utilities.formatDate(v, 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd');
-    if (COLUMNAS_JSON.indexOf(col) >= 0) v = v ? JSON.parse(v) : (col === 'compromiso' || col === 'anulacionInformada' ? null : []);
+    // Un error de fórmula en la celda (#N/A, #REF!…) se toma como vacío: no puede trabar la plataforma
+    if (typeof v === 'string' && /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!)/.test(v)) v = '';
+    if (COLUMNAS_JSON.indexOf(col) >= 0) v = leerJson_(v, col === 'compromiso' || col === 'anulacionInformada' || col === 'refacturacion' ? null : []);
     // La firma ya no es un documento aparte (va en la orden firmada)
     if (col === 'documentos' && Array.isArray(v)) v = v.filter(function (d) { return d && d.tipo !== 'firma'; });
     else if (COLUMNAS_NUMERO.indexOf(col) >= 0) v = v === '' ? 0 : Number(v);

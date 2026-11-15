@@ -12,20 +12,78 @@ export function Cargando({ pantallaCompleta = false }: { pantallaCompleta?: bool
   )
 }
 
-/** Con Google: la cuenta no está habilitada (o no es de la empresa). */
+/** Lo que manda el servidor cuando no se puede entrar (ver errorAcceso_ en Codigo.gs). */
+interface MotivoAcceso {
+  motivo: 'dominio' | 'usuario' | 'sucursal' | 'falla'
+  email?: string
+  dominio?: string
+  contacto?: string
+}
+const MARCA_ACCESO = 'CobroSync-acceso:'
+function leerMotivo(mensaje: string): MotivoAcceso {
+  const i = mensaje.indexOf(MARCA_ACCESO)
+  if (i >= 0) {
+    try {
+      return JSON.parse(mensaje.slice(i + MARCA_ACCESO.length)) as MotivoAcceso
+    } catch {
+      // sigue abajo
+    }
+  }
+  return { motivo: 'falla' }
+}
+
+/** Con Google: no se pudo entrar. Mensajes cortos, como cualquier página; lo técnico queda solo en la consola. */
 export function SinAcceso({ mensaje }: { mensaje: string }) {
+  const m = leerMotivo(mensaje)
+  if (m.motivo === 'falla') console.error('CobroSync no pudo cargar:', mensaje)
+  const pedir = m.contacto ? (
+    <a href={`mailto:${m.contacto}?subject=${encodeURIComponent('Acceso a CobroSync')}`} className="font-semibold text-marca hover:underline">
+      {m.contacto}
+    </a>
+  ) : (
+    'la administradora de la plataforma'
+  )
+  const cambiarCuenta = (
+    <a href="https://accounts.google.com/Logout" target="_top" className="font-semibold text-marca hover:underline">
+      Cambiar de cuenta
+    </a>
+  )
+  const texto = {
+    dominio: {
+      titulo: 'Cuenta no permitida',
+      cuerpo: <>CobroSync solo funciona con la cuenta de la empresa{m.dominio ? ` (@${m.dominio})` : ''}.</>,
+      pie: cambiarCuenta,
+    },
+    usuario: {
+      titulo: 'Todavía no tenés acceso',
+      cuerpo: <>Para solicitarlo, escribí a {pedir}.</>,
+      pie: <>¿No es tu cuenta de la empresa? {cambiarCuenta}</>,
+    },
+    sucursal: {
+      titulo: 'Falta tu sucursal',
+      cuerpo: <>Tu usuario todavía no tiene una sucursal asignada. Escribí a {pedir}.</>,
+      pie: null,
+    },
+    falla: {
+      titulo: 'No se pudo abrir CobroSync',
+      cuerpo: <>Probá de nuevo en unos minutos. Si sigue pasando, avisá a {pedir}.</>,
+      pie: (
+        <button type="button" onClick={() => window.location.reload()} className="font-semibold text-marca hover:underline">
+          Reintentar
+        </button>
+      ),
+    },
+  }[m.motivo]
   return (
     <div className="flex min-h-screen items-center justify-center bg-noche px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-xl">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sem-rojo/10 text-sem-rojo">
           <LockKeyhole className="h-6 w-6" />
         </div>
-        <h1 className="mt-4 text-xl font-extrabold text-noche">Todavía sin acceso</h1>
-        <p className="mt-2 text-sm text-slate-600">{mensaje}</p>
-        <p className="mt-4 text-xs text-slate-500">
-          Si la cuenta debería tener acceso, Cobranzas puede agregarla. Si se ingresó con una cuenta personal, hay que cerrar sesión en
-          Google y volver a entrar con la de la empresa.
-        </p>
+        <h1 className="mt-4 text-xl font-extrabold text-noche">{texto.titulo}</h1>
+        {m.email && m.motivo !== 'falla' && <p className="mt-1 text-xs text-slate-500">{m.email}</p>}
+        <p className="mt-3 text-sm text-slate-600">{texto.cuerpo}</p>
+        {texto.pie && <p className="mt-4 text-xs text-slate-500">{texto.pie}</p>}
       </div>
     </div>
   )

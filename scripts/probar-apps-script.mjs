@@ -175,11 +175,11 @@ const lote = [...deLaPrueba.slice(0, 300), ...deLaPrueba.slice(300).filter((c) =
 
 prueba('una cuenta de afuera de la empresa no entra', () => {
   como('alguien@gmail.com')
-  falla(() => gs('obtenerDatos'), 'cuenta de la empresa')
+  falla(() => gs('obtenerDatos'), '"motivo":"dominio"')
 })
 prueba('una cuenta de la empresa que no está en Usuarios no entra', () => {
   como('otro@svaauto.com.ar')
-  falla(() => gs('obtenerDatos'), 'no tiene acceso')
+  falla(() => gs('obtenerDatos'), '"motivo":"usuario"')
 })
 prueba('Cobranzas pasa la planilla y se guardan las facturas', () => {
   como('auditoria@svaauto.com.ar')

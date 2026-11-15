@@ -98,6 +98,30 @@ function doGet() {
 
 /** Lo primero que pide la aplicación: quién es la persona y qué datos puede ver. */
 function obtenerDatos() {
+  try {
+    return obtenerDatosSinControl_();
+  } catch (e) {
+    // Lo técnico no se le muestra a la persona: queda en el registro de ejecuciones de Apps Script
+    if (String(e.message).indexOf(MARCA_ACCESO) === 0) throw e;
+    console.error('obtenerDatos: ' + (e && e.stack ? e.stack : e));
+    throw new Error(MARCA_ACCESO + JSON.stringify({ motivo: 'falla', contacto: contactoAlta_() }));
+  }
+}
+
+/**
+ * Errores de ingreso con lo que la pantalla necesita para explicarlo (motivo, cuenta y a quién pedir el
+ * alta). La pantalla los reconoce por esta marca y nunca muestra el texto técnico.
+ */
+var MARCA_ACCESO = 'CobroSync-acceso:';
+function errorAcceso_(motivo, email) {
+  return new Error(MARCA_ACCESO + JSON.stringify({ motivo: motivo, email: email || '', dominio: String(config_('dominio') || ''), contacto: contactoAlta_() }));
+}
+/** A quién se le pide el alta: el correo de soporte de Ajustes (la administradora). */
+function contactoAlta_() {
+  try { return String(config_('correoSoporte') || ''); } catch (e) { return ''; }
+}
+
+function obtenerDatosSinControl_() {
   var usuario = usuarioActual_();
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   if (usuario.rol === 'sucursal') {
@@ -1112,14 +1136,14 @@ function instalarDisparadores() {
 function usuarioActual_() {
   var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
   var dominio = String(config_('dominio') || '').toLowerCase();
-  if (!email || (dominio && email.split('@')[1] !== dominio)) throw new Error('Hay que ingresar con la cuenta de la empresa.');
+  if (!email || (dominio && email.split('@')[1] !== dominio)) throw errorAcceso_('dominio', email);
   var u = leerHoja_(HOJAS.usuarios).filter(function (x) { return String(x.email).toLowerCase() === email; })[0];
-  if (!u) throw new Error('La cuenta ' + email + ' no tiene acceso. Cobranzas puede habilitarla.');
+  if (!u) throw errorAcceso_('usuario', email);
   var textoRol = String(u.rol).toLowerCase();
   // Administradora (o desarrolladora): trabaja como Cobranzas y además maneja los Ajustes y mira como los demás
   var admin = /^(admin|desarroll)/.test(textoRol);
   var rol = textoRol.indexOf('geren') === 0 ? 'gerencia' : admin || /^(audit|cobran)/.test(textoRol) ? 'auditoria' : 'sucursal';
-  if (rol === 'sucursal' && !u.sucursal) throw new Error('El usuario no tiene una sucursal asignada.');
+  if (rol === 'sucursal' && !u.sucursal) throw errorAcceso_('sucursal', email);
   // Cobranzas con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
   return {
     email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null,

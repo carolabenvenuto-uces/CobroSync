@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.16.1] - 2026-11-15
+
+### Cambiado
+- **Los PDF conservan su nombre:** en Drive y en la plataforma quedan con el nombre que les puso quien los subió (antes se guardaban como "documentacion_fecha.pdf"). El zip para presentar a las compañías los sigue nombrando con el número de factura.
+
 ## [0.16.0] - 2026-11-15
 
 ### Cambiado

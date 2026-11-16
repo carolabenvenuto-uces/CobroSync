@@ -258,6 +258,9 @@ interface EstadoApp {
   sesionIniciada: boolean
   iniciarSesion: (rol: Rol, sucursal?: string) => void
   cerrarSesion: () => void
+  /** con Google: salió de CobroSync (sin cerrar su cuenta de Google); se muestra la pantalla de salida */
+  salio: boolean
+  volverAEntrar: () => void
   /** con Google: la cuenta con la que se entró */
   cuenta: UsuarioGoogle | null
   /** Cobranzas que además escanea la documentación de una sucursal (la suya); null si no */
@@ -406,7 +409,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [datos],
   )
+  // Con Google no se cierra la cuenta (cerraría también el mail y el Drive): solo se sale de CobroSync
+  const [salio, setSalio] = useState(false)
+  const volverAEntrar = useCallback(() => setSalio(false), [])
   const cerrarSesion = useCallback(() => {
+    if (conectadoAGoogle()) {
+      setSalio(true)
+      setLegajoAbierto(null)
+      return
+    }
     setSesionDemo(false)
     guardarSesion(null)
     setLegajoAbierto(null)
@@ -758,6 +769,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sesionIniciada: usuarioGoogle !== null || sesionDemo,
       iniciarSesion,
       cerrarSesion,
+      salio,
+      volverAEntrar,
       cuenta: usuarioGoogle,
       sucursalPropia,
       administradora,
@@ -803,6 +816,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verComo,
       iniciarSesion,
       cerrarSesion,
+      salio,
+      volverAEntrar,
       legajoAbierto,
       abrirLegajo,
       misNotificaciones,

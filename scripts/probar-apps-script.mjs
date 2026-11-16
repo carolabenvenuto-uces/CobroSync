@@ -437,6 +437,7 @@ prueba('la sucursal sube un archivo y queda en Drive en la carpeta de la factura
   let ultimo = null
   while (subido.hasNext()) ultimo = subido.next()
   esperar(ultimo && ultimo.compartido === 'DOMAIN_WITH_LINK/VIEW', 'el archivo no quedó visible para la empresa con el link')
+  esperar(r.archivo === `${numero} orden.pdf` && ultimo.nombre === `${numero} orden.pdf`, `cambió el nombre del archivo: ${r.archivo}`)
   esperar(archivos.at(-1).startsWith(`CobroSync/Rocamora/${c.fecha.slice(0, 7)}/FC ${c.puntoVenta}-`), archivos.at(-1))
 })
 prueba('Cobranzas carga facturas nuevas del ERP y no se duplican', () => {

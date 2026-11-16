@@ -627,7 +627,8 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var carpeta = subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)),
     c.tipo + ' ' + c.puntoVenta + '-' + c.numero);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
-  var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, tipoDocumento + '_' + hoy_() + extension));
+  // El archivo queda en Drive con el nombre que le puso la sucursal
+  var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, tipoDocumento + '_' + hoy_() + extension)));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
   compartirEnLaEmpresa_(archivo);
   return { archivo: archivo.getName(), url: archivo.getUrl() };
@@ -670,7 +671,7 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
   var carpeta = subcarpeta_(subcarpeta_(raiz, deQuien), 'En espera');
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
-  var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension));
+  var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension)));
   archivo.setDescription('Subido por ' + usuario.email + ' antes de cargar la factura (' + nombre + ')');
   compartirEnLaEmpresa_(archivo);
   var e = {
@@ -1321,6 +1322,12 @@ function refTexto_(v) {
 function fechaParaCelda_(iso) {
   var p = String(iso).split('-');
   return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+}
+
+/** El nombre original del archivo (sin la ruta ni caracteres raros); si viene vacío, el de reserva. */
+function nombreDeArchivo_(nombre, reserva) {
+  var n = String(nombre || '').split(/[\\/]/).pop().replace(/[\u0000-\u001f]/g, '').trim();
+  return n || reserva;
 }
 
 /**

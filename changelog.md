@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.1] - 2026-11-16
+
+### Agregado
+- **Usuario y contraseña de la plataforma** de cada compañía (las cuentas que comparte el sector), en **Presentar**, junto al enlace a la plataforma: se ven, se copian con un toque (la contraseña se muestra con el ojito) y se cargan o cambian ahí mismo. Los puede cargar cualquiera de Cobranzas. Solo le llegan a Cobranzas: a las sucursales y a gerencia no.
+
 ## [0.17.0] - 2026-11-16
 
 ### Agregado

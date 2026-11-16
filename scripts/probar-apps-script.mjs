@@ -861,6 +861,19 @@ prueba('los reclamos anotados en Observaciones de la planilla: la última fecha,
   esperar(contexto.reclamoDePlanilla_('recl. 9/9/25').fecha === '2025-09-09', 'con año')
   vm.runInContext("hoy_ = function () { return new Date().toISOString().slice(0, 10); }", contexto)
 })
+prueba('usuario y contraseña de la plataforma: los carga Cobranzas y no les llegan a las sucursales ni a gerencia', () => {
+  como('auditoria@svaauto.com.ar')
+  const cia = gs('obtenerDatos').datos.aseguradoras[0]
+  const r = gs('guardarAccesoPlataforma', cia.id, ' cobranzas.sva ', 'Clave#2026')
+  esperar(r.usuarioPlataforma === 'cobranzas.sva' && r.clavePlataforma === 'Clave#2026', JSON.stringify(r))
+  const leida = gs('obtenerDatos').datos.aseguradoras.find((a) => a.id === cia.id)
+  esperar(leida.usuarioPlataforma === 'cobranzas.sva' && leida.clavePlataforma === 'Clave#2026', 'Cobranzas no la ve')
+  esperar(leida.nombre === cia.nombre && leida.email === cia.email, 'se perdieron otros datos de la compañía')
+  como('rocamora@svaauto.com.ar')
+  const suc = gs('obtenerDatos').datos.aseguradoras.find((a) => a.id === cia.id)
+  esperar(!('clavePlataforma' in suc) && !('usuarioPlataforma' in suc), 'la sucursal recibió el acceso')
+  falla(() => gs('guardarAccesoPlataforma', cia.id, 'x', 'y'), 'Solo Cobranzas')
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

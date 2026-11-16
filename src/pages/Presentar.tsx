@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CalendarCheck, Check, ChevronRight, Copy, Download, ExternalLink, Mail, MonitorUp, Search, X } from 'lucide-react'
+import { ArrowLeft, CalendarCheck, Check, ChevronRight, Copy, Download, ExternalLink, Eye, EyeOff, Mail, MonitorUp, Search, X } from 'lucide-react'
 import { EtiquetaMipyme } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
@@ -9,7 +9,7 @@ import { atendidaPorOtra } from '../domain/pedidos'
 import { esMipyme } from '../domain/plazos'
 import { calcularSemaforo } from '../domain/semaforo'
 import type { Aseguradora, Comprobante } from '../domain/tipos'
-import { descargarDocumentosDeGoogle } from '../services/google'
+import { descargarDocumentosDeGoogle, guardarAccesoEnGoogle } from '../services/google'
 import { NOMBRE_VIA, viaDe, type Via } from '../domain/canal'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { completarEnlace, separarLista } from '../lib/listas'
@@ -400,6 +400,7 @@ function ContactosCompania({ a, via }: { a: Aseguradora; via: Via }) {
         {mails.map(chipMail)}
         {!enlaces.length && !mails.length && <span className="text-amber-700">Sin mails ni enlaces cargados</span>}
       </div>
+      {via !== 'mail' && <AccesoPlataforma a={a} copiar={copiar} copiado={copiado} />}
       {reclamos.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-semibold text-slate-600">Para reclamos:</span>
@@ -409,6 +410,87 @@ function ContactosCompania({ a, via }: { a: Aseguradora; via: Via }) {
       {administradora && <Link to="/app/companias" className="inline-block text-[11px] text-slate-400 hover:text-marca hover:underline">
         Sumar o cambiar mails y enlaces (Ajustes → Compañías)
       </Link>}
+    </div>
+  )
+}
+
+/**
+ * Usuario y contraseña de la plataforma (las cuentas que comparte el sector): se ven, se copian y se
+ * cargan acá mismo. Solo le llegan a Cobranzas; las sucursales y gerencia no los reciben.
+ */
+function AccesoPlataforma({ a, copiar, copiado }: { a: Aseguradora; copiar: (t: string) => Promise<void>; copiado: string | null }) {
+  const { fuente, datos, actualizarAseguradoras } = useApp()
+  const [editando, setEditando] = useState(false)
+  const [ver, setVer] = useState(false)
+  const [usuario, setUsuario] = useState(a.usuarioPlataforma ?? '')
+  const [clave, setClave] = useState(a.clavePlataforma ?? '')
+  const [estado, setEstado] = useState<string | null>(null)
+  const tiene = !!(a.usuarioPlataforma || a.clavePlataforma)
+
+  async function guardar() {
+    setEstado('Guardando…')
+    try {
+      const r = fuente.tipo === 'google' ? await guardarAccesoEnGoogle(a.id, usuario, clave) : { usuarioPlataforma: usuario.trim(), clavePlataforma: clave }
+      actualizarAseguradoras((datos?.aseguradoras ?? []).map((x) => (x.id === a.id ? { ...x, ...r } : x)))
+      setEditando(false)
+      setEstado(null)
+    } catch (e) {
+      setEstado(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const botonCopiar = (texto: string, titulo: string) => (
+    <button type="button" onClick={() => void copiar(texto)} className="rounded-full p-0.5 text-slate-400 hover:bg-fondo hover:text-marca" title={titulo}>
+      {copiado === texto ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  )
+
+  if (editando) {
+    const campo = 'w-44 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-noche'
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-semibold text-slate-600">Acceso:</span>
+        <input value={usuario} onChange={(e) => setUsuario(e.target.value)} placeholder="Usuario" autoComplete="off" className={campo} aria-label="Usuario de la plataforma" />
+        <input value={clave} onChange={(e) => setClave(e.target.value)} placeholder="Contraseña" autoComplete="off" className={campo} aria-label="Contraseña de la plataforma" />
+        <button type="button" onClick={() => void guardar()} className="rounded-md bg-marca px-2.5 py-1 font-semibold text-white hover:bg-marca-oscuro">
+          Guardar
+        </button>
+        <button type="button" onClick={() => setEditando(false)} className="rounded-md px-2 py-1 font-semibold text-slate-500 hover:text-noche">
+          Cancelar
+        </button>
+        {estado && <span className="text-slate-500">{estado}</span>}
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="font-semibold text-slate-600">Acceso:</span>
+      {tiene ? (
+        <>
+          {a.usuarioPlataforma && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white py-0.5 pl-2 pr-1">
+              <span className="text-slate-500">Usuario</span> <span className="font-semibold text-noche">{a.usuarioPlataforma}</span>
+              {botonCopiar(a.usuarioPlataforma, 'Copiar el usuario')}
+            </span>
+          )}
+          {a.clavePlataforma && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white py-0.5 pl-2 pr-1">
+              <span className="text-slate-500">Contraseña</span> <span className="font-mono font-semibold text-noche">{ver ? a.clavePlataforma : '••••••'}</span>
+              <button type="button" onClick={() => setVer(!ver)} className="rounded-full p-0.5 text-slate-400 hover:bg-fondo hover:text-marca" title={ver ? 'Ocultar' : 'Ver'}>
+                {ver ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+              {botonCopiar(a.clavePlataforma, 'Copiar la contraseña')}
+            </span>
+          )}
+          <button type="button" onClick={() => setEditando(true)} className="text-[11px] text-slate-400 hover:text-marca hover:underline">
+            Cambiar
+          </button>
+        </>
+      ) : (
+        <button type="button" onClick={() => setEditando(true)} className="font-semibold text-marca hover:underline">
+          Cargar usuario y contraseña
+        </button>
+      )}
     </div>
   )
 }

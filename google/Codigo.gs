@@ -28,7 +28,7 @@ var HOJAS = {
   sucursales: { nombre: 'Sucursales', columnas: ['nombre', 'puntosVenta', 'gerente', 'correoGerente'] },
   aseguradoras: {
     nombre: 'Aseguradoras',
-    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada', 'siniestrosPorMail', 'siniestrosPorPlataforma'],
+    columnas: ['id', 'nombre', 'razonSocial', 'cuit', 'email', 'emailReclamos', 'plazoPagoDias', 'recibeFce', 'canal', 'portalUrl', 'toleranciaReclamo', 'pausada', 'siniestrosPorMail', 'siniestrosPorPlataforma', 'usuarioPlataforma', 'clavePlataforma'],
   },
   comprobantes: {
     nombre: 'Comprobantes',
@@ -261,6 +261,33 @@ function contactoAlta_() {
 }
 
 var TIEMPOS_ = {};
+/** Las compañías; el usuario y la contraseña de la plataforma solo le llegan a Cobranzas. */
+function aseguradorasPara_(usuario) {
+  var lista = leerHoja_(HOJAS.aseguradoras);
+  if (usuario.rol === 'auditoria') return lista;
+  return lista.map(function (a) { delete a.usuarioPlataforma; delete a.clavePlataforma; return a; });
+}
+
+/**
+ * Usuario y contraseña de la plataforma de una compañía (las cuentas que comparte el sector). Se cargan
+ * desde Presentar; los puede cambiar cualquiera de Cobranzas (no solo la administradora).
+ */
+function guardarAccesoPlataforma(id, usuarioPlataforma, clavePlataforma) {
+  var usuario = usuarioActual_();
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el acceso a la plataforma.');
+  return conBloqueo_(function () {
+    var hoja = hoja_(HOJAS.aseguradoras);
+    agregarColumnasNuevas_(hoja, HOJAS.aseguradoras);
+    var fila = buscarFila_(hoja, id);
+    if (!fila) throw new Error('No encuentro la compañía.');
+    var a = filaAObjeto_(HOJAS.aseguradoras, hoja.getRange(fila, 1, 1, HOJAS.aseguradoras.columnas.length).getValues()[0]);
+    a.usuarioPlataforma = String(usuarioPlataforma || '').trim();
+    a.clavePlataforma = String(clavePlataforma || '');
+    escribirFila_(hoja, HOJAS.aseguradoras, fila, a);
+    return { usuarioPlataforma: a.usuarioPlataforma, clavePlataforma: a.clavePlataforma };
+  });
+}
+
 function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
   var t = Date.now();
   var usuario = usuarioYa || usuarioActual_();
@@ -280,7 +307,7 @@ function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
     ahora: ahora_(),
     leidas: leidasDe_(usuario.email),
     datos: {
-      aseguradoras: leerHoja_(HOJAS.aseguradoras),
+      aseguradoras: aseguradorasPara_(usuario),
       comprobantes: comprobantes,
       enEspera: usuario.rol === 'gerencia' ? [] : leerEspera_().filter(function (e) {
         return !e.asociado && (usuario.rol !== 'sucursal' || mismaSucursal_(e.sucursal, usuario.sucursal));

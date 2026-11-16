@@ -195,6 +195,11 @@ export interface ResultadoComparacion {
   totales: Record<'planilla' | 'cobrosync', { cantidad: number; facturado: number; cobrado: number }>
   ahora: string
 }
+/** Usuario y contraseña de la plataforma de una compañía (Presentar; solo Cobranzas). */
+export function guardarAccesoEnGoogle(id: string, usuario: string, clave: string): Promise<{ usuarioPlataforma: string; clavePlataforma: string }> {
+  return llamar('guardarAccesoPlataforma', id, usuario, clave)
+}
+
 export interface Backup {
   nombre: string
   tipo: 'diario' | 'semanal' | 'mensual' | 'manual'

@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.16.0] - 2026-11-15
+
+### Cambiado
+- **Nombres de los archivos más flexibles:** alcanza con el punto de venta y el número de la factura, con o sin ceros adelante y separados por guion, espacio, punto, barra o todo junto ("21-20755", "0021-00020755", "21.20755", "2100020755"). Un siniestro no se confunde con una factura: solo vale un número que sea de una factura de la sucursal.
+- **El siniestro en el nombre** se reconoce con la palabra bien escrita, abreviada (sin, stro, sto) o mal escrita (sinestro, siniesto), o sin la palabra si es un número aparte. Una fecha no se toma por siniestro. Si no está, se sigue pidiendo aparte.
+- **La administradora puede aprobar lo que escaneó ella.** El resto de Cobranzas sigue necesitando que otra persona apruebe lo suyo.
+
 ## [0.15.1] - 2026-11-15
 
 ### Corregido

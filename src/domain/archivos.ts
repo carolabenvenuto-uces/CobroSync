@@ -4,7 +4,8 @@
  * antes de subir. La misma regla usa el servidor para la carpeta del Drive (google/Codigo.gs).
  *
  * Nombres que se reconocen (cualquiera sirve, en cualquier orden):
- *  - número de factura: "21-00011032", "21-11032", "FC 21 11032" o solo "11032"
+ *  - número de factura: punto de venta y número, con o sin ceros adelante y separados por guion, espacio,
+ *    punto, barra o nada: "21-00011032", "21-11032", "0021 11032", "21.11032", "2100011032"; o solo "11032"
  *  - siniestro, patente o referencia del ERP
  *  - qué es: "factura"/"FC" u "orden"/"OR"/"repuestos"/"firma" (la orden firmada); si no dice, son las dos juntas
  */
@@ -33,6 +34,28 @@ export function tipoPorNombre(nombre: string): TipoArchivo {
   return esOrden ? 'orden' : 'factura'
 }
 
+/**
+ * Las facturas cuyo punto de venta y número aparecen en el nombre. Se prueba con cada par de números
+ * seguidos ("21-11032", "0021 00011032") y con cada número largo partido en punto de venta + número
+ * ("2100011032"). Como solo vale si existe esa factura, un siniestro no se confunde con una factura.
+ */
+export function facturasEnNombre(nombre: string, facturas: Comprobante[]): Comprobante[] {
+  const base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  const runs = base.match(/\d+/g) ?? []
+  const halladas: Comprobante[] = []
+  for (let i = 0; i < runs.length; i++) {
+    if (i + 1 < runs.length) {
+      const pv = Number(runs[i])
+      const numero = Number(runs[i + 1])
+      halladas.push(...facturas.filter((c) => c.puntoVenta === pv && c.numero === numero))
+    }
+    if (runs[i].length >= 6) {
+      halladas.push(...facturas.filter((c) => new RegExp(`^0*${c.puntoVenta}0*${c.numero}$`).test(runs[i])))
+    }
+  }
+  return [...new Map(halladas.map((c) => [c.id, c])).values()]
+}
+
 /** A qué factura va, por el nombre. Solo entre las facturas que se le pasan (las de la sucursal). */
 export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugerencia {
   const tipo = tipoPorNombre(nombre)
@@ -45,14 +68,8 @@ export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugeren
     return null
   }
 
-  // 1) Punto de venta y número juntos: "21-00011032", "21 11032", "FC21-11032"
-  const conPv: Comprobante[] = []
-  for (const m of base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)) {
-    const pv = Number(m[1])
-    const numero = Number(m[2])
-    conPv.push(...facturas.filter((c) => c.puntoVenta === pv && c.numero === numero))
-  }
-  const r1 = elegir(conPv, 'número')
+  // 1) Punto de venta y número: "21-00011032", "21 11032", "FC21-11032", "2100011032"
+  const r1 = elegir(facturasEnNombre(nombre, facturas), 'número')
   if (r1) return r1
 
   // 2) Referencia del ERP, siniestro o patente dentro del nombre
@@ -106,15 +123,16 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   if (base.length > LARGO_MAXIMO_NOMBRE) {
     return { ok: false, tipo, error: `El nombre es muy largo (más de ${LARGO_MAXIMO_NOMBRE} caracteres). Alcanza con el número de factura y el siniestro: ${EJEMPLO}` }
   }
-  const encontrados = [...base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)].map((m) => ({ pv: Number(m[1]), numero: Number(m[2]), texto: m[0] }))
-  if (encontrados.length === 0) {
-    return { ok: false, tipo, error: `El nombre no tiene el número de factura. Por ejemplo: ${EJEMPLO}` }
+  const halladas = facturasEnNombre(nombre, facturas)
+  if (halladas.length === 1) return { ok: true, factura: halladas[0], tipo }
+  if (halladas.length > 1) {
+    return { ok: false, tipo, error: `El nombre coincide con más de una factura (${halladas.map(numeroParaNombre).join(', ')}): dejar solo el número de una.` }
   }
-  for (const n of encontrados) {
-    const f = facturas.find((c) => c.puntoVenta === n.pv && c.numero === n.numero)
-    if (f) return { ok: true, factura: f, tipo }
+  const pares = [...base.matchAll(/(\d{1,5})\s*[-_ ./]\s*(\d{1,8})/g)]
+  if (pares.length === 0) {
+    return { ok: false, tipo, error: `El nombre no tiene el número de factura (punto de venta y número). Por ejemplo: ${EJEMPLO}` }
   }
-  const dicho = `${encontrados[0].pv}-${encontrados[0].numero}`
+  const dicho = `${Number(pares[0][1])}-${Number(pares[0][2])}`
   return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en la sucursal: conviene revisar el número.` }
 }
 
@@ -130,13 +148,31 @@ export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
  */
 export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string | null {
   let base = nombre.replace(/\.[a-z0-9]+$/i, '')
-  // se saca el número de factura (con o sin ceros adelante)
-  base = base.replace(new RegExp(`\\b0*${c.puntoVenta}\\s*[-_ ]\\s*0*${c.numero}\\b`), ' ')
-  // 1) lo que sigue a "siniestro" (o "sin", "stro", "sto"): "siniestro 22365", "sin. 029-9-506622"
-  const conPalabra = base.match(/\b(?:siniestro|sin|stro|sto)\b\.?\s*[:#nº°]*\s*([a-z0-9][a-z0-9\-/.]*\d[a-z0-9\-/.]*)/i)
-  if (conPalabra && conPalabra[1].replace(/\D/g, '').length >= 4) return conPalabra[1].replace(/[.\-/]+$/, '')
-  // 2) sin la palabra: un número largo aparte del de la factura
+  // se saca el número de factura (con o sin ceros, con cualquier separador o todo junto)
+  base = base.replace(new RegExp(`(^|\\D)0*${c.puntoVenta}\\s*[-_ ./]?\\s*0*${c.numero}(?=\\D|$)`), '$1 ')
+  // 1) lo que sigue a la palabra siniestro, aunque esté abreviada o mal escrita: "siniestro", "sin.", "stro", "sinestro", "siniesto"
+  for (const m of base.matchAll(/([a-záéíóúñ]+)\.?\s*[:#nº°]*\s*([a-z]{0,3}\d[\w\-/.]*)/gi)) {
+    if (!esPalabraSiniestro(m[1])) continue
+    const valor = m[2].replace(/[.\-/]+$/, '')
+    if (valor.replace(/\D/g, '').length >= 4) return valor
+  }
+  // 2) sin la palabra: un número largo aparte del de la factura (no una fecha)
   base = base.replace(/[a-záéíóúñ]+/gi, ' ')
-  const candidatos = base.match(/\d[\d\-/.]*\d/g) ?? []
-  return candidatos.find((x) => x.replace(/\D/g, '').length >= 6) ?? null
+  const candidatos = (base.match(/\d[\d\-/.]*\d/g) ?? []).filter((x) => !/^\d{1,2}[-/.]\d{1,2}[-/.](\d{2}|\d{4})$/.test(x))
+  return candidatos.find((x) => x.replace(/\D/g, '').length >= 5) ?? null
+}
+
+/** "siniestro" escrito de muchas formas: abreviado (sin, stro, sto, sn, sint) o con una o dos letras de más o de menos. */
+export function esPalabraSiniestro(palabra: string): boolean {
+  const p = palabra.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (['sin', 'sn', 'st', 'sto', 'stro', 'sint', 'sini', 'sinies', 'siniest'].includes(p)) return true
+  return p.length >= 6 && p.startsWith('s') && distancia(p, 'siniestro') <= 2
+}
+
+function distancia(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)])
+  for (let j = 1; j <= b.length; j++) d[0][j] = j
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+  return d[a.length][b.length]
 }

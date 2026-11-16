@@ -285,6 +285,7 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
   esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
 })
 prueba('Cobranzas con sucursal propia sube lo suyo, pero lo aprueba otra persona de Cobranzas', () => {
+  setCfg('correoSoporte', 'auditoria@svaauto.com.ar') // la administradora es otra cuenta
   como('escaneo@svaauto.com.ar')
   const d = gs('obtenerDatos')
   esperar(d.usuario.rol === 'auditoria' && d.usuario.sucursalPropia === 'Rocamora', 'no quedó como Cobranzas con sucursal propia')
@@ -300,6 +301,15 @@ prueba('Cobranzas con sucursal propia sube lo suyo, pero lo aprueba otra persona
   gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
   doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
   esperar(doc.estado === 'ok', 'la otra persona de Cobranzas no pudo aprobarlo')
+  // La administradora sí aprueba lo que escaneó ella
+  const otra = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal !== 'Rocamora' && x.fecha >= '2026-10-01' && x.documentos.some((y) => y.estado === 'faltante'))
+  const t2 = otra.documentos.find((y) => y.estado === 'faltante').tipo
+  gs('aplicarCambios', [{ id: otra.id, documentos: [{ tipo: t2, estado: 'en_revision', archivo: 'mio.pdf', url: 'u2' }] }])
+  let mio = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === otra.id).documentos.find((y) => y.tipo === t2)
+  gs('aplicarCambios', [{ id: otra.id, documentos: [{ ...mio, estado: 'ok' }] }])
+  mio = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === otra.id).documentos.find((y) => y.tipo === t2)
+  esperar(mio.estado === 'ok', 'la administradora no pudo aprobar su propio escaneo')
+  setCfg('correoSoporte', '')
 })
 prueba('la sucursal puede quitar un documento subido por error, pero no uno aprobado', () => {
   como('rocamora@svaauto.com.ar')

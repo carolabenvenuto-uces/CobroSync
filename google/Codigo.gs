@@ -400,8 +400,8 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
           // Un archivo nuevo para revisar queda firmado por quien lo sube (lo firma el servidor)
           var nuevo = d.estado === 'en_revision' && (i < 0 || docs[i].estado !== 'en_revision' || docs[i].url !== d.url || docs[i].archivo !== d.archivo);
           if (nuevo) d.subidoPor = usuario.nombre;
-          // Lo que escaneó una persona de Cobranzas lo aprueba otra: así se controla dos veces
-          if (usuario.rol === 'auditoria' && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
+          // Lo que escaneó una persona de Cobranzas lo aprueba otra: así se controla dos veces (salvo la administradora)
+          if (usuario.rol === 'auditoria' && !usuario.administradora && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
             return;
           }
           if (i >= 0) docs[i] = d; else docs.push(d);
@@ -620,10 +620,7 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
 
   // Solo PDF (las compañías no aceptan otros formatos) y con el número de esta factura en el nombre
   if (mime !== 'application/pdf' && !/\.pdf$/i.test(nombre)) throw new Error('Solo se aceptan PDF.');
-  var numeros = [];
-  var m, re = /(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g;
-  while ((m = re.exec(String(nombre))) !== null) numeros.push(Number(m[1]) + '-' + Number(m[2]));
-  if (numeros.indexOf(Number(c.puntoVenta) + '-' + Number(c.numero)) < 0) {
+  if (!nombreTieneFactura_(nombre, c.puntoVenta, c.numero)) {
     throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + c.numero + ').');
   }
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
@@ -1324,6 +1321,21 @@ function refTexto_(v) {
 function fechaParaCelda_(iso) {
   var p = String(iso).split('-');
   return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+}
+
+/**
+ * ¿El nombre del archivo tiene el punto de venta y el número de esta factura? Con o sin ceros adelante,
+ * separados por guion, espacio, punto, barra o nada: "21-20755", "0021 00020755", "21.20755", "2100020755".
+ * (La misma regla que src/domain/archivos.ts.)
+ */
+function nombreTieneFactura_(nombre, pv, numero) {
+  var base = String(nombre).replace(/\.[a-z0-9]+$/i, '');
+  var runs = base.match(/\d+/g) || [];
+  for (var i = 0; i < runs.length; i++) {
+    if (i + 1 < runs.length && Number(runs[i]) === Number(pv) && Number(runs[i + 1]) === Number(numero)) return true;
+    if (new RegExp('^0*' + Number(pv) + '0*' + Number(numero) + '$').test(runs[i]) && runs[i].length >= 6) return true;
+  }
+  return false;
 }
 
 /** Lo que hay en una celda de fecha → "AAAA-MM-DD" (acepta fecha, "30/10/2026" o "30-10-26"). */

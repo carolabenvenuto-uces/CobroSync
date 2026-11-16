@@ -268,7 +268,8 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
               <ul className="list-disc space-y-0.5 pl-4">
                 <li>
                   Solo <strong>PDF</strong>. En el nombre, el <strong>número de factura</strong> y el <strong>siniestro</strong>:{' '}
-                  <code>35-11032 siniestro 22365.pdf</code>. Si se quiere, <code>fc</code> u <code>or</code> para decir qué es.
+                  <code>35-11032 siniestro 22365.pdf</code>. Con o sin ceros (<code>0035-00011032</code>) y con guion, espacio o punto. La
+                  palabra siniestro puede ir abreviada o no ir. Si se quiere, <code>fc</code> u <code>or</code> para decir qué es.
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
                 <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>

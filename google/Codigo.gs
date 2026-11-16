@@ -1030,6 +1030,29 @@ function agregarAQuiter(filas) {
   if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el ERP.');
   var libro = planillaDeControl_();
   if (!libro) return { configurada: false, agregadas: 0 };
+  try {
+    return agregarAQuiterEn_(libro, filas);
+  } catch (e) {
+    throw new Error(explicarErrorPlanilla_(e));
+  }
+}
+
+/**
+ * Los errores de la planilla de control, en palabras: el más común es una pestaña protegida (candado)
+ * que no deja escribir a la cuenta con la que corre CobroSync.
+ */
+function explicarErrorPlanilla_(e) {
+  var texto = String(e && e.message ? e.message : e);
+  if (/protegid|protected|permiso|permission/i.test(texto)) {
+    var cuenta = '';
+    try { cuenta = Session.getEffectiveUser().getEmail(); } catch (x) { /* sin dato */ }
+    return 'la pestaña está protegida: en la planilla de control, Datos → Hojas y rangos protegidos, hay que dejar editar a ' +
+      (cuenta || 'la cuenta que publica CobroSync') + ' (detalle: ' + texto + ')';
+  }
+  return texto;
+}
+
+function agregarAQuiterEn_(libro, filas) {
   return conBloqueo_(function () {
     var nombre = config_('pestanaQuiter') || 'Quiter';
     var hoja = libro.getSheetByName(nombre);

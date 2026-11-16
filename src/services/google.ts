@@ -51,7 +51,8 @@ function llamar<T>(funcion: string, ...args: unknown[]): Promise<T> {
   return new Promise<T>((resolver, rechazar) => {
     run
       .withSuccessHandler((r) => resolver(r as T))
-      .withFailureHandler((e) => rechazar(e))
+      // Google no siempre manda un Error de verdad: se arma uno con su mensaje, para poder mostrarlo
+      .withFailureHandler((e) => rechazar(e instanceof Error ? e : new Error(String((e as { message?: unknown } | null)?.message ?? e))))
       [funcion](...args)
   })
 }

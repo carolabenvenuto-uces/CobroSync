@@ -15,6 +15,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ### Corregido
 - **Cerrar sesión ya no cierra la cuenta de Google** (que también cerraba el mail y el Drive): ahora sale de CobroSync y muestra "Saliste de CobroSync", con "Volver a entrar" y, para computadoras compartidas, "Elegir otra cuenta". En la pantalla de sin acceso, "Cambiar de cuenta" también deja elegir otra cuenta sin cerrar la que está abierta.
+- **Los errores se muestran con su detalle** (antes algunos decían solo "error"). Si la pestaña Quiter de la planilla de control está protegida, el aviso dice qué cuenta tiene que poder editarla.
 - **La animación de la pantalla de carga se trababa en algunas computadoras:** los puntitos ahora se mueven con la placa de video y siguen fluidos aunque la computadora esté ocupada armando los datos. Si la computadora tiene las animaciones apagadas, se ve el logo quieto con sus puntitos.
 
 ## [0.16.2] - 2026-11-16

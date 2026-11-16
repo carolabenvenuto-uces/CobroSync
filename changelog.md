@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.16.2] - 2026-11-16
+
+### Cambiado
+- **Cargar Excel del ERP:** se sube el Excel completo, sin filtrarlo. A la pestaña Quiter de la planilla de control se copian solo las filas de compañías de seguros (reconocidas por CUIT o razón social, como en Ajustes → Compañías), igual que cuando se filtraba a mano. CobroSync ya tomaba solo esas.
+
 ## [0.16.1] - 2026-11-15
 
 ### Cambiado

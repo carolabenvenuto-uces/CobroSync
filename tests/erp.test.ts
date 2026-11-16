@@ -93,6 +93,13 @@ describe('filasDeDatosErp', () => {
   })
 })
 
+describe('filasDeDatosErp con las compañías', () => {
+  it('copia a Quiter solo las filas de compañías de seguros (por CUIT o por nombre), no los particulares', () => {
+    const filas = filasDeDatosErp(CSV, aseguradoras)
+    expect(filas.map((f) => f[0])).toEqual(['7990001', '7990002', '7990004'])
+  })
+})
+
 describe('importarCompanias', () => {
   it('completa razón social, CUIT, plazo y correos por CUIT o por nombre', () => {
     const csv = [

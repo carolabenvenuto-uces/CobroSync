@@ -1369,6 +1369,80 @@ function instalarDisparadores() {
   ScriptApp.newTrigger('avisosDiarios').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('resumenSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
   ScriptApp.newTrigger('actualizarPlanillaDeControl').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('hacerBackups').timeBased().everyDays(1).atHour(3).create();
+}
+
+// ── Backups ─────────────────────────────────────────────────────────────────
+
+/**
+ * Copias de la planilla "CobroSync · Datos" (todas las pestañas) en la carpeta "CobroSync · Backups",
+ * dentro de la carpeta de documentos. Se hacen solas cada madrugada: la diaria siempre, la semanal los
+ * domingos y la mensual el día 1. Las más viejas de cada tipo pasan a la papelera (se pueden recuperar
+ * de ahí 30 días). Los documentos (PDF) no se copian ni se tocan: quedan siempre donde están.
+ */
+var BACKUPS_ = {
+  carpeta: 'CobroSync · Backups',
+  prefijo: 'CobroSync · Datos · ',
+  guardar: { diario: 7, semanal: 4, mensual: 12, manual: 10 },
+};
+
+function carpetaBackups_() {
+  return subcarpeta_(DriveApp.getFolderById(config_('carpetaDriveId')), BACKUPS_.carpeta);
+}
+
+/** Una copia de un tipo y, después, se dejan solo las más nuevas de ese tipo. */
+function copiaDeBackup_(carpeta, tipo, fecha) {
+  var nombre = BACKUPS_.prefijo + tipo + ' ' + fecha;
+  var original = DriveApp.getFileById(SpreadsheetApp.getActive().getId());
+  var copia = original.makeCopy(nombre, carpeta);
+  var deEseTipo = [];
+  var it = carpeta.getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    if (f.getName().indexOf(BACKUPS_.prefijo + tipo + ' ') === 0) deEseTipo.push(f);
+  }
+  deEseTipo.sort(function (a, b) { return a.getName() < b.getName() ? 1 : a.getName() > b.getName() ? -1 : 0; }); // más nuevas primero
+  deEseTipo.slice(BACKUPS_.guardar[tipo]).forEach(function (f) { f.setTrashed(true); });
+  return { nombre: nombre, url: copia.getUrl() };
+}
+
+/** Lo corre el disparador de cada madrugada (ver instalarDisparadores). */
+function hacerBackups() {
+  var carpeta = carpetaBackups_();
+  var hoy = hoy_();
+  var dia = new Date(hoy + 'T12:00:00Z');
+  var tipos = ['diario'];
+  if (dia.getUTCDay() === 0) tipos.push('semanal');
+  if (dia.getUTCDate() === 1) tipos.push('mensual');
+  var hechos = tipos.map(function (t) { return copiaDeBackup_(carpeta, t, hoy); });
+  PropertiesService.getScriptProperties().setProperty('ultimoBackup', ahora_());
+  return hechos;
+}
+
+/** Botón "Hacer un backup ahora" (Ajustes). Solo la administradora. */
+function hacerBackupAhora() {
+  exigirAdministradora_();
+  var hecho = copiaDeBackup_(carpetaBackups_(), 'manual', ahora_().slice(0, 16).replace('T', ' '));
+  PropertiesService.getScriptProperties().setProperty('ultimoBackup', ahora_());
+  return hecho;
+}
+
+/** Los backups que hay, de los más nuevos a los más viejos. Solo la administradora. */
+function listarBackups() {
+  exigirAdministradora_();
+  var lista = [];
+  var it = carpetaBackups_().getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    var nombre = f.getName();
+    if (nombre.indexOf(BACKUPS_.prefijo) !== 0) continue;
+    var resto = nombre.slice(BACKUPS_.prefijo.length);
+    var tipo = resto.split(' ')[0];
+    lista.push({ nombre: nombre, tipo: tipo, fecha: resto.slice(tipo.length + 1), url: f.getUrl() });
+  }
+  lista.sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+  var disparador = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'hacerBackups'; });
+  return { backups: lista, ultimo: PropertiesService.getScriptProperties().getProperty('ultimoBackup') || '', automatico: disparador };
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────

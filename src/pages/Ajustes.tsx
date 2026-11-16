@@ -3,6 +3,7 @@ import { BellRing, CalendarClock, Mail, RotateCcw, Save, Timer } from 'lucide-re
 import { Card, CardTitulo, EncabezadoPagina } from '../components/ui/Card'
 import { claseSelect } from '../components/ui/Estados'
 import { useApp } from '../context/AppContext'
+import { Backups } from '../components/Backups'
 import { AVISOS_INICIALES, PLAZOS_INICIALES, type Ajustes as AjustesGuardados, type Plazos } from '../domain/plazos'
 import { esperaALaSucursal } from '../domain/sucursales'
 import { armarTexto, DATOS_DE_TEXTO, TEXTOS_INICIALES, type TextosAvisos } from '../domain/textos'
@@ -258,6 +259,7 @@ export default function Ajustes() {
           </label>
         </Card>
       </div>
+      {conGoogle && <Backups />}
     </>
   )
 }

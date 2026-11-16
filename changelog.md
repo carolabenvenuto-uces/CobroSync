@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.15.0] - 2026-11-15
+
+### Agregado
+- **Backups automáticos** de la planilla "CobroSync · Datos" (todas las pestañas) en la carpeta **CobroSync · Backups**, dentro de la carpeta de documentos: diario (quedan 7), semanal los domingos (quedan 4) y mensual el día 1 (quedan 12), cada madrugada a las 3. Las copias más viejas de cada tipo van a la papelera. Los documentos PDF no se copian ni se tocan nunca.
+- En **Ajustes**, solo la administradora: cuándo fue el último backup, si se están haciendo solos, la lista con el enlace a cada copia y el botón **Hacer un backup ahora** (quedan los últimos 10 hechos a mano).
+- Para que empiecen a hacerse solos, hay que correr una vez **instalarDisparadores** en Apps Script.
+
 ## [0.14.3] - 2026-11-15
 
 ### Mejorado

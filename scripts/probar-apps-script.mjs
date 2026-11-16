@@ -98,6 +98,7 @@ function carpeta(ruta) {
         getName: () => f.nombre,
         getUrl: () => `https://drive.google.com/${f.padre.ruta}/${f.nombre}`,
         setDescription: () => {},
+        setTrashed: (v) => { if (v) { f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1); f.enPapelera = true } },
         setSharing: (acceso, permiso) => { f.compartido = `${acceso}/${permiso}` },
         moveTo: (destino) => {
           f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1)
@@ -115,7 +116,7 @@ function carpeta(ruta) {
 const raizDrive = carpeta('CobroSync')
 const propiedades = {}
 const contexto = {
-  SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
+  SpreadsheetApp: { getActive: () => ({ ...libro, getId: () => 'datos-123' }), openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => propiedades[k] ?? null, setProperty: (k, v) => (propiedades[k] = v) }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
@@ -123,7 +124,10 @@ const contexto = {
     Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK' },
     Permission: { VIEW: 'VIEW' },
     getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive },
-    getFileById: (id) => ({ getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b } }),
+    getFileById: (id) => ({
+      getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b },
+      makeCopy: (nombre, destino) => destino.createFile({ name: nombre }),
+    }),
   },
   Utilities: {
     formatDate: (d) => d.toISOString().slice(0, 10),
@@ -807,6 +811,29 @@ prueba('ingreso rápido: la foto más lo que cambió es igual a leer todo', () =
   // Sin acceso: el mismo aviso de siempre
   como('otro@svaauto.com.ar')
   falla(() => gs('obtenerDatosRapidos'), '"motivo":"usuario"')
+})
+prueba('backups: copias diarias, semanales y mensuales, y quedan solo las más nuevas', () => {
+  const carpetaB = () => raizDrive.getFoldersByName('CobroSync · Backups').next()
+  const nombres = () => carpetaB().archivos.map((f) => f.nombre)
+  // 9 días seguidos, del 1 (domingo) al 9 de noviembre de 2026
+  for (let d = 1; d <= 9; d++) {
+    const dia = `2026-11-${String(d).padStart(2, '0')}`
+    vm.runInContext(`hoy_ = function () { return '${dia}'; }`, contexto)
+    gs('hacerBackups')
+  }
+  const n = nombres()
+  esperar(n.filter((x) => x.includes('diario')).length === 7, 'diarios: ' + n.join(' | '))
+  esperar(!n.some((x) => x.includes('diario 2026-11-01')) && n.some((x) => x.includes('diario 2026-11-09')), 'no borró los diarios más viejos')
+  esperar(n.filter((x) => x.includes('semanal')).length === 2, 'semanales (1 y 8 de noviembre): ' + n.join(' | '))
+  esperar(n.filter((x) => x.includes('mensual')).length === 1 && n.some((x) => x === 'CobroSync · Datos · mensual 2026-11-01'), 'mensual del día 1')
+  esperar(!archivos.some((a) => a.includes('Backups') && !a.includes('CobroSync · Datos · ')), 'copió algo que no es la planilla')
+  vm.runInContext("hoy_ = function () { return new Date().toISOString().slice(0, 10); }", contexto)
+  como('desarrolladora@svaauto.com.ar')
+  const hecho = gs('hacerBackupAhora')
+  const l = gs('listarBackups')
+  esperar(l.backups.length === n.length + 1 && l.backups.some((b) => b.nombre === hecho.nombre && b.tipo === 'manual') && l.ultimo, JSON.stringify(l).slice(0, 300))
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('hacerBackupAhora'), 'solo la administradora')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

@@ -194,6 +194,20 @@ export interface ResultadoComparacion {
   totales: Record<'planilla' | 'cobrosync', { cantidad: number; facturado: number; cobrado: number }>
   ahora: string
 }
+export interface Backup {
+  nombre: string
+  tipo: 'diario' | 'semanal' | 'mensual' | 'manual'
+  fecha: string
+  url: string
+}
+/** Los backups de la planilla de datos (de los más nuevos a los más viejos). */
+export function listarBackupsDeGoogle(): Promise<{ backups: Backup[]; ultimo: string; automatico: boolean }> {
+  return llamar('listarBackups')
+}
+export function hacerBackupEnGoogle(): Promise<{ nombre: string; url: string }> {
+  return llamar('hacerBackupAhora')
+}
+
 /** Compara la hoja Diario de la planilla con CobroSync, factura por factura y campo por campo (no cambia nada). */
 export function compararConPlanillaEnGoogle(): Promise<ResultadoComparacion> {
   return llamar('compararConPlanilla')

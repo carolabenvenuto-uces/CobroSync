@@ -149,6 +149,7 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
   await pagina.addInitScript(
     ({ usuario, datos }) => {
       window.__llamadas = []
+      localStorage.setItem('cobrosync-aviso-plazos', 'visto') // el aviso de bienvenida ya se vio
       const crear = (ok) =>
         new Proxy({}, {
           get: (_, nombre) => {

@@ -64,7 +64,8 @@ export type Etapa =
   | 'al_dia' // presentada, todavía no venció: le toca a la compañía
   | 'vencida' // presentada y vencida sin cobrar: hay que reclamar
   | 'cobrado'
-  | 'no_aplica' // NC y facturas anuladas
+  | 'no_aplica' // facturas anuladas (o que la sucursal avisó que se anulan)
+  | 'nota_credito' // las notas de crédito
 
 export interface Aseguradora {
   id: string

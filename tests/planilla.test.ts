@@ -46,7 +46,7 @@ describe('lectura de la planilla', () => {
     expect(calcularSemaforo(porRef('6990003'), HOY).etapa).toBe('doc_atrasada') // D. Pend. de septiembre
     expect(calcularSemaforo(porRef('6990004'), HOY).etapa).toBe('doc_pendiente') // D. Pend. de hace 4 días
     expect(calcularSemaforo(porRef('6990005'), HOY).etapa).toBe('pres_pendiente') // P. Pend.
-    expect(calcularSemaforo(porRef('6990006'), HOY).etapa).toBe('no_aplica') // NC
+    expect(calcularSemaforo(porRef('6990006'), HOY).etapa).toBe('nota_credito') // NC
   })
 
   it('Federación Patronal paga a 7 días; el resto a 30', () => {

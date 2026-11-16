@@ -32,7 +32,8 @@ const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string;
   al_dia: { punto: 'bg-etapa-compania', fondo: 'bg-etapa-compania/10 text-blue-800', texto: 'Al día', quien: 'Compañía' },
   vencida: { punto: 'bg-red-800', fondo: 'bg-red-800/10 text-red-900', texto: 'Vencida', quien: 'Compañía' },
   cobrado: { punto: 'bg-sem-verde', fondo: 'bg-sem-verde/15 text-teal-800', texto: 'Cobrado', quien: '—' },
-  no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'Anulada / NC', quien: '—' },
+  no_aplica: { punto: 'bg-slate-400', fondo: 'bg-slate-100 text-slate-600', texto: 'Anulada', quien: '—' },
+  nota_credito: { punto: 'bg-slate-500', fondo: 'bg-slate-100 text-slate-700', texto: 'Nota de crédito', quien: '—' },
 }
 
 /** Qué significa cada etapa, para mostrar como ayuda. */
@@ -45,7 +46,8 @@ export const AYUDA_ETAPA: Record<Etapa, string> = {
   al_dia: 'Presentada, todavía no venció',
   vencida: 'Presentada, vencida y sin cobrar: hay que reclamar',
   cobrado: 'Cobrada',
-  no_aplica: 'Nota de crédito o factura anulada',
+  no_aplica: 'Factura anulada con nota de crédito',
+  nota_credito: 'Nota de crédito',
 }
 
 /** Etapas abiertas, en el orden en que avanza una factura. */

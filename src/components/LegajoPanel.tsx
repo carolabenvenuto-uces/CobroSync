@@ -1,3 +1,4 @@
+import { limpiarSiniestro } from '../domain/siniestros'
 import { ResponderRefacturacion } from './ResponderRefacturacion'
 import { textoRefacturacion, tieneNotaDeCredito } from '../domain/refacturacion'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -175,7 +176,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     // Con la orden llega el número de siniestro: si el legajo no lo tiene, se pide (o se toma del nombre del archivo)
     let siniestro: string | null = null
     if (!c.siniestro && tipos.includes('orden')) {
-      siniestro = siniestroNuevo.trim() || archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
+      siniestro = limpiarSiniestro(siniestroNuevo) || archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
       if (!siniestro) {
         setErrorSubida('Falta el número de siniestro: escribirlo en "Número de siniestro", arriba de los documentos, o agregarlo al nombre del archivo (por ejemplo "' + numeroParaNombre(c) + ' siniestro 22365.pdf").')
         return

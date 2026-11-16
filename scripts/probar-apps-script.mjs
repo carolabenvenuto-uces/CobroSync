@@ -874,6 +874,15 @@ prueba('usuario y contraseña de la plataforma: los carga Cobranzas y no les lle
   esperar(!('clavePlataforma' in suc) && !('usuarioPlataforma' in suc), 'la sucursal recibió el acceso')
   falla(() => gs('guardarAccesoPlataforma', cia.id, 'x', 'y'), 'Solo Cobranzas')
 })
+prueba('siniestro de Allianz con dos números: se guarda el segundo', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC')
+  const r = gs('aplicarCambios', [{ id: c.id, campos: { siniestro: '0042605268-0042584578' } }])
+  esperar(r.comprobantes[0].siniestro === '0042584578', r.comprobantes[0].siniestro)
+  gs('aplicarCambios', [{ id: c.id, campos: { siniestro: '029-9-506622' } }])
+  esperar(gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).siniestro === '029-9-506622', 'cambió un siniestro con guiones cortos')
+  gs('aplicarCambios', [{ id: c.id, campos: { siniestro: c.siniestro } }])
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

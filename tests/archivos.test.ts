@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { limpiarSiniestro } from '../src/domain/siniestros'
 import type { Comprobante } from '../src/domain/tipos'
 
 const factura = (id: string, puntoVenta: number, numero: number, siniestro: string, patente: string, ref: string): Comprobante => ({
@@ -111,5 +112,16 @@ describe('nombres flexibles', () => {
     expect(siniestroDelNombre('2100020755 22365.pdf', c)).toBe('22365')
     expect(siniestroDelNombre('21-20755 orden.pdf', c)).toBe(null)
     expect(siniestroDelNombre('21-20755 15-11-26.pdf', c)).toBe(null) // una fecha no es un siniestro
+  })
+})
+
+describe('siniestros de Allianz con dos números', () => {
+  it('toma el segundo número y deja como están los siniestros con guiones cortos', () => {
+    expect(limpiarSiniestro('0042605268-0042584578')).toBe('0042584578')
+    expect(limpiarSiniestro(' 0042605268 - 0042584578 ')).toBe('0042584578')
+    expect(limpiarSiniestro('029-9-506622')).toBe('029-9-506622')
+    expect(limpiarSiniestro('6498-05')).toBe('6498-05')
+    expect(siniestroDelNombre('21-20755 siniestro 0042605268-0042584578.pdf', { puntoVenta: 21, numero: 20755 })).toBe('0042584578')
+    expect(siniestroDelNombre('21-20755 0042605268-0042584578.pdf', { puntoVenta: 21, numero: 20755 })).toBe('0042584578')
   })
 })

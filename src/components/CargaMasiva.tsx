@@ -1,3 +1,4 @@
+import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -186,7 +187,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
           subidos.push(tipo === 'documentacion' ? 'la documentación' : NOMBRE_DOCUMENTO[tipo].toLowerCase())
           hechas += archivos.length
         }
-        const siniestro = c.siniestro ? null : lista.map((f) => f.siniestro.trim()).find(Boolean) ?? null
+        const siniestro = c.siniestro ? null : lista.map((f) => limpiarSiniestro(f.siniestro)).find(Boolean) ?? null
         actualizarComprobante(id, {
           ...(siniestro ? { siniestro } : {}),
           documentos,
@@ -199,7 +200,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       // Facturas de hoy: quedan en espera hasta que Cobranzas cargue el ERP, y ahí se unen a su legajo
       for (const f of deHoy) {
         setEstado({ texto: `Subiendo ${f.archivo.name}…` })
-        await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, f.siniestro.trim(), await prepararArchivo(f.archivo))
+        await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, limpiarSiniestro(f.siniestro), await prepararArchivo(f.archivo))
       }
       setFilas((l) => l.filter((f) => !f.facturaId && !(f.deHoy && !f.error)))
       setEstado({

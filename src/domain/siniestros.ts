@@ -35,3 +35,14 @@ export function contarPorSiniestro(todas: Comprobante[]): Map<string, number> {
 }
 
 export const claveSiniestro = (c: Comprobante) => `${c.aseguradoraId}|${normalizar(c.siniestro ?? '')}`
+
+/**
+ * El siniestro como se guarda. Algunas compañías (Allianz) dan dos números largos separados por guion,
+ * "0042605268-0042584578": el siniestro es el segundo; el primero no sirve. Los siniestros con guiones
+ * más cortos ("029-9-506622", "6498-05") quedan como están.
+ */
+export function limpiarSiniestro(texto: string): string {
+  const t = (texto ?? '').trim()
+  const m = t.match(/^\d{8,}\s*[-/]\s*(\d{8,})$/)
+  return m ? m[1] : t
+}

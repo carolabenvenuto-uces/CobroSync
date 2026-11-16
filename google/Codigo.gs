@@ -407,6 +407,7 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
             if (CAMPOS_SUCURSAL.indexOf(k) < 0) return;
             if (k === 'estado' && !(op.campos.estado === 'en_gestion' && c.estado === 'pendiente_drive')) return;
           }
+          if (k === 'siniestro') { c.siniestro = limpiarSiniestro_(op.campos.siniestro); return; }
           // La respuesta de si se refactura la firma el servidor (quién y cuándo)
           if (k === 'refacturacion' && op.campos[k]) {
             var r = op.campos[k];
@@ -749,7 +750,7 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   compartirEnLaEmpresa_(archivo);
   var e = {
     id: 'esp-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000),
-    sucursal: deQuien, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: String(siniestro || ''),
+    sucursal: deQuien, puntoVenta: puntoVenta, numero: numero, tipo: tipo, siniestro: limpiarSiniestro_(siniestro),
     archivo: archivo.getName(), url: archivo.getUrl(), subidoPor: usuario.nombre || usuario.email, fecha: hoy_(), nombreOriginal: nombre, asociado: '',
   };
   conBloqueo_(function () { escribirFila_(hojaEspera_(), HOJAS.espera, null, e); });
@@ -1235,7 +1236,7 @@ function leerDiario_(libro) {
     lista.push({
       id: ref ? 'ref-' + ref : 'pl-' + tipo + '-' + (partes[0] || 0) + '-' + (partes[1] || 0),
       ref: ref, tipo: tipo, fecha: fecha, sucursal: sucursal, puntoVenta: partes[0] || 0, numero: partes[1] || 0,
-      aseguradoraId: aseguradora.id, siniestro: String(f[6] || '').trim(), patente: '',
+      aseguradoraId: aseguradora.id, siniestro: limpiarSiniestro_(f[6]), patente: '',
       total: tipo === 'NC' ? -Math.abs(total) : total,
       fechaDrive: drive, subidoPor: null,
       fechaAprobacion: tipo === 'NC' || !completo ? null : (drive || presentacion),
@@ -1289,7 +1290,7 @@ function compararConPlanilla() {
     { campo: 'Comprobante', de: numero },
     { campo: 'Compañía', de: function (c) { return texto(c.aseguradoraId); }, ver: function (v, c) { return c._compania || nombres[v] || v; } },
     // Mismo siniestro con o sin guiones/espacios, o con ceros de menos adelante (Sheets los borra); el orden nunca cambia
-    { campo: 'Siniestro', de: function (c) { return texto(c.siniestro).replace(/[^0-9A-Za-z]/g, '').replace(/^0+/, '').toUpperCase(); }, ver: function (v, c) { return texto(c.siniestro); } },
+    { campo: 'Siniestro', de: function (c) { return limpiarSiniestro_(c.siniestro).replace(/[^0-9A-Za-z]/g, '').replace(/^0+/, '').toUpperCase(); }, ver: function (v, c) { return texto(c.siniestro); } },
     { campo: 'Importe', de: function (c) { return Number(c.total) || 0; }, igual: function (a, b) { return Math.abs(a - b) < 0.01; } },
     { campo: 'Drive', de: function (c) { return texto(c.fechaDrive); } },
     { campo: 'Presentación', de: function (c) { return texto(c.fechaPresentacion); } },
@@ -1418,6 +1419,16 @@ function refTexto_(v) {
 function fechaParaCelda_(iso) {
   var p = String(iso).split('-');
   return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+}
+
+/**
+ * El siniestro como se guarda: dos números largos separados por guion ("0042605268-0042584578", así lo da
+ * Allianz) → el segundo. (La misma regla que limpiarSiniestro en src/domain/siniestros.ts.)
+ */
+function limpiarSiniestro_(texto) {
+  var t = String(texto === null || texto === undefined ? '' : texto).trim();
+  var m = t.match(/^\d{8,}\s*[-\/]\s*(\d{8,})$/);
+  return m ? m[1] : t;
 }
 
 /** El nombre original del archivo (sin la ruta ni caracteres raros); si viene vacío, el de reserva. */

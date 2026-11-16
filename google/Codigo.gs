@@ -98,6 +98,128 @@ function doGet() {
 
 /** Lo primero que pide la aplicación: quién es la persona y qué datos puede ver. */
 /**
+ * Ingreso rápido. Leer las ~9.000 filas de Comprobantes es lo que más tarda (8 a 20 segundos), así
+ * que se guarda una "foto" comprimida de todas las facturas en la memoria de Apps Script (CacheService,
+ * hasta 6 horas) y en cada ingreso solo se leen las filas que cambiaron desde esa foto (columna
+ * "actualizado"). Lo demás (usuario, compañías, sucursales, ajustes) se lee como siempre, que es poco.
+ * La foto se rehace cada hora (con la lectura de la planilla), cuando no está o si cambiaron muchas filas.
+ * Una fila borrada o editada a mano en la planilla de datos se ve en la próxima foto (como mucho, una hora).
+ */
+var CACHE_INGRESO_ = 'ingreso-v1';
+var PARTE_CACHE_ = 90000; // caracteres por parte (el máximo de CacheService es 100 KB por valor)
+var MAX_CAMBIOS_ = 80; // más filas cambiadas que esto: conviene rehacer la foto
+
+function alcanceIngreso_(usuario) {
+  return usuario.rol === 'sucursal' ? 'suc-' + slugPlanilla_(usuario.sucursal) : 'todas';
+}
+
+/** Arma la foto de las facturas (de una sucursal, o todas) y la guarda en partes. */
+function armarFoto_(alcance, comprobantes, ahora) {
+  var b64 = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(comprobantes), 'application/json', 'c.json')).getBytes());
+  var partes = {};
+  var n = Math.ceil(b64.length / PARTE_CACHE_);
+  for (var i = 0; i < n; i++) partes[CACHE_INGRESO_ + ':' + alcance + ':' + i] = b64.slice(i * PARTE_CACHE_, (i + 1) * PARTE_CACHE_);
+  partes[CACHE_INGRESO_ + ':' + alcance] = JSON.stringify({ ahora: ahora, partes: n });
+  try { CacheService.getScriptCache().putAll(partes, 21600); } catch (e) { console.warn('No se pudo guardar la foto: ' + e); }
+  return { ahora: ahora, b64: b64 };
+}
+
+function leerFoto_(alcance) {
+  var cache = CacheService.getScriptCache();
+  var meta = cache.get(CACHE_INGRESO_ + ':' + alcance);
+  if (!meta) return null;
+  meta = JSON.parse(meta);
+  var claves = [];
+  for (var i = 0; i < meta.partes; i++) claves.push(CACHE_INGRESO_ + ':' + alcance + ':' + i);
+  var partes = cache.getAll(claves);
+  var b64 = '';
+  for (var j = 0; j < claves.length; j++) {
+    if (!partes[claves[j]]) return null; // se perdió una parte: hay que rehacerla
+    b64 += partes[claves[j]];
+  }
+  return { ahora: meta.ahora, b64: b64 };
+}
+
+function fotoDeSucursalDesdeTodas_(alcance, sucursal) {
+  var todas = leerFoto_('todas');
+  if (!todas) return null;
+  try {
+    var texto = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(todas.b64), 'application/x-gzip', 't.gz')).getDataAsString('UTF-8');
+    var propias = JSON.parse(texto).filter(function (c) { return mismaSucursal_(c.sucursal, sucursal); });
+    return armarFoto_(alcance, propias, todas.ahora);
+  } catch (e) {
+    console.warn('No se pudo armar la foto de la sucursal: ' + e);
+    return null;
+  }
+}
+
+/** Rehace la foto de todas las facturas (la usan Cobranzas y Gerencia). La llama la lectura de cada hora. */
+function prepararIngreso() {
+  var ahora = ahora_();
+  return armarFoto_('todas', leerHoja_(HOJAS.comprobantes), ahora).ahora;
+}
+
+/** Las filas de Comprobantes cambiadas después de "desde" (null si son demasiadas). */
+function filasCambiadas_(hoja, desde, maximo) {
+  if (hoja.getLastRow() < 2) return [];
+  var col = HOJAS.comprobantes.columnas.indexOf('actualizado') + 1;
+  var marcas = hoja.getRange(2, col, hoja.getLastRow() - 1, 1).getValues();
+  var filas = [];
+  for (var i = 0; i < marcas.length; i++) {
+    var m = marcas[i][0] instanceof Date ? marcas[i][0].toISOString() : String(marcas[i][0]);
+    if (m > desde) filas.push(i + 2);
+  }
+  if (maximo && filas.length > maximo) return null;
+  return filas.map(function (f) { return leerFila_(hoja, f); });
+}
+
+/**
+ * Lo que necesita la pantalla al entrar, rápido: la foto comprimida de las facturas, lo que cambió
+ * desde la foto, y el resto de los datos (también comprimido). La pantalla junta las dos cosas.
+ */
+function obtenerDatosRapidos() {
+  try {
+    return obtenerDatosRapidos_();
+  } catch (e) {
+    if (String(e.message).indexOf(MARCA_ACCESO) === 0) throw e;
+    console.error('obtenerDatosRapidos: ' + (e && e.stack ? e.stack : e));
+    throw new Error(MARCA_ACCESO + JSON.stringify({ motivo: 'falla', contacto: contactoAlta_() }));
+  }
+}
+
+function obtenerDatosRapidos_() {
+  var t0 = Date.now();
+  var usuario = usuarioActual_();
+  var alcance = alcanceIngreso_(usuario);
+  var hoja = hoja_(HOJAS.comprobantes);
+  var foto = leerFoto_(alcance);
+  // Una sucursal que todavía no tiene su foto la arma con la de todas (mucho más rápido que leer la planilla)
+  if (!foto && alcance !== 'todas') foto = fotoDeSucursalDesdeTodas_(alcance, usuario.sucursal);
+  var hasta = ahora_(); // lo que cambie desde acá lo trae la consulta de cada minuto
+  var cambios = foto ? filasCambiadas_(hoja, foto.ahora, MAX_CAMBIOS_) : null;
+  var origen = 'foto';
+  if (!foto || cambios === null) {
+    // Sin foto (o vieja): se lee todo y se guarda para el próximo
+    var ahora = ahora_();
+    var todas = leerHoja_(HOJAS.comprobantes);
+    if (usuario.rol === 'sucursal') todas = todas.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
+    foto = armarFoto_(alcance, todas, ahora);
+    hasta = ahora;
+    cambios = [];
+    origen = 'leída';
+  }
+  if (usuario.rol === 'sucursal') cambios = cambios.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
+  var t1 = Date.now();
+  var resto = obtenerDatosSinControl_(usuario, true);
+  resto.cambios = cambios;
+  resto.ahora = hasta;
+  var restoB64 = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(resto), 'application/json', 'r.json')).getBytes());
+  console.log('Ingreso rápido: facturas (' + origen + ', ' + cambios.length + ' cambiadas) en ' + (t1 - t0) + ' ms, resto en ' + (Date.now() - t1) + ' ms; ' +
+    Math.round(foto.b64.length / 1024) + ' KB + ' + Math.round(restoB64.length / 1024) + ' KB');
+  return { facturas: foto.b64, resto: restoB64 };
+}
+
+/**
  * Lo mismo que obtenerDatos, pero comprimido (gzip en base64): con miles de facturas viaja mucho más
  * rápido como un solo texto chico que como un objeto grande. La pantalla lo descomprime.
  * En Ejecuciones de Apps Script queda cuánto tardó y cuánto pesó.
@@ -139,12 +261,12 @@ function contactoAlta_() {
 }
 
 var TIEMPOS_ = {};
-function obtenerDatosSinControl_() {
+function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
   var t = Date.now();
-  var usuario = usuarioActual_();
+  var usuario = usuarioYa || usuarioActual_();
   TIEMPOS_.usuario = Date.now() - t;
   t = Date.now();
-  var comprobantes = leerHoja_(HOJAS.comprobantes);
+  var comprobantes = sinComprobantes ? [] : leerHoja_(HOJAS.comprobantes);
   TIEMPOS_.comprobantes = Date.now() - t;
   if (usuario.rol === 'sucursal') {
     comprobantes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
@@ -278,8 +400,8 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
           // Un archivo nuevo para revisar queda firmado por quien lo sube (lo firma el servidor)
           var nuevo = d.estado === 'en_revision' && (i < 0 || docs[i].estado !== 'en_revision' || docs[i].url !== d.url || docs[i].archivo !== d.archivo);
           if (nuevo) d.subidoPor = usuario.nombre;
-          // Lo que escaneó una persona de Cobranzas lo aprueba otra: así se controla dos veces
-          if (usuario.rol === 'auditoria' && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
+          // Lo que escaneó una persona de Cobranzas lo aprueba otra: así se controla dos veces (salvo la administradora)
+          if (usuario.rol === 'auditoria' && !usuario.administradora && d.estado === 'ok' && i >= 0 && docs[i].estado === 'en_revision' && docs[i].subidoPor === usuario.nombre) {
             return;
           }
           if (i >= 0) docs[i] = d; else docs.push(d);
@@ -498,10 +620,7 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
 
   // Solo PDF (las compañías no aceptan otros formatos) y con el número de esta factura en el nombre
   if (mime !== 'application/pdf' && !/\.pdf$/i.test(nombre)) throw new Error('Solo se aceptan PDF.');
-  var numeros = [];
-  var m, re = /(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g;
-  while ((m = re.exec(String(nombre))) !== null) numeros.push(Number(m[1]) + '-' + Number(m[2]));
-  if (numeros.indexOf(Number(c.puntoVenta) + '-' + Number(c.numero)) < 0) {
+  if (!nombreTieneFactura_(nombre, c.puntoVenta, c.numero)) {
     throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + c.numero + ').');
   }
   var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
@@ -945,7 +1064,10 @@ function actualizarPlanillaDeControl() {
   } catch (e) {
     console.warn('No se pudo leer la planilla de control: ' + e);
   }
-  return completarDiario_(libro);
+  var completadas = completarDiario_(libro);
+  // De paso, se deja lista la foto de las facturas para que el próximo ingreso sea rápido
+  try { prepararIngreso(); } catch (e) { console.warn('No se pudo preparar el ingreso: ' + e); }
+  return completadas;
 }
 
 /** Botón "Traer los cambios de mi planilla ahora" (Ajustes → Planilla). Solo Cobranzas. */
@@ -1201,6 +1323,21 @@ function fechaParaCelda_(iso) {
   return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
 }
 
+/**
+ * ¿El nombre del archivo tiene el punto de venta y el número de esta factura? Con o sin ceros adelante,
+ * separados por guion, espacio, punto, barra o nada: "21-20755", "0021 00020755", "21.20755", "2100020755".
+ * (La misma regla que src/domain/archivos.ts.)
+ */
+function nombreTieneFactura_(nombre, pv, numero) {
+  var base = String(nombre).replace(/\.[a-z0-9]+$/i, '');
+  var runs = base.match(/\d+/g) || [];
+  for (var i = 0; i < runs.length; i++) {
+    if (i + 1 < runs.length && Number(runs[i]) === Number(pv) && Number(runs[i + 1]) === Number(numero)) return true;
+    if (new RegExp('^0*' + Number(pv) + '0*' + Number(numero) + '$').test(runs[i]) && runs[i].length >= 6) return true;
+  }
+  return false;
+}
+
 /** Lo que hay en una celda de fecha → "AAAA-MM-DD" (acepta fecha, "30/10/2026" o "30-10-26"). */
 function fechaDeCelda_(v) {
   if (v instanceof Date) return fechaIso_(v);
@@ -1259,6 +1396,80 @@ function instalarDisparadores() {
   ScriptApp.newTrigger('avisosDiarios').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('resumenSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
   ScriptApp.newTrigger('actualizarPlanillaDeControl').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('hacerBackups').timeBased().everyDays(1).atHour(3).create();
+}
+
+// ── Backups ─────────────────────────────────────────────────────────────────
+
+/**
+ * Copias de la planilla "CobroSync · Datos" (todas las pestañas) en la carpeta "CobroSync · Backups",
+ * dentro de la carpeta de documentos. Se hacen solas cada madrugada: la diaria siempre, la semanal los
+ * domingos y la mensual el día 1. Las más viejas de cada tipo pasan a la papelera (se pueden recuperar
+ * de ahí 30 días). Los documentos (PDF) no se copian ni se tocan: quedan siempre donde están.
+ */
+var BACKUPS_ = {
+  carpeta: 'CobroSync · Backups',
+  prefijo: 'CobroSync · Datos · ',
+  guardar: { diario: 7, semanal: 4, mensual: 12, manual: 10 },
+};
+
+function carpetaBackups_() {
+  return subcarpeta_(DriveApp.getFolderById(config_('carpetaDriveId')), BACKUPS_.carpeta);
+}
+
+/** Una copia de un tipo y, después, se dejan solo las más nuevas de ese tipo. */
+function copiaDeBackup_(carpeta, tipo, fecha) {
+  var nombre = BACKUPS_.prefijo + tipo + ' ' + fecha;
+  var original = DriveApp.getFileById(SpreadsheetApp.getActive().getId());
+  var copia = original.makeCopy(nombre, carpeta);
+  var deEseTipo = [];
+  var it = carpeta.getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    if (f.getName().indexOf(BACKUPS_.prefijo + tipo + ' ') === 0) deEseTipo.push(f);
+  }
+  deEseTipo.sort(function (a, b) { return a.getName() < b.getName() ? 1 : a.getName() > b.getName() ? -1 : 0; }); // más nuevas primero
+  deEseTipo.slice(BACKUPS_.guardar[tipo]).forEach(function (f) { f.setTrashed(true); });
+  return { nombre: nombre, url: copia.getUrl() };
+}
+
+/** Lo corre el disparador de cada madrugada (ver instalarDisparadores). */
+function hacerBackups() {
+  var carpeta = carpetaBackups_();
+  var hoy = hoy_();
+  var dia = new Date(hoy + 'T12:00:00Z');
+  var tipos = ['diario'];
+  if (dia.getUTCDay() === 0) tipos.push('semanal');
+  if (dia.getUTCDate() === 1) tipos.push('mensual');
+  var hechos = tipos.map(function (t) { return copiaDeBackup_(carpeta, t, hoy); });
+  PropertiesService.getScriptProperties().setProperty('ultimoBackup', ahora_());
+  return hechos;
+}
+
+/** Botón "Hacer un backup ahora" (Ajustes). Solo la administradora. */
+function hacerBackupAhora() {
+  exigirAdministradora_();
+  var hecho = copiaDeBackup_(carpetaBackups_(), 'manual', ahora_().slice(0, 16).replace('T', ' '));
+  PropertiesService.getScriptProperties().setProperty('ultimoBackup', ahora_());
+  return hecho;
+}
+
+/** Los backups que hay, de los más nuevos a los más viejos. Solo la administradora. */
+function listarBackups() {
+  exigirAdministradora_();
+  var lista = [];
+  var it = carpetaBackups_().getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    var nombre = f.getName();
+    if (nombre.indexOf(BACKUPS_.prefijo) !== 0) continue;
+    var resto = nombre.slice(BACKUPS_.prefijo.length);
+    var tipo = resto.split(' ')[0];
+    lista.push({ nombre: nombre, tipo: tipo, fecha: resto.slice(tipo.length + 1), url: f.getUrl() });
+  }
+  lista.sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+  var disparador = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'hacerBackups'; });
+  return { backups: lista, ultimo: PropertiesService.getScriptProperties().getProperty('ultimoBackup') || '', automatico: disparador };
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────

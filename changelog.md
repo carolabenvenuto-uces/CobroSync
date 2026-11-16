@@ -11,6 +11,34 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.16.0] - 2026-11-15
+
+### Cambiado
+- **Nombres de los archivos más flexibles:** alcanza con el punto de venta y el número de la factura, con o sin ceros adelante y separados por guion, espacio, punto, barra o todo junto ("21-20755", "0021-00020755", "21.20755", "2100020755"). Un siniestro no se confunde con una factura: solo vale un número que sea de una factura de la sucursal.
+- **El siniestro en el nombre** se reconoce con la palabra bien escrita, abreviada (sin, stro, sto) o mal escrita (sinestro, siniesto), o sin la palabra si es un número aparte. Una fecha no se toma por siniestro. Si no está, se sigue pidiendo aparte.
+- **La administradora puede aprobar lo que escaneó ella.** El resto de Cobranzas sigue necesitando que otra persona apruebe lo suyo.
+
+## [0.15.1] - 2026-11-15
+
+### Corregido
+- **Subir varios PDF de una vez:** soltar los PDF no siempre funcionaba. Ahora se pueden soltar en la zona punteada o en cualquier lugar de la pantalla mientras la ventana está abierta, y el navegador ya no intenta abrir el archivo. Si todavía no se tocó "Entendido" en las condiciones, avisa que falta eso.
+
+## [0.15.0] - 2026-11-15
+
+### Agregado
+- **Backups automáticos** de la planilla "CobroSync · Datos" (todas las pestañas) en la carpeta **CobroSync · Backups**, dentro de la carpeta de documentos: diario (quedan 7), semanal los domingos (quedan 4) y mensual el día 1 (quedan 12), cada madrugada a las 3. Las copias más viejas de cada tipo van a la papelera. Los documentos PDF no se copian ni se tocan nunca.
+- En **Ajustes**, solo la administradora: cuándo fue el último backup, si se están haciendo solos, la lista con el enlace a cada copia y el botón **Hacer un backup ahora** (quedan los últimos 10 hechos a mano).
+- Para que empiecen a hacerse solos, hay que correr una vez **instalarDisparadores** en Apps Script.
+
+### Mejorado
+- **Primer ingreso de una sucursal más rápido:** si todavía no tiene su foto de facturas, se arma a partir de la de todas en lugar de leer la planilla entera.
+
+## [0.14.3] - 2026-11-15
+
+### Mejorado
+- **Ingreso rápido con una foto de las facturas:** leer las ~9.200 filas de Comprobantes tardaba de 8 a 20 segundos en cada ingreso. Ahora se guarda una foto comprimida de las facturas en la memoria de Apps Script y al entrar solo se leen las filas que cambiaron desde la foto. La foto se rehace sola cada hora (con la lectura de la planilla de control), si no está o si cambiaron muchas filas. En Ejecuciones queda "Ingreso rápido" con el tiempo y si salió de la foto o se leyó todo.
+- Una fila borrada o editada a mano en "CobroSync · Datos" se ve, como mucho, a la hora.
+
 ## [0.14.2] - 2026-11-15
 
 ### Corregido

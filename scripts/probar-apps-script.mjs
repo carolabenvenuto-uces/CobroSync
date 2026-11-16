@@ -52,6 +52,15 @@ function crearHoja(nombre) {
   }
   return hoja
 }
+const cacheMemoria = new Map()
+const cacheScript = {
+  get: (k) => cacheMemoria.get(k) ?? null,
+  getAll: (ks) => Object.fromEntries(ks.filter((k) => cacheMemoria.has(k)).map((k) => [k, cacheMemoria.get(k)])),
+  putAll: (o) => Object.entries(o).forEach(([k, v]) => {
+    if (String(v).length > 100000) throw new Error('valor de más de 100 KB')
+    cacheMemoria.set(k, v)
+  }),
+}
 const hojas = {}
 const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Cobranzas
 const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
@@ -89,6 +98,7 @@ function carpeta(ruta) {
         getName: () => f.nombre,
         getUrl: () => `https://drive.google.com/${f.padre.ruta}/${f.nombre}`,
         setDescription: () => {},
+        setTrashed: (v) => { if (v) { f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1); f.enPapelera = true } },
         setSharing: (acceso, permiso) => { f.compartido = `${acceso}/${permiso}` },
         moveTo: (destino) => {
           f.padre.archivos.splice(f.padre.archivos.indexOf(f), 1)
@@ -106,7 +116,7 @@ function carpeta(ruta) {
 const raizDrive = carpeta('CobroSync')
 const propiedades = {}
 const contexto = {
-  SpreadsheetApp: { getActive: () => libro, openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
+  SpreadsheetApp: { getActive: () => ({ ...libro, getId: () => 'datos-123' }), openById: (id) => { if (id !== 'planilla-control') throw new Error('planilla inexistente'); return planillaControl } },
   Session: { getActiveUser: () => ({ getEmail: () => emailActual }) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => propiedades[k] ?? null, setProperty: (k, v) => (propiedades[k] = v) }) },
   LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
@@ -114,16 +124,21 @@ const contexto = {
     Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK' },
     Permission: { VIEW: 'VIEW' },
     getFolderById: (id) => { if (id !== 'carpeta-123') throw new Error('carpeta inexistente'); return raizDrive },
-    getFileById: (id) => ({ getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b } }),
+    getFileById: (id) => ({
+      getBlob: () => { const b = { name: '', id, setName: (n) => { b.name = n; return b } }; return b },
+      makeCopy: (nombre, destino) => destino.createFile({ name: nombre }),
+    }),
   },
   Utilities: {
     formatDate: (d) => d.toISOString().slice(0, 10),
-    newBlob: (datos, _mime, name) => ({ name, datos }),
+    newBlob: (datos, _mime, name) => ({ name, datos, getDataAsString: () => Buffer.from(datos).toString('utf8') }),
+    ungzip: (blob) => { const t = zlib.gunzipSync(Buffer.from(blob.datos)).toString('utf8'); return { getDataAsString: () => t } },
     gzip: (blob) => ({ getBytes: () => zlib.gzipSync(Buffer.from(blob.datos)) }),
     base64Decode: (b) => Buffer.from(b, 'base64'),
     base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
     zip: (blobs, nombre) => ({ nombre, getBytes: () => Buffer.from(JSON.stringify(blobs.map((b) => b.name))) }),
   },
+  CacheService: { getScriptCache: () => cacheScript },
   MailApp: { sendEmail: (m) => mails.push(m) },
   ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create: () => {} }), everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
   HtmlService: { createHtmlOutputFromFile: () => ({ setTitle: () => ({ addMetaTag: () => ({}) }) }) },
@@ -270,6 +285,7 @@ prueba('la sucursal no puede aprobar sus propios documentos', () => {
   esperar(!leido.fechaAprobacion, 'quedó con fecha de aprobación')
 })
 prueba('Cobranzas con sucursal propia sube lo suyo, pero lo aprueba otra persona de Cobranzas', () => {
+  setCfg('correoSoporte', 'auditoria@svaauto.com.ar') // la administradora es otra cuenta
   como('escaneo@svaauto.com.ar')
   const d = gs('obtenerDatos')
   esperar(d.usuario.rol === 'auditoria' && d.usuario.sucursalPropia === 'Rocamora', 'no quedó como Cobranzas con sucursal propia')
@@ -285,6 +301,15 @@ prueba('Cobranzas con sucursal propia sube lo suyo, pero lo aprueba otra persona
   gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok' }] }])
   doc = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).documentos.find((y) => y.tipo === tipo)
   esperar(doc.estado === 'ok', 'la otra persona de Cobranzas no pudo aprobarlo')
+  // La administradora sí aprueba lo que escaneó ella
+  const otra = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal !== 'Rocamora' && x.fecha >= '2026-10-01' && x.documentos.some((y) => y.estado === 'faltante'))
+  const t2 = otra.documentos.find((y) => y.estado === 'faltante').tipo
+  gs('aplicarCambios', [{ id: otra.id, documentos: [{ tipo: t2, estado: 'en_revision', archivo: 'mio.pdf', url: 'u2' }] }])
+  let mio = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === otra.id).documentos.find((y) => y.tipo === t2)
+  gs('aplicarCambios', [{ id: otra.id, documentos: [{ ...mio, estado: 'ok' }] }])
+  mio = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === otra.id).documentos.find((y) => y.tipo === t2)
+  esperar(mio.estado === 'ok', 'la administradora no pudo aprobar su propio escaneo')
+  setCfg('correoSoporte', '')
 })
 prueba('la sucursal puede quitar un documento subido por error, pero no uno aprobado', () => {
   como('rocamora@svaauto.com.ar')
@@ -768,6 +793,60 @@ prueba('los datos comprimidos son los mismos que sin comprimir', () => {
   const r = JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'))
   const d = gs('obtenerDatos')
   esperar(r.datos.comprobantes.length === d.datos.comprobantes.length && r.usuario.email === d.usuario.email, 'no coinciden')
+})
+prueba('ingreso rápido: la foto más lo que cambió es igual a leer todo', () => {
+  const abrir = (b64) => JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'))
+  const juntar = (r) => {
+    const resto = abrir(r.resto)
+    const m = new Map(abrir(r.facturas).map((c) => [c.id, c]))
+    resto.cambios.forEach((c) => m.set(c.id, c))
+    return { resto, comprobantes: [...m.values()] }
+  }
+  cacheMemoria.clear()
+  como('auditoria@svaauto.com.ar')
+  let r = juntar(gs('obtenerDatosRapidos'))
+  const completo = gs('obtenerDatos')
+  esperar(r.comprobantes.length === completo.datos.comprobantes.length && r.resto.usuario.email === completo.usuario.email, 'la primera vez no trajo todo')
+  esperar(cacheMemoria.size > 1, 'no guardó la foto')
+  // Cambia una factura: la segunda vez sale de la foto + el cambio
+  const f = completo.datos.comprobantes.find((c) => c.tipo === 'FC')
+  gs('aplicarCambios', [{ id: f.id, campos: { observaciones: 'cambio después de la foto' } }])
+  r = juntar(gs('obtenerDatosRapidos'))
+  esperar(r.resto.cambios.some((c) => c.id === f.id), 'no trajo la fila cambiada')
+  esperar(r.comprobantes.find((c) => c.id === f.id).observaciones === 'cambio después de la foto', 'quedó el dato viejo')
+  esperar(r.comprobantes.length === completo.datos.comprobantes.length, 'cambió la cantidad')
+  // La sucursal solo ve lo suyo, y su foto sale de la de todas (sin leer la planilla)
+  como('rocamora@svaauto.com.ar')
+  const s = juntar(gs('obtenerDatosRapidos'))
+  esperar(s.comprobantes.length > 0 && s.comprobantes.every((c) => c.sucursal === 'Rocamora'), 'la sucursal vio de otra')
+  esperar([...cacheMemoria.keys()].some((k) => k.includes('suc-rocamora')), 'no guardó la foto de la sucursal')
+  esperar(s.comprobantes.some((c) => c.id === f.id) === (f.sucursal === 'Rocamora'), 'la foto de la sucursal no tiene el cambio')
+  // Sin acceso: el mismo aviso de siempre
+  como('otro@svaauto.com.ar')
+  falla(() => gs('obtenerDatosRapidos'), '"motivo":"usuario"')
+})
+prueba('backups: copias diarias, semanales y mensuales, y quedan solo las más nuevas', () => {
+  const carpetaB = () => raizDrive.getFoldersByName('CobroSync · Backups').next()
+  const nombres = () => carpetaB().archivos.map((f) => f.nombre)
+  // 9 días seguidos, del 1 (domingo) al 9 de noviembre de 2026
+  for (let d = 1; d <= 9; d++) {
+    const dia = `2026-11-${String(d).padStart(2, '0')}`
+    vm.runInContext(`hoy_ = function () { return '${dia}'; }`, contexto)
+    gs('hacerBackups')
+  }
+  const n = nombres()
+  esperar(n.filter((x) => x.includes('diario')).length === 7, 'diarios: ' + n.join(' | '))
+  esperar(!n.some((x) => x.includes('diario 2026-11-01')) && n.some((x) => x.includes('diario 2026-11-09')), 'no borró los diarios más viejos')
+  esperar(n.filter((x) => x.includes('semanal')).length === 2, 'semanales (1 y 8 de noviembre): ' + n.join(' | '))
+  esperar(n.filter((x) => x.includes('mensual')).length === 1 && n.some((x) => x === 'CobroSync · Datos · mensual 2026-11-01'), 'mensual del día 1')
+  esperar(!archivos.some((a) => a.includes('Backups') && !a.includes('CobroSync · Datos · ')), 'copió algo que no es la planilla')
+  vm.runInContext("hoy_ = function () { return new Date().toISOString().slice(0, 10); }", contexto)
+  como('desarrolladora@svaauto.com.ar')
+  const hecho = gs('hacerBackupAhora')
+  const l = gs('listarBackups')
+  esperar(l.backups.length === n.length + 1 && l.backups.some((b) => b.nombre === hecho.nombre && b.tipo === 'manual') && l.ultimo, JSON.stringify(l).slice(0, 300))
+  como('rocamora@svaauto.com.ar')
+  falla(() => gs('hacerBackupAhora'), 'solo la administradora')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

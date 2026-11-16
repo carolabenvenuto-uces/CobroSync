@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { revisarNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import type { Comprobante } from '../src/domain/tipos'
 
 const factura = (id: string, puntoVenta: number, numero: number, siniestro: string, patente: string, ref: string): Comprobante => ({
@@ -83,5 +83,33 @@ describe('nombres obligatorios', () => {
     expect(!sinNumero.ok && sinNumero.error).toContain('no tiene el número')
     const mal = revisarNombre('35-00011099 orden.pdf', facturas)
     expect(!mal.ok && mal.error).toContain('35-11099')
+  })
+})
+
+describe('nombres flexibles', () => {
+  const lista = [factura('x', 21, 20755, '', '', '8457091'), factura('y', 35, 11032, '', '', '6977700')]
+  it('la factura con o sin ceros, con cualquier separador o todo junto', () => {
+    for (const n of ['21-20755.pdf', '0021-00020755.pdf', '21 20755 orden.pdf', '21.20755.pdf', '21_00020755.pdf', '2100020755.pdf', 'FC E 21-20755.pdf'])
+      expect(revisarNombre(n, lista).ok, n).toBe(true)
+  })
+  it('un siniestro no se toma por factura', () => {
+    const r = revisarNombre('21-20755 20 02 92907.pdf', lista)
+    expect(r.ok && r.factura.id).toBe('x')
+    expect(revisarNombre('20 02 92907.pdf', lista).ok).toBe(false)
+  })
+  it('el siniestro con la palabra bien, abreviada o mal escrita', () => {
+    const c = { puntoVenta: 21, numero: 20755 }
+    expect(siniestroDelNombre('21-20755 siniestro 22365.pdf', c)).toBe('22365')
+    expect(siniestroDelNombre('21-20755 sinestro 22365.pdf', c)).toBe('22365')
+    expect(siniestroDelNombre('21-20755 siniesto 029-9-506622.pdf', c)).toBe('029-9-506622')
+    expect(siniestroDelNombre('21-20755 sin. 6498-05.pdf', c)).toBe('6498-05')
+    expect(siniestroDelNombre('0021-00020755 stro 22365.pdf', c)).toBe('22365')
+  })
+  it('el siniestro sin la palabra, si es un número aparte del de la factura', () => {
+    const c = { puntoVenta: 21, numero: 20755 }
+    expect(siniestroDelNombre('21-20755 029-9-506622.pdf', c)).toBe('029-9-506622')
+    expect(siniestroDelNombre('2100020755 22365.pdf', c)).toBe('22365')
+    expect(siniestroDelNombre('21-20755 orden.pdf', c)).toBe(null)
+    expect(siniestroDelNombre('21-20755 15-11-26.pdf', c)).toBe(null) // una fecha no es un siniestro
   })
 })

@@ -142,5 +142,57 @@ for (const [rol, usuario] of Object.entries(USUARIOS)) {
   await pagina.close()
 }
 
+// Sucursal: soltar PDF en "Subir varios PDF de una vez" (en la zona y en cualquier lugar de la ventana)
+{
+  const pagina = await navegador.newPage()
+  const usuario = USUARIOS.sucursal
+  await pagina.addInitScript(
+    ({ usuario, datos }) => {
+      window.__llamadas = []
+      localStorage.setItem('cobrosync-aviso-plazos', 'visto') // el aviso de bienvenida ya se vio
+      const crear = (ok) =>
+        new Proxy({}, {
+          get: (_, nombre) => {
+            if (nombre === 'withSuccessHandler') return (f) => crear(f)
+            if (nombre === 'withFailureHandler') return () => crear(ok)
+            return () => {
+              const propios = { ...datos, comprobantes: datos.comprobantes.filter((c) => c.sucursal === usuario.sucursal) }
+              const r = nombre === 'obtenerDatos' ? { usuario, datos: propios, ahora: '2026-11-04T10:00:00.000Z', leidas: [] } : nombre === 'obtenerCambios' ? { comprobantes: [], ahora: 'x' } : true
+              setTimeout(() => ok && ok(r), 10)
+            }
+          },
+        })
+      window.google = { script: { run: crear(null) } }
+    },
+    { usuario, datos },
+  )
+  await pagina.goto(url, { waitUntil: 'load' })
+  try {
+    await pagina.getByRole('heading', { name: /Mis facturas/ }).first().waitFor({ timeout: 15000 })
+    await pagina.getByRole('button', { name: /Subir varios PDF/ }).click()
+    const entendido = pagina.getByRole('button', { name: /Entendido/ })
+    if (await entendido.count()) await entendido.first().click()
+    const factura = datos.comprobantes.find((c) => c.sucursal === usuario.sucursal && c.tipo === 'FC' && c.documentos.some((d) => d.estado === 'faltante'))
+    const soltar = (selector, nombre) =>
+      pagina.evaluate(({ selector, nombre }) => {
+        const dt = new DataTransfer()
+        dt.items.add(new File(['%PDF-1.4'], nombre, { type: 'application/pdf' }))
+        const destino = document.querySelector(selector)
+        for (const tipo of ['dragenter', 'dragover', 'drop']) destino.dispatchEvent(new DragEvent(tipo, { bubbles: true, cancelable: true, dataTransfer: dt }))
+      }, { selector, nombre })
+    const nombre1 = `${factura.puntoVenta}-${factura.numero} factura.pdf`
+    await soltar('[role="dialog"] label', nombre1)
+    await pagina.getByText(nombre1).first().waitFor({ timeout: 5000 })
+    const nombre2 = `${factura.puntoVenta}-${factura.numero} orden.pdf`
+    await soltar('[role="dialog"] h2, [role="dialog"]', nombre2)
+    await pagina.getByText(nombre2).first().waitFor({ timeout: 5000 })
+    console.log('ok   sucursal: los PDF soltados (en la zona o en otro lugar de la ventana) se agregan a la lista')
+  } catch (e) {
+    fallas++
+    console.log(`FAIL soltar PDF: ${e.message}`)
+  }
+  await pagina.close()
+}
+
 await navegador.close()
 if (fallas) process.exit(1)

@@ -88,7 +88,7 @@ const botonChico = 'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1
  * En la demo los cambios se guardan solo en memoria (se pierden al recargar).
  */
 export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprobante; onCerrar: () => void }) {
-  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo, sucursalPropia } = useApp()
+  const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo, sucursalPropia, administradora } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
   const documentos = documentosDelLegajo(c.documentos)
@@ -324,7 +324,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   // Quién sube documentos: la sucursal, y Cobranzas cuando la factura es de su propia sucursal
   // (ellas mismas escanean). Lo que sube una persona de Cobranzas lo aprueba otra.
   const subeDocs = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && normalizarSucursal(c.sucursal) === normalizarSucursal(sucursalPropia))
-  const lohizoYo = (d: Documento) => rol === 'auditoria' && d.estado === 'en_revision' && d.subidoPor === usuario
+  // Lo que escaneó una persona de Cobranzas lo aprueba otra; la administradora sí puede aprobar lo suyo
+  const lohizoYo = (d: Documento) => rol === 'auditoria' && !administradora && d.estado === 'en_revision' && d.subidoPor === usuario
   const paraRevisar = documentos.filter((d) => d.estado === 'en_revision' && !lohizoYo(d)).map((d) => d.tipo)
 
   function presentar() {

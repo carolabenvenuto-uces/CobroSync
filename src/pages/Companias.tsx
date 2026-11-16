@@ -186,7 +186,7 @@ export default function Companias() {
     <>
       <EncabezadoPagina
         titulo="Compañías"
-        subtitulo="Cómo se presenta y cuándo paga cada compañía. Tocar una para ver y cambiar sus datos."
+        subtitulo="Cómo se presenta y cuándo paga cada compañía"
         acciones={
           <>
             <input ref={entrada} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => cargar(e.target.files?.[0])} />

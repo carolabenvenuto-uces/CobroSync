@@ -6,7 +6,7 @@ import { EncabezadoPagina } from '../components/ui/Card'
 import { FiltroRapido } from '../components/ui/FiltroRapido'
 import { PestanasSucursales } from '../components/PestanasSucursales'
 import { Tabla, type Columna } from '../components/ui/Tabla'
-import { useApp, useComprobantes } from '../context/AppContext'
+import { useApp } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
 import { avisoA, compromisoVencido, diasDeEspera, esperaALaSucursal, nivelEscaneo, type NivelEscaneo } from '../domain/sucursales'
 import type { Comprobante } from '../domain/tipos'
@@ -31,7 +31,8 @@ function situacion(c: Comprobante, hoy: string): string {
  */
 export default function Pendientes() {
   const { datos, hoy, abrirLegajo } = useApp()
-  const comprobantes = useComprobantes()
+  // Todas las sucursales: se filtran desde la columna de la tabla
+  const comprobantes = datos!.comprobantes
   const { aseguradoras, meta } = datos!
   const [params, setParams] = useSearchParams()
   const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
@@ -167,7 +168,7 @@ export default function Pendientes() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Pendientes de sucursales" sucursal />
+      <EncabezadoPagina titulo="Pendientes de sucursales" />
       <PestanasSucursales />
       <FiltroRapido
         opciones={atajos.map((a) => ({ clave: a.clave, titulo: a.titulo, cantidad: a.r.cantidad, monto: a.r.monto, alerta: a.alerta }))}

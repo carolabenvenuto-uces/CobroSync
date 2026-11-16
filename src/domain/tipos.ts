@@ -86,6 +86,9 @@ export interface Aseguradora {
   siniestrosPorMail?: string
   /** si va por las dos: siniestros que van por la plataforma según cómo empiezan */
   siniestrosPorPlataforma?: string
+  /** cuenta que comparte el sector para entrar a la plataforma (solo le llega a Cobranzas) */
+  usuarioPlataforma?: string
+  clavePlataforma?: string
   /** enlaces a la plataforma de la compañía (uno o varios, separados por coma) */
   portalUrl?: string
   /** días después del vencimiento antes de reclamar (compañías que suelen pagar; si no se indica, 0) */

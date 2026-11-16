@@ -11,6 +11,22 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.2] - 2026-11-16
+
+### Cambiado
+- **Seguimiento** (Documentación, Pedidos y Vencidas y reclamos): sin el filtro de sucursal de arriba; se filtra en la columna de la tabla, como en Control diario.
+- Textos más cortos: sin "Tocar una tarjeta para ver solo esas facturas" y con subtítulos de una línea en Inicio, Control diario, Siniestros, Compañías y Ajustes.
+
+## [0.17.1] - 2026-11-16
+
+### Agregado
+- **Usuario y contraseña de la plataforma** de cada compañía (las cuentas que comparte el sector), en **Presentar**, junto al enlace a la plataforma: se ven, se copian con un toque (la contraseña se muestra con el ojito) y se cargan o cambian ahí mismo. Los puede cargar cualquiera de Cobranzas. Solo le llegan a Cobranzas: a las sucursales y a gerencia no.
+
+## [0.17.0] - 2026-11-16
+
+### Agregado
+- **Reclamos anotados en la planilla de control:** si en Observaciones dice "Reclamado 05/08" (o "RECLAMADO", "reclamada", "recl."), CobroSync registra un reclamo con la última fecha anotada y todas las fechas en la nota. Así esas facturas ya no figuran como "Vencidas sin reclamar" y, si pasó el plazo, quedan en "Volver a reclamar". "Reclamado a (sucursal)" no cuenta, porque es un pedido a la sucursal. Se toma solo si la factura todavía no tiene reclamos en CobroSync; se aplica en la próxima lectura de la planilla.
+
 ## [0.16.7] - 2026-11-16
 
 ### Cambiado

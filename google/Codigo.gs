@@ -1427,7 +1427,7 @@ function fechaParaCelda_(iso) {
  */
 function limpiarSiniestro_(texto) {
   var t = String(texto === null || texto === undefined ? '' : texto).trim();
-  var m = t.match(/^\d{8,}\s*[-\/]\s*(\d{8,})$/);
+  var m = t.match(/^[A-Za-z]?\d{8,}\s*[-\/]\s*[A-Za-z]?(\d{8,})$/);
   return m ? m[1] : t;
 }
 

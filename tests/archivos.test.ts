@@ -119,6 +119,8 @@ describe('siniestros de Allianz con dos números', () => {
   it('toma el segundo número y deja como están los siniestros con guiones cortos', () => {
     expect(limpiarSiniestro('0042605268-0042584578')).toBe('0042584578')
     expect(limpiarSiniestro(' 0042605268 - 0042584578 ')).toBe('0042584578')
+    expect(limpiarSiniestro('C0042601693117-0042601893777')).toBe('0042601893777')
+    expect(siniestroDelNombre('23-6400 SINIESTRO ALLIANZ AF601TS C0042601693117-0042601893777.pdf', { puntoVenta: 23, numero: 6400 })).toBe('0042601893777')
     expect(limpiarSiniestro('029-9-506622')).toBe('029-9-506622')
     expect(limpiarSiniestro('6498-05')).toBe('6498-05')
     expect(siniestroDelNombre('21-20755 siniestro 0042605268-0042584578.pdf', { puntoVenta: 21, numero: 20755 })).toBe('0042584578')

@@ -119,8 +119,9 @@ const PUNTOS_IMAN = [
  *
  * Los puntitos son elementos HTML que solo cambian de posición y transparencia: así la animación la
  * hace la placa de video y sigue fluida aunque la computadora esté ocupada armando los datos (con
- * círculos dentro del SVG se trababa en las computadoras más lentas). Si la computadora tiene las
- * animaciones apagadas, se ve el logo quieto, con sus puntitos de siempre.
+ * círculos dentro del SVG se trababa en las computadoras más lentas). Se ve igual en todas las
+ * computadoras, también en las que tienen apagadas las animaciones de Windows: es una animación corta y
+ * suave, y quieta parecía que la pantalla se había colgado.
  */
 function ImanCargando() {
   const lila = '#B9AEFF'
@@ -141,23 +142,11 @@ function ImanCargando() {
       <style>{`
         ${keyframes}
         .iman-punto { position: absolute; border-radius: 9999px; background: ${agua}; opacity: 0; will-change: transform, opacity; }
-        .iman-quieto { display: none; }
-        @media (prefers-reduced-motion: reduce) {
-          .iman-punto { display: none; }
-          .iman-quieto { display: inline; }
-        }
       `}</style>
       <svg viewBox="0 0 230 120" className="absolute inset-0 h-20 w-auto">
         <path d="M86 28 H58 A32 32 0 0 0 58 92 H86" fill="none" stroke={lila} strokeWidth="22" strokeLinejoin="round" />
         <path d="M76 28 H94" stroke={agua} strokeWidth="22" />
         <path d="M76 92 H94" stroke={agua} strokeWidth="22" />
-        {/* Los puntitos del logo, solo si las animaciones están apagadas */}
-        <g className="iman-quieto" fill={agua}>
-          <circle cx="104" cy="60" r="5" />
-          <circle cx="112" cy="48" r="3.5" />
-          <circle cx="112" cy="72" r="3.5" />
-          <circle cx="117" cy="60" r="2.5" />
-        </g>
       </svg>
       {PUNTOS_IMAN.map((p, i) => {
         const tam = p.r * 2 * escala

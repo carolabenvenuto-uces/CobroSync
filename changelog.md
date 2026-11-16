@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.0] - 2026-11-16
+
+### Agregado
+- **Reclamos anotados en la planilla de control:** si en Observaciones dice "Reclamado 05/08" (o "RECLAMADO", "reclamada", "recl."), CobroSync registra un reclamo con la última fecha anotada y todas las fechas en la nota. Así esas facturas ya no figuran como "Vencidas sin reclamar" y, si pasó el plazo, quedan en "Volver a reclamar". "Reclamado a (sucursal)" no cuenta, porque es un pedido a la sucursal. Se toma solo si la factura todavía no tiene reclamos en CobroSync; se aplica en la próxima lectura de la planilla.
+
 ## [0.16.7] - 2026-11-16
 
 ### Cambiado

@@ -849,6 +849,18 @@ prueba('backups: copias diarias, semanales y mensuales, y quedan solo las más n
   como('rocamora@svaauto.com.ar')
   falla(() => gs('hacerBackupAhora'), 'solo la administradora')
 })
+prueba('los reclamos anotados en Observaciones de la planilla: la última fecha, sin contar los pedidos a la sucursal', () => {
+  vm.runInContext("hoy_ = function () { return '2026-11-16'; }", contexto)
+  const r1 = contexto.reclamoDePlanilla_('ORION. RECLAMADO 03/07. RECLAMADO 05/08. RECLAMADO 09/09')
+  esperar(r1 && r1.fecha === '2026-09-09' && r1.nota.includes('03/07/26') && r1.nota.includes('09/09/26'), JSON.stringify(r1))
+  esperar(contexto.reclamoDePlanilla_('Presentada vía ofdigitalizacion 27/02. Reclamado 06/07. Reclamado 09/09.').fecha === '2026-09-09', 'con texto antes')
+  esperar(contexto.reclamoDePlanilla_('Pendiente de autorización. Ref. TranquilloF@sancristobal.com.ar. Reclamado 14/09').fecha === '2026-09-14', 'con un mail en el medio')
+  esperar(contexto.reclamoDePlanilla_('Mal liquidado. Detalle en mail con CIA 30/07. Reclamado a Triunvirato 02/09.') === null, 'tomó un pedido a la sucursal como reclamo')
+  esperar(contexto.reclamoDePlanilla_('UTRACE Validado a pagar. Pago pausado debido a deuda de SVA.') === null, 'inventó un reclamo')
+  esperar(contexto.reclamoDePlanilla_('Reclamado 20/12').fecha === '2025-12-20', 'una fecha del futuro tiene que ser del año anterior')
+  esperar(contexto.reclamoDePlanilla_('recl. 9/9/25').fecha === '2025-09-09', 'con año')
+  vm.runInContext("hoy_ = function () { return new Date().toISOString().slice(0, 10); }", contexto)
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

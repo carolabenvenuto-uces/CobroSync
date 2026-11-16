@@ -111,7 +111,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               ...pedidosParaSucursal(comprobantes, hoy).map((p) => p.c.id),
             ]).size
           : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length + (rol === 'auditoria' ? pedidosAbiertos(comprobantes, hoy).length : 0),
-      alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
+      // Lo que hay que hacer: las pendientes al día se ven en Inicio pero no suman acá
+      alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + (a.informativo ? 0 : a.facturas.length), 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
         return e !== null && RECLAMO_PARA_ACTUAR.includes(e)
@@ -272,31 +273,20 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               )}
             </details>
           )}
-          {/* Cerrar sesión: en la demo vuelve a elegir usuario; con Google, cierra la cuenta en este navegador
-              (sirve en las computadoras compartidas de las sucursales) */}
-          {fuente.tipo === 'google' ? (
-            <a
-              href="https://accounts.google.com/Logout"
-              target="_top"
-              title="Cierra la sesión de la cuenta de Google en este navegador"
-              className="flex w-full items-center gap-2 py-0.5 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar sesión
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                cerrarSesion()
-                navigate('/')
-              }}
-              className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar sesión
-            </button>
-          )}
+          {/* Cerrar sesión: sale de CobroSync. Con Google no cierra la cuenta de Google (el mail y el Drive siguen abiertos);
+              en la demo vuelve a elegir usuario */}
+          <button
+            type="button"
+            onClick={() => {
+              cerrarSesion()
+              if (fuente.tipo !== 'google') navigate('/')
+              onCerrar()
+            }}
+            className="flex w-full items-center gap-2 py-0.5 text-left hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
+          </button>
           {/* Versión y siglas de la autora, discretas al pie del menú (el nombre completo está en el pie de página) */}
           <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10px] tracking-wide text-slate-500">
             {PRODUCTO} v{VERSION} · {FIRMA}

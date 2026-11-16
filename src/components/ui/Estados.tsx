@@ -44,7 +44,7 @@ export function SinAcceso({ mensaje }: { mensaje: string }) {
     'la administradora de la plataforma'
   )
   const cambiarCuenta = (
-    <a href="https://accounts.google.com/Logout" target="_top" className="font-semibold text-marca hover:underline">
+    <a href="https://accounts.google.com/AccountChooser" target="_top" className="font-semibold text-marca hover:underline">
       Cambiar de cuenta
     </a>
   )
@@ -116,40 +116,66 @@ const PUNTOS_IMAN = [
  * Pantalla de carga: el imán del logo quieto y, desde la derecha, puntitos de distintos tamaños y
  * alturas (como los del logo) que van hacia la boca del imán y desaparecen al llegar, como si los
  * atrajera (los cobros), mientras se cargan los datos.
+ *
+ * Los puntitos son elementos HTML que solo cambian de posición y transparencia: así la animación la
+ * hace la placa de video y sigue fluida aunque la computadora esté ocupada armando los datos (con
+ * círculos dentro del SVG se trababa en las computadoras más lentas). Si la computadora tiene las
+ * animaciones apagadas, se ve el logo quieto, con sus puntitos de siempre.
  */
 function ImanCargando() {
   const lila = '#B9AEFF'
   const agua = '#3FD4C2'
   const duracion = 2.4
+  const escala = 80 / 120 // el SVG mide 80 px de alto (viewBox de 120)
+  const keyframes = PUNTOS_IMAN.map((p, i) => {
+    const dy = Math.round((60 - p.y) * 0.75 * escala)
+    return `@keyframes iman-atrae-${i} {
+      0% { transform: translate3d(0, 0, 0) scale(.5); opacity: 0; }
+      25% { opacity: .6; }
+      85% { transform: translate3d(${Math.round(-108 * escala)}px, ${dy}px, 0) scale(1); opacity: 1; }
+      100% { transform: translate3d(${Math.round(-118 * escala)}px, ${dy}px, 0) scale(.4); opacity: 0; }
+    }`
+  }).join('\n')
   return (
-    <svg viewBox="0 0 230 120" className="h-20 w-auto" role="img" aria-label="Cargando">
+    <div className="relative h-20" style={{ width: Math.round(230 * escala) }} role="img" aria-label="Cargando">
       <style>{`
-        .iman-punto { animation: iman-atrae ${duracion}s cubic-bezier(.5,0,.8,1) infinite; transform-box: fill-box; transform-origin: center; opacity: 0; }
-        @keyframes iman-atrae {
-          0%   { transform: translate(0, 0) scale(.5); opacity: 0; }
-          25%  { opacity: .6; }
-          85%  { transform: translate(-108px, var(--hacia)) scale(1); opacity: 1; }
-          100% { transform: translate(-118px, var(--hacia)) scale(.4); opacity: 0; }
-        }
+        ${keyframes}
+        .iman-punto { position: absolute; border-radius: 9999px; background: ${agua}; opacity: 0; will-change: transform, opacity; }
+        .iman-quieto { display: none; }
         @media (prefers-reduced-motion: reduce) {
-          .iman-punto { animation: none; opacity: .8; }
+          .iman-punto { display: none; }
+          .iman-quieto { display: inline; }
         }
       `}</style>
-      <path d="M86 28 H58 A32 32 0 0 0 58 92 H86" fill="none" stroke={lila} strokeWidth="22" strokeLinejoin="round" />
-      <path d="M76 28 H94" stroke={agua} strokeWidth="22" />
-      <path d="M76 92 H94" stroke={agua} strokeWidth="22" />
-      {PUNTOS_IMAN.map((p, i) => (
-        <circle
-          key={i}
-          className="iman-punto"
-          cx="222"
-          cy={p.y}
-          r={p.r}
-          fill={agua}
-          // cada uno termina más cerca del centro de la boca del imán, y salen de a uno
-          style={{ ['--hacia' as string]: `${Math.round((60 - p.y) * 0.75)}px`, animationDelay: `${(-(duracion / PUNTOS_IMAN.length) * i).toFixed(2)}s` }}
-        />
-      ))}
-    </svg>
+      <svg viewBox="0 0 230 120" className="absolute inset-0 h-20 w-auto">
+        <path d="M86 28 H58 A32 32 0 0 0 58 92 H86" fill="none" stroke={lila} strokeWidth="22" strokeLinejoin="round" />
+        <path d="M76 28 H94" stroke={agua} strokeWidth="22" />
+        <path d="M76 92 H94" stroke={agua} strokeWidth="22" />
+        {/* Los puntitos del logo, solo si las animaciones están apagadas */}
+        <g className="iman-quieto" fill={agua}>
+          <circle cx="104" cy="60" r="5" />
+          <circle cx="112" cy="48" r="3.5" />
+          <circle cx="112" cy="72" r="3.5" />
+          <circle cx="117" cy="60" r="2.5" />
+        </g>
+      </svg>
+      {PUNTOS_IMAN.map((p, i) => {
+        const tam = p.r * 2 * escala
+        return (
+          <span
+            key={i}
+            className="iman-punto"
+            style={{
+              width: tam,
+              height: tam,
+              left: 222 * escala - tam / 2,
+              top: p.y * escala - tam / 2,
+              animation: `iman-atrae-${i} ${duracion}s cubic-bezier(.5,0,.8,1) infinite`,
+              animationDelay: `${(-(duracion / PUNTOS_IMAN.length) * i).toFixed(2)}s`,
+            }}
+          />
+        )
+      })}
+    </div>
   )
 }

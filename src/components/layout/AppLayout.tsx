@@ -14,7 +14,7 @@ import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada, vista, verComo } = useApp()
+  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada, vista, verComo, salio, volverAEntrar } = useApp()
   const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
 
@@ -22,6 +22,7 @@ export function AppLayout() {
   if (conectadoAGoogle() && !datos) return error ? <SinAcceso mensaje={error} /> : <Cargando pantallaCompleta />
   // Demo: si todavía no se eligió usuario, a la pantalla de inicio
   if (!conectadoAGoogle() && !sesionIniciada) return <Navigate to="/" replace />
+  if (salio) return <Salida onVolver={volverAEntrar} />
 
   return (
     <div className="flex min-h-screen">
@@ -84,6 +85,27 @@ export function AppLayout() {
       {datos && <AvisoNotificacion />}
       <AvisoCarga />
       {legajo && <LegajoPanel key={legajo.id} comprobante={legajo} onCerrar={() => abrirLegajo(null)} />}
+    </div>
+  )
+}
+
+/** Después de "Cerrar sesión" con Google: se sale de CobroSync sin cerrar la cuenta de Google. */
+function Salida({ onVolver }: { onVolver: () => void }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-noche px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-xl">
+        <h1 className="text-xl font-extrabold text-noche">Saliste de CobroSync</h1>
+        <p className="mt-2 text-sm text-slate-600">Ya podés cerrar esta pestaña. Tu cuenta de Google sigue abierta.</p>
+        <button type="button" onClick={onVolver} className="mt-5 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro">
+          Volver a entrar
+        </button>
+        <p className="mt-4 text-xs text-slate-500">
+          ¿Es una computadora compartida y querés usar otra cuenta?{' '}
+          <a href="https://accounts.google.com/AccountChooser" target="_top" className="font-semibold text-marca hover:underline">
+            Elegir otra cuenta
+          </a>
+        </p>
+      </div>
     </div>
   )
 }

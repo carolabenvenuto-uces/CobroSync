@@ -1,6 +1,6 @@
 import { useMemo, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
-import { BellRing, CalendarX2, FileCheck, FileClock, Megaphone, MessageSquareWarning, Receipt, Siren, TriangleAlert } from 'lucide-react'
+import { BellRing, CalendarX2, Clock, FileCheck, FileClock, Megaphone, MessageSquareWarning, Receipt, Siren, TriangleAlert } from 'lucide-react'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { estadoReclamo, NOMBRE_ESTADO_RECLAMO } from '../domain/reclamos'
@@ -18,6 +18,8 @@ export interface Aviso {
   facturas: Comprobante[]
   /** a dónde lleva, ya filtrado */
   ruta: string
+  /** solo para tener a la vista (todavía no hay que hacer nada): no suma al número del menú */
+  informativo?: boolean
 }
 
 export interface SectorAvisos {
@@ -58,6 +60,15 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
           icono: TriangleAlert,
           facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'atrasado'),
           ruta: '/app/pendientes?estado=Atrasada',
+        },
+        {
+          clave: 'en-plazo',
+          titulo: 'Documentación pendiente al día',
+          descripcion: 'Falta la documentación, pero la sucursal todavía está dentro del plazo',
+          icono: Clock,
+          facturas: deSucursal.filter((c) => nivelEscaneo(c, diasDeEspera(c, hoy)) === 'en_plazo'),
+          ruta: '/app/pendientes?estado=En plazo',
+          informativo: true,
         },
         {
           clave: 'compromisos',

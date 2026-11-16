@@ -44,10 +44,19 @@ export function numeroDesde(valor: string | undefined): number | null {
 }
 
 /** Las filas del Excel del ERP debajo del encabezado, tal cual (para la pestaña Quiter de la planilla). */
-export function filasDeDatosErp(texto: string): string[][] {
+/**
+ * Las filas del ERP para la pestaña Quiter de la planilla de control, tal cual vienen. Con la lista de
+ * compañías, solo las de compañías de seguros (como cuando se filtraba el Excel a mano); los clientes
+ * particulares y otras empresas no se copian.
+ */
+export function filasDeDatosErp(texto: string, aseguradoras?: Aseguradora[]): string[][] {
   const filas = parsearCsv(texto)
   const inicio = filas.findIndex((f) => /refer/i.test(f[COL.ref] ?? '') && /cuit/i.test(f[COL.cuit] ?? ''))
-  return filas.slice(inicio + 1).filter((f) => /^\d+$/.test((f[COL.ref] ?? '').trim()))
+  const datos = filas.slice(inicio + 1).filter((f) => /^\d+$/.test((f[COL.ref] ?? '').trim()))
+  if (!aseguradoras) return datos
+  const cuits = new Set(aseguradoras.filter((a) => a.cuit).map((a) => soloDigitos(a.cuit)))
+  const nombres = new Set(aseguradoras.map((a) => normalizar(a.razonSocial ?? a.nombre)))
+  return datos.filter((f) => cuits.has(soloDigitos(f[COL.cuit])) || nombres.has(normalizar(f[COL.nombre] ?? '')))
 }
 
 export function importarErp(

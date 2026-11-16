@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.15.1] - 2026-11-15
+
+### Corregido
+- **Subir varios PDF de una vez:** soltar los PDF no siempre funcionaba. Ahora se pueden soltar en la zona punteada o en cualquier lugar de la pantalla mientras la ventana está abierta, y el navegador ya no intenta abrir el archivo. Si todavía no se tocó "Entendido" en las condiciones, avisa que falta eso.
+
 ## [0.15.0] - 2026-11-15
 
 ### Agregado

@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
@@ -69,8 +69,13 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
     }
   }
 
-  function agregar(lista: FileList | null) {
+  const leidasRef = useRef(leidas)
+  leidasRef.current = leidas
+  const agregarRef = useRef(agregar)
+  agregarRef.current = agregar
+  function agregar(lista: FileList | File[] | null) {
     const nuevos = lista ? [...lista] : []
+    if (!nuevos.length) return
     setFilas((actuales) => [
       ...actuales,
       ...nuevos.map((archivo): Fila => {
@@ -98,11 +103,42 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
     ])
     setEstado(null)
   }
-  function soltar(e: DragEvent<HTMLLabelElement>) {
+  function soltar(e: DragEvent<HTMLElement>) {
     e.preventDefault()
+    e.stopPropagation()
     setArrastrando(false)
-    agregar(e.dataTransfer.files)
+    if (!leidas) {
+      setEstado({ texto: 'Primero hay que leer las condiciones y tocar Entendido; después se pueden soltar los PDF.', error: true })
+      return
+    }
+    agregar(archivosSoltados(e.dataTransfer))
   }
+
+  // Con la ventana abierta, un PDF soltado en cualquier lugar de la pantalla se agrega (y el navegador
+  // no intenta abrirlo, que dentro de la plataforma no hace nada y parece que no anduvo)
+  useEffect(() => {
+    const encima = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    }
+    const suelta = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+      setArrastrando(false)
+      if (!leidasRef.current) {
+        setEstado({ texto: 'Primero hay que leer las condiciones y tocar Entendido; después se pueden soltar los PDF.', error: true })
+        return
+      }
+      agregarRef.current(archivosSoltados(e.dataTransfer))
+    }
+    window.addEventListener('dragover', encima)
+    window.addEventListener('drop', suelta)
+    return () => {
+      window.removeEventListener('dragover', encima)
+      window.removeEventListener('drop', suelta)
+    }
+  }, [])
   const cambiar = (i: number, cambios: Partial<Fila>) => setFilas((l) => l.map((f, j) => (j === i ? { ...f, ...cambios } : f)))
 
   const asignadas = filas.filter((f) => f.facturaId)
@@ -203,11 +239,19 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
 
         <div className="overflow-y-auto p-5">
           <label
-            onDragOver={(e) => {
+            onDragEnter={(e) => {
               e.preventDefault()
               setArrastrando(true)
             }}
-            onDragLeave={() => setArrastrando(false)}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'copy'
+              setArrastrando(true)
+            }}
+            onDragLeave={(e) => {
+              // Solo cuando sale de la zona (no al pasar por el ícono o el texto de adentro)
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArrastrando(false)
+            }}
             onDrop={soltar}
             className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center ${!leidas ? 'pointer-events-none opacity-40' : ''} ${
               arrastrando ? 'border-marca bg-marca/5' : 'border-slate-300 hover:border-marca/60'
@@ -334,4 +378,11 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
       </div>
     </>
   )
+}
+
+/** Los archivos soltados: algunos navegadores los dan en files y otros solo en items. */
+function archivosSoltados(dt: DataTransfer | null): File[] {
+  if (!dt) return []
+  if (dt.files && dt.files.length) return [...dt.files]
+  return [...(dt.items ?? [])].filter((i) => i.kind === 'file').map((i) => i.getAsFile()).filter((f): f is File => !!f)
 }

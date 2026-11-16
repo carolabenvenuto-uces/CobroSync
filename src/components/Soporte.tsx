@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import type { Rol } from '../domain/tipos'
-import { PRODUCTO } from '../lib/marca'
 import { reportarProblemaEnGoogle } from '../services/google'
 
 /**
@@ -100,11 +99,7 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
               Soporte técnico
             </h2>
             <p className="mt-0.5 text-xs text-slate-600">
-              Para errores de {PRODUCTO}: una pantalla que no carga, un botón que no responde, un dato que no se guarda. Las dudas sobre una
-              factura, a Cobranzas.
-            </p>
-            <p className="mt-1 text-xs text-slate-600">
-              El aviso le llega a <strong className="text-noche">{nombreSoporte || 'quien da soporte a la plataforma'}</strong>.
+              Le llega a <strong className="text-noche">{nombreSoporte || 'quien da soporte a la plataforma'}</strong>.
             </p>
           </div>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1 text-slate-400 hover:bg-fondo">
@@ -146,7 +141,7 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
               <input value={factura} onChange={(e) => setFactura(e.target.value)} placeholder="Por ejemplo: 35-11032" className={campo} />
             </label>
             <label className="mt-3 block text-xs font-semibold text-slate-600">
-              Contar qué se estaba haciendo y qué pasó
+              Qué pasó
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -164,10 +159,8 @@ export function VentanaSoporte({ onCerrar }: { onCerrar: () => void }) {
               >
                 <Send className="h-4 w-4" /> {estado.tipo === 'enviando' ? 'Enviando…' : 'Enviar'}
               </button>
-              {!completo && <span className="text-xs text-slate-500">Elegir la pantalla y el problema, y contar qué pasó.</span>}
               {estado.tipo === 'error' && <span className="text-xs font-semibold text-sem-rojo">{estado.mensaje}</span>}
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">Se envía junto con el usuario, el sector y la pantalla, para poder revisarlo.</p>
           </>
         )}
       </div>

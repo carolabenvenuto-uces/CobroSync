@@ -37,7 +37,7 @@ export const conectadoAGoogle = (): boolean => corredor() !== null
 
 /** Llama a una función de google/Codigo.gs y espera la respuesta. */
 /** Lo que se puede pedir al servidor mientras la administradora mira como otro usuario (nada que guarde). */
-const SOLO_LECTURA = new Set(['compararConPlanilla', 'obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
+const SOLO_LECTURA = new Set(['obtenerDatosRapidos', 'compararConPlanilla', 'obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
 let textoSoloMirar: string | null = null
 /** Con un texto, el servidor solo se consulta: todo lo que guarda se rechaza con ese texto. */
 export function fijarSoloMirar(texto: string | null) {
@@ -92,6 +92,25 @@ type DatosIniciales = { usuario: UsuarioGoogle; datos: DatosApp; ahora: string; 
  */
 async function traerDatosIniciales(): Promise<DatosIniciales> {
   if (typeof DecompressionStream !== 'undefined') {
+    // 1) Lo más rápido: la foto guardada de las facturas + lo que cambió desde la foto
+    try {
+      const r = await llamar<unknown>('obtenerDatosRapidos')
+      if (r && typeof r === 'object' && 'facturas' in r && 'resto' in r) {
+        const { facturas, resto } = r as { facturas: string; resto: string }
+        const [lista, datos] = await Promise.all([
+          descomprimirJson<Comprobante[]>(facturas),
+          descomprimirJson<DatosIniciales & { cambios?: Comprobante[] }>(resto),
+        ])
+        const porId = new Map(lista.map((c) => [c.id, c]))
+        for (const c of datos.cambios ?? []) porId.set(c.id, c)
+        const { cambios: _cambios, ...resto2 } = datos
+        void _cambios
+        return { ...resto2, datos: { ...resto2.datos, comprobantes: [...porId.values()] } }
+      }
+    } catch (e) {
+      if (String(e instanceof Error ? e.message : e).includes('CobroSync-acceso:')) throw e
+    }
+    // 2) Todo comprimido (Código.gs anterior)
     try {
       const b64 = await llamar<unknown>('obtenerDatosComprimidos')
       if (typeof b64 === 'string' && b64) return await descomprimirJson<DatosIniciales>(b64)

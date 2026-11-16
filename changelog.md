@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.14.3] - 2026-11-15
+
+### Mejorado
+- **Ingreso rápido con una foto de las facturas:** leer las ~9.200 filas de Comprobantes tardaba de 8 a 20 segundos en cada ingreso. Ahora se guarda una foto comprimida de las facturas en la memoria de Apps Script y al entrar solo se leen las filas que cambiaron desde la foto. La foto se rehace sola cada hora (con la lectura de la planilla de control), si no está o si cambiaron muchas filas. En Ejecuciones queda "Ingreso rápido" con el tiempo y si salió de la foto o se leyó todo.
+- Una fila borrada o editada a mano en "CobroSync · Datos" se ve, como mucho, a la hora.
+
 ## [0.14.2] - 2026-11-15
 
 ### Corregido

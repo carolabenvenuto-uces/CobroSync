@@ -52,6 +52,15 @@ function crearHoja(nombre) {
   }
   return hoja
 }
+const cacheMemoria = new Map()
+const cacheScript = {
+  get: (k) => cacheMemoria.get(k) ?? null,
+  getAll: (ks) => Object.fromEntries(ks.filter((k) => cacheMemoria.has(k)).map((k) => [k, cacheMemoria.get(k)])),
+  putAll: (o) => Object.entries(o).forEach(([k, v]) => {
+    if (String(v).length > 100000) throw new Error('valor de más de 100 KB')
+    cacheMemoria.set(k, v)
+  }),
+}
 const hojas = {}
 const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Cobranzas
 const planillaControl = { getSheetByName: (n) => hojasControl[n] ?? null, insertSheet: (n) => (hojasControl[n] = crearHoja(n)) }
@@ -124,6 +133,7 @@ const contexto = {
     base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
     zip: (blobs, nombre) => ({ nombre, getBytes: () => Buffer.from(JSON.stringify(blobs.map((b) => b.name))) }),
   },
+  CacheService: { getScriptCache: () => cacheScript },
   MailApp: { sendEmail: (m) => mails.push(m) },
   ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create: () => {} }), everyDays: () => ({ atHour: () => ({ create: () => {} }) }), onWeekDay: () => ({ atHour: () => ({ create: () => {} }) }) }) }), WeekDay: { MONDAY: 1 } },
   HtmlService: { createHtmlOutputFromFile: () => ({ setTitle: () => ({ addMetaTag: () => ({}) }) }) },
@@ -768,6 +778,35 @@ prueba('los datos comprimidos son los mismos que sin comprimir', () => {
   const r = JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'))
   const d = gs('obtenerDatos')
   esperar(r.datos.comprobantes.length === d.datos.comprobantes.length && r.usuario.email === d.usuario.email, 'no coinciden')
+})
+prueba('ingreso rápido: la foto más lo que cambió es igual a leer todo', () => {
+  const abrir = (b64) => JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'))
+  const juntar = (r) => {
+    const resto = abrir(r.resto)
+    const m = new Map(abrir(r.facturas).map((c) => [c.id, c]))
+    resto.cambios.forEach((c) => m.set(c.id, c))
+    return { resto, comprobantes: [...m.values()] }
+  }
+  cacheMemoria.clear()
+  como('auditoria@svaauto.com.ar')
+  let r = juntar(gs('obtenerDatosRapidos'))
+  const completo = gs('obtenerDatos')
+  esperar(r.comprobantes.length === completo.datos.comprobantes.length && r.resto.usuario.email === completo.usuario.email, 'la primera vez no trajo todo')
+  esperar(cacheMemoria.size > 1, 'no guardó la foto')
+  // Cambia una factura: la segunda vez sale de la foto + el cambio
+  const f = completo.datos.comprobantes.find((c) => c.tipo === 'FC')
+  gs('aplicarCambios', [{ id: f.id, campos: { observaciones: 'cambio después de la foto' } }])
+  r = juntar(gs('obtenerDatosRapidos'))
+  esperar(r.resto.cambios.some((c) => c.id === f.id), 'no trajo la fila cambiada')
+  esperar(r.comprobantes.find((c) => c.id === f.id).observaciones === 'cambio después de la foto', 'quedó el dato viejo')
+  esperar(r.comprobantes.length === completo.datos.comprobantes.length, 'cambió la cantidad')
+  // La sucursal solo ve lo suyo
+  como('rocamora@svaauto.com.ar')
+  const s = juntar(gs('obtenerDatosRapidos'))
+  esperar(s.comprobantes.length > 0 && s.comprobantes.every((c) => c.sucursal === 'Rocamora'), 'la sucursal vio de otra')
+  // Sin acceso: el mismo aviso de siempre
+  como('otro@svaauto.com.ar')
+  falla(() => gs('obtenerDatosRapidos'), '"motivo":"usuario"')
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 

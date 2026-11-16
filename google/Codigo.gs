@@ -98,6 +98,113 @@ function doGet() {
 
 /** Lo primero que pide la aplicación: quién es la persona y qué datos puede ver. */
 /**
+ * Ingreso rápido. Leer las ~9.000 filas de Comprobantes es lo que más tarda (8 a 20 segundos), así
+ * que se guarda una "foto" comprimida de todas las facturas en la memoria de Apps Script (CacheService,
+ * hasta 6 horas) y en cada ingreso solo se leen las filas que cambiaron desde esa foto (columna
+ * "actualizado"). Lo demás (usuario, compañías, sucursales, ajustes) se lee como siempre, que es poco.
+ * La foto se rehace cada hora (con la lectura de la planilla), cuando no está o si cambiaron muchas filas.
+ * Una fila borrada o editada a mano en la planilla de datos se ve en la próxima foto (como mucho, una hora).
+ */
+var CACHE_INGRESO_ = 'ingreso-v1';
+var PARTE_CACHE_ = 90000; // caracteres por parte (el máximo de CacheService es 100 KB por valor)
+var MAX_CAMBIOS_ = 80; // más filas cambiadas que esto: conviene rehacer la foto
+
+function alcanceIngreso_(usuario) {
+  return usuario.rol === 'sucursal' ? 'suc-' + slugPlanilla_(usuario.sucursal) : 'todas';
+}
+
+/** Arma la foto de las facturas (de una sucursal, o todas) y la guarda en partes. */
+function armarFoto_(alcance, comprobantes, ahora) {
+  var b64 = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(comprobantes), 'application/json', 'c.json')).getBytes());
+  var partes = {};
+  var n = Math.ceil(b64.length / PARTE_CACHE_);
+  for (var i = 0; i < n; i++) partes[CACHE_INGRESO_ + ':' + alcance + ':' + i] = b64.slice(i * PARTE_CACHE_, (i + 1) * PARTE_CACHE_);
+  partes[CACHE_INGRESO_ + ':' + alcance] = JSON.stringify({ ahora: ahora, partes: n });
+  try { CacheService.getScriptCache().putAll(partes, 21600); } catch (e) { console.warn('No se pudo guardar la foto: ' + e); }
+  return { ahora: ahora, b64: b64 };
+}
+
+function leerFoto_(alcance) {
+  var cache = CacheService.getScriptCache();
+  var meta = cache.get(CACHE_INGRESO_ + ':' + alcance);
+  if (!meta) return null;
+  meta = JSON.parse(meta);
+  var claves = [];
+  for (var i = 0; i < meta.partes; i++) claves.push(CACHE_INGRESO_ + ':' + alcance + ':' + i);
+  var partes = cache.getAll(claves);
+  var b64 = '';
+  for (var j = 0; j < claves.length; j++) {
+    if (!partes[claves[j]]) return null; // se perdió una parte: hay que rehacerla
+    b64 += partes[claves[j]];
+  }
+  return { ahora: meta.ahora, b64: b64 };
+}
+
+/** Rehace la foto de todas las facturas (la usan Cobranzas y Gerencia). La llama la lectura de cada hora. */
+function prepararIngreso() {
+  var ahora = ahora_();
+  return armarFoto_('todas', leerHoja_(HOJAS.comprobantes), ahora).ahora;
+}
+
+/** Las filas de Comprobantes cambiadas después de "desde" (null si son demasiadas). */
+function filasCambiadas_(hoja, desde, maximo) {
+  if (hoja.getLastRow() < 2) return [];
+  var col = HOJAS.comprobantes.columnas.indexOf('actualizado') + 1;
+  var marcas = hoja.getRange(2, col, hoja.getLastRow() - 1, 1).getValues();
+  var filas = [];
+  for (var i = 0; i < marcas.length; i++) {
+    var m = marcas[i][0] instanceof Date ? marcas[i][0].toISOString() : String(marcas[i][0]);
+    if (m > desde) filas.push(i + 2);
+  }
+  if (maximo && filas.length > maximo) return null;
+  return filas.map(function (f) { return leerFila_(hoja, f); });
+}
+
+/**
+ * Lo que necesita la pantalla al entrar, rápido: la foto comprimida de las facturas, lo que cambió
+ * desde la foto, y el resto de los datos (también comprimido). La pantalla junta las dos cosas.
+ */
+function obtenerDatosRapidos() {
+  try {
+    return obtenerDatosRapidos_();
+  } catch (e) {
+    if (String(e.message).indexOf(MARCA_ACCESO) === 0) throw e;
+    console.error('obtenerDatosRapidos: ' + (e && e.stack ? e.stack : e));
+    throw new Error(MARCA_ACCESO + JSON.stringify({ motivo: 'falla', contacto: contactoAlta_() }));
+  }
+}
+
+function obtenerDatosRapidos_() {
+  var t0 = Date.now();
+  var usuario = usuarioActual_();
+  var alcance = alcanceIngreso_(usuario);
+  var hoja = hoja_(HOJAS.comprobantes);
+  var foto = leerFoto_(alcance);
+  var hasta = ahora_(); // lo que cambie desde acá lo trae la consulta de cada minuto
+  var cambios = foto ? filasCambiadas_(hoja, foto.ahora, MAX_CAMBIOS_) : null;
+  var origen = 'foto';
+  if (!foto || cambios === null) {
+    // Sin foto (o vieja): se lee todo y se guarda para el próximo
+    var ahora = ahora_();
+    var todas = leerHoja_(HOJAS.comprobantes);
+    if (usuario.rol === 'sucursal') todas = todas.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
+    foto = armarFoto_(alcance, todas, ahora);
+    hasta = ahora;
+    cambios = [];
+    origen = 'leída';
+  }
+  if (usuario.rol === 'sucursal') cambios = cambios.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
+  var t1 = Date.now();
+  var resto = obtenerDatosSinControl_(usuario, true);
+  resto.cambios = cambios;
+  resto.ahora = hasta;
+  var restoB64 = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(resto), 'application/json', 'r.json')).getBytes());
+  console.log('Ingreso rápido: facturas (' + origen + ', ' + cambios.length + ' cambiadas) en ' + (t1 - t0) + ' ms, resto en ' + (Date.now() - t1) + ' ms; ' +
+    Math.round(foto.b64.length / 1024) + ' KB + ' + Math.round(restoB64.length / 1024) + ' KB');
+  return { facturas: foto.b64, resto: restoB64 };
+}
+
+/**
  * Lo mismo que obtenerDatos, pero comprimido (gzip en base64): con miles de facturas viaja mucho más
  * rápido como un solo texto chico que como un objeto grande. La pantalla lo descomprime.
  * En Ejecuciones de Apps Script queda cuánto tardó y cuánto pesó.
@@ -139,12 +246,12 @@ function contactoAlta_() {
 }
 
 var TIEMPOS_ = {};
-function obtenerDatosSinControl_() {
+function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
   var t = Date.now();
-  var usuario = usuarioActual_();
+  var usuario = usuarioYa || usuarioActual_();
   TIEMPOS_.usuario = Date.now() - t;
   t = Date.now();
-  var comprobantes = leerHoja_(HOJAS.comprobantes);
+  var comprobantes = sinComprobantes ? [] : leerHoja_(HOJAS.comprobantes);
   TIEMPOS_.comprobantes = Date.now() - t;
   if (usuario.rol === 'sucursal') {
     comprobantes = comprobantes.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
@@ -945,7 +1052,10 @@ function actualizarPlanillaDeControl() {
   } catch (e) {
     console.warn('No se pudo leer la planilla de control: ' + e);
   }
-  return completarDiario_(libro);
+  var completadas = completarDiario_(libro);
+  // De paso, se deja lista la foto de las facturas para que el próximo ingreso sea rápido
+  try { prepararIngreso(); } catch (e) { console.warn('No se pudo preparar el ingreso: ' + e); }
+  return completadas;
 }
 
 /** Botón "Traer los cambios de mi planilla ahora" (Ajustes → Planilla). Solo Cobranzas. */

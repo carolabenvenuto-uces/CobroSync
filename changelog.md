@@ -16,6 +16,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 ### Cambiado
 - **El siniestro del nombre del PDF se toma siempre:** al subir desde el detalle de la factura, si el legajo todavía no tiene siniestro y el nombre del archivo lo trae, se guarda aunque sea solo la factura (antes solo con la orden). Así la factura pasa enseguida a su siniestro en Mis siniestros. Con la orden sigue siendo obligatorio.
 - **Siniestros:** las facturas que todavía no tienen número de siniestro van juntas en un solo renglón arriba de la lista ("Sin número de siniestro todavía · N facturas"), que se abre para verlas. Buscando por número de factura se encuentran igual.
+- **Siniestros:** al cambiar de estado o de compañía se cierra el siniestro que estaba abierto, para que no parezca que es del estado nuevo.
 
 ## [0.17.5] - 2026-11-16
 

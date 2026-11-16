@@ -226,6 +226,11 @@ export default function Siniestros() {
               </li>
   )
   // Si la búsqueda deja un solo siniestro, se abre solo
+  // Al cambiar de estado se cierra el siniestro abierto: si no, parece que es de ese estado
+  const elegirEstado = (e: EstadoSiniestro | '') => {
+    setEstado(e)
+    setElegido(null)
+  }
   const mostrado = actual ?? (buscando && visibles.length === 1 ? visibles[0] : null)
 
   const documento = (d: Documento) => {
@@ -383,7 +388,10 @@ export default function Siniestros() {
         <select
           aria-label="Compañía"
           value={companiaElegida}
-          onChange={(e) => setCompaniaElegida(e.target.value)}
+          onChange={(e) => {
+            setCompaniaElegida(e.target.value)
+            setElegido(null)
+          }}
           className="rounded-lg border border-slate-200 bg-white py-2.5 pl-2 pr-7 text-sm shadow-sm"
         >
           <option value="">Todas las compañías</option>
@@ -398,7 +406,7 @@ export default function Siniestros() {
 
       {/* Filtro por estado: un botón por color */}
       <div className="mb-3 flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!estado ? 'border-slate-400 bg-white text-noche ring-2 ring-slate-200' : 'border-slate-200 bg-white opacity-60 hover:opacity-100'}`}>
+        <button type="button" onClick={() => elegirEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!estado ? 'border-slate-400 bg-white text-noche ring-2 ring-slate-200' : 'border-slate-200 bg-white opacity-60 hover:opacity-100'}`}>
           Todos · {grupos.length}
         </button>
         {ORDEN_ESTADOS.map((e) => {
@@ -408,7 +416,7 @@ export default function Siniestros() {
             <button
               key={e}
               type="button"
-              onClick={() => setEstado(estado === e ? '' : e)}
+              onClick={() => elegirEstado(estado === e ? '' : e)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
                 estado === e ? `${ESTADO_SINIESTRO[e].fuerte} ring-2` : `${ESTADO_SINIESTRO[e].chip} ${estado ? 'opacity-50 hover:opacity-90' : 'hover:brightness-95'}`
               }`}

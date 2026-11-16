@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.16.7] - 2026-11-16
+
+### Cambiado
+- **Inicio con colores de prioridad:** cada tarjeta tiene un borde y un ícono según qué tan urgente es: rojo (documentación crítica, pedir apoyo a gerencia), ámbar (atrasadas, compromisos vencidos, observadas, notas de crédito sin aviso, vencidas sin reclamar, volver a reclamar), violeta (revisar, presentar, notas de crédito avisadas) y gris (pendientes al día). Arriba está qué significa cada color.
+
 ## [0.16.6] - 2026-11-16
 
 ### Cambiado

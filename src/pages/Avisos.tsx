@@ -20,6 +20,17 @@ export interface Aviso {
   ruta: string
   /** solo para tener a la vista (todavía no hay que hacer nada): no suma al número del menú */
   informativo?: boolean
+  /** qué tan urgente es: define el color de la tarjeta */
+  prioridad: Prioridad
+}
+
+/** Urgente (rojo), atender pronto (ámbar), del día a día (violeta), para tener a la vista (gris). */
+export type Prioridad = 'urgente' | 'alta' | 'normal' | 'info'
+const COLOR_PRIORIDAD: Record<Prioridad, { borde: string; icono: string; numero: string; etiqueta: string }> = {
+  urgente: { borde: 'border-l-sem-rojo', icono: 'bg-red-50 text-red-700', numero: 'text-red-700', etiqueta: 'Urgente' },
+  alta: { borde: 'border-l-sem-amarillo', icono: 'bg-amber-50 text-amber-700', numero: 'text-amber-700', etiqueta: 'Atender pronto' },
+  normal: { borde: 'border-l-marca', icono: 'bg-indigo-50 text-marca', numero: 'text-noche', etiqueta: 'Del día a día' },
+  info: { borde: 'border-l-slate-300', icono: 'bg-slate-100 text-slate-500', numero: 'text-slate-600', etiqueta: 'Para tener a la vista' },
 }
 
 export interface SectorAvisos {
@@ -47,6 +58,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
       avisos: [
         {
           clave: 'criticas',
+          prioridad: 'urgente',
           titulo: 'Documentación crítica',
           descripcion: `Sin la documentación completa: ${textoCritica()} (avisado a gerencia general)`,
           icono: Siren,
@@ -55,6 +67,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'atrasadas',
+          prioridad: 'alta',
           titulo: 'Documentación atrasada',
           descripcion: 'Pasó el plazo de la sucursal (va en el resumen de los lunes al gerente)',
           icono: TriangleAlert,
@@ -63,6 +76,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'en-plazo',
+          prioridad: 'info',
           titulo: 'Documentación pendiente al día',
           descripcion: 'Falta la documentación, pero la sucursal todavía está dentro del plazo',
           icono: Clock,
@@ -72,6 +86,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'compromisos',
+          prioridad: 'alta',
           titulo: 'Compromisos vencidos',
           descripcion: 'La sucursal prometió una fecha para subirlo y ya pasó',
           icono: CalendarX2,
@@ -80,6 +95,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'observadas',
+          prioridad: 'alta',
           titulo: 'Observadas sin respuesta',
           descripcion: 'Se le devolvió a la sucursal y todavía no respondió',
           icono: MessageSquareWarning,
@@ -88,6 +104,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'nc',
+          prioridad: 'alta',
           titulo: 'Notas de crédito sin aviso',
           descripcion: 'Aparecieron en el ERP y la sucursal no las informó',
           icono: Receipt,
@@ -103,6 +120,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
       avisos: [
         {
           clave: 'revisar',
+          prioridad: 'normal',
           titulo: 'Para revisar y tildar',
           descripcion: 'La sucursal subió la factura y la orden firmada',
           icono: FileCheck,
@@ -111,6 +129,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'presentar',
+          prioridad: 'normal',
           titulo: 'Para presentar',
           descripcion: 'Documentación aprobada, falta presentarla a la compañía',
           icono: FileClock,
@@ -119,6 +138,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'anulaciones',
+          prioridad: 'normal',
           titulo: 'Notas de crédito avisadas',
           descripcion: 'La sucursal avisó una nota de crédito (total o parcial) que todavía no llegó del ERP',
           icono: Receipt,
@@ -134,6 +154,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
       avisos: [
         {
           clave: 'sin-reclamar',
+          prioridad: 'alta',
           titulo: 'Vencidas sin reclamar',
           descripcion: 'Todavía no se hizo ningún reclamo',
           icono: BellRing,
@@ -142,6 +163,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'volver',
+          prioridad: 'alta',
           titulo: 'Volver a reclamar',
           descripcion: `Pasaron ${plazosActuales().respuestaReclamo} días del último reclamo sin respuesta`,
           icono: BellRing,
@@ -150,6 +172,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
         },
         {
           clave: 'escalar',
+          prioridad: 'urgente',
           titulo: 'Sin respuesta: pedir apoyo a gerencia',
           descripcion: 'La compañía no respondió 3 reclamos',
           icono: Megaphone,
@@ -174,6 +197,16 @@ export default function Avisos() {
         sucursal
       />
 
+      {/* Qué significa cada color */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+        {(['urgente', 'alta', 'normal', 'info'] as const).map((p) => (
+          <span key={p} className="inline-flex items-center gap-1.5">
+            <span className={`h-3 w-1 rounded-full border-l-4 ${COLOR_PRIORIDAD[p].borde}`} />
+            {COLOR_PRIORIDAD[p].etiqueta}
+          </span>
+        ))}
+      </div>
+
       <div className="space-y-6">
         {sectores.map((s) => (
           <section key={s.sector} className={`rounded-2xl border-l-4 bg-white p-5 shadow-sm ${s.color}`}>
@@ -190,17 +223,18 @@ export default function Avisos() {
                   <Link
                     key={a.clave}
                     to={a.ruta}
-                    className={`group flex items-start gap-4 rounded-xl border p-4 transition ${
-                      vacio ? 'border-slate-100 opacity-60' : 'border-slate-200 hover:border-marca/50 hover:shadow'
+                    title={COLOR_PRIORIDAD[a.prioridad].etiqueta}
+                    className={`group flex items-start gap-4 rounded-xl border border-l-4 p-4 transition ${
+                      vacio ? 'border-slate-100 border-l-slate-200 opacity-60' : `border-slate-200 ${COLOR_PRIORIDAD[a.prioridad].borde} hover:shadow`
                     }`}
                   >
-                    <div className={`rounded-lg p-2.5 ${vacio ? 'bg-slate-100 text-slate-400' : 'bg-fondo text-noche'}`}>
+                    <div className={`rounded-lg p-2.5 ${vacio ? 'bg-slate-100 text-slate-400' : COLOR_PRIORIDAD[a.prioridad].icono}`}>
                       <Icono className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
                         <h3 className="font-bold">{a.titulo}</h3>
-                        <span className="text-3xl font-extrabold tabular-nums">{a.facturas.length}</span>
+                        <span className={`text-3xl font-extrabold tabular-nums ${vacio ? '' : COLOR_PRIORIDAD[a.prioridad].numero}`}>{a.facturas.length}</span>
                       </div>
                       <p className="text-xs text-slate-500">{a.descripcion}</p>
                       {!vacio && <p className="mt-2 text-sm font-semibold tabular-nums">{formatoPesos(monto)}</p>}

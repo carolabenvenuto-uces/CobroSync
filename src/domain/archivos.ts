@@ -10,6 +10,7 @@
  *  - qué es: "factura"/"FC" u "orden"/"OR"/"repuestos"/"firma" (la orden firmada); si no dice, son las dos juntas
  */
 import type { Comprobante, TipoDocumento } from './tipos'
+import { limpiarSiniestro } from './siniestros'
 
 export type TipoArchivo = TipoDocumento | 'documentacion'
 
@@ -154,12 +155,13 @@ export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVe
   for (const m of base.matchAll(/([a-záéíóúñ]+)\.?\s*[:#nº°]*\s*([a-z]{0,3}\d[\w\-/.]*)/gi)) {
     if (!esPalabraSiniestro(m[1])) continue
     const valor = m[2].replace(/[.\-/]+$/, '')
-    if (valor.replace(/\D/g, '').length >= 4) return valor
+    if (valor.replace(/\D/g, '').length >= 4) return limpiarSiniestro(valor)
   }
   // 2) sin la palabra: un número largo aparte del de la factura (no una fecha)
   base = base.replace(/[a-záéíóúñ]+/gi, ' ')
   const candidatos = (base.match(/\d[\d\-/.]*\d/g) ?? []).filter((x) => !/^\d{1,2}[-/.]\d{1,2}[-/.](\d{2}|\d{4})$/.test(x))
-  return candidatos.find((x) => x.replace(/\D/g, '').length >= 5) ?? null
+  const hallado = candidatos.find((x) => x.replace(/\D/g, '').length >= 5)
+  return hallado ? limpiarSiniestro(hallado) : null
 }
 
 /** "siniestro" escrito de muchas formas: abreviado (sin, stro, sto, sn, sint) o con una o dos letras de más o de menos. */

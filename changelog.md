@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.5] - 2026-11-16
+
+### Cambiado
+- **Siniestros con dos números largos separados por guion** (como los da Allianz, "0042605268-0042584578" o "C0042601693117-0042601893777"): se guarda solo el segundo, que es el siniestro. Vale para lo que se escribe, lo que se toma del nombre del archivo y lo que viene de la planilla. Los siniestros con guiones más cortos ("029-9-506622") quedan como están.
+
 ## [0.17.4] - 2026-11-16
 
 ### Corregido

@@ -131,7 +131,8 @@ const contexto = {
   },
   Utilities: {
     formatDate: (d) => d.toISOString().slice(0, 10),
-    newBlob: (datos, _mime, name) => ({ name, datos }),
+    newBlob: (datos, _mime, name) => ({ name, datos, getDataAsString: () => Buffer.from(datos).toString('utf8') }),
+    ungzip: (blob) => { const t = zlib.gunzipSync(Buffer.from(blob.datos)).toString('utf8'); return { getDataAsString: () => t } },
     gzip: (blob) => ({ getBytes: () => zlib.gzipSync(Buffer.from(blob.datos)) }),
     base64Decode: (b) => Buffer.from(b, 'base64'),
     base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
@@ -804,10 +805,12 @@ prueba('ingreso rápido: la foto más lo que cambió es igual a leer todo', () =
   esperar(r.resto.cambios.some((c) => c.id === f.id), 'no trajo la fila cambiada')
   esperar(r.comprobantes.find((c) => c.id === f.id).observaciones === 'cambio después de la foto', 'quedó el dato viejo')
   esperar(r.comprobantes.length === completo.datos.comprobantes.length, 'cambió la cantidad')
-  // La sucursal solo ve lo suyo
+  // La sucursal solo ve lo suyo, y su foto sale de la de todas (sin leer la planilla)
   como('rocamora@svaauto.com.ar')
   const s = juntar(gs('obtenerDatosRapidos'))
   esperar(s.comprobantes.length > 0 && s.comprobantes.every((c) => c.sucursal === 'Rocamora'), 'la sucursal vio de otra')
+  esperar([...cacheMemoria.keys()].some((k) => k.includes('suc-rocamora')), 'no guardó la foto de la sucursal')
+  esperar(s.comprobantes.some((c) => c.id === f.id) === (f.sucursal === 'Rocamora'), 'la foto de la sucursal no tiene el cambio')
   // Sin acceso: el mismo aviso de siempre
   como('otro@svaauto.com.ar')
   falla(() => gs('obtenerDatosRapidos'), '"motivo":"usuario"')

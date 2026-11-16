@@ -140,6 +140,19 @@ function leerFoto_(alcance) {
   return { ahora: meta.ahora, b64: b64 };
 }
 
+function fotoDeSucursalDesdeTodas_(alcance, sucursal) {
+  var todas = leerFoto_('todas');
+  if (!todas) return null;
+  try {
+    var texto = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(todas.b64), 'application/x-gzip', 't.gz')).getDataAsString('UTF-8');
+    var propias = JSON.parse(texto).filter(function (c) { return mismaSucursal_(c.sucursal, sucursal); });
+    return armarFoto_(alcance, propias, todas.ahora);
+  } catch (e) {
+    console.warn('No se pudo armar la foto de la sucursal: ' + e);
+    return null;
+  }
+}
+
 /** Rehace la foto de todas las facturas (la usan Cobranzas y Gerencia). La llama la lectura de cada hora. */
 function prepararIngreso() {
   var ahora = ahora_();
@@ -180,6 +193,8 @@ function obtenerDatosRapidos_() {
   var alcance = alcanceIngreso_(usuario);
   var hoja = hoja_(HOJAS.comprobantes);
   var foto = leerFoto_(alcance);
+  // Una sucursal que todavía no tiene su foto la arma con la de todas (mucho más rápido que leer la planilla)
+  if (!foto && alcance !== 'todas') foto = fotoDeSucursalDesdeTodas_(alcance, usuario.sucursal);
   var hasta = ahora_(); // lo que cambie desde acá lo trae la consulta de cada minuto
   var cambios = foto ? filasCambiadas_(hoja, foto.ahora, MAX_CAMBIOS_) : null;
   var origen = 'foto';

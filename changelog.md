@@ -18,6 +18,9 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 - En **Ajustes**, solo la administradora: cuándo fue el último backup, si se están haciendo solos, la lista con el enlace a cada copia y el botón **Hacer un backup ahora** (quedan los últimos 10 hechos a mano).
 - Para que empiecen a hacerse solos, hay que correr una vez **instalarDisparadores** en Apps Script.
 
+### Mejorado
+- **Primer ingreso de una sucursal más rápido:** si todavía no tiene su foto de facturas, se arma a partir de la de todas en lugar de leer la planilla entera.
+
 ## [0.14.3] - 2026-11-15
 
 ### Mejorado

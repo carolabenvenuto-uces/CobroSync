@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, Clock, Trash2 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { DIAS_ESPERA_REVISAR } from '../domain/espera'
-import type { DocumentoEnEspera } from '../domain/tipos'
+import type { DocumentoEnEspera, Sucursal } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { formatoFecha } from '../lib/formato'
 
@@ -90,11 +90,21 @@ export function EnEsperaAuditoria() {
   )
 }
 
-/** Sucursal: lo que subió de facturas de hoy, hasta que se cargue el ERP. */
+/** De qué sucursal es un PDF en espera: por su punto de venta (y, si no se encuentra, por quién lo subió). */
+export function sucursalDeEspera(e: DocumentoEnEspera, sucursales: Sucursal[]): string {
+  const porPv = sucursales.find((s) => (s.puntosVenta?.length ? s.puntosVenta : [s.puntoVenta]).includes(e.puntoVenta))
+  return porPv?.nombre ?? e.sucursal
+}
+
+const sinMarcas = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toLowerCase()
+const mismaSucursal = (a: string, b: string) => sinMarcas(a) === sinMarcas(b)
+
+/** Sucursal: lo que se subió de sus facturas de hoy, hasta que se cargue el ERP (solo las de sus puntos de venta). */
 export function EnEsperaSucursal() {
-  const { datos } = useApp()
+  const { datos, sucursal } = useApp()
   const [abierta, setAbierta] = useState(false)
-  const lista = (datos?.enEspera ?? []).filter((e) => !e.asociado)
+  const sucursales = datos?.meta.sucursales ?? []
+  const lista = (datos?.enEspera ?? []).filter((e) => !e.asociado && mismaSucursal(sucursalDeEspera(e, sucursales), sucursal))
   if (!lista.length) return null
   return (
     <div className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3">

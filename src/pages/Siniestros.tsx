@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, CornerDownRight, FolderOpen, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronDown, CornerDownRight, FolderOpen, Search } from 'lucide-react'
 import { BadgeEtapa } from '../components/ui/Badges'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -198,7 +198,39 @@ export default function Siniestros() {
     [grupos, estado, companiaElegida, texto],
   )
   const actual = grupos.find((g) => g.clave === elegido) ?? null
+  // Buscando, se muestra todo junto; si no, las que no tienen número de siniestro van en un solo renglón
+  const conNumero = buscando ? visibles : visibles.filter((g) => g.siniestro)
+  const sinNumero = buscando ? [] : visibles.filter((g) => !g.siniestro)
+  const [verSinNumero, setVerSinNumero] = useState(false)
+  const [cantidadSinNumero, setCantidadSinNumero] = useState(POR_PAGINA)
+  const fila = (g: Grupo) => (
+              <li key={g.clave}>
+                <button
+                  type="button"
+                  onClick={() => setElegido(g.clave)}
+                  className={`flex w-full items-start gap-3 px-4 py-2.5 text-left ${mostrado?.clave === g.clave ? 'bg-marca/10' : 'hover:bg-fondo'}`}
+                >
+                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${ESTADO_SINIESTRO[g.estado].punto}`} title={ESTADO_SINIESTRO[g.estado].texto} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">{g.siniestro || `Pendiente de doc. · ${formatoComprobante(g.facturas[0])}`}</span>
+                      <span className="shrink-0 text-[11px] text-slate-500">{formatoFecha(g.ultimaFecha)}</span>
+                    </span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {g.compania}
+                      {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
+                      {g.notas.length > 0 ? ` · ${g.notas.length} NC` : ''}
+                    </span>
+                  </span>
+                </button>
+              </li>
+  )
   // Si la búsqueda deja un solo siniestro, se abre solo
+  // Al cambiar de estado se cierra el siniestro abierto: si no, parece que es de ese estado
+  const elegirEstado = (e: EstadoSiniestro | '') => {
+    setEstado(e)
+    setElegido(null)
+  }
   const mostrado = actual ?? (buscando && visibles.length === 1 ? visibles[0] : null)
 
   const documento = (d: Documento) => {
@@ -356,7 +388,10 @@ export default function Siniestros() {
         <select
           aria-label="Compañía"
           value={companiaElegida}
-          onChange={(e) => setCompaniaElegida(e.target.value)}
+          onChange={(e) => {
+            setCompaniaElegida(e.target.value)
+            setElegido(null)
+          }}
           className="rounded-lg border border-slate-200 bg-white py-2.5 pl-2 pr-7 text-sm shadow-sm"
         >
           <option value="">Todas las compañías</option>
@@ -371,7 +406,7 @@ export default function Siniestros() {
 
       {/* Filtro por estado: un botón por color */}
       <div className="mb-3 flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!estado ? 'border-slate-400 bg-white text-noche ring-2 ring-slate-200' : 'border-slate-200 bg-white opacity-60 hover:opacity-100'}`}>
+        <button type="button" onClick={() => elegirEstado('')} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!estado ? 'border-slate-400 bg-white text-noche ring-2 ring-slate-200' : 'border-slate-200 bg-white opacity-60 hover:opacity-100'}`}>
           Todos · {grupos.length}
         </button>
         {ORDEN_ESTADOS.map((e) => {
@@ -381,7 +416,7 @@ export default function Siniestros() {
             <button
               key={e}
               type="button"
-              onClick={() => setEstado(estado === e ? '' : e)}
+              onClick={() => elegirEstado(estado === e ? '' : e)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
                 estado === e ? `${ESTADO_SINIESTRO[e].fuerte} ring-2` : `${ESTADO_SINIESTRO[e].chip} ${estado ? 'opacity-50 hover:opacity-90' : 'hover:brightness-95'}`
               }`}
@@ -396,40 +431,45 @@ export default function Siniestros() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:grid lg:h-[calc(100vh-13rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(18rem,24rem)_1fr]">
         <div className={`min-h-0 flex-col border-slate-200 lg:flex lg:border-r ${mostrado ? 'hidden' : 'flex'}`}>
           <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
-            {visibles.length.toLocaleString('es-AR')} {visibles.length === 1 ? 'siniestro' : 'siniestros'} · lo más reciente primero
+            {conNumero.length.toLocaleString('es-AR')} {conNumero.length === 1 ? 'siniestro' : 'siniestros'} · lo más reciente primero
           </div>
           <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
-            {visibles.slice(0, cantidad).map((g) => (
-              <li key={g.clave}>
+            {/* Las facturas que todavía no tienen número de siniestro, juntas en un solo renglón */}
+            {sinNumero.length > 0 && (
+              <li className="border-b border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setElegido(g.clave)}
-                  className={`flex w-full items-start gap-3 px-4 py-2.5 text-left ${mostrado?.clave === g.clave ? 'bg-marca/10' : 'hover:bg-fondo'}`}
+                  onClick={() => setVerSinNumero(!verSinNumero)}
+                  aria-expanded={verSinNumero}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-fondo"
                 >
-                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${ESTADO_SINIESTRO[g.estado].punto}`} title={ESTADO_SINIESTRO[g.estado].texto} />
+                  <FolderOpen className="h-4 w-4 shrink-0 text-slate-400" />
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">{g.siniestro || `Pendiente de doc. · ${formatoComprobante(g.facturas[0])}`}</span>
-                      <span className="shrink-0 text-[11px] text-slate-500">{formatoFecha(g.ultimaFecha)}</span>
-                    </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {g.compania}
-                      {g.patente ? ` · ${g.patente}` : ''} · {g.facturas.length} {g.facturas.length === 1 ? 'factura' : 'facturas'}
-                      {g.notas.length > 0 ? ` · ${g.notas.length} NC` : ''}
+                    <span className="block text-sm font-semibold">Sin número de siniestro todavía</span>
+                    <span className="block text-xs text-slate-500">
+                      {sinNumero.length.toLocaleString('es-AR')} {sinNumero.length === 1 ? 'factura' : 'facturas'} · se completa al subir la orden firmada
                     </span>
                   </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${verSinNumero ? 'rotate-180' : ''}`} />
                 </button>
+                {verSinNumero && <ul className="divide-y divide-slate-50 bg-fondo/50">{sinNumero.slice(0, cantidadSinNumero).map((g) => fila(g))}</ul>}
+                {verSinNumero && sinNumero.length > cantidadSinNumero && (
+                  <button type="button" onClick={() => setCantidadSinNumero(cantidadSinNumero + POR_PAGINA)} className="w-full px-4 py-2 text-center text-xs font-semibold text-marca hover:bg-marca/5">
+                    Ver {Math.min(POR_PAGINA, sinNumero.length - cantidadSinNumero)} más
+                  </button>
+                )}
               </li>
-            ))}
+            )}
+            {conNumero.slice(0, cantidad).map((g) => fila(g))}
             {visibles.length === 0 && (
               <li className="px-4 py-10 text-center text-sm text-slate-500">
                 {buscando ? 'Sin siniestros con esta búsqueda. Conviene probar con menos números o con la patente.' : 'Sin siniestros para mostrar.'}
               </li>
             )}
-            {visibles.length > cantidad && (
+            {conNumero.length > cantidad && (
               <li>
                 <button type="button" onClick={() => setCantidad(cantidad + POR_PAGINA)} className="w-full px-4 py-2.5 text-center text-sm font-semibold text-marca hover:bg-marca/5">
-                  Ver {Math.min(POR_PAGINA, visibles.length - cantidad)} más
+                  Ver {Math.min(POR_PAGINA, conNumero.length - cantidad)} más
                 </button>
               </li>
             )}

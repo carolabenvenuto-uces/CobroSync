@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.2] - 2026-11-16
+
+### Cambiado
+- **Seguimiento** (Documentación, Pedidos y Vencidas y reclamos): sin el filtro de sucursal de arriba; se filtra en la columna de la tabla, como en Control diario.
+- Textos más cortos: sin "Tocar una tarjeta para ver solo esas facturas" y con subtítulos de una línea en Inicio, Control diario, Siniestros, Compañías y Ajustes.
+
 ## [0.17.1] - 2026-11-16
 
 ### Agregado

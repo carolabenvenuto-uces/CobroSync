@@ -75,7 +75,7 @@ export default function Ajustes() {
     <>
       <EncabezadoPagina
         titulo="Ajustes"
-        subtitulo="Plazos de la documentación, facturas MiPyME, notificaciones y mails. Solo lo ve Cobranzas."
+        subtitulo="Plazos de la documentación, facturas MiPyME, notificaciones y mails"
         acciones={
           <button
             type="button"

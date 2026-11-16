@@ -58,8 +58,7 @@ export function TarjetaFiltro({
 
 /** Línea debajo de las tarjetas: qué se está mostrando y cómo volver a ver todo */
 export function AvisoFiltroTarjeta({ texto, onQuitar }: { texto: string | null; onQuitar: () => void }) {
-  if (!texto)
-    return <p className="-mt-2 mb-3 text-xs text-slate-500">Tocar una tarjeta para ver solo esas facturas.</p>
+  if (!texto) return null
   return (
     <div className="-mt-1 mb-3 flex flex-wrap items-center gap-2 text-sm">
       <span className="text-slate-600">

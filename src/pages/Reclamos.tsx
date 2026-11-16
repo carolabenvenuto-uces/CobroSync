@@ -6,7 +6,7 @@ import { listaParaMail, TextoMail } from '../components/TextoMail'
 import { EncabezadoPagina } from '../components/ui/Card'
 import { AvisoFiltroTarjeta, TarjetaFiltro, type TonoTarjeta } from '../components/ui/TarjetaFiltro'
 import { Tabla, type Columna } from '../components/ui/Tabla'
-import { useApp, useComprobantes } from '../context/AppContext'
+import { useApp } from '../context/AppContext'
 import {
   cambiosPorErrorCorregido,
   cambiosPorRespuesta,
@@ -58,7 +58,8 @@ export default function Reclamos() {
   const [respuesta, setRespuesta] = useState<RespuestaReclamo | ''>('')
   // Con varias elegidas: qué se va a registrar (cada acción abre solo sus campos)
   const [registrando, setRegistrando] = useState<'reclamo' | 'respuesta' | null>(null)
-  const comprobantes = useComprobantes()
+  // Todas las sucursales: se filtran desde la columna de la tabla
+  const comprobantes = datos!.comprobantes
   const { aseguradoras } = datos!
   const [params, setParams] = useSearchParams()
   const nombreCompania = (id: string) => aseguradoras.find((a) => a.id === id)?.nombre ?? id
@@ -216,7 +217,7 @@ export default function Reclamos() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Vencidas y reclamos" sucursal />
+      <EncabezadoPagina titulo="Vencidas y reclamos" />
 
       {/* Arriba, qué hay que hacer: cada tarjeta filtra la tabla */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -283,11 +283,7 @@ export default function ControlDiario() {
     <>
       <EncabezadoPagina
         titulo={soloConsulta ? 'Detalle de facturas' : 'Control diario'}
-        subtitulo={
-          soloConsulta
-            ? 'Todas las facturas y notas de crédito. Búsqueda por número, siniestro o patente; cada fila abre el detalle.'
-            : 'Todas las facturas y notas de crédito, como la hoja "Diario" de la planilla'
-        }
+        subtitulo="Todas las facturas y notas de crédito"
         acciones={rol === 'auditoria' ? <EnEsperaAuditoria /> : undefined}
       />
 

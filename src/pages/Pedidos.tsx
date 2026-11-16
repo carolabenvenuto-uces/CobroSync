@@ -3,7 +3,7 @@ import { EncabezadoPagina } from '../components/ui/Card'
 import { FiltroRapido } from '../components/ui/FiltroRapido'
 import { PestanasSucursales } from '../components/PestanasSucursales'
 import { Tabla, type Columna } from '../components/ui/Tabla'
-import { useApp, useComprobantes } from '../context/AppContext'
+import { useApp } from '../context/AppContext'
 import { NOMBRE_PEDIDO, pedidosAbiertos, type PedidoAbierto } from '../domain/pedidos'
 import { descargarExcel, fechaExcel } from '../lib/exportar'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
@@ -14,8 +14,9 @@ import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
  * hace falta acordarse a quién se le pidió qué: lo que la sucursal respondió queda para cerrar.
  */
 export default function Pedidos() {
-  const { hoy, abrirLegajo } = useApp()
-  const comprobantes = useComprobantes()
+  const { datos, hoy, abrirLegajo } = useApp()
+  // Todas las sucursales: se filtran desde la columna de la tabla
+  const comprobantes = datos!.comprobantes
   const lista = useMemo(() => pedidosAbiertos(comprobantes, hoy), [comprobantes, hoy])
   const [ver, setVer] = useState<'esperando' | 'respondido' | 'todos' | 'viejos'>('todos')
   const filas = lista.filter((p) => ver === 'todos' || (ver === 'viejos' ? p.estado === 'esperando' && p.dias > 7 : p.estado === ver))
@@ -80,7 +81,7 @@ export default function Pedidos() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Pendientes de sucursales" sucursal />
+      <EncabezadoPagina titulo="Pendientes de sucursales" />
       <PestanasSucursales />
       <FiltroRapido
         opciones={[

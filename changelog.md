@@ -11,6 +11,14 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.3] - 2026-11-16
+
+### Corregido
+- **Las notas de crédito decían "Anulada / NC":** ahora su estado es **Nota de crédito**, y "Anulada" queda solo para las facturas anuladas (también en el filtro de la columna Estado).
+
+### Cambiado
+- **Colores de Inicio con el mismo sentido que en toda la plataforma:** el color dice quién tiene que actuar (ámbar la sucursal, violeta Cobranzas, azul la compañía), rojo es urgente y gris es para tener a la vista. Lo que hay que atender pronto va con el color lleno; lo del día a día, más suave.
+
 ## [0.17.2] - 2026-11-16
 
 ### Cambiado

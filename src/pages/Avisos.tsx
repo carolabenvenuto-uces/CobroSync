@@ -24,16 +24,28 @@ export interface Aviso {
   prioridad: Prioridad
 }
 
-/** Urgente (rojo), atender pronto (ámbar), del día a día (violeta), para tener a la vista (gris). */
+/**
+ * Colores de Inicio con el mismo sentido que en toda la plataforma: el color dice quién tiene que actuar
+ * (ámbar la sucursal, violeta Cobranzas, azul la compañía); rojo es urgente; gris, nada que hacer todavía.
+ * Dentro de cada sector, lo que hay que atender pronto va con el color lleno y lo del día a día, más suave.
+ */
 export type Prioridad = 'urgente' | 'alta' | 'normal' | 'info'
-const COLOR_PRIORIDAD: Record<Prioridad, { borde: string; icono: string; numero: string; etiqueta: string }> = {
-  urgente: { borde: 'border-l-sem-rojo', icono: 'bg-red-50 text-red-700', numero: 'text-red-700', etiqueta: 'Urgente' },
-  alta: { borde: 'border-l-sem-amarillo', icono: 'bg-amber-50 text-amber-700', numero: 'text-amber-700', etiqueta: 'Atender pronto' },
-  normal: { borde: 'border-l-marca', icono: 'bg-indigo-50 text-marca', numero: 'text-noche', etiqueta: 'Del día a día' },
-  info: { borde: 'border-l-slate-300', icono: 'bg-slate-100 text-slate-500', numero: 'text-slate-600', etiqueta: 'Para tener a la vista' },
+export type Quien = 'sucursal' | 'cobranzas' | 'compania'
+const TONO_QUIEN: Record<Quien, { fuerte: string; suave: string; icono: string; numero: string }> = {
+  sucursal: { fuerte: 'border-l-sem-amarillo', suave: 'border-l-sem-amarillo/40', icono: 'bg-amber-50 text-amber-700', numero: 'text-amber-700' },
+  cobranzas: { fuerte: 'border-l-etapa-auditoria', suave: 'border-l-etapa-auditoria/40', icono: 'bg-indigo-50 text-marca', numero: 'text-marca' },
+  compania: { fuerte: 'border-l-etapa-compania', suave: 'border-l-etapa-compania/40', icono: 'bg-blue-50 text-blue-700', numero: 'text-blue-700' },
 }
+function colorTarjeta(p: Prioridad, quien: Quien) {
+  if (p === 'urgente') return { borde: 'border-l-sem-rojo', icono: 'bg-red-50 text-red-700', numero: 'text-red-700' }
+  if (p === 'info') return { borde: 'border-l-slate-300', icono: 'bg-slate-100 text-slate-500', numero: 'text-slate-600' }
+  const t = TONO_QUIEN[quien]
+  return p === 'alta' ? { borde: t.fuerte, icono: t.icono, numero: t.numero } : { borde: t.suave, icono: t.icono, numero: 'text-noche' }
+}
+const ETIQUETA_PRIORIDAD: Record<Prioridad, string> = { urgente: 'Urgente', alta: 'Atender pronto', normal: 'Del día a día', info: 'Para tener a la vista' }
 
 export interface SectorAvisos {
+  quien: Quien
   sector: string
   explicacion: string
   color: string
@@ -53,6 +65,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
   return [
     {
       sector: 'Sucursales',
+      quien: 'sucursal',
       explicacion: 'Lo que las sucursales tienen que subir, corregir o informar',
       color: 'border-sem-amarillo',
       avisos: [
@@ -115,8 +128,9 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
     },
     {
       sector: 'Cobranzas',
+      quien: 'cobranzas',
       explicacion: 'Lo que nos toca a nosotras',
-      color: 'border-marca',
+      color: 'border-etapa-auditoria',
       avisos: [
         {
           clave: 'revisar',
@@ -149,6 +163,7 @@ export function calcularAvisos(comprobantes: Comprobante[], hoy: string): Sector
     },
     {
       sector: 'Compañías',
+      quien: 'compania',
       explicacion: 'Facturas presentadas que vencieron sin cobrarse',
       color: 'border-etapa-compania',
       avisos: [
@@ -197,14 +212,23 @@ export default function Avisos() {
         sucursal
       />
 
-      {/* Qué significa cada color */}
+      {/* Qué significa cada color (el mismo sentido que en el resto de la plataforma) */}
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-        {(['urgente', 'alta', 'normal', 'info'] as const).map((p) => (
-          <span key={p} className="inline-flex items-center gap-1.5">
-            <span className={`h-3 w-1 rounded-full border-l-4 ${COLOR_PRIORIDAD[p].borde}`} />
-            {COLOR_PRIORIDAD[p].etiqueta}
+        {(
+          [
+            ['border-l-sem-rojo', 'Urgente'],
+            ['border-l-sem-amarillo', 'Le toca a la sucursal'],
+            ['border-l-etapa-auditoria', 'Le toca a Cobranzas'],
+            ['border-l-etapa-compania', 'Le toca a la compañía'],
+            ['border-l-slate-300', 'Para tener a la vista'],
+          ] as const
+        ).map(([borde, texto]) => (
+          <span key={texto} className="inline-flex items-center gap-1.5">
+            <span className={`h-3 w-1 rounded-full border-l-4 ${borde}`} />
+            {texto}
           </span>
         ))}
+        <span>· más intenso: atender pronto</span>
       </div>
 
       <div className="space-y-6">
@@ -223,18 +247,18 @@ export default function Avisos() {
                   <Link
                     key={a.clave}
                     to={a.ruta}
-                    title={COLOR_PRIORIDAD[a.prioridad].etiqueta}
+                    title={ETIQUETA_PRIORIDAD[a.prioridad]}
                     className={`group flex items-start gap-4 rounded-xl border border-l-4 p-4 transition ${
-                      vacio ? 'border-slate-100 border-l-slate-200 opacity-60' : `border-slate-200 ${COLOR_PRIORIDAD[a.prioridad].borde} hover:shadow`
+                      vacio ? 'border-slate-100 border-l-slate-200 opacity-60' : `border-slate-200 ${colorTarjeta(a.prioridad, s.quien).borde} hover:shadow`
                     }`}
                   >
-                    <div className={`rounded-lg p-2.5 ${vacio ? 'bg-slate-100 text-slate-400' : COLOR_PRIORIDAD[a.prioridad].icono}`}>
+                    <div className={`rounded-lg p-2.5 ${vacio ? 'bg-slate-100 text-slate-400' : colorTarjeta(a.prioridad, s.quien).icono}`}>
                       <Icono className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
                         <h3 className="font-bold">{a.titulo}</h3>
-                        <span className={`text-3xl font-extrabold tabular-nums ${vacio ? '' : COLOR_PRIORIDAD[a.prioridad].numero}`}>{a.facturas.length}</span>
+                        <span className={`text-3xl font-extrabold tabular-nums ${vacio ? '' : colorTarjeta(a.prioridad, s.quien).numero}`}>{a.facturas.length}</span>
                       </div>
                       <p className="text-xs text-slate-500">{a.descripcion}</p>
                       {!vacio && <p className="mt-2 text-sm font-semibold tabular-nums">{formatoPesos(monto)}</p>}

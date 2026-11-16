@@ -111,7 +111,8 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
               ...pedidosParaSucursal(comprobantes, hoy).map((p) => p.c.id),
             ]).size
           : comprobantes.filter((c) => esperaALaSucursal(c, hoy)).length + (rol === 'auditoria' ? pedidosAbiertos(comprobantes, hoy).length : 0),
-      alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + a.facturas.length, 0), 0),
+      // Lo que hay que hacer: las pendientes al día se ven en Inicio pero no suman acá
+      alertas: sectores.reduce((t, s) => t + s.avisos.reduce((u, a) => u + (a.informativo ? 0 : a.facturas.length), 0), 0),
       reclamos: comprobantes.filter((c) => {
         const e = estadoReclamo(c, hoy)
         return e !== null && RECLAMO_PARA_ACTUAR.includes(e)

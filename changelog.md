@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.6] - 2026-11-16
+
+### Cambiado
+- **El siniestro del nombre del PDF se toma siempre:** al subir desde el detalle de la factura, si el legajo todavía no tiene siniestro y el nombre del archivo lo trae, se guarda aunque sea solo la factura (antes solo con la orden). Así la factura pasa enseguida a su siniestro en Mis siniestros. Con la orden sigue siendo obligatorio.
+
 ## [0.17.5] - 2026-11-16
 
 ### Cambiado

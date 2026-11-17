@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.9] - 2026-11-17
+
+### Corregido
+- **Una sucursal veía Mis facturas vacío** cuando en Usuarios su sucursal estaba escrita distinto que en la pestaña Sucursales ("Alvarez Thomas" y "A. Thomas"). Ahora se reconocen las abreviaturas con la inicial, y sin importar mayúsculas, acentos ni puntos; la plataforma usa el nombre de la pestaña Sucursales.
+
 ## [0.17.8] - 2026-11-17
 
 ### Corregido

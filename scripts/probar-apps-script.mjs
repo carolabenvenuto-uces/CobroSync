@@ -883,6 +883,14 @@ prueba('siniestro de Allianz con dos números: se guarda el segundo', () => {
   esperar(gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id).siniestro === '029-9-506622', 'cambió un siniestro con guiones cortos')
   gs('aplicarCambios', [{ id: c.id, campos: { siniestro: c.siniestro } }])
 })
+prueba('una sucursal escrita de otra forma en Usuarios ("Alvarez Thomas" por "A. Thomas") ve sus facturas', () => {
+  esperar(contexto.mismaSucursal_('A. Thomas', 'Alvarez Thomas') && contexto.mismaSucursal_('alvarez  thomas', 'A Thomas'), 'no reconoció la abreviatura')
+  esperar(!contexto.mismaSucursal_('A. Thomas', 'Rocamora') && !contexto.mismaSucursal_('B. Thomas', 'Alvarez Thomas'), 'confundió sucursales')
+  fila('Usuarios', ['otra.rocamora@svaauto.com.ar', 'Otra', 'Sucursal', 'rocamorá'])
+  como('otra.rocamora@svaauto.com.ar')
+  const r = gs('obtenerDatos')
+  esperar(r.usuario.sucursal === 'Rocamora' && r.datos.comprobantes.length > 0, `${r.usuario.sucursal}: ${r.datos.comprobantes.length}`)
+})
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
 
 if (fallas) process.exit(1)

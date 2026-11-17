@@ -1608,8 +1608,8 @@ function usuarioActual_() {
   if (rol === 'sucursal' && !u.sucursal) throw errorAcceso_('sucursal', email);
   // Cobranzas con una sucursal en Usuarios: además escanea la documentación de esa sucursal (la suya)
   return {
-    email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? u.sucursal : null,
-    sucursalPropia: rol === 'auditoria' && u.sucursal ? u.sucursal : null,
+    email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? nombreSucursal_(u.sucursal) : null,
+    sucursalPropia: rol === 'auditoria' && u.sucursal ? nombreSucursal_(u.sucursal) : null,
     administradora: rol === 'auditoria' && (admin || sinAdministradora_(email)),
   };
 }
@@ -1762,9 +1762,26 @@ function subcarpeta_(padre, nombre) {
 }
 
 /** Compara nombres de sucursal sin importar mayúsculas, tildes ni espacios de más. */
+/**
+ * ¿Es la misma sucursal? Sin importar mayúsculas, acentos ni puntos, y con nombres abreviados con la
+ * inicial: "A. Thomas" es "Alvarez Thomas" (cada palabra igual, o una es la inicial de la otra).
+ */
 function mismaSucursal_(a, b) {
-  var n = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' '); };
-  return n(a) !== '' && n(a) === n(b);
+  var palabras = function (x) {
+    return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(String);
+  };
+  var pa = palabras(a), pb = palabras(b);
+  if (!pa.length || pa.length !== pb.length) return false;
+  return pa.every(function (x, i) {
+    var y = pb[i];
+    return x === y || (x.length === 1 && y.charAt(0) === x) || (y.length === 1 && x.charAt(0) === y);
+  });
+}
+
+/** El nombre de la sucursal como figura en la pestaña Sucursales (el que usan las facturas). */
+function nombreSucursal_(nombre) {
+  var s = leerHoja_(HOJAS.sucursales).filter(function (x) { return mismaSucursal_(x.nombre, nombre); })[0];
+  return s ? s.nombre : nombre;
 }
 
 function esperaALaSucursal_(c) {

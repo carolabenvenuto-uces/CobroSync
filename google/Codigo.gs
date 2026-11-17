@@ -1126,8 +1126,13 @@ function explicarErrorPlanilla_(e) {
   return texto;
 }
 
+/**
+ * Pega las filas nuevas en la pestaña Quiter de la planilla de control. No usa el bloqueo general de
+ * CobroSync: escribe en otra planilla, y si en ese momento corría la lectura de cada hora (que lo tiene
+ * tomado un buen rato), esperaba y fallaba. Las referencias repetidas se saltean igual.
+ */
 function agregarAQuiterEn_(libro, filas) {
-  return conBloqueo_(function () {
+  return (function () {
     var nombre = config_('pestanaQuiter') || 'Quiter';
     var hoja = libro.getSheetByName(nombre);
     if (!hoja) throw new Error('No encuentro la pestaña "' + nombre + '" en la planilla de control.');
@@ -1147,9 +1152,11 @@ function agregarAQuiterEn_(libro, filas) {
       nuevas = nuevas.map(function (f) { while (f.length < ancho) f.push(''); return f; });
       hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, ancho).setValues(nuevas);
     }
-    var completadas = completarDiario_(libro);
+    // Completar el Diario con lo de CobroSync: si no se puede ahora, lo hace la lectura de cada hora
+    var completadas = 0;
+    try { completadas = completarDiario_(libro); } catch (e) { console.warn('Diario: se completa en la próxima lectura: ' + e); }
     return { configurada: true, agregadas: nuevas.length, completadas: completadas };
-  });
+  })();
 }
 
 /** Disparador de cada hora (y botón "Actualizar mi planilla ahora"). */
@@ -1728,7 +1735,7 @@ function buscarFila_(hoja, id) {
 
 function conBloqueo_(fn) {
   var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  lock.waitLock(30000);
   try { return fn(); } finally { lock.releaseLock(); }
 }
 

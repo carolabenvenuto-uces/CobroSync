@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.8] - 2026-11-17
+
+### Corregido
+- **"No se pudo agregar a la pestaña Quiter… tiempo de espera para la solicitud de bloqueo":** pasaba si se cargaba el Excel del ERP justo mientras corría la lectura automática de la planilla. Pegar en Quiter ya no espera a ese proceso; si en ese momento no se puede completar el Diario, lo completa la lectura siguiente. Además, los demás guardados esperan un poco más antes de dar error.
+
 ## [0.17.7] - 2026-11-16
 
 ### Cambiado

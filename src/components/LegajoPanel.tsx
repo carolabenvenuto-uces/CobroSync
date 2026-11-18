@@ -37,7 +37,7 @@ import { importeCobrado, saldoSinCobro } from '../domain/importes'
 import { facturasDelSiniestro } from '../domain/siniestros'
 import { esNotaTotal } from '../services/erp'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
-import { numeroParaNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
+import { numeroParaNombre, patenteDelNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { esMipyme, plazoSucursal } from '../domain/plazos'
@@ -122,6 +122,22 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [motivo, setMotivo] = useState<string>('')
   const [motivoDemora, setMotivoDemora] = useState('')
   const [patenteNueva, setPatenteNueva] = useState('')
+  // Cobranzas corrige o completa el siniestro y la patente
+  const [editandoDatos, setEditandoDatos] = useState(false)
+  const [siniestroEdit, setSiniestroEdit] = useState('')
+  const [patenteEdit, setPatenteEdit] = useState('')
+  function guardarDatos() {
+    const siniestro = limpiarSiniestro(siniestroEdit)
+    const patente = patenteEdit.trim().toUpperCase()
+    const cambios: Partial<Comprobante> = {}
+    if (siniestro !== c.siniestro) cambios.siniestro = siniestro
+    if (patente !== c.patente) cambios.patente = patente
+    if (Object.keys(cambios).length) {
+      actualizarComprobante(c.id, cambios)
+      registrarEvento(c.id, 'mensaje', [cambios.siniestro !== undefined && `Siniestro: ${siniestro || 'sin dato'}`, cambios.patente !== undefined && `Patente: ${patente || 'sin dato'}`].filter(Boolean).join(' · '))
+    }
+    setEditandoDatos(false)
+  }
   const [fechaDemora, setFechaDemora] = useState(sumarDias(hoy, 5))
   const [docRechazo, setDocRechazo] = useState<TipoDocumento | ''>('')
   const [comentarioRechazo, setComentarioRechazo] = useState('')
@@ -187,6 +203,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
         return
       }
     }
+    // La patente es opcional: escrita o tomada del nombre del archivo
+    const patente = c.patente ? null : patenteNueva.trim().toUpperCase() || archivos.map((a) => patenteDelNombre(a.name)).find(Boolean) || null
     setSubiendo(true)
     try {
       // Con Google cada archivo se guarda en el Drive de la empresa; en la demo solo se registra el
@@ -208,9 +226,10 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       })
       guardarDocumentos(
         documentos.map((d): Documento => (tipos.includes(d.tipo) ? documento(d.tipo) : d)),
-        { fechaDrive: hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado, ...(siniestro ? { siniestro } : {}) },
+        { fechaDrive: hoy, subidoPor: usuario, estado: c.estado === 'pendiente_drive' ? 'en_gestion' : c.estado, ...(siniestro ? { siniestro } : {}), ...(patente ? { patente } : {}) },
       )
       if (siniestro) registrarEvento(c.id, 'mensaje', `Informó el siniestro ${siniestro}`)
+      if (patente) registrarEvento(c.id, 'mensaje', `Informó la patente ${patente}`)
       const que = tipos.length > 1 ? 'la documentación' : NOMBRE_DOCUMENTO[tipos[0]].toLowerCase()
       const nombres = archivos.length > 1 ? `${archivos.length} archivos` : archivos[0].name
       registrarEvento(c.id, 'subida', `Subió ${que} (${nombres})`)
@@ -445,7 +464,46 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     : formatoPesos(c.total)
               }
             />
-            <Dato titulo="Siniestro / patente" valor={[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')} />
+            {rol === 'auditoria' && editandoDatos ? (
+              <div className="col-span-2 grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-2">
+                <label className="block text-xs text-slate-500">
+                  Siniestro
+                  <input value={siniestroEdit} onChange={(e) => setSiniestroEdit(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
+                </label>
+                <label className="block text-xs text-slate-500">
+                  Patente
+                  <input value={patenteEdit} onChange={(e) => setPatenteEdit(e.target.value)} className={`${claseSelect} mt-1 w-full uppercase`} />
+                </label>
+                <div className="col-span-2 flex justify-end gap-2">
+                  <button type="button" onClick={() => setEditandoDatos(false)} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-fondo">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={guardarDatos} className="rounded-lg bg-marca px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-oscuro">
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <dt className="flex items-center gap-1.5 text-xs text-slate-500">
+                  Siniestro / patente
+                  {rol === 'auditoria' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiniestroEdit(c.siniestro)
+                        setPatenteEdit(c.patente)
+                        setEditandoDatos(true)
+                      }}
+                      className="font-semibold text-marca hover:underline"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </dt>
+                <dd className="font-semibold">{[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')}</dd>
+              </div>
+            )}
             <Dato titulo="Factura emitida" valor={formatoFecha(c.fecha)} />
           </dl>
 
@@ -496,16 +554,31 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} siniestro {c.siniestro || '22365'}.pdf</code>
                     </p>
                   )}
-                  {subeDocs && abierta && !c.siniestro && (
-                    <label className="mt-2 block text-[11px] font-semibold text-slate-600">
-                      Número de siniestro (figura en la orden; se pide al subirla)
-                      <input
-                        value={siniestroNuevo}
-                        onChange={(e) => setSiniestroNuevo(e.target.value)}
-                        placeholder="Por ejemplo 029-9-506622"
-                        className={`${claseSelect} mt-1 w-full font-normal`}
-                      />
-                    </label>
+                  {subeDocs && abierta && (!c.siniestro || !c.patente) && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {!c.siniestro && (
+                        <label className="block text-[11px] font-semibold text-slate-600">
+                          Siniestro
+                          <input
+                            value={siniestroNuevo}
+                            onChange={(e) => setSiniestroNuevo(e.target.value)}
+                            placeholder="Por ejemplo 029-9-506622"
+                            className={`${claseSelect} mt-1 w-full font-normal`}
+                          />
+                        </label>
+                      )}
+                      {!c.patente && (
+                        <label className="block text-[11px] font-semibold text-slate-600">
+                          Patente (opcional)
+                          <input
+                            value={patenteNueva}
+                            onChange={(e) => setPatenteNueva(e.target.value)}
+                            placeholder="Por ejemplo AB123CD"
+                            className={`${claseSelect} mt-1 w-full font-normal uppercase`}
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                 </div>
                 {rol === 'auditoria' && paraRevisar.length > 0 && (

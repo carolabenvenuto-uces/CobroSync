@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import { limpiarSiniestro } from '../src/domain/siniestros'
 import type { Comprobante } from '../src/domain/tipos'
 
@@ -125,5 +125,16 @@ describe('siniestros de Allianz con dos números', () => {
     expect(limpiarSiniestro('6498-05')).toBe('6498-05')
     expect(siniestroDelNombre('21-20755 siniestro 0042605268-0042584578.pdf', { puntoVenta: 21, numero: 20755 })).toBe('0042584578')
     expect(siniestroDelNombre('21-20755 0042605268-0042584578.pdf', { puntoVenta: 21, numero: 20755 })).toBe('0042584578')
+  })
+})
+
+describe('patente en el nombre del archivo', () => {
+  it('toma el formato viejo y el Mercosur, y no confunde la palabra siniestro', () => {
+    expect(patenteDelNombre('21-17226 AB123CD.pdf')).toBe('AB123CD')
+    expect(patenteDelNombre('21-17226 siniestro 22365 abc123.pdf')).toBe('ABC123')
+    expect(patenteDelNombre('21-17226 ab 123 cd orden.pdf')).toBe('AB123CD')
+    expect(patenteDelNombre('21-17226 sin 223.pdf')).toBe(null)
+    expect(patenteDelNombre('21-17226 siniestro 22365.pdf')).toBe(null)
+    expect(patenteDelNombre('0021-00017226 fc.pdf')).toBe(null)
   })
 })

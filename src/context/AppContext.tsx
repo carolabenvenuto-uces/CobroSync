@@ -195,7 +195,9 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
   // A la sucursal le llega lo que le pide algo (observaciones, mensajes); las aprobaciones no,
   // porque ya se ven en la factura (pasa de "en revisión" a "aprobado")
   const esAprobacion = e.tipo === 'mensaje' && /^(Aprobado|Documentación revisada y aprobada)/.test(e.texto)
-  if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion) {
+  // Las actualizaciones automáticas desde la planilla de control no le piden nada a nadie
+  const esDePlanilla = /^Actualizado desde la planilla/.test(e.texto)
+  if (e.area === 'auditoria' && e.tipo !== 'presentacion' && e.tipo !== 'reclamo' && !esAprobacion && !esDePlanilla) {
     const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Cobranzas)/i.test(e.texto)
     lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Cobranzas · ${numero}: ${e.texto}` })
   }

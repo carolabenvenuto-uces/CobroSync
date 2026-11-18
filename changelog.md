@@ -13,6 +13,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.12] - 2026-11-18
 - Mis facturas: "Para subir" y "Por vencer o vencidas" ya no se repiten. Ahora son **Vencidas o por vencer** (rojo, se abre primero) y **En plazo**: a las dos les falta documentación y ninguna factura aparece en las dos.
+- Notificaciones: las actualizaciones automáticas desde la planilla de control ya no le llegan a la sucursal.
 - "Qué hay que hacer" en una línea de texto, sin recuadros: "Falta factura y orden firmada", "Orden firmada observada", "Factura aprobada · Orden firmada en revisión".
 
 ## [0.17.11] - 2026-11-18

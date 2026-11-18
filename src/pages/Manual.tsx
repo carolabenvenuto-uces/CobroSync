@@ -213,12 +213,12 @@ const SECCIONES: Seccion[] = [
   {
     id: 'suc-mis-facturas',
     sector: 'sucursal',
-    titulo: '¿Qué muestra cada tarjeta de Mis facturas?',
+    titulo: '¿Qué muestra cada solapa de Mis facturas?',
     contenido: () => (
       <>
         <p>
-          <Pantalla>Mis facturas</Pantalla> muestra en cuatro tarjetas en qué estado están las facturas de la sucursal. Cada tarjeta abre su
-          listado en una pantalla aparte; con <strong>← Mis facturas</strong> o la cruz se vuelve.
+          Arriba, <strong>Subir varios PDF de una vez</strong> e <strong>Informar una nota de crédito</strong>. Abajo, las facturas de la
+          sucursal en solapas; al tocar una, cambia la lista.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
@@ -231,13 +231,17 @@ const SECCIONES: Seccion[] = [
             <strong>Por vencer o vencidas:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
           </li>
           <li>
-            <strong>Rechazos y observaciones:</strong> documentos que Cobranzas o la compañía no aceptaron. El motivo dice quién lo rechazó y
-            qué hay que cambiar.
+            <strong>Rechazos y pedidos:</strong> documentos que Cobranzas o la compañía no aceptaron y pedidos de Cobranzas. El motivo dice
+            quién lo rechazó y qué hay que cambiar.
+          </li>
+          <li>
+            <strong>Todas:</strong> todas las facturas de la sucursal, en cualquier estado.
           </li>
         </ul>
         <p className="mt-2">
-          En los rechazos y en las que están por vencer, primero van las <strong>MiPyME</strong> y después lo más atrasado; la casilla "Solo
-          MiPyME" deja solo esas. Debajo de las tarjetas, el buscador encuentra cualquier factura de la sucursal.
+          En los rechazos y en las que están por vencer, primero van las <strong>MiPyME</strong> y después lo más atrasado. Cada lista tiene
+          su buscador (número, ref., siniestro o patente) y filtros en los títulos de las columnas; en <strong>Todas</strong> se encuentra
+          cualquier factura. Con <strong>Columnas</strong> se eligen las que se ven.
         </p>
       </>
     ),
@@ -251,15 +255,15 @@ const SECCIONES: Seccion[] = [
         <h4 className="font-bold">De a una factura</h4>
         <Pasos>
           <Paso n={1}>
-            En la tarjeta <strong>Para subir</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
+            En la solapa <strong>Para subir</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
           </Paso>
           <Paso n={2}>El PDF de la factura y el de la orden firmada (o uno solo, si están escaneadas juntas).</Paso>
-          <Paso n={3}>La factura pasa a "En revisión". Si Cobranzas la observa, llega una notificación y aparece en Rechazos y observaciones.</Paso>
+          <Paso n={3}>La factura pasa a "En revisión". Si Cobranzas la observa, llega una notificación y aparece en Rechazos y pedidos.</Paso>
         </Pasos>
         <h4 className="mt-4 font-bold">Muchos archivos de una vez</h4>
         <Pasos>
           <Paso n={1}>
-            El botón <strong>Subir varios PDF de una vez</strong>, arriba.
+            <strong>Subir varios PDF de una vez</strong>, arriba. También se pueden soltar los PDF en cualquier lugar de Mis facturas.
           </Paso>
           <Paso n={2}>
             Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}

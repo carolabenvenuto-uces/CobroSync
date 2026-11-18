@@ -36,7 +36,7 @@ interface Fila {
  * el siniestro o la patente que tenga el nombre) y qué documento es; la persona revisa y sube todo.
  * Cada factura sigue teniendo su legajo, como siempre.
  */
-export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
+export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /** PDF soltados antes de abrir la ventana */ iniciales?: File[] }) {
   const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento, sucursalPropia } = useApp()
   // La sucursal, o Cobranzas escaneando lo de su propia sucursal
   const escanea = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && sucursal === sucursalPropia)
@@ -63,12 +63,23 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
   function cerrarCondiciones() {
     setCondiciones(false)
     setLeidas(true)
+    if (pendientes.current.length) {
+      agregar(pendientes.current)
+      pendientes.current = []
+    }
     try {
       localStorage.setItem('cobrosync-condiciones-varios', '1')
     } catch {
       // sin almacenamiento: se vuelven a mostrar la próxima vez
     }
   }
+
+  // Los PDF soltados en Mis facturas: entran apenas se abre (o después de Entendido, la primera vez)
+  const pendientes = useRef<File[]>(leidas ? [] : (iniciales ?? []))
+  useEffect(() => {
+    if (leidas && iniciales?.length) agregar(iniciales)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const leidasRef = useRef(leidas)
   leidasRef.current = leidas
@@ -383,7 +394,7 @@ export function CargaMasiva({ onCerrar }: { onCerrar: () => void }) {
 }
 
 /** Los archivos soltados: algunos navegadores los dan en files y otros solo en items. */
-function archivosSoltados(dt: DataTransfer | null): File[] {
+export function archivosSoltados(dt: DataTransfer | null): File[] {
   if (!dt) return []
   if (dt.files && dt.files.length) return [...dt.files]
   return [...(dt.items ?? [])].filter((i) => i.kind === 'file').map((i) => i.getAsFile()).filter((f): f is File => !!f)

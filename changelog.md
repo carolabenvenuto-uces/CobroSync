@@ -12,8 +12,10 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
 ## [0.17.10] - 2026-11-18
-- Mis facturas: columnas **Ref.** y **Patente** a la vista, para ubicar la factura en Quiter aunque todavía no tenga siniestro. El buscador también lo dice. La elección de columnas de esta pantalla vuelve a cero: todas a la vista y cada uno oculta las que no use.
-- Mis facturas: tarjeta **Todas mis facturas** (gris, informativa) con todas las facturas de la sucursal en cualquier estado, con columna Estado para filtrar.
+- Mis facturas, nueva forma: arriba, del mismo tamaño, **Subir varios PDF de una vez** (también soltando los PDF en cualquier lugar de la pantalla) e **Informar una nota de crédito**. Abajo, las facturas en solapas (Para subir, Por vencer o vencidas, Rechazos y pedidos, En revisión, Todas) con la lista a todo el ancho, sin abrir otra ventana.
+- Cada lista tiene buscador (número, ref., siniestro o patente) y filtros en las columnas: Siniestro (con o sin), MiPyME y, en Todas, Estado.
+- Columnas **Ref.** y **Patente** a la vista. Ninguna columna arranca oculta; cada uno oculta con "Columnas" las que no use.
+- "Subir documentación" aparece solo en las facturas a las que les falta algo.
 
 ## [0.17.9] - 2026-11-17
 

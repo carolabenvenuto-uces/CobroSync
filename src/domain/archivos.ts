@@ -178,3 +178,17 @@ function distancia(a: string, b: string): number {
     for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
   return d[a.length][b.length]
 }
+
+/**
+ * La patente escrita en el nombre del archivo, si está: formato viejo (ABC123) o Mercosur (AB123CD).
+ * "sin 123" no cuenta: es la palabra siniestro abreviada.
+ */
+export function patenteDelNombre(nombre: string): string | null {
+  const base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  for (const m of base.matchAll(/(?:^|[^a-z0-9])([a-z]{2}\s?\d{3}\s?[a-z]{2}|[a-z]{3}\s?\d{3})(?=[^a-z0-9]|$)/gi)) {
+    const letras = m[1].match(/^[a-z]+/i)![0]
+    if (esPalabraSiniestro(letras) || /^(fc|or|fac|ord)$/i.test(letras)) continue
+    return m[1].replace(/\s/g, '').toUpperCase()
+  }
+  return null
+}

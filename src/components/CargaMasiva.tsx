@@ -2,7 +2,7 @@ import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
 import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
@@ -199,8 +199,11 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           hechas += archivos.length
         }
         const siniestro = c.siniestro ? null : lista.map((f) => limpiarSiniestro(f.siniestro)).find(Boolean) ?? null
+        // La patente, si viene en el nombre de algún archivo (opcional)
+        const patente = c.patente ? null : lista.map((f) => patenteDelNombre(f.archivo.name)).find(Boolean) ?? null
         actualizarComprobante(id, {
           ...(siniestro ? { siniestro } : {}),
+          ...(patente ? { patente } : {}),
           documentos,
           fechaDrive: hoy,
           subidoPor: usuario,

@@ -15,6 +15,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 - Mis facturas: columna **Fecha** aparte (ya no va debajo del número) y sin el comentario sobre la lista.
 - Columnas: Fecha, Días (de atraso, o restantes en "En plazo", solo el número), Ref., Factura, Patente, Siniestro, Total y Documentación.
 - La etiqueta MiPyME dice solo "MiPyME".
+- **Patente opcional**: al subir desde la factura hay un campo "Patente (opcional)" junto al de siniestro; al subir varios PDF se toma del nombre del archivo si está (ABC123 o AB123CD). Cobranzas puede editar el siniestro y la patente dentro de la factura.
 - **Ordenar** en Mis facturas: Más urgentes primero, Más viejas primero o Más nuevas primero.
 
 ## [0.17.16] - 2026-11-18

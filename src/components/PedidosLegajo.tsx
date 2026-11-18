@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ClipboardList, MessageSquareReply } from 'lucide-react'
+import { ClipboardList, MessageSquareReply, Receipt } from 'lucide-react'
+import { NotaCreditoModal } from './NotaCreditoModal'
 import { useApp } from '../context/AppContext'
 import { idPedido, NOMBRE_PEDIDO, ncSinAviso } from '../domain/pedidos'
 import type { Comprobante, Pedido, TipoPedido } from '../domain/tipos'
@@ -19,7 +20,7 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
   const [tipo, setTipo] = useState<TipoPedido | ''>('')
   const [detalle, setDetalle] = useState('')
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
-  const [motivoNc, setMotivoNc] = useState('')
+  const [informarNc, setInformarNc] = useState(false)
   const pedidos = c.pedidos ?? []
   const abiertos = pedidos.filter((p) => !p.cerrado)
   const sinAviso = ncSinAviso(c)
@@ -46,13 +47,6 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
     guardar(pedidos.map((x) => (x.id === p.id ? { ...x, cerrado: { fecha: hoy, autor: usuario || 'Cobranzas' } } : x)))
     registrarEvento(c.id, 'mensaje', `Pedido resuelto: ${NOMBRE_PEDIDO[p.tipo].toLowerCase()}`)
   }
-  // La sucursal confirma el motivo de una NC que entró sin aviso
-  function confirmarNc() {
-    if (!motivoNc.trim()) return
-    actualizarComprobante(c.id, { ncInformada: true })
-    registrarEvento(c.id, 'nota_credito', `Motivo de la nota de crédito: ${motivoNc.trim()}`)
-    setMotivoNc('')
-  }
 
   return (
     <section className="rounded-lg border border-sem-rojo/40 bg-red-50/40 p-3">
@@ -64,16 +58,14 @@ export function PedidosLegajo({ c }: { c: Comprobante }) {
       {sinAviso && (
         <div className="mb-2 rounded-md bg-white p-2.5">
           <p className="text-sm">
-            <strong>{NOMBRE_PEDIDO.aviso_nc}:</strong> entró del sistema una nota de crédito que la sucursal no avisó. Falta confirmar el motivo.
+            <strong>{NOMBRE_PEDIDO.aviso_nc}:</strong> entró de Quiter sin aviso de la sucursal.
           </p>
           {rol === 'sucursal' && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input value={motivoNc} onChange={(e) => setMotivoNc(e.target.value)} placeholder="Motivo de la nota de crédito" className={`${claseSelect} min-w-0 flex-1`} />
-              <button type="button" onClick={confirmarNc} disabled={!motivoNc.trim()} className="rounded-lg bg-marca px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
-                Confirmar
-              </button>
-            </div>
+            <button type="button" onClick={() => setInformarNc(true)} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-marca px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-oscuro">
+              <Receipt className="h-4 w-4" /> Informar la nota de crédito
+            </button>
           )}
+          {informarNc && <NotaCreditoModal nc={c} onCerrar={() => setInformarNc(false)} />}
         </div>
       )}
 

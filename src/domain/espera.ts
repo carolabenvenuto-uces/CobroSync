@@ -29,7 +29,7 @@ export function facturaDeHoy(nombre: string, sucursal: Sucursal | undefined, tod
 const normal = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
 
 /**
- * Al cargar el ERP: cada factura nueva toma los PDF en espera con su número (de su sucursal).
+ * Al cargar el Excel de Quiter: cada factura nueva toma los PDF en espera con su número (de su sucursal).
  * Devuelve las facturas ya con sus documentos (en revisión) y qué PDF se unieron a cuál.
  */
 export function unirEnEspera(
@@ -75,7 +75,7 @@ export function unirEnEspera(
           autor: primera.subidoPor,
           area: 'sucursal' as const,
           tipo: 'subida' as const,
-          texto: `Subió ${suyos.length === 1 ? 'el PDF' : `${suyos.length} PDF`} antes de que se cargara la factura (${suyos.map((e) => e.nombreOriginal).join(', ')}); se unieron al cargar el ERP`,
+          texto: `Subió ${suyos.length === 1 ? 'el PDF' : `${suyos.length} PDF`} antes de que se cargara la factura (${suyos.map((e) => e.nombreOriginal).join(', ')}); se unieron al cargar el Excel de Quiter`,
         },
       ],
     }

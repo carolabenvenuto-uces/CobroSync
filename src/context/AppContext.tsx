@@ -213,9 +213,9 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
     const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Cobranzas)/i.test(e.texto)
     lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Cobranzas · ${numero}: ${e.texto}` })
   }
-  // A la sucursal: los avisos de plazo, juntos en uno por día (ver agruparGerencia). La carga del ERP no avisa:
+  // A la sucursal: los avisos de plazo, juntos en uno por día (ver agruparGerencia). La carga de Quiter no avisa:
   // la factura ya aparece en Mis facturas
-  if (e.area === 'sistema' && !/^Factura cargada desde el Excel/.test(e.texto)) {
+  if (e.area === 'sistema' && !/cargada desde (el Excel|Quiter)/.test(e.texto)) {
     const clase = /gerencia general/i.test(e.texto) ? ('gerencia_general' as const) : /sin legajo completo/.test(e.texto) ? ('plazo' as const) : undefined
     lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', ...(clase ? { clase } : {}), texto: `${numero}: ${e.texto}` })
   }
@@ -244,9 +244,9 @@ interface EstadoApp {
   /** En la demo los cambios viven en memoria: al recargar la página se pierden. */
   actualizarComprobante: (id: string, cambios: Partial<Comprobante>) => void
   agregarComprobante: (comprobante: Comprobante) => void
-  /** facturas nuevas del ERP: antes de agregarlas, cada una toma sus PDF en espera; devuelve cuántas se unieron */
+  /** facturas nuevas de Quiter: antes de agregarlas, cada una toma sus PDF en espera; devuelve cuántas se unieron */
   agregarDelErp: (nuevas: Comprobante[]) => number
-  /** PDF de una factura de hoy (todavía no cargada), hasta que se cargue el ERP */
+  /** PDF de una factura de hoy (todavía no cargada), hasta que se cargue el Excel de Quiter */
   subirEnEspera: (puntoVenta: number, numero: number, tipo: DocumentoEnEspera['tipo'], siniestro: string, archivo: File) => Promise<void>
   descartarEspera: (id: string) => Promise<void>
   /** reemplaza los datos de las compañías (por ejemplo, al cargar la pestaña CP de la planilla) */

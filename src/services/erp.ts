@@ -1,5 +1,5 @@
 /**
- * Lee la exportación de facturas del ERP (Quiter) guardada como CSV y arma
+ * Lee la exportación de facturas de Quiter (Quiter) guardada como CSV y arma
  * las facturas nuevas en "Doc. pendiente".
  *
  * Por ahora es solo para ver cómo funcionaría: lo que se carga queda en el
@@ -43,9 +43,9 @@ export function numeroDesde(valor: string | undefined): number | null {
   return m ? Number(m[1]) : null
 }
 
-/** Las filas del Excel del ERP debajo del encabezado, tal cual (para la pestaña Quiter de la planilla). */
+/** Las filas del Excel de Quiter debajo del encabezado, tal cual (para la pestaña Quiter de la planilla). */
 /**
- * Las filas del ERP para la pestaña Quiter de la planilla de control, tal cual vienen. Con la lista de
+ * Las filas de Quiter para la pestaña Quiter de la planilla de control, tal cual vienen. Con la lista de
  * compañías, solo las de compañías de seguros (como cuando se filtraba el Excel a mano); los clientes
  * particulares y otras empresas no se copian.
  */
@@ -69,7 +69,7 @@ export function importarErp(
   const filas = parsearCsv(texto)
   const inicio = filas.findIndex((f) => /refer/i.test(f[COL.ref] ?? '') && /cuit/i.test(f[COL.cuit] ?? ''))
   if (inicio === -1) {
-    throw new Error('Formato no reconocido. Tiene que ser la exportación de facturas del ERP: columna A "Refer." y columna I "CUIT".')
+    throw new Error('Formato no reconocido. Tiene que ser la exportación de facturas de Quiter: columna A "Refer." y columna I "CUIT".')
   }
 
   const porCuit = new Map(aseguradoras.filter((a) => a.cuit).map((a) => [soloDigitos(a.cuit), a]))
@@ -131,7 +131,7 @@ export function importarErp(
         tipo === 'NC'
           ? []
           : (['factura', 'orden'] as const).map((t) => ({ tipo: t, estado: 'faltante' as const })),
-      eventos: [{ fecha: hoy, autor: 'Sistema', area: 'sistema', tipo: 'aviso', texto: 'Factura cargada desde el Excel del ERP' }],
+      eventos: [{ fecha: hoy, autor: 'Sistema', area: 'sistema', tipo: 'aviso', texto: tipo === 'NC' ? 'Nota de crédito cargada desde Quiter' : 'Factura cargada desde Quiter' }],
     })
   }
   vincularNotasDeCredito(resultado, existentes)

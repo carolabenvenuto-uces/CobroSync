@@ -27,7 +27,7 @@ interface Fila {
   /** la factura todavía no tiene siniestro: se toma del nombre o se escribe en la fila */
   pideSiniestro: boolean
   siniestro: string
-  /** factura de hoy, todavía no cargada: el PDF queda en espera hasta que se cargue el ERP */
+  /** factura de hoy, todavía no cargada: el PDF queda en espera hasta que se cargue el Excel de Quiter */
   deHoy?: { puntoVenta: number; numero: number }
 }
 
@@ -93,7 +93,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       ...nuevos.map((archivo): Fila => {
         const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
         if (!r.ok) {
-          // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en el ERP
+          // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en Quiter
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
           const n = escanea && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
           if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
@@ -211,14 +211,14 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
         })
         registrarEvento(id, 'subida', `Subió ${subidos.join(' y ')} (carga de varios archivos: ${lista.map((f) => f.archivo.name).join(', ')})`)
       }
-      // Facturas de hoy: quedan en espera hasta que Cobranzas cargue el ERP, y ahí se unen a su legajo
+      // Facturas de hoy: quedan en espera hasta que Cobranzas cargue el Excel de Quiter, y ahí se unen a su legajo
       for (const f of deHoy) {
         setEstado({ texto: `Subiendo ${f.archivo.name}…` })
         await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, limpiarSiniestro(f.siniestro), await prepararArchivo(f.archivo))
       }
       setFilas((l) => l.filter((f) => !f.facturaId && !(f.deHoy && !f.error)))
       setEstado({
-        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el ERP` : ''}. Cobranzas los revisa.`,
+        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el Excel de Quiter` : ''}. Cobranzas los revisa.`,
       })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })
@@ -288,7 +288,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
                 <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
-                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Cobranzas cargue el ERP.</li>
+                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Cobranzas cargue el Excel de Quiter.</li>
               </ul>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
@@ -335,7 +335,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                           f.deHoy ? (
                             <span className="whitespace-nowrap">
                               {f.deHoy.puntoVenta}-{f.deHoy.numero}
-                              <span className="block text-[11px] font-semibold text-marca">Factura de hoy: se une al cargar el ERP</span>
+                              <span className="block text-[11px] font-semibold text-marca">Factura de hoy: se une al cargar el Excel de Quiter</span>
                               <input
                                 value={f.siniestro}
                                 onChange={(e) => cambiar(i, { siniestro: e.target.value })}

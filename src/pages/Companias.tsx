@@ -516,7 +516,7 @@ function AltaCompania({
         <p className="mt-1 text-xs text-slate-500">Después de darla de alta se abre su ficha, para cargar cómo se presenta, los mails y los enlaces.</p>
         <div className="mt-4 space-y-3">
           <label className="block text-xs font-semibold text-slate-600">
-            Nombre (como figura en el ERP)
+            Nombre (como figura en Quiter)
             <input value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus required placeholder="Por ejemplo: Seguros del Sur" className={campo} />
             {repetida && <span className="mt-1 block font-semibold text-sem-rojo">Ya hay una compañía con ese nombre (puede estar pausada).</span>}
           </label>

@@ -74,10 +74,11 @@ export default function ControlDiario() {
 
   // Cobranzas arranca en el mes en curso (si no viene un filtro desde un aviso).
   // Gerencia busca facturas de cualquier mes: arranca sin filtro de fecha.
-  // Cuándo se cargó el Excel del ERP por última vez (para la franja de arriba)
-  const ERP = 'Factura cargada desde el Excel del ERP'
+  // Cuándo se cargó el Excel de Quiter por última vez (para la franja de arriba)
+  // el texto viejo y el nuevo de la carga del Excel de Quiter
+  const ERP = /cargada desde (el Excel del ERP|Quiter)$/
   const ultimaCarga = useMemo(
-    () => comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (e.texto === ERP && e.fecha > n ? e.fecha : n), m), ''),
+    () => comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (ERP.test(e.texto) && e.fecha > n ? e.fecha : n), m), ''),
     [comprobantes],
   )
 
@@ -102,10 +103,10 @@ export default function ControlDiario() {
         const numero = nc ? formatoComprobante(nc) : ''
         if (tipo === 'total') {
           actualizarComprobante(facturaId, { estado: 'anulada', anulacionInformada: null })
-          registrarEvento(facturaId, 'nota_credito', `Anulada con la nota de crédito ${numero} (vinculada al cargar el ERP)`)
+          registrarEvento(facturaId, 'nota_credito', `Anulada con la nota de crédito ${numero} (vinculada al cargar el Excel de Quiter)`)
         } else {
           actualizarComprobante(facturaId, { acreditado: (factura?.acreditado ?? 0) + importe, anulacionInformada: null })
-          registrarEvento(facturaId, 'nota_credito', `Nota de crédito parcial ${numero} por ${formatoPesos(importe)} (vinculada al cargar el ERP)`)
+          registrarEvento(facturaId, 'nota_credito', `Nota de crédito parcial ${numero} por ${formatoPesos(importe)} (vinculada al cargar el Excel de Quiter)`)
         }
       })
       // Con Google, las mismas filas van también al final de la pestaña Quiter de la planilla de control
@@ -287,7 +288,7 @@ export default function ControlDiario() {
         acciones={rol === 'auditoria' ? <EnEsperaAuditoria /> : undefined}
       />
 
-      {/* Lo primero del día: cargar el Excel del ERP */}
+      {/* Lo primero del día: cargar el Excel de Quiter */}
       {!soloConsulta && (
         <div
           className={`mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 ${
@@ -296,7 +297,7 @@ export default function ControlDiario() {
         >
           <FileSpreadsheet className={`h-6 w-6 shrink-0 ${ultimaCarga === hoy ? 'text-teal-600' : 'text-amber-600'}`} />
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-noche">Excel del ERP</div>
+            <div className="font-bold text-noche">Excel de Quiter</div>
             <div className={`text-sm ${ultimaCarga === hoy ? 'text-teal-800' : 'text-amber-900'}`}>
               {ultimaCarga === hoy ? 'Cargado hoy.' : `Todavía no se cargó hoy${ultimaCarga ? ` · la última carga fue el ${formatoFecha(ultimaCarga)}` : ''}.`}
             </div>
@@ -306,9 +307,9 @@ export default function ControlDiario() {
             type="button"
             onClick={() => entradaErp.current?.click()}
             className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
-            title="Excel de facturas exportado del ERP (.xlsx o CSV)"
+            title="Excel de facturas exportado de Quiter (.xlsx o CSV)"
           >
-            <FileSpreadsheet className="h-4 w-4" /> Cargar Excel del ERP
+            <FileSpreadsheet className="h-4 w-4" /> Cargar Excel de Quiter
           </button>
         </div>
       )}

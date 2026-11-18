@@ -504,11 +504,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 <dd className="font-semibold">{[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')}</dd>
               </div>
             )}
-            <Dato titulo="Factura emitida" valor={formatoFecha(c.fecha)} />
+            <Dato titulo={c.tipo === 'NC' ? 'Emitida' : 'Factura emitida'} valor={formatoFecha(c.fecha)} />
           </dl>
 
-          {/* Qué pasa con la factura */}
-          <section className="rounded-lg bg-fondo p-3">
+          {/* Qué pasa con la factura (en una NC lo dice el recuadro de la nota de crédito) */}
+          {c.tipo !== 'NC' && <section className="rounded-lg bg-fondo p-3">
             <ul className="space-y-1">
               {resumenEstado.map((d) => (
                 <li key={d} className="flex items-start gap-2">
@@ -532,7 +532,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </span>
               </div>
             )}
-          </section>
+          </section>}
 
           {otraPersona && (
             <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
@@ -818,9 +818,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               const aviso = f?.eventos.filter((e) => e.tipo === 'nota_credito' && e.area === 'sucursal').at(-1)
               return (
                 <section className="rounded-lg border border-red-200 bg-red-50/60 p-3">
-                  <h3 className="font-bold text-red-900">Nota de crédito por {formatoPesos(Math.abs(c.total))}</h3>
                   {vinculada ? (
-                    <p className="mt-1 text-slate-700">
+                    <p className="text-slate-700">
                       {total ? 'Anula completa la factura ' : 'Acredita una parte de la factura '}
                       <button type="button" onClick={() => abrirLegajo(f!.id)} className="font-semibold text-marca hover:underline">
                         {formatoComprobante(f!)}
@@ -830,7 +829,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                       {total && ' Esa factura ya no se presenta ni se cobra.'}
                     </p>
                   ) : (
-                    <p className="mt-1 text-slate-600">
+                    <p className="text-slate-600">
                       Todavía no está vinculada con una factura{f ? ` (posible: ${formatoComprobante(f)})` : ''}. Cobranzas la revisa y la vincula.
                     </p>
                   )}
@@ -905,9 +904,9 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </div>
               )}
               {rol === 'auditoria' && c.anulacionInformada.parcial && (
-                <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo cuando llega la nota de crédito del ERP (o al vincularla desde la NC).</p>
+                <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo cuando llega la nota de crédito de Quiter (o al vincularla desde la NC).</p>
               )}
-              {rol === 'sucursal' && <p className="mt-1 text-xs text-slate-500">Se aplica cuando llega la nota de crédito del ERP.</p>}
+              {rol === 'sucursal' && <p className="mt-1 text-xs text-slate-500">Se aplica cuando llega la nota de crédito de Quiter.</p>}
             </section>
           )}
 
@@ -1023,7 +1022,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           )}
 
           {/* Reclamos a la compañía */}
-          {c.fechaPresentacion !== null && c.estado === 'presentada' && (
+          {c.tipo !== 'NC' && c.fechaPresentacion !== null && c.estado === 'presentada' && (
             <section>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="font-bold">Reclamos a la compañía</h3>
@@ -1177,7 +1176,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         <span className={`rounded px-1.5 py-0.5 font-semibold ${COLOR_AREA[e.area]}`}>{e.autor}</span>
                         <span className="text-slate-400">{formatoFecha(e.fecha)}</span>
                       </div>
-                      <p className="mt-1 text-slate-700">{e.texto}</p>
+                      <p className="mt-1 text-slate-700">{textoEvento(e.texto, c)}</p>
                     </div>
                   </li>
                 ))}
@@ -1272,4 +1271,10 @@ function Dato({ titulo, valor }: { titulo: string; valor: string }) {
 /** "Rocamora " y "rocamora" son la misma sucursal */
 function normalizarSucursal(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+/** Textos viejos del historial, dichos como ahora (Quiter en vez de ERP; la NC no es una factura). */
+function textoEvento(texto: string, c: Comprobante): string {
+  if (/^Factura cargada desde el Excel del ERP$/.test(texto)) return c.tipo === 'NC' ? 'Nota de crédito cargada desde Quiter' : 'Factura cargada desde Quiter'
+  return texto.replace(/al cargar el ERP/g, 'al cargar Quiter')
 }

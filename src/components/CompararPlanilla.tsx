@@ -217,7 +217,7 @@ export function CompararPlanilla() {
             </>
           )}
           {ver === 'soloCobroSync' && r.cantidadSoloCobroSync > 0 && (
-            <p className="text-xs text-slate-500">Suelen ser facturas que entraron con el Excel del ERP y todavía no se anotaron en la planilla.</p>
+            <p className="text-xs text-slate-500">Suelen ser facturas que entraron con el Excel de Quiter y todavía no se anotaron en la planilla.</p>
           )}
         </div>
       )}

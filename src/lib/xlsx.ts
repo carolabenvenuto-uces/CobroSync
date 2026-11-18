@@ -4,7 +4,7 @@
  *
  * Un .xlsx es un ZIP con XML adentro. Se lee la primera hoja (o la que se pida por nombre) y se
  * devuelve como texto CSV "a la argentina" (punto y coma, coma decimal, fechas dd/mm/aaaa), que es
- * lo que ya entienden los importadores de la planilla y del ERP.
+ * lo que ya entienden los importadores de la planilla y de Quiter.
  */
 
 interface EntradaZip {

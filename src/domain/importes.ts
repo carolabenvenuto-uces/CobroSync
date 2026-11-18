@@ -24,7 +24,7 @@ export function importeCobrado(c: Comprobante): number {
 
 /**
  * Importe que una nota de crédito TOTAL debería tener para esta factura. Las percepciones no se
- * acreditan: si se conocen (vienen del ERP) se restan; si no, se devuelve null.
+ * acreditan: si se conocen (vienen de Quiter) se restan; si no, se devuelve null.
  */
 export function importeAcreditable(c: Comprobante): number | null {
   return c.percepciones !== undefined && c.percepciones !== null ? c.total - c.percepciones : null

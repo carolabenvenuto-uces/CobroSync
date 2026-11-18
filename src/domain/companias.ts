@@ -3,7 +3,7 @@
  * planilla de control (datos públicos de las compañías, no de clientes).
  *
  * Se usan para completar las compañías que llegan desde la planilla, que solo traen el nombre
- * corto: así la carga del ERP las reconoce por CUIT.
+ * corto: así la carga de Quiter las reconoce por CUIT.
  */
 export const DATOS_CP: Record<string, { razonSocial: string; cuit: string; plazo?: number }> = {
   Allianz: { razonSocial: 'ALLIANZ ARGENTINA COMPAÑIA DE SEGUROS', cuit: '30500037217' },

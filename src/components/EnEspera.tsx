@@ -66,7 +66,7 @@ function Lista({ lista, conSucursal }: { lista: DocumentoEnEspera[]; conSucursal
 
 /**
  * Cobranzas: PDF que las sucursales subieron de facturas todavía no cargadas. Se unen solos al
- * cargar el ERP; los que llevan varios días sin su factura suelen tener el número mal tipeado.
+ * cargar el Excel de Quiter; los que llevan varios días sin su factura suelen tener el número mal tipeado.
  */
 export function EnEsperaAuditoria() {
   const { datos, hoy } = useApp()
@@ -80,7 +80,7 @@ export function EnEsperaAuditoria() {
         <span className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-marca" />
           <strong>{lista.length} PDF en espera</strong>
-          <span className="text-slate-600">de facturas que todavía no están en el ERP: se unen solos al cargarlo</span>
+          <span className="text-slate-600">de facturas que todavía no están en Quiter: se unen solos al cargarlo</span>
           {viejos > 0 && <span className="font-semibold text-red-800">· {viejos} para revisar</span>}
         </span>
         {abierta ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -99,7 +99,7 @@ export function sucursalDeEspera(e: DocumentoEnEspera, sucursales: Sucursal[]): 
 const sinMarcas = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toLowerCase()
 const mismaSucursal = (a: string, b: string) => sinMarcas(a) === sinMarcas(b)
 
-/** Sucursal: lo que se subió de sus facturas de hoy, hasta que se cargue el ERP (solo las de sus puntos de venta). */
+/** Sucursal: lo que se subió de sus facturas de hoy, hasta que se cargue el Excel de Quiter (solo las de sus puntos de venta). */
 export function EnEsperaSucursal() {
   const { datos, sucursal } = useApp()
   const [abierta, setAbierta] = useState(false)
@@ -112,7 +112,7 @@ export function EnEsperaSucursal() {
         <span className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-marca" />
           <strong>{lista.length} PDF de facturas de hoy</strong>
-          <span className="text-slate-600">se unen a su factura cuando Cobranzas cargue el ERP</span>
+          <span className="text-slate-600">se unen a su factura cuando Cobranzas cargue el Excel de Quiter</span>
         </span>
         {abierta ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>

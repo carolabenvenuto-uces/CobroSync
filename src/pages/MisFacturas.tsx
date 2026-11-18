@@ -475,7 +475,7 @@ export default function MisFacturas() {
             <div className="flex-1 overflow-y-auto p-3 sm:p-6">
               {conPrioridad && <p className="mb-2 text-xs text-slate-500">Orden de prioridad: primero las MiPyME, después lo más atrasado.</p>}
               <Tabla
-                id={conPrioridad ? 'para-resolver' : 'mis-facturas'}
+                id={conPrioridad ? 'para-resolver-2' : 'mis-facturas-2'}
                 key={`${abierta}-${soloMipyme}`}
                 filas={filasAbiertas}
                 columnas={conPrioridad ? columnasResolver : columnas}

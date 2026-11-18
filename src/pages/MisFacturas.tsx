@@ -66,6 +66,9 @@ function QueFalta({ c }: { c: Comprobante }) {
   )
 }
 
+/** Celda vacía: se aclara en vez de dejarla en blanco. */
+const SinDato = () => <span className="text-xs text-slate-400">Sin dato</span>
+
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
 /** Las solapas de Mis facturas, en el orden en que se ven. El color es el de cada estado. */
@@ -74,7 +77,7 @@ type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision' | 'todas'
 const LISTAS: { clave: Lista; titulo: string; punto: string; vacio: string }[] = [
   { clave: 'vencer', titulo: 'Vencidas o por vencer', punto: 'bg-sem-rojo', vacio: 'Nada vencido ni por vencer.' },
   { clave: 'subir', titulo: 'En plazo', punto: 'bg-sem-amarillo', vacio: 'Nada pendiente en plazo.' },
-  { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-sem-rojo', vacio: 'Sin rechazos ni pedidos.' },
+  { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-violet-500', vacio: 'Sin rechazos ni pedidos.' },
   { clave: 'revision', titulo: 'En revisión', punto: 'bg-sky-400', vacio: 'Sin facturas en revisión.' },
   { clave: 'todas', titulo: 'Todas', punto: 'bg-slate-400', vacio: 'Sin facturas.' },
 ]
@@ -231,8 +234,8 @@ export default function MisFacturas() {
         </div>
       ),
     },
-    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref}</span> },
-    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
+    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
     {
       clave: 'dias',
       titulo: 'Plazo',
@@ -254,7 +257,7 @@ export default function MisFacturas() {
         const n = porSiniestro.get(claveSiniestro(x.c)) ?? 0
         return (
           <span className="whitespace-nowrap">
-            {x.c.siniestro}
+            {x.c.siniestro || <SinDato />}
             {n > 1 && <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600" title="Facturas del mismo siniestro (facturación parcial)">{n} facturas</span>}
           </span>
         )
@@ -262,9 +265,9 @@ export default function MisFacturas() {
     },
     {
       clave: 'mipyme',
-      titulo: 'MiPyME',
-      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'No MiPyME'),
-      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : null),
+      titulo: 'Tipo de factura',
+      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
+      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : <span className="text-xs text-slate-500">Común</span>),
     },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
@@ -456,14 +459,14 @@ export default function MisFacturas() {
         id={conPrioridad ? 'mis-facturas-prioridad' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-lista'}
         key={abierta}
         filas={listaDe(abierta)}
-        columnas={conPrioridad ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
+        columnas={abierta === 'rechazos' ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
         clave={(x) => x.c.id}
         onFila={(x) => abrirLegajo(x.c.id)}
         buscar={(x) => [formatoComprobante(x.c), x.c.ref, x.c.siniestro, x.c.patente].join(' ')}
         textoBusqueda="Buscar por número, ref., siniestro o patente"
         ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'asc' }}
         porPagina={25}
-        resumen={(l) => `${l.length.toLocaleString('es-AR')} ${l.length === 1 ? 'factura' : 'facturas'}`}
+        resumen={() => null}
         vacio={actual.vacio}
       />
 

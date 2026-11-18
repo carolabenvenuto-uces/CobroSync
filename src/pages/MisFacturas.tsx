@@ -26,7 +26,7 @@ const ESTADO_DOC = {
 } as const
 
 /**
- * Qué le falta a la factura, en una línea de texto sin recuadros: "Falta factura y orden firmada",
+ * Qué le falta a la factura, en una línea de texto sin recuadros: "Faltante", "Falta orden",
  * "Orden firmada observada", "Factura aprobada · Orden firmada en revisión". Lo subido abre el PDF.
  */
 function QueFalta({ c }: { c: Comprobante }) {
@@ -34,8 +34,8 @@ function QueFalta({ c }: { c: Comprobante }) {
   const faltan = docs.filter((x) => (x.d?.estado ?? 'faltante') === 'faltante')
   const resto = docs.filter((x) => (x.d?.estado ?? 'faltante') !== 'faltante')
   const partes: ReactNode[] = []
-  if (faltan.length === 2) partes.push(<span key="faltan" className="font-semibold text-amber-900">Falta factura y orden firmada</span>)
-  else if (faltan.length === 1) partes.push(<span key="faltan" className="font-semibold text-amber-900">Falta {faltan[0].tipo === 'factura' ? 'la factura' : 'la orden firmada'}</span>)
+  if (faltan.length === 2) partes.push(<span key="faltan" className="font-semibold text-amber-900">Faltante</span>)
+  else if (faltan.length === 1) partes.push(<span key="faltan" className="font-semibold text-amber-900">Falta {faltan[0].tipo === 'factura' ? 'factura' : 'orden'}</span>)
   for (const { tipo, d } of resto) {
     const estado = d!.estado as Exclude<keyof typeof ESTADO_DOC, 'faltante'>
     const texto = `${NOMBRE_DOC[tipo]} ${ESTADO_DOC[estado].texto}`
@@ -223,20 +223,6 @@ export default function MisFacturas() {
   type Fila = (typeof filas)[number]
   const columnas: Columna<Fila>[] = [
     {
-      clave: 'factura',
-      titulo: 'Factura',
-      movil: 'titulo',
-      orden: (x) => x.c.fecha,
-      celda: (x) => (
-        <div className="whitespace-nowrap">
-          <div className="font-medium">{formatoComprobante(x.c)}</div>
-          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
-        </div>
-      ),
-    },
-    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
-    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
-    {
       clave: 'dias',
       titulo: 'Plazo',
       // días que quedan para subir la documentación (negativo: vencida)
@@ -250,9 +236,28 @@ export default function MisFacturas() {
       },
     },
     {
+      clave: 'factura',
+      titulo: 'Factura',
+      movil: 'titulo',
+      orden: (x) => x.c.fecha,
+      celda: (x) => (
+        <div className="whitespace-nowrap">
+          <div className="font-medium">{formatoComprobante(x.c)}</div>
+          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
+        </div>
+      ),
+    },
+    {
+      clave: 'mipyme',
+      titulo: 'Tipo de factura',
+      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
+      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : <span className="text-xs text-slate-500">Común</span>),
+    },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
+    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
+    {
       clave: 'siniestro',
       titulo: 'Siniestro',
-      filtro: (x) => (x.c.siniestro ? 'Con siniestro' : 'Sin siniestro'),
       celda: (x) => {
         const n = porSiniestro.get(claveSiniestro(x.c)) ?? 0
         return (
@@ -263,16 +268,10 @@ export default function MisFacturas() {
         )
       },
     },
-    {
-      clave: 'mipyme',
-      titulo: 'Tipo de factura',
-      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
-      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : <span className="text-xs text-slate-500">Común</span>),
-    },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
       clave: 'que',
-      titulo: 'Qué hay que hacer',
+      titulo: 'Documentación',
       movil: 'ancha',
       celda: (x) => (
         <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs">

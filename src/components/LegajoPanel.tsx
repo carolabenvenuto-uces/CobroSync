@@ -121,6 +121,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const [siniestroNuevo, setSiniestroNuevo] = useState('')
   const [motivo, setMotivo] = useState<string>('')
   const [motivoDemora, setMotivoDemora] = useState('')
+  const [patenteNueva, setPatenteNueva] = useState('')
   const [fechaDemora, setFechaDemora] = useState(sumarDias(hoy, 5))
   const [docRechazo, setDocRechazo] = useState<TipoDocumento | ''>('')
   const [comentarioRechazo, setComentarioRechazo] = useState('')
@@ -249,8 +250,13 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
   function avisarDemora() {
     if (!motivoDemora) return
-    actualizarComprobante(c.id, { compromiso: { fecha: fechaDemora, motivo: motivoDemora } })
+    // Si ya saben el siniestro o la patente, quedan cargados: así se puede buscar la orden que falta
+    const siniestro = c.siniestro ? null : limpiarSiniestro(siniestroNuevo) || null
+    const patente = c.patente ? null : patenteNueva.trim().toUpperCase() || null
+    actualizarComprobante(c.id, { compromiso: { fecha: fechaDemora, motivo: motivoDemora }, ...(siniestro ? { siniestro } : {}), ...(patente ? { patente } : {}) })
     registrarEvento(c.id, 'compromiso', `${motivoDemora}. Se compromete a subirlo el ${formatoFecha(fechaDemora)}.`)
+    if (siniestro) registrarEvento(c.id, 'mensaje', `Informó el siniestro ${siniestro}`)
+    if (patente) registrarEvento(c.id, 'mensaje', `Informó la patente ${patente}`)
     setFormulario('ninguno')
   }
 
@@ -677,6 +683,22 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                     Fecha estimada de entrega de la documentación
                     <input type="date" min={hoy} value={fechaDemora} onChange={(e) => setFechaDemora(e.target.value)} className={`${claseSelect} mt-1 w-full`} />
                   </label>
+                  {(!c.siniestro || !c.patente) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {!c.siniestro && (
+                        <label className="block text-xs font-semibold text-slate-500">
+                          Siniestro (opcional)
+                          <input value={siniestroNuevo} onChange={(e) => setSiniestroNuevo(e.target.value)} className={`${claseSelect} mt-1 w-full font-normal`} />
+                        </label>
+                      )}
+                      {!c.patente && (
+                        <label className="block text-xs font-semibold text-slate-500">
+                          Patente (opcional)
+                          <input value={patenteNueva} onChange={(e) => setPatenteNueva(e.target.value)} className={`${claseSelect} mt-1 w-full font-normal uppercase`} />
+                        </label>
+                      )}
+                    </div>
+                  )}
                   <button type="button" onClick={avisarDemora} disabled={!motivoDemora} className={`${botonPrincipal} bg-marca hover:bg-marca-oscuro disabled:opacity-50`}>
                     Avisar a Cobranzas
                   </button>

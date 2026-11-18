@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EnEsperaSucursal } from '../components/EnEspera'
-import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, List, PencilLine, Receipt, Search, Upload, X, ExternalLink } from 'lucide-react'
+import { ExternalLink, FileUp, Info, Receipt, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
-import { CargaMasiva } from '../components/CargaMasiva'
+import { archivosSoltados, CargaMasiva } from '../components/CargaMasiva'
 import { BadgeEtapa, Chip, EtiquetaMipyme, nombreEtapa } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
@@ -27,53 +27,16 @@ const ESTADO_DOC = {
 
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
-/** Los cuatro estados de las facturas de la sucursal, en el orden en que se ven (de arriba hacia abajo). */
+/** Las solapas de Mis facturas, en el orden en que se ven. El color es el de cada estado. */
 type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision' | 'todas'
 
-const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentType<{ className?: string }>; color: string; acento: string }[] = [
-  {
-    clave: 'subir',
-    titulo: 'Para subir',
-    ayuda: 'Falta la factura o la orden firmada',
-    icono: Upload,
-    color: 'border-sem-amarillo bg-white',
-    acento: 'text-amber-900',
-  },
-  {
-    clave: 'revision',
-    titulo: 'En revisión',
-    ayuda: 'Documentación enviada: sin tareas pendientes',
-    icono: CircleCheck,
-    color: 'border-sky-400 bg-white',
-    acento: 'text-sky-800',
-  },
-  {
-    clave: 'vencer',
-    titulo: 'Por vencer o vencidas',
-    ayuda: 'Pasaron el plazo o vencen en 2 días o menos',
-    icono: Clock,
-    color: 'border-orange-500/70 bg-orange-50',
-    acento: 'text-orange-900',
-  },
-  {
-    clave: 'rechazos',
-    titulo: 'Rechazos y pedidos de Cobranzas',
-    ayuda: 'Documentos no aceptados, errores de factura, refacturaciones y notas de crédito sin avisar',
-    icono: PencilLine,
-    color: 'border-sem-rojo/60 bg-sem-rojo/5',
-    acento: 'text-red-800',
-  },
+const LISTAS: { clave: Lista; titulo: string; punto: string; vacio: string }[] = [
+  { clave: 'subir', titulo: 'Para subir', punto: 'bg-sem-amarillo', vacio: 'Nada para subir. Todo al día.' },
+  { clave: 'vencer', titulo: 'Por vencer o vencidas', punto: 'bg-orange-500', vacio: 'Nada por vencer.' },
+  { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-sem-rojo', vacio: 'Sin rechazos ni pedidos.' },
+  { clave: 'revision', titulo: 'En revisión', punto: 'bg-sky-400', vacio: 'Sin facturas en revisión.' },
+  { clave: 'todas', titulo: 'Todas', punto: 'bg-slate-400', vacio: 'Sin facturas.' },
 ]
-
-/** Todas las facturas de la sucursal, en cualquier estado (también las ya presentadas y cobradas). */
-const TODAS = {
-  clave: 'todas' as const,
-  titulo: 'Todas mis facturas',
-  ayuda: 'En cualquier estado, también las presentadas y cobradas',
-  icono: List,
-  color: 'border-slate-300 bg-white',
-  acento: 'text-slate-700',
-}
 
 const ETAPAS: Record<'subir' | 'revision', Etapa[]> = { subir: ['doc_pendiente', 'doc_atrasada'], revision: ['en_revision'] }
 
@@ -86,11 +49,11 @@ export default function MisFacturas() {
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
-  const [abierta, setAbierta] = useState<Lista | null>(null)
-  const [soloMipyme, setSoloMipyme] = useState(false)
+  const [abierta, setAbierta] = useState<Lista>('subir')
+  const [soltados, setSoltados] = useState<File[]>([])
+  const [arrastrando, setArrastrando] = useState(false)
   const [modalNc, setModalNc] = useState(false)
   const [cargaMasiva, setCargaMasiva] = useState(false)
-  const [busqueda, setBusqueda] = useState('')
   const sinLeer = misNotificaciones.filter((n) => !n.leida).length
 
   // Aviso de plazos: grande la primera vez; al cerrarlo "vuela" hasta el botón Plazos, para que se vea dónde queda
@@ -143,13 +106,36 @@ export default function MisFacturas() {
     el.style.opacity = ''
   }, [avisoPlazos])
 
-  // La pantalla del listado se cierra también con Escape
+  // Un PDF soltado en cualquier lugar de Mis facturas abre "Subir varios PDF" con ese archivo
   useEffect(() => {
-    if (!abierta) return
-    const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && setAbierta(null)
-    window.addEventListener('keydown', alTeclear)
-    return () => window.removeEventListener('keydown', alTeclear)
-  }, [abierta])
+    if (cargaMasiva || modalNc) return
+    const encima = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      setArrastrando(true)
+    }
+    const sale = (e: globalThis.DragEvent) => {
+      if (!e.relatedTarget) setArrastrando(false)
+    }
+    const suelta = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+      setArrastrando(false)
+      const archivos = archivosSoltados(e.dataTransfer)
+      if (!archivos.length) return
+      setSoltados(archivos)
+      setCargaMasiva(true)
+    }
+    window.addEventListener('dragover', encima)
+    window.addEventListener('dragleave', sale)
+    window.addEventListener('drop', suelta)
+    return () => {
+      window.removeEventListener('dragover', encima)
+      window.removeEventListener('dragleave', sale)
+      window.removeEventListener('drop', suelta)
+    }
+  }, [cargaMasiva, modalNc])
 
   const filas = useMemo(
     () =>
@@ -185,15 +171,6 @@ export default function MisFacturas() {
     return filas.filter((x) => ETAPAS[l].includes(x.s.etapa))
   }
 
-  // El buscador busca en todas las facturas de la sucursal, no solo en las pendientes
-  const encontradas = useMemo(() => {
-    const t = busqueda.trim().toLowerCase()
-    if (t.length < 3) return []
-    return comprobantes
-      .filter((c) => [formatoComprobante(c), c.siniestro, c.patente, c.ref].join(' ').toLowerCase().includes(t))
-      .slice(0, 8)
-  }, [busqueda, comprobantes])
-
   type Fila = (typeof filas)[number]
   const columnas: Columna<Fila>[] = [
     {
@@ -219,11 +196,6 @@ export default function MisFacturas() {
         return (
           <div>
             <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
-            {esMipyme(x.c) && (
-              <div className="mt-0.5">
-                <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} />
-              </div>
-            )}
           </div>
         )
       },
@@ -231,6 +203,7 @@ export default function MisFacturas() {
     {
       clave: 'siniestro',
       titulo: 'Siniestro',
+      filtro: (x) => (x.c.siniestro ? 'Con siniestro' : 'Sin siniestro'),
       celda: (x) => {
         const n = porSiniestro.get(claveSiniestro(x.c)) ?? 0
         return (
@@ -240,6 +213,12 @@ export default function MisFacturas() {
           </span>
         )
       },
+    },
+    {
+      clave: 'mipyme',
+      titulo: 'MiPyME',
+      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'No MiPyME'),
+      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : null),
     },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
@@ -290,8 +269,8 @@ export default function MisFacturas() {
       titulo: '',
       movil: 'accion',
       celda: (x) =>
-        x.s.etapa === 'en_revision' && !pedidoDe.has(x.c.id) ? (
-          <Chip tono="celeste">En revisión</Chip>
+        !pedidoDe.has(x.c.id) && !['doc_pendiente', 'doc_atrasada', 'doc_observada'].includes(x.s.etapa) ? (
+          x.s.etapa === 'en_revision' ? <Chip tono="celeste">En revisión</Chip> : null
         ) : (
           <button
             type="button"
@@ -341,7 +320,7 @@ export default function MisFacturas() {
     ...columnas,
   ]
   const columnasTodas: Columna<Fila>[] = [
-    ...columnas.filter((c) => c.clave !== 'que'),
+    ...columnas.filter((c) => c.clave !== 'que' && c.clave !== 'dias'),
     {
       clave: 'estado',
       titulo: 'Estado',
@@ -354,9 +333,9 @@ export default function MisFacturas() {
   ]
 
   const p = plazosActuales()
-  const actual = abierta === 'todas' ? TODAS : abierta ? LISTAS.find((l) => l.clave === abierta)! : null
+  const actual = LISTAS.find((l) => l.clave === abierta)!
   const conPrioridad = abierta === 'rechazos' || abierta === 'vencer'
-  const filasAbiertas = abierta ? listaDe(abierta).filter((x) => !soloMipyme || esMipyme(x.c)) : []
+  const cantidades = Object.fromEntries(LISTAS.map((l) => [l.clave, listaDe(l.clave).length])) as Record<Lista, number>
 
   return (
     <>
@@ -381,159 +360,86 @@ export default function MisFacturas() {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      {/* Las dos acciones de la sucursal, del mismo tamaño */}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <button
           type="button"
-          onClick={() => setCargaMasiva(true)}
-          title="Todos los PDF juntos: cada uno va a su factura por el número del nombre (35-11032 siniestro 22365.pdf)"
-          className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-oscuro"
+          onClick={() => {
+            setSoltados([])
+            setCargaMasiva(true)
+          }}
+          className={`flex items-center gap-4 rounded-xl border-2 border-dashed px-5 py-4 text-left transition ${
+            arrastrando ? 'border-marca bg-marca/10' : 'border-marca/50 bg-white hover:border-marca hover:bg-marca/5'
+          }`}
         >
-          <FileUp className="h-4 w-4" /> Subir varios PDF de una vez
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-marca text-white">
+            <FileUp className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block font-bold text-marca">Subir varios PDF de una vez</span>
+            <span className="block text-xs text-slate-600">Soltalos acá, todos juntos</span>
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setModalNc(true)}
-          title="Para una factura que se anula, toda o una parte"
-          className="inline-flex items-center gap-2 rounded-lg border border-marca/40 bg-white px-4 py-2 text-sm font-semibold text-marca shadow-sm hover:bg-marca/5"
+          className="flex items-center gap-4 rounded-xl border-2 border-marca/30 bg-white px-5 py-4 text-left transition hover:border-marca hover:bg-marca/5"
         >
-          <Receipt className="h-4 w-4" /> Informar una nota de crédito
-        </button>
-      </div>
-
-      {/* Los cuatro estados, uno debajo del otro y a lo ancho; cada uno abre su listado */}
-      <div className="mb-5 space-y-2">
-        {LISTAS.map((l) => {
-          const lista = listaDe(l.clave)
-          const mipymes = l.clave === 'revision' ? 0 : lista.filter((x) => esMipyme(x.c)).length
-          const Icono = l.icono
-          return (
-            <button
-              key={l.clave}
-              type="button"
-              onClick={() => {
-                setSoloMipyme(false)
-                setAbierta(l.clave)
-              }}
-              className={`group flex w-full items-center gap-3 rounded-xl border border-l-[6px] px-4 py-3 text-left shadow-sm transition hover:shadow-md ${l.color}`}
-            >
-              <Icono className={`h-5 w-5 shrink-0 ${l.acento}`} />
-              <span className="w-12 shrink-0 text-2xl font-extrabold tabular-nums">{lista.length}</span>
-              <span className="min-w-0 flex-1">
-                <span className={`flex flex-wrap items-center gap-2 font-bold ${l.acento}`}>
-                  {l.titulo}
-                  {mipymes > 0 && <EtiquetaMipyme texto={`${mipymes} MiPyME`} />}
-                </span>
-                <span className="block text-xs text-slate-600">{l.ayuda}</span>
-              </span>
-              <span className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-marca group-hover:underline sm:inline-flex">
-                Ver listado <ChevronRight className="h-4 w-4" />
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-marca sm:hidden" />
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          onClick={() => {
-            setSoloMipyme(false)
-            setAbierta('todas')
-          }}
-          className={`group flex w-full items-center gap-3 rounded-xl border border-l-[6px] px-4 py-3 text-left shadow-sm transition hover:shadow-md ${TODAS.color}`}
-        >
-          <List className={`h-5 w-5 shrink-0 ${TODAS.acento}`} />
-          <span className="w-12 shrink-0 text-2xl font-extrabold tabular-nums">{todas.length}</span>
-          <span className="min-w-0 flex-1">
-            <span className={`block font-bold ${TODAS.acento}`}>{TODAS.titulo}</span>
-            <span className="block text-xs text-slate-600">{TODAS.ayuda}</span>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-marca/10 text-marca">
+            <Receipt className="h-5 w-5" />
           </span>
-          <span className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-marca group-hover:underline sm:inline-flex">
-            Ver listado <ChevronRight className="h-4 w-4" />
+          <span>
+            <span className="block font-bold text-marca">Informar una nota de crédito</span>
+            <span className="block text-xs text-slate-600">Para una factura que se anula, toda o una parte</span>
           </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-marca sm:hidden" />
         </button>
       </div>
 
       {/* PDF de facturas de hoy, hasta que Cobranzas cargue el ERP */}
-      <div className="-mt-1 mb-3">
+      <div className="mb-3">
         <EnEsperaSucursal />
       </div>
 
-      {/* Buscador, con el resultado justo abajo */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          type="search"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar cualquier factura por número, ref., siniestro o patente"
-          className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
-        />
-      </div>
-      {busqueda.trim().length >= 3 && (
-        <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, ref., siniestro o patente.</li>}
-          {encontradas.map((c) => (
-            <li key={c.id}>
+      {/* Solapas: cada una cambia la lista de abajo */}
+      <div className="mb-3 max-w-full overflow-x-auto">
+        <div className="inline-flex gap-0.5 rounded-xl bg-slate-200/70 p-1" role="tablist" aria-label="Facturas">
+          {LISTAS.map((l) => {
+            const elegida = l.clave === abierta
+            return (
               <button
+                key={l.clave}
                 type="button"
-                onClick={() => {
-                  abrirLegajo(c.id)
-                  setBusqueda('')
-                }}
-                className="flex w-full flex-wrap justify-between gap-x-3 px-4 py-2.5 text-left text-sm hover:bg-fondo"
+                role="tab"
+                aria-selected={elegida}
+                onClick={() => setAbierta(l.clave)}
+                className={`inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  elegida ? 'bg-white text-noche shadow-sm' : 'text-slate-500 hover:text-noche'
+                }`}
               >
-                <span className="font-medium">{formatoComprobante(c)}</span>
-                <span className="text-slate-500">
-                  {c.siniestro} · {c.patente} · {formatoFecha(c.fecha)}
-                </span>
+                <span className={`h-2 w-2 rounded-full ${l.punto}`} aria-hidden="true" />
+                {l.titulo}
+                <span className="tabular-nums text-slate-500">{cantidades[l.clave].toLocaleString('es-AR')}</span>
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Listado de una tarjeta: pantalla encima, se cierra para volver a Mis facturas */}
-      {actual && (
-        <div className="fixed inset-0 z-40 flex items-stretch justify-center bg-noche/40 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-listado">
-          <div className="flex w-full max-w-6xl flex-col overflow-hidden bg-fondo shadow-2xl sm:rounded-2xl">
-            <div className={`flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 sm:px-6 ${actual.color}`}>
-              <button type="button" onClick={() => setAbierta(null)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-marca hover:bg-white/70">
-                <ArrowLeft className="h-4 w-4" /> Mis facturas
-              </button>
-              <div className="min-w-0 flex-1">
-                <h2 id="titulo-listado" className={`font-extrabold ${actual.acento}`}>
-                  {actual.titulo} · {listaDe(actual.clave).length}
-                </h2>
-                <p className="text-xs text-slate-600">{actual.ayuda}</p>
-              </div>
-              {conPrioridad && (
-                <label className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="checkbox" checked={soloMipyme} onChange={(e) => setSoloMipyme(e.target.checked)} />
-                  Solo MiPyME
-                </label>
-              )}
-              <button type="button" onClick={() => setAbierta(null)} aria-label="Cerrar" className="rounded-lg p-1.5 hover:bg-white/70">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-              {conPrioridad && <p className="mb-2 text-xs text-slate-500">Orden de prioridad: primero las MiPyME, después lo más atrasado.</p>}
-              <Tabla
-                id={conPrioridad ? 'para-resolver-2' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-2'}
-                key={`${abierta}-${soloMipyme}`}
-                filas={filasAbiertas}
-                columnas={conPrioridad ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
-                clave={(x) => x.c.id}
-                onFila={(x) => abrirLegajo(x.c.id)}
-                ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'desc' }}
-                porPagina={20}
-                resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'}`}
-                vacio={abierta === 'todas' ? 'Sin facturas.' : abierta === 'revision' ? 'Sin facturas en revisión.' : 'Sin facturas en esta lista. Todo al día.'}
-              />
-            </div>
-          </div>
+            )
+          })}
         </div>
-      )}
+      </div>
+
+      {conPrioridad && <p className="mb-2 text-xs text-slate-500">Primero las MiPyME, después lo más atrasado.</p>}
+      <Tabla
+        id={conPrioridad ? 'mis-facturas-prioridad' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-lista'}
+        key={abierta}
+        filas={listaDe(abierta)}
+        columnas={conPrioridad ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
+        clave={(x) => x.c.id}
+        onFila={(x) => abrirLegajo(x.c.id)}
+        buscar={(x) => [formatoComprobante(x.c), x.c.ref, x.c.siniestro, x.c.patente].join(' ')}
+        textoBusqueda="Buscar por número, ref., siniestro o patente"
+        ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'desc' }}
+        porPagina={25}
+        resumen={(l) => `${l.length.toLocaleString('es-AR')} ${l.length === 1 ? 'factura' : 'facturas'}`}
+        vacio={actual.vacio}
+      />
 
       {/* Aviso de plazos: grande la primera vez, después desde el botón "Plazos" */}
       {avisoPlazos && (
@@ -574,7 +480,7 @@ export default function MisFacturas() {
       )}
 
       {modalNc && <NotaCreditoModal onCerrar={() => setModalNc(false)} />}
-      {cargaMasiva && <CargaMasiva onCerrar={() => setCargaMasiva(false)} />}
+      {cargaMasiva && <CargaMasiva iniciales={soltados} onCerrar={() => setCargaMasiva(false)} />}
     </>
   )
 }

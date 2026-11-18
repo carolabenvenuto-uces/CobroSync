@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { facturaDeHoy, unirEnEspera } from '../src/domain/espera'
+import { facturaDeHoy, numerosDelNombre, unirEnEspera } from '../src/domain/espera'
 import type { Comprobante, DocumentoEnEspera } from '../src/domain/tipos'
 
 const nueva = (extra: Partial<Comprobante> = {}): Comprobante => ({
@@ -37,5 +37,16 @@ describe('PDF de facturas de hoy', () => {
     const c = unirEnEspera([nueva()], [espera({ tipo: 'orden' })], '2026-11-06').comprobantes[0]
     expect(c.documentos.find((d) => d.tipo === 'orden')?.estado).toBe('en_revision')
     expect(c.documentos.find((d) => d.tipo === 'factura')?.estado).toBe('faltante')
+  })
+})
+
+describe('número de factura en el nombre', () => {
+  it('no toma un siniestro como factura y pide el punto de venta separado', () => {
+    expect(numerosDelNombre('FED PAT 104-4-141690 FC 35-5749.pdf')[0]).toEqual({ puntoVenta: 35, numero: 5749 })
+    expect(numerosDelNombre('FED PAT 104-4-102868 fc 30-2333.pdf')[0]).toEqual({ puntoVenta: 30, numero: 2333 })
+    expect(numerosDelNombre('0035-00011032 siniestro 22365.pdf')[0]).toEqual({ puntoVenta: 35, numero: 11032 })
+    // pegado no vale: podría ser un siniestro que empieza con 30
+    expect(numerosDelNombre('FED PAT 104-4-102868 fc 302333.pdf')).toEqual([])
+    expect(numerosDelNombre('302333 siniestro.pdf')).toEqual([])
   })
 })

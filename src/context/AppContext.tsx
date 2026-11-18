@@ -512,7 +512,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const encolar = useCallback(
     (op: Cambio) => {
       if (!usuarioGoogle) return
-      cola.current.push(op)
+      // Cada cambio con su identificador: si el envío se reintenta, el servidor no lo repite
+      cola.current.push({ ...op, opId: op.opId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` })
       if (temporizador.current) clearTimeout(temporizador.current)
       temporizador.current = setTimeout(enviarCambios, 300)
     },
@@ -532,7 +533,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const previo = datosRef.current?.comprobantes.find((c) => c.id === id)
       const { documentos, ...campos } = cambios
       // Solo los documentos que realmente cambiaron
-      const docsCambiados = documentos?.filter((d) => JSON.stringify(d) !== JSON.stringify(previo?.documentos.find((x) => x.tipo === d.tipo)))
+      // Con el estado que tenían en pantalla: si mientras tanto otra persona lo cambió (por ejemplo, lo
+      // aprobó), el servidor no lo pisa
+      const docsCambiados = documentos
+        ?.filter((d) => JSON.stringify(d) !== JSON.stringify(previo?.documentos.find((x) => x.tipo === d.tipo)))
+        .map((d) => ({ ...d, antes: previo?.documentos.find((x) => x.tipo === d.tipo)?.estado ?? ('faltante' as const) }))
       encolar({
         id,
         campos: Object.keys(campos).length ? campos : undefined,

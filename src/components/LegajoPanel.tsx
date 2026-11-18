@@ -536,7 +536,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
 
           {otraPersona && (
             <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-              <strong>{otraPersona}</strong> tiene abierta esta factura en este momento. Conviene coordinar antes de cambiar algo.
+              <strong>{otraPersona}</strong> tiene abierta esta {c.tipo === 'NC' ? 'nota de crédito' : 'factura'} en este momento. Conviene coordinar antes de cambiar algo.
             </p>
           )}
 
@@ -1196,8 +1196,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
             </div>
           </section>
 
-          {/* Recorrido de fechas, como las columnas de la planilla */}
-          <section>
+          {/* Recorrido de fechas, como las columnas de la planilla (una NC no se documenta, presenta ni cobra) */}
+          {c.tipo !== 'NC' && <section>
             <h3 className="mb-2 font-bold">Recorrido</h3>
             <ol className="space-y-2">
               {recorrido.map((p) => (
@@ -1210,7 +1210,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </li>
               ))}
             </ol>
-          </section>
+          </section>}
 
           {/* Observaciones: como la columna de la planilla; Cobranzas las edita */}
           {rol === 'auditoria' ? (
@@ -1220,7 +1220,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 rows={2}
-                placeholder="Nota interna de Cobranzas sobre esta factura"
+                placeholder={`Nota interna de Cobranzas sobre esta ${c.tipo === 'NC' ? 'nota de crédito' : 'factura'}`}
                 className={`${claseSelect} w-full`}
               />
               {observaciones !== c.observaciones && (

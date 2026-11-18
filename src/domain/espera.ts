@@ -1,9 +1,23 @@
 import type { Comprobante, Documento, DocumentoEnEspera, Sucursal, TipoDocumento } from './tipos'
 
-/** Puntos de venta y números de factura que aparecen en el nombre de un archivo ("35-11032"). */
+/**
+ * Puntos de venta y números de factura que aparecen en el nombre de un archivo ("35-11032"). El punto
+ * de venta tiene que ir separado del número (guion, espacio, punto o barra): un número pegado puede ser
+ * un siniestro. Primero lo que sigue a "FC" o "factura"; después los pares sueltos que no sean parte de
+ * un número más largo con guiones (un siniestro como "104-4-102868" no es el punto de venta 104).
+ */
 export function numerosDelNombre(nombre: string): { puntoVenta: number; numero: number }[] {
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
-  return [...base.matchAll(/(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})/g)].map((m) => ({ puntoVenta: Number(m[1]), numero: Number(m[2]) }))
+  const lista: { puntoVenta: number; numero: number }[] = []
+  const agregar = (pv: number, numero: number) => {
+    if (numero > 0 && !lista.some((x) => x.puntoVenta === pv && x.numero === numero)) lista.push({ puntoVenta: pv, numero })
+  }
+  const PAR = /(?<!\d\s*[-_./]\s*)(?<!\d)(\d{1,5})\s*[-_ ./]\s*0*(\d{1,8})(?!\d)(?!\s*[-_./]\s*\d)/
+  // 1) después de FC o factura
+  for (const m of base.matchAll(new RegExp(`(?:\\bfce?\\b|factura)\\s*[:#nº°.]*\\s*${PAR.source}`, 'gi'))) agregar(Number(m[1]), Number(m[2]))
+  // 2) pares sueltos
+  for (const m of base.matchAll(new RegExp(PAR.source, 'g'))) agregar(Number(m[1]), Number(m[2]))
+  return lista
 }
 
 /** Todos los puntos de venta de una sucursal. */

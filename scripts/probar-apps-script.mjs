@@ -60,6 +60,7 @@ const cacheScript = {
     if (String(v).length > 100000) throw new Error('valor de más de 100 KB')
     cacheMemoria.set(k, v)
   }),
+  put: (k, v) => cacheMemoria.set(k, String(v)),
 }
 const hojas = {}
 const hojasControl = { Diario: crearHoja('Diario'), Quiter: crearHoja('Quiter') } // la planilla de control de Cobranzas
@@ -892,5 +893,31 @@ prueba('una sucursal escrita de otra forma en Usuarios ("Alvarez Thomas" por "A.
   esperar(r.usuario.sucursal === 'Rocamora' && r.datos.comprobantes.length > 0, `${r.usuario.sucursal}: ${r.datos.comprobantes.length}`)
 })
 prueba('instalarDisparadores no falla', () => gs('instalarDisparadores'))
+
+prueba('un envío reintentado no se repite y no pisa lo que aprobó otra persona', () => {
+  como('rocamora@svaauto.com.ar')
+  const c = gs('obtenerDatos').datos.comprobantes.find((x) => x.tipo === 'FC' && x.sucursal === 'Rocamora' && x.documentos.some((d) => d.estado === 'faltante'))
+  const tipo = c.documentos.find((d) => d.estado === 'faltante').tipo
+  const subida = [
+    { id: c.id, opId: 'prueba-1', documentos: [{ tipo, estado: 'en_revision', archivo: 'doc.pdf', url: 'u9', antes: 'faltante' }] },
+    { id: c.id, opId: 'prueba-2', evento: { tipo: 'subida', texto: 'Subió la documentación (doc.pdf)' } },
+  ]
+  gs('aplicarCambios', subida)
+  como('auditoria@svaauto.com.ar')
+  let leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  const doc = leido.documentos.find((d) => d.tipo === tipo)
+  gs('aplicarCambios', [{ id: c.id, documentos: [{ ...doc, estado: 'ok', antes: 'en_revision' }] }])
+  // La página de la sucursal reintenta el mismo envío (le había llegado un error de conexión)
+  como('rocamora@svaauto.com.ar')
+  gs('aplicarCambios', subida)
+  // Y otra pantalla vieja (sin el reintento) intenta volver a subir sobre lo aprobado
+  const r = gs('aplicarCambios', [{ id: c.id, opId: 'prueba-3', documentos: [{ tipo, estado: 'en_revision', archivo: 'otro.pdf', antes: 'faltante' }] }])
+  como('auditoria@svaauto.com.ar')
+  leido = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
+  esperar(leido.documentos.find((d) => d.tipo === tipo).estado === 'ok', 'se pisó la aprobación')
+  esperar(leido.eventos.filter((e) => e.texto === 'Subió la documentación (doc.pdf)').length === 1, 'el mensaje se repitió')
+  esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('ya había cambiado'), 'no avisó que el documento había cambiado')
+  esperar(!leido.documentos.some((d) => 'antes' in d), 'se guardó el estado anterior en el documento')
+})
 
 if (fallas) process.exit(1)

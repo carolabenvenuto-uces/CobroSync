@@ -12,7 +12,8 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
 ## [0.17.10] - 2026-11-18
-- Mis facturas: columnas **Ref.** y **Patente** a la vista, para ubicar la factura en Quiter aunque todavía no tenga siniestro. El buscador también lo dice. La elección de columnas de esta pantalla vuelve a cero para todos.
+- Mis facturas: columnas **Ref.** y **Patente** a la vista, para ubicar la factura en Quiter aunque todavía no tenga siniestro. El buscador también lo dice. La elección de columnas de esta pantalla vuelve a cero: todas a la vista y cada uno oculta las que no use.
+- Mis facturas: tarjeta **Todas mis facturas** (gris, informativa) con todas las facturas de la sucursal en cualquier estado, con columna Estado para filtrar.
 
 ## [0.17.9] - 2026-11-17
 

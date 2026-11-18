@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
 import { BotonExportar } from './Card'
 
 /**
@@ -65,6 +65,8 @@ interface Props<T> {
   resumen?: (filas: T[]) => ReactNode
   /** fila de totales al pie */
   pie?: (filas: T[]) => ReactNode
+  /** títulos y celdas centrados */
+  centrada?: boolean
   /** con esto aparece una casilla por fila (y una para elegir todas las filtradas) */
   seleccion?: { elegidas: Set<string>; alCambiar: (elegidas: Set<string>) => void }
 }
@@ -101,6 +103,7 @@ export function Tabla<T>({
   resumen,
   pie,
   seleccion,
+  centrada = false,
 }: Props<T>) {
   const [busqueda, setBusqueda] = useState('')
   const [filtros, setFiltros] = useState<Record<string, string>>(filtrosIniciales)
@@ -209,17 +212,6 @@ export function Tabla<T>({
   }, [busqueda, buscar, visibles.length, filas])
   const hayFiltros = busqueda !== '' || Object.values(filtros).some((v) => v && v !== TODOS)
 
-  function ordenar(col: Columna<T>) {
-    if (!col.orden) return
-    // Mayor primero → menor primero → como venía (tercer toque, para volver al orden original)
-    setOrden((o) => {
-      if (o?.clave !== col.clave) return { clave: col.clave, dir: 'desc' }
-      if (o.dir === 'desc') return { clave: col.clave, dir: 'asc' }
-      return ordenInicial && ordenInicial.clave !== col.clave ? ordenInicial : null
-    })
-    setPagina(1)
-  }
-
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Barra: lupa, resumen y exportar */}
@@ -254,6 +246,32 @@ export function Tabla<T>({
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {todasLasColumnas.some((c) => c.orden) && (
+            <label className="hidden items-center gap-2 text-sm text-slate-600 sm:flex">
+              Ordenar
+              <select
+                value={orden ? `${orden.clave}|${orden.dir}` : ''}
+                onChange={(e) => {
+                  const [c, d] = e.target.value.split('|')
+                  setOrden(c ? { clave: c, dir: d as 'asc' | 'desc' } : null)
+                  setPagina(1)
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-semibold text-noche shadow-sm"
+              >
+                {!ordenInicial && <option value="">Orden sugerido</option>}
+                {todasLasColumnas
+                  .filter((c) => c.orden && !ocultas.has(c.clave))
+                  .flatMap((c) => [
+                    <option key={`${c.clave}-a`} value={`${c.clave}|asc`}>
+                      {c.titulo}: de menor a mayor
+                    </option>,
+                    <option key={`${c.clave}-d`} value={`${c.clave}|desc`}>
+                      {c.titulo}: de mayor a menor
+                    </option>,
+                  ])}
+              </select>
+            </label>
+          )}
           {todasLasColumnas.length > 6 && !pie && (
             <details className="relative hidden sm:block">
               <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo">
@@ -398,7 +416,7 @@ export function Tabla<T>({
             )}
             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
               {seleccion && (
-                <th rowSpan={2} className="w-8 px-2 align-middle">
+                <th className="w-8 px-2 align-middle">
                   <input
                     type="checkbox"
                     aria-label="Elegir todas las filas filtradas"
@@ -417,60 +435,23 @@ export function Tabla<T>({
               {columnas.map((col, i) => (
                 <th
                   key={col.clave}
-                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                  className={`px-2 py-2.5 align-bottom font-semibold leading-tight ${centrada ? 'text-center' : col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
                 >
-                  {col.orden ? (
-                    <button
-                      type="button"
-                      onClick={() => ordenar(col)}
-                      className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
-                      title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Ordenar de menor a mayor' : 'Volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
-                    >
-                      {col.titulo}
-                      {orden?.clave === col.clave ? (
-                        orden.dir === 'asc' ? (
-                          <ArrowUp className="h-3 w-3" />
-                        ) : (
-                          <ArrowDown className="h-3 w-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-40" />
-                      )}
-                    </button>
-                  ) : (
-                    col.titulo
-                  )}
-                </th>
-              ))}
-            </tr>
-            <tr>
-              {columnas.map((col, i) => (
-                <th
-                  key={col.clave}
-                  className={`px-2 pb-2 font-normal ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
-                >
-                  {conFiltro(col) && (
-                    <select
-                      value={filtros[col.clave] ?? TODOS}
-                      onChange={(e) => {
-                        setFiltros((f) => ({ ...f, [col.clave]: e.target.value }))
-                        setPagina(1)
-                      }}
-                      className={`w-full min-w-[4.5rem] max-w-40 rounded-md border px-1 py-1 text-xs ${
-                        filtros[col.clave] && filtros[col.clave] !== TODOS
-                          ? 'border-marca bg-marca/5 font-semibold text-marca'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                      aria-label={`Filtrar ${col.titulo}`}
-                    >
-                      <option value={TODOS}>Todos</option>
-                      {(opciones[col.clave] ?? []).map((o) => (
-                        <option key={o.valor} value={o.valor}>
-                          {o.valor} ({o.cantidad.toLocaleString('es-AR')})
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <span className={`inline-flex items-end gap-1 ${centrada ? 'justify-center' : ''}`}>
+                    {conFiltro(col) ? null : col.titulo}
+                    {conFiltro(col) && (
+                      <FiltroDeColumna
+                        titulo={col.titulo}
+                        conTitulo
+                        valor={filtros[col.clave] ?? TODOS}
+                        opciones={opciones[col.clave] ?? []}
+                        alElegir={(v) => {
+                          setFiltros((f) => ({ ...f, [col.clave]: v }))
+                          setPagina(1)
+                        }}
+                      />
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -500,7 +481,7 @@ export function Tabla<T>({
                 {columnas.map((col, i) => (
                   <td
                     key={col.clave}
-                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${tonoDe(col)?.celda ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
+                    className={`px-2 py-2 ${centrada ? 'text-center tabular-nums' : col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${tonoDe(col)?.celda ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
                   >
                     {col.celda(f)}
                   </td>
@@ -564,5 +545,99 @@ export function Tabla<T>({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Filtro en el título de la columna: un botón chico al lado del nombre que despliega las opciones.
+ * Así el encabezado no se agranda con un desplegable fijo debajo de cada título.
+ */
+function FiltroDeColumna({
+  titulo,
+  conTitulo,
+  valor,
+  opciones,
+  alElegir,
+}: {
+  titulo: string
+  /** la columna no se ordena: el mismo título abre el filtro */
+  conTitulo?: boolean
+  valor: string
+  opciones: { valor: string; cantidad: number }[]
+  alElegir: (valor: string) => void
+}) {
+  const [abierto, setAbierto] = useState<{ x: number; y: number } | null>(null)
+  const boton = useRef<HTMLButtonElement>(null)
+  const caja = useRef<HTMLDivElement>(null)
+  const puesto = valor !== TODOS
+  useEffect(() => {
+    if (!abierto) return
+    const cerrar = (e: Event) => {
+      if (e.type === 'mousedown' && (caja.current?.contains(e.target as Node) || boton.current?.contains(e.target as Node))) return
+      setAbierto(null)
+    }
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && setAbierto(null)
+    document.addEventListener('mousedown', cerrar)
+    window.addEventListener('scroll', cerrar, true)
+    window.addEventListener('resize', cerrar)
+    window.addEventListener('keydown', tecla)
+    return () => {
+      document.removeEventListener('mousedown', cerrar)
+      window.removeEventListener('scroll', cerrar, true)
+      window.removeEventListener('resize', cerrar)
+      window.removeEventListener('keydown', tecla)
+    }
+  }, [abierto])
+  const elegir = (v: string) => {
+    alElegir(v)
+    setAbierto(null)
+  }
+  return (
+    <>
+      <button
+        ref={boton}
+        type="button"
+        onClick={() => {
+          const r = boton.current?.getBoundingClientRect()
+          setAbierto(abierto || !r ? null : { x: Math.min(r.left, window.innerWidth - 230), y: r.bottom + 4 })
+        }}
+        aria-label={`Filtrar ${titulo}`}
+        aria-expanded={!!abierto}
+        title={puesto ? `Filtrado: ${valor}` : `Filtrar ${titulo}`}
+        className={`inline-flex items-center gap-0.5 rounded ${conTitulo ? 'uppercase' : 'px-1 normal-case tracking-normal'} ${
+          puesto ? 'bg-marca/10 px-1 font-semibold text-marca' : conTitulo ? 'hover:text-noche' : 'text-slate-400 hover:bg-slate-200/70 hover:text-noche'
+        }`}
+      >
+        {conTitulo && <span>{titulo}</span>}
+        {puesto && <span className="max-w-24 truncate normal-case tracking-normal text-[11px]">{conTitulo ? `· ${valor}` : valor}</span>}
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {abierto && (
+        <div
+          ref={caja}
+          role="listbox"
+          style={{ left: abierto.x, top: abierto.y }}
+          className="fixed z-50 max-h-72 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-left text-sm font-normal normal-case tracking-normal text-noche shadow-lg"
+        >
+          {[{ valor: TODOS, cantidad: -1 }, ...opciones].map((o) => {
+            const elegida = o.valor === valor
+            return (
+              <button
+                key={o.valor}
+                type="button"
+                role="option"
+                aria-selected={elegida}
+                onClick={() => elegir(o.valor)}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-fondo ${elegida ? 'font-semibold text-marca' : ''}`}
+              >
+                <Check className={`h-3.5 w-3.5 shrink-0 ${elegida ? '' : 'invisible'}`} />
+                <span className="min-w-0 flex-1 truncate">{o.valor === TODOS ? 'Todos' : o.valor}</span>
+                {o.cantidad >= 0 && <span className="text-xs tabular-nums text-slate-400">{o.cantidad.toLocaleString('es-AR')}</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }

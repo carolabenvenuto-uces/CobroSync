@@ -163,12 +163,12 @@ const SECCIONES: Seccion[] = [
     contenido: () => (
       <ul className="list-disc space-y-1 pl-5">
         <li>
-          <strong>Filtrar:</strong> debajo del título de cada columna hay un desplegable. Muestra solo las opciones que hay, con cuántas
-          facturas tiene cada una. Se pueden combinar varios filtros; "Limpiar filtros" los saca a todos.
+          <strong>Filtrar:</strong> los títulos con una flechita se tocan y despliegan sus opciones, con cuántas facturas tiene cada
+          una. Se pueden combinar varios filtros; "Limpiar filtros" los saca a todos.
         </li>
         <li>
-          <strong>Ordenar:</strong> con un clic en el título de la columna. Primer clic, de mayor a menor; segundo, de menor a mayor; tercero,
-          vuelve al orden original. Las filas sin dato (por ejemplo, sin fecha) quedan siempre al final.
+          <strong>Ordenar:</strong> en "Ordenar", arriba a la derecha de la lista: cada columna de menor a mayor o de mayor a menor. Las
+          filas sin dato (por ejemplo, sin fecha) quedan siempre al final.
         </li>
         <li>
           <strong>Abrir una factura:</strong> con un clic en la fila. Se abre el legajo con sus documentos, su historial y lo que se puede hacer.

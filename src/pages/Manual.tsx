@@ -222,17 +222,17 @@ const SECCIONES: Seccion[] = [
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <strong>Para subir:</strong> todas las facturas a las que les falta la factura o la orden firmada.
+            <strong>Vencidas o por vencer:</strong> les falta la factura o la orden firmada y pasaron el plazo o les quedan 2 días o menos.
           </li>
           <li>
-            <strong>En revisión:</strong> documentación ya enviada, que Cobranzas está revisando. Sin tareas pendientes.
-          </li>
-          <li>
-            <strong>Por vencer o vencidas:</strong> facturas que pasaron el plazo o a las que les quedan 2 días o menos.
+            <strong>En plazo:</strong> les falta la factura o la orden firmada y todavía tienen tiempo.
           </li>
           <li>
             <strong>Rechazos y pedidos:</strong> documentos que Cobranzas o la compañía no aceptaron y pedidos de Cobranzas. El motivo dice
             quién lo rechazó y qué hay que cambiar.
+          </li>
+          <li>
+            <strong>En revisión:</strong> documentación ya enviada, que Cobranzas está revisando. Sin tareas pendientes.
           </li>
           <li>
             <strong>Todas:</strong> todas las facturas de la sucursal, en cualquier estado.
@@ -255,7 +255,7 @@ const SECCIONES: Seccion[] = [
         <h4 className="font-bold">De a una factura</h4>
         <Pasos>
           <Paso n={1}>
-            En la solapa <strong>Para subir</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
+            En la solapa <strong>Vencidas o por vencer</strong> o <strong>En plazo</strong> (o en la de rechazos), el botón <strong>Subir</strong> de la factura.
           </Paso>
           <Paso n={2}>El PDF de la factura y el de la orden firmada (o uno solo, si están escaneadas juntas).</Paso>
           <Paso n={3}>La factura pasa a "En revisión". Si Cobranzas la observa, llega una notificación y aparece en Rechazos y pedidos.</Paso>
@@ -281,7 +281,7 @@ const SECCIONES: Seccion[] = [
           mejor calidad, la hoja entera sobre un fondo oscuro, con buena luz y sin sombras. También sirven los escáneres del celular (Google
           Drive o la app Notas en iPhone). Mientras un documento está en revisión, se puede quitar si hubo un error.
         </Nota>
-        <p>Cada factura dice qué le falta: "+ Falta la orden firmada", "… Factura en revisión", "✓ Factura aprobada".</p>
+        <p>Cada factura dice qué le falta: "Falta la orden firmada", "Factura en revisión", "Factura aprobada".</p>
       </>
     ),
   },

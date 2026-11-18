@@ -40,8 +40,9 @@ import { esPdf, prepararArchivo } from '../lib/imagenes'
 import { numeroParaNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
+import { esMipyme, plazoSucursal } from '../domain/plazos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
-import { AYUDA_ETAPA, BadgeEtapa, quienEtapa } from './ui/Badges'
+import { BadgeEtapa, quienEtapa } from './ui/Badges'
 import { claseSelect } from './ui/Estados'
 
 export const MOTIVOS_DEMORA = [
@@ -155,6 +156,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   // Otras facturas del mismo siniestro (facturación parcial de repuestos): comparten la orden firmada
   const hermanas = c.tipo === 'FC' ? facturasDelSiniestro(c, datos?.comprobantes ?? []) : []
   const [compartirConHermanas, setCompartirConHermanas] = useState(true)
+  // Las otras facturas del siniestro a las que les falta la orden firmada (las cobradas o anuladas, no)
+  const sinOrden = hermanas.filter((h) => h.estado !== 'cobrada' && h.estado !== 'anulada' && ['faltante', 'observado'].includes(h.documentos.find((d) => d.tipo === 'orden')?.estado ?? 'faltante'))
 
   async function subir(tipos: TipoDocumento[], lista: FileList | File[] | null | undefined) {
     const archivos = lista ? [...lista] : []
@@ -233,6 +236,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       setSubiendo(false)
     }
   }
+  // Lo que pasa con la factura, sin repetir lo que ya dice Documentación: si falta algo, solo el plazo
+  const resumenEstado = (() => {
+    if (semaforo.etapa !== 'doc_pendiente' && semaforo.etapa !== 'doc_atrasada') return semaforo.detalle
+    const quedan = plazoSucursal(c) - diffDias(c.fecha, hoy)
+    const mipyme = esMipyme(c) ? ' · MiPyME' : ''
+    if (quedan < 0) return [`Plazo vencido hace ${-quedan} ${-quedan === 1 ? 'día' : 'días'} (${plazoSucursal(c)} días${mipyme})`]
+    if (quedan === 0) return [`El plazo vence hoy (${plazoSucursal(c)} días${mipyme})`]
+    return [`Quedan ${quedan} ${quedan === 1 ? 'día' : 'días'} de plazo (${plazoSucursal(c)} días${mipyme})`]
+  })()
   const pendientesDeSubir = documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map((d) => d.tipo)
 
   function avisarDemora() {
@@ -392,7 +404,6 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-slate-500">{AYUDA_ETAPA[semaforo.etapa]}</p>
           </div>
           <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-slate-100" aria-label="Cerrar">
             <X className="h-5 w-5" />
@@ -429,13 +440,13 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               }
             />
             <Dato titulo="Siniestro / patente" valor={[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')} />
-            <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} ${diffDias(c.fecha, hoy) === 1 ? 'día' : 'días'}`} />
+            <Dato titulo="Factura emitida" valor={formatoFecha(c.fecha)} />
           </dl>
 
           {/* Qué pasa con la factura */}
           <section className="rounded-lg bg-fondo p-3">
             <ul className="space-y-1">
-              {semaforo.detalle.map((d) => (
+              {resumenEstado.map((d) => (
                 <li key={d} className="flex items-start gap-2">
                   {semaforo.color === 'rojo' ? (
                     <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-sem-rojo" />
@@ -622,7 +633,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               </ul>
               {subeDocs && abierta && pendientesDeSubir.length > 1 && (
                 <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-marca/50 px-4 py-2.5 text-sm font-semibold text-marca hover:bg-marca/5">
-                  <FileUp className="h-4 w-4" /> Subir un PDF con todo lo que falta
+                  <FileUp className="h-4 w-4" /> Subir factura y orden firmada en un solo PDF
                   <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
                 </label>
               )}
@@ -633,11 +644,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               )}
               {rol === 'sucursal' && leTocaALaSucursal && (
                 <>
-                <p className="mt-1 text-xs text-slate-500">
-                  {subiendo
-                    ? 'Subiendo el archivo…'
-                    : 'Solo PDF, con el número de la factura en el nombre. Desde el celular, el botón Foto saca la foto y la sube como PDF.'}
-                </p>
+                {subiendo && <p className="mt-1 text-xs text-slate-500">Subiendo el archivo…</p>}
                 {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}
                 </>
               )}
@@ -695,10 +702,12 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </li>
                 ))}
               </ul>
-              {rol === 'sucursal' && (
+              {rol === 'sucursal' && sinOrden.length > 0 && (
                 <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
                   <input type="checkbox" checked={compartirConHermanas} onChange={(e) => setCompartirConHermanas(e.target.checked)} />
-                  Al subir la orden firmada, usarla también para estas facturas (si les falta)
+                  {sinOrden.length === 1
+                    ? `Usar la misma orden firmada para la ${formatoComprobante(sinOrden[0])}, que todavía no la tiene`
+                    : `Usar la misma orden firmada para las otras ${sinOrden.length} facturas, que todavía no la tienen`}
                 </label>
               )}
             </section>

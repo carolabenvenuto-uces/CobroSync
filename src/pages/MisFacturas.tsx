@@ -240,7 +240,6 @@ export default function MisFacturas() {
       clave: 'factura',
       titulo: 'Factura',
       movil: 'titulo',
-      orden: (x) => x.c.fecha,
       // el tipo (MiPyME o común) se filtra desde el título de Factura
       filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
       celda: (x) => (
@@ -249,10 +248,10 @@ export default function MisFacturas() {
             {formatoComprobante(x.c)}
             {esMipyme(x.c) && <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} chica />}
           </div>
-          <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
         </div>
       ),
     },
+    { clave: 'fecha', titulo: 'Fecha', orden: (x) => x.c.fecha, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span> },
     { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
     {
       clave: 'siniestro',
@@ -447,12 +446,6 @@ export default function MisFacturas() {
         </div>
       </div>
 
-      {(abierta === 'vencer' || abierta === 'subir') && (
-        <p className="mb-2 text-xs text-slate-500">
-          Falta la factura o la orden firmada.{abierta === 'vencer' ? ' Primero las MiPyME, después lo más atrasado.' : ''}
-        </p>
-      )}
-      {abierta === 'rechazos' && <p className="mb-2 text-xs text-slate-500">Primero las MiPyME, después lo más atrasado.</p>}
       <Tabla
         id={conPrioridad ? 'mis-facturas-prioridad' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-lista'}
         key={abierta}
@@ -462,7 +455,12 @@ export default function MisFacturas() {
         onFila={(x) => abrirLegajo(x.c.id)}
         buscar={(x) => [formatoComprobante(x.c), x.c.ref, x.c.siniestro, x.c.patente].join(' ')}
         textoBusqueda="Buscar por número, ref., siniestro o patente"
-        ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'asc' }}
+        ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'fecha', dir: 'desc' } : { clave: 'dias', dir: 'asc' }}
+        ordenes={[
+          ...(conPrioridad ? [{ titulo: 'Más urgentes primero', clave: '', dir: 'asc' as const }] : abierta === 'todas' ? [] : [{ titulo: 'Más urgentes primero', clave: 'dias', dir: 'asc' as const }]),
+          { titulo: 'Más viejas primero', clave: 'fecha', dir: 'asc' },
+          { titulo: 'Más nuevas primero', clave: 'fecha', dir: 'desc' },
+        ]}
         porPagina={25}
         resumen={() => null}
         centrada

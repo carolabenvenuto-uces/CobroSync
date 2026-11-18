@@ -65,6 +65,8 @@ interface Props<T> {
   resumen?: (filas: T[]) => ReactNode
   /** fila de totales al pie */
   pie?: (filas: T[]) => ReactNode
+  /** opciones de "Ordenar" (clave '' = el orden en que vienen); sin esto, cada columna de menor a mayor y al revés */
+  ordenes?: { titulo: string; clave: string; dir: 'asc' | 'desc' }[]
   /** títulos y celdas centrados */
   centrada?: boolean
   /** con esto aparece una casilla por fila (y una para elegir todas las filtradas) */
@@ -104,6 +106,7 @@ export function Tabla<T>({
   pie,
   seleccion,
   centrada = false,
+  ordenes,
 }: Props<T>) {
   const [busqueda, setBusqueda] = useState('')
   const [filtros, setFiltros] = useState<Record<string, string>>(filtrosIniciales)
@@ -246,7 +249,7 @@ export function Tabla<T>({
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {todasLasColumnas.some((c) => c.orden) && (
+          {(ordenes || todasLasColumnas.some((c) => c.orden)) && (
             <label className="hidden items-center gap-2 text-sm text-slate-600 sm:flex">
               Ordenar
               <select
@@ -258,8 +261,14 @@ export function Tabla<T>({
                 }}
                 className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-semibold text-noche shadow-sm"
               >
-                {!ordenInicial && <option value="">Orden sugerido</option>}
-                {todasLasColumnas
+                {ordenes
+                  ? ordenes.map((o) => (
+                      <option key={o.titulo} value={o.clave ? `${o.clave}|${o.dir}` : ''}>
+                        {o.titulo}
+                      </option>
+                    ))
+                  : !ordenInicial && <option value="">Orden sugerido</option>}
+                {!ordenes && todasLasColumnas
                   .filter((c) => c.orden && !ocultas.has(c.clave))
                   .flatMap((c) => [
                     <option key={`${c.clave}-a`} value={`${c.clave}|asc`}>

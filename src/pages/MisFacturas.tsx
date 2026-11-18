@@ -235,15 +235,15 @@ export default function MisFacturas() {
     { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     {
       clave: 'dias',
-      titulo: 'Días',
-      orden: (x) => diasDeEspera(x.c, hoy),
+      titulo: 'Plazo',
+      // días que quedan para subir la documentación (negativo: vencida)
+      orden: (x) => plazoSucursal(x.c) - diasDeEspera(x.c, hoy),
       celda: (x) => {
-        const d = diasDeEspera(x.c, hoy)
-        return (
-          <div>
-            <span className={`text-lg font-extrabold ${d > plazoSucursal(x.c) && x.s.etapa !== 'en_revision' ? 'text-sem-rojo' : ''}`}>{d}</span>
-          </div>
-        )
+        if (x.s.etapa === 'en_revision') return <span className="text-xs text-slate-500">Enviada</span>
+        const quedan = plazoSucursal(x.c) - diasDeEspera(x.c, hoy)
+        if (quedan < 0) return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">Vencida hace {-quedan} {-quedan === 1 ? 'día' : 'días'}</span>
+        if (quedan === 0) return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">Vence hoy</span>
+        return <span className={`whitespace-nowrap text-sm ${quedan <= 2 ? 'font-bold text-sem-rojo' : 'text-slate-700'}`}>Quedan {quedan} {quedan === 1 ? 'día' : 'días'}</span>
       },
     },
     {
@@ -461,7 +461,7 @@ export default function MisFacturas() {
         onFila={(x) => abrirLegajo(x.c.id)}
         buscar={(x) => [formatoComprobante(x.c), x.c.ref, x.c.siniestro, x.c.patente].join(' ')}
         textoBusqueda="Buscar por número, ref., siniestro o patente"
-        ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'desc' }}
+        ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'asc' }}
         porPagina={25}
         resumen={(l) => `${l.length.toLocaleString('es-AR')} ${l.length === 1 ? 'factura' : 'facturas'}`}
         vacio={actual.vacio}

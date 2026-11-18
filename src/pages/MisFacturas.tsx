@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EnEsperaSucursal } from '../components/EnEspera'
-import { ExternalLink, FileUp, Info, Receipt, X } from 'lucide-react'
+import { FileUp, Info, Receipt, X } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { archivosSoltados, CargaMasiva } from '../components/CargaMasiva'
 import { BadgeEtapa, Chip, EtiquetaMipyme, nombreEtapa } from '../components/ui/Badges'
@@ -13,17 +13,58 @@ import { diasDeEspera } from '../domain/sucursales'
 import { claveSiniestro, contarPorSiniestro } from '../domain/siniestros'
 import { paraResolver } from '../domain/resolver'
 import { NOMBRE_PEDIDO, pedidosParaSucursal } from '../domain/pedidos'
-import type { Etapa } from '../domain/tipos'
+import type { Comprobante, Etapa } from '../domain/tipos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
 
 /** Las etiquetas de "Qué hay que hacer": qué documento falta, cuál se observó y cuál ya está. */
 const NOMBRE_DOC = { factura: 'Factura', orden: 'Orden firmada' } as const
 const ESTADO_DOC = {
-  faltante: { marca: '+', texto: 'falta subirlo', clase: 'border-amber-300 bg-amber-50 text-amber-900' },
-  observado: { marca: '!', texto: 'observada', clase: 'border-red-300 bg-red-50 text-red-800' },
-  en_revision: { marca: '…', texto: 'en revisión', clase: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ok: { marca: '✓', texto: 'aprobada', clase: 'border-teal-200 bg-teal-50 text-teal-800' },
+  faltante: { texto: 'falta subirlo' },
+  observado: { texto: 'observada' },
+  en_revision: { texto: 'en revisión' },
+  ok: { texto: 'aprobada' },
 } as const
+
+/**
+ * Qué le falta a la factura, en una línea de texto sin recuadros: "Falta factura y orden firmada",
+ * "Orden firmada observada", "Factura aprobada · Orden firmada en revisión". Lo subido abre el PDF.
+ */
+function QueFalta({ c }: { c: Comprobante }) {
+  const docs = (['factura', 'orden'] as const).map((tipo) => ({ tipo, d: c.documentos.find((doc) => doc.tipo === tipo) }))
+  const faltan = docs.filter((x) => (x.d?.estado ?? 'faltante') === 'faltante')
+  const resto = docs.filter((x) => (x.d?.estado ?? 'faltante') !== 'faltante')
+  const partes: ReactNode[] = []
+  if (faltan.length === 2) partes.push(<span key="faltan" className="font-semibold text-amber-900">Falta factura y orden firmada</span>)
+  else if (faltan.length === 1) partes.push(<span key="faltan" className="font-semibold text-amber-900">Falta {faltan[0].tipo === 'factura' ? 'la factura' : 'la orden firmada'}</span>)
+  for (const { tipo, d } of resto) {
+    const estado = d!.estado as Exclude<keyof typeof ESTADO_DOC, 'faltante'>
+    const texto = `${NOMBRE_DOC[tipo]} ${ESTADO_DOC[estado].texto}`
+    const clase = estado === 'observado' ? 'font-semibold text-red-800' : 'text-slate-500'
+    const ayuda = estado === 'observado' && d!.motivo ? `${NOMBRE_DOC[tipo]}: ${d!.motivo}` : estado === 'ok' && !d!.url && !d!.archivo ? `Guardado en Drive de ${c.sucursal} · gestión anterior` : undefined
+    const url = d!.url ?? d!.adjuntos?.find((a) => a.url)?.url
+    partes.push(
+      url ? (
+        <a key={tipo} href={url} target="_blank" rel="noreferrer" title={ayuda ? `${ayuda} · ver el PDF` : 'Ver el PDF'} onClick={(ev) => ev.stopPropagation()} className={`${clase} hover:underline`}>
+          {texto}
+        </a>
+      ) : (
+        <span key={tipo} title={ayuda} className={clase}>
+          {texto}
+        </span>
+      ),
+    )
+  }
+  return (
+    <span className="whitespace-nowrap">
+      {partes.map((p, i) => (
+        <span key={i}>
+          {i > 0 && <span className="text-slate-300"> · </span>}
+          {p}
+        </span>
+      ))}
+    </span>
+  )
+}
 
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
@@ -31,8 +72,8 @@ const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision' | 'todas'
 
 const LISTAS: { clave: Lista; titulo: string; punto: string; vacio: string }[] = [
-  { clave: 'subir', titulo: 'Para subir', punto: 'bg-sem-amarillo', vacio: 'Nada para subir. Todo al día.' },
-  { clave: 'vencer', titulo: 'Por vencer o vencidas', punto: 'bg-orange-500', vacio: 'Nada por vencer.' },
+  { clave: 'vencer', titulo: 'Vencidas o por vencer', punto: 'bg-sem-rojo', vacio: 'Nada vencido ni por vencer.' },
+  { clave: 'subir', titulo: 'En plazo', punto: 'bg-sem-amarillo', vacio: 'Nada pendiente en plazo.' },
   { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-sem-rojo', vacio: 'Sin rechazos ni pedidos.' },
   { clave: 'revision', titulo: 'En revisión', punto: 'bg-sky-400', vacio: 'Sin facturas en revisión.' },
   { clave: 'todas', titulo: 'Todas', punto: 'bg-slate-400', vacio: 'Sin facturas.' },
@@ -49,7 +90,7 @@ export default function MisFacturas() {
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
   const porSiniestro = useMemo(() => contarPorSiniestro(comprobantes), [comprobantes])
-  const [abierta, setAbierta] = useState<Lista>('subir')
+  const [abierta, setAbierta] = useState<Lista>('vencer')
   const [soltados, setSoltados] = useState<File[]>([])
   const [arrastrando, setArrastrando] = useState(false)
   const [modalNc, setModalNc] = useState(false)
@@ -168,6 +209,11 @@ export default function MisFacturas() {
       return [...rechazos, ...conPedido]
     }
     if (l === 'vencer') return urgentes.filter((u) => u.p.tema === 'documentacion').map((u) => u.x)
+    if (l === 'subir') {
+      // En plazo: les falta documentación y no están en "Vencidas o por vencer" (ninguna factura en dos solapas)
+      const urgentesIds = new Set(urgentes.filter((u) => u.p.tema === 'documentacion').map((u) => u.x.c.id))
+      return filas.filter((x) => ETAPAS.subir.includes(x.s.etapa) && !urgentesIds.has(x.c.id))
+    }
     return filas.filter((x) => ETAPAS[l].includes(x.s.etapa))
   }
 
@@ -226,34 +272,9 @@ export default function MisFacturas() {
       titulo: 'Qué hay que hacer',
       movil: 'ancha',
       celda: (x) => (
-        <div className="flex flex-wrap gap-1.5">
-          {x.c.tipo === 'NC' && <span className="text-xs text-slate-600">Nota de crédito: falta responder el pedido</span>}
-          {x.c.tipo === 'FC' && (['factura', 'orden'] as const).map((tipo) => {
-            const d = x.c.documentos.find((doc) => doc.tipo === tipo)
-            const estado = d?.estado ?? 'faltante'
-            const e = ESTADO_DOC[estado]
-            const texto = estado === 'faltante' ? `+ Falta ${tipo === 'factura' ? 'la factura' : 'la orden firmada'}` : `${e.marca} ${NOMBRE_DOC[tipo]} ${e.texto}`
-            const enDriveAnterior = estado === 'ok' && !!d && !d.url && !d.archivo
-            const ayuda =
-              estado === 'observado' && d?.motivo
-                ? `${NOMBRE_DOC[tipo]}: ${d.motivo}`
-                : enDriveAnterior
-                  ? `${NOMBRE_DOC[tipo]}: guardado en Drive de ${x.c.sucursal} · gestión anterior`
-                  : `${NOMBRE_DOC[tipo]}: ${e.texto}`
-            const clase = `inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold ${e.clase}`
-            // Si el documento ya está subido, se abre el PDF desde acá (sin abrir toda la factura)
-            const url = d && estado !== 'faltante' ? (d.url ?? d.adjuntos?.find((x) => x.url)?.url) : undefined
-            return url ? (
-              <a key={tipo} href={url} target="_blank" rel="noreferrer" title={`${ayuda} · tocar para ver el PDF`} onClick={(ev) => ev.stopPropagation()} className={`${clase} hover:underline`}>
-                {texto} <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : (
-              <span key={tipo} title={ayuda} className={clase}>
-                {/* Se lee sola, sin leyenda: "Falta la orden firmada", "Factura aprobada" */}
-                {texto}
-              </span>
-            )
-          })}
+        <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
+          {x.c.tipo === 'NC' && <span className="text-slate-600">Nota de crédito: falta responder el pedido</span>}
+          {x.c.tipo === 'FC' && <QueFalta c={x.c} />}
           {x.c.compromiso && (
             x.c.compromiso.fecha >= hoy ? (
               <span className="w-full text-[11px] text-slate-500">Fecha estimada de entrega: {formatoFecha(x.c.compromiso.fecha)}</span>
@@ -425,7 +446,12 @@ export default function MisFacturas() {
         </div>
       </div>
 
-      {conPrioridad && <p className="mb-2 text-xs text-slate-500">Primero las MiPyME, después lo más atrasado.</p>}
+      {(abierta === 'vencer' || abierta === 'subir') && (
+        <p className="mb-2 text-xs text-slate-500">
+          Falta la factura o la orden firmada.{abierta === 'vencer' ? ' Primero las MiPyME, después lo más atrasado.' : ''}
+        </p>
+      )}
+      {abierta === 'rechazos' && <p className="mb-2 text-xs text-slate-500">Primero las MiPyME, después lo más atrasado.</p>}
       <Tabla
         id={conPrioridad ? 'mis-facturas-prioridad' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-lista'}
         key={abierta}

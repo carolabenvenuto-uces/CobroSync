@@ -352,8 +352,11 @@ function aplicarCambios(cambios) {
     // Cambios ya aplicados (por su identificador): si la página reintenta un envío que sí había
     // llegado, no se repite (ni el mensaje ni el documento, que pisaría lo que hizo otra persona)
     var cache = CacheService.getScriptCache();
+    var claves = cambios.filter(function (op) { return op.opId; }).map(function (op) { return 'op-' + op.opId; });
+    var yaAplicados = claves.length ? cache.getAll(claves) : {};
+    var aplicados = {};
     cambios.forEach(function (op) {
-      if (op.opId && cache.get('op-' + op.opId)) {
+      if (op.opId && (yaAplicados['op-' + op.opId] || aplicados['op-' + op.opId])) {
         var ya = buscarFila_(hoja, op.id);
         if (ya) tocadas[op.id] = ya;
         return;
@@ -361,14 +364,17 @@ function aplicarCambios(cambios) {
       // Cada cambio se aplica por separado: si uno no se puede guardar, los demás sí
       try {
         aplicarUno_(hoja, usuario, op, tocadas);
-        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
+        if (op.opId) aplicados['op-' + op.opId] = '1';
       } catch (e) {
-        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
+        if (op.opId) aplicados['op-' + op.opId] = '1';
         errores.push({ id: op.id, mensaje: e.message });
         var f = buscarFila_(hoja, op.id);
         if (f) tocadas[op.id] = f; // se devuelve como está guardada, para que la pantalla vuelva atrás
       }
     });
+    if (Object.keys(aplicados).length) {
+      try { cache.putAll(aplicados, 21600); } catch (e) { console.warn('No se pudieron anotar los cambios aplicados: ' + e); }
+    }
     var actualizadas = Object.keys(tocadas).map(function (id) { return leerFila_(hoja, tocadas[id]); });
     return { comprobantes: actualizadas, ahora: ahora_(), errores: errores };
   });
@@ -475,13 +481,8 @@ function obtenerCambios(desde) {
   var usuario = usuarioActual_();
   var hoja = hoja_(HOJAS.comprobantes);
   var ahora = ahora_();
-  if (hoja.getLastRow() < 2) return { comprobantes: [], ahora: ahora };
-  var col = HOJAS.comprobantes.columnas.indexOf('actualizado') + 1;
-  var marcas = hoja.getRange(2, col, hoja.getLastRow() - 1, 1).getValues();
-  var lista = [];
-  for (var i = 0; i < marcas.length; i++) {
-    if (String(marcas[i][0]) > String(desde)) lista.push(leerFila_(hoja, i + 2));
-  }
+  // la misma comparación que el ingreso (también si la planilla guardó la marca como fecha)
+  var lista = filasCambiadas_(hoja, String(desde));
   if (usuario.rol === 'sucursal') lista = lista.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
   return { comprobantes: lista, ahora: ahora };
 }
@@ -574,6 +575,11 @@ function sincronizarLista_(lista, autor) {
       var cambio = false;
       // El siniestro que Google Sheets había convertido en fecha vuelve a ser el de la planilla de control
       if (c._siniestroDanado && p.siniestro) {
+        c.siniestro = p.siniestro;
+        cambio = true;
+      }
+      // El siniestro anotado en la planilla, si CobroSync todavía no lo tiene
+      if (!c.siniestro && p.siniestro) {
         c.siniestro = p.siniestro;
         cambio = true;
       }
@@ -855,7 +861,7 @@ function avisosDiarios() {
       var cambio = false;
       if (dias > plazo && !yaAvisado('se avisó a') && !yaAvisado('resumen del lunes')) {
         var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + ((suc && suc.gerente) || 'el gerente de la sucursal') });
         cambio = true;
       }
       if (dias > critica && !yaAvisado('gerencia general')) {

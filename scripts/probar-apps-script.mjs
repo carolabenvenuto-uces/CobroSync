@@ -231,6 +231,18 @@ prueba('si la documentación se anotó en la planilla, al pasarla otra vez queda
   const leida = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leida.documentos.every((d) => d.estado === 'ok') && leida.fechaAprobacion === '2026-11-10', 'no quedó aprobada')
 })
+prueba('el siniestro de la planilla completa el que CobroSync no tiene (y no pisa el que tiene)', () => {
+  como('auditoria@svaauto.com.ar')
+  const datos = gs('obtenerDatos').datos.comprobantes.filter((x) => x.tipo === 'FC' && lote.some((o) => o.id === x.id))
+  const sin = datos[0]
+  gs('aplicarCambios', [{ id: sin.id, campos: { siniestro: '' } }])
+  const con = { ...datos[1], siniestro: '555555' }
+  gs('aplicarCambios', [{ id: con.id, campos: { siniestro: '555555' } }])
+  gs('sincronizarDesdePlanilla', [{ ...lote.find((o) => o.id === sin.id), siniestro: '029-9-506622' }, { ...lote.find((o) => o.id === con.id), siniestro: '111111' }])
+  const leidas = gs('obtenerDatos').datos.comprobantes
+  esperar(leidas.find((x) => x.id === sin.id).siniestro === '029-9-506622', 'no completó el siniestro')
+  esperar(leidas.find((x) => x.id === con.id).siniestro === con.siniestro, 'pisó el siniestro que ya tenía')
+})
 prueba('una factura sin referencia no se duplica al pasar la planilla otra vez', () => {
   const base = lote.find((c) => c.tipo === 'FC')
   const sinRef = { ...base, ref: '', numero: 99999, id: `pl-FC-${base.puntoVenta}-99999` }

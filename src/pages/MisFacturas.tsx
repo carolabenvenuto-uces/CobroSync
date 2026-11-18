@@ -273,6 +273,8 @@ export default function MisFacturas() {
       clave: 'que',
       titulo: 'Documentación',
       movil: 'ancha',
+      // se lleva el espacio que sobra, así las demás columnas quedan juntas y el botón a la derecha
+      clase: 'w-full',
       celda: (x) => (
         <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
           {x.c.tipo === 'NC' && <span className="text-slate-600">Nota de crédito: falta responder el pedido</span>}

@@ -17,6 +17,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 - La columna MiPyME pasa a **Tipo de factura** (MiPyME o Común).
 - Ref., Patente y Siniestro vacíos dicen "Sin dato".
 - Sin la cantidad al lado del buscador: ya está en las solapas.
+- Notificaciones de la sucursal: la carga del Excel del ERP ya no avisa, y los avisos de plazo ("pasó el plazo", "se avisó a la gerencia general") llegan en uno solo por día con la lista de facturas.
 
 ## [0.17.12] - 2026-11-18
 - Mis facturas: "Para subir" y "Por vencer o vencidas" ya no se repiten. Ahora son **Vencidas o por vencer** (rojo, se abre primero) y **En plazo**: a las dos les falta documentación y ninguna factura aparece en las dos.

@@ -57,7 +57,7 @@ export interface Notificacion {
   comprobanteId: string
   leida: boolean
   /** avisos que se juntan: a Gerencia (crítica, pedido de apoyo) y a Cobranzas (documentos subidos en el día) */
-  clase?: 'critica' | 'escalar' | 'subidas'
+  clase?: 'critica' | 'escalar' | 'subidas' | 'plazo' | 'gerencia_general'
   sucursal?: string
   /** id de la compañía (los pedidos de apoyo se agrupan por compañía) */
   compania?: string
@@ -80,20 +80,28 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
   for (const n of lista) {
     const agrupable =
       (n.para === 'gerencia' && (n.clase === 'critica' ? !!n.sucursal : n.clase === 'escalar' && !!n.compania)) ||
-      (n.para === 'auditoria' && n.clase === 'subidas' && !!n.sucursal)
+      (n.para === 'auditoria' && n.clase === 'subidas' && !!n.sucursal) ||
+      n.clase === 'plazo' ||
+      n.clase === 'gerencia_general'
     if (!agrupable) {
       resto.push(n)
       continue
     }
     // Lo crítico se agrupa por sucursal; los pedidos de apoyo, por compañía; lo subido, por sucursal y día
     const clave =
-      n.clase === 'critica' ? `critica|${n.sucursal}` : n.clase === 'escalar' ? `escalar|${n.compania}` : `subidas|${n.sucursal}|${n.fecha}`
+      n.clase === 'critica'
+        ? `critica|${n.sucursal}`
+        : n.clase === 'escalar'
+          ? `escalar|${n.compania}`
+          : n.clase === 'plazo' || n.clase === 'gerencia_general'
+            ? `${n.clase}|${n.para}|${n.fecha}`
+            : `subidas|${n.sucursal}|${n.fecha}`
     const g = grupos.get(clave)
     const facturas = [...new Set([...(g?.facturas ?? []), ...(n.facturas ?? [n.comprobanteId])])]
     const fecha = g && g.fecha > n.fecha ? g.fecha : n.fecha
     const cant = facturas.length
     // Una sola factura subida en el día: queda el aviso de esa factura, tal cual
-    if (n.clase === 'subidas' && cant === 1) {
+    if ((n.clase === 'subidas' || n.clase === 'plazo' || n.clase === 'gerencia_general') && cant === 1) {
       grupos.set(clave, { ...n, facturas })
       continue
     }
@@ -104,7 +112,11 @@ export function agruparGerencia(lista: Notificacion[], nombresCompanias: Record<
         ? textoAviso('critica', { sucursal: n.sucursal, cantidad: cant, dias: plazosActuales().criticaComun })
         : n.clase === 'escalar'
           ? textoAviso('apoyo', { compania, cantidad: cant })
-          : `Documentación subida en ${cant} facturas. Quedan para revisar en Control diario.`
+          : n.clase === 'plazo'
+            ? `${cant} facturas pasaron el plazo sin legajo completo: se incluyen en el resumen del lunes para el gerente de la sucursal.`
+            : n.clase === 'gerencia_general'
+              ? `${cant} facturas pasaron los ${plazosActuales().criticaComun} días sin legajo completo: se avisó a la gerencia general.`
+              : `Documentación subida en ${cant} facturas. Quedan para revisar en Control diario.`
     const ruta =
       n.clase === 'critica'
         ? `/app/pendientes?sucursal=${encodeURIComponent(n.sucursal ?? '')}&estado=Cr%C3%ADtica`
@@ -201,7 +213,12 @@ function crearNotificaciones(c: Comprobante, e: Evento): Notificacion[] {
     const rechazo = e.tipo === 'rechazo' || /^(Observad|Rechaz|Pedido de Cobranzas)/i.test(e.texto)
     lista.push({ ...base(), para: c.sucursal, tema: rechazo ? 'rechazo' : 'mensaje', texto: `Cobranzas · ${numero}: ${e.texto}` })
   }
-  if (e.area === 'sistema') lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', texto: `${numero}: ${e.texto}` })
+  // A la sucursal: los avisos de plazo, juntos en uno por día (ver agruparGerencia). La carga del ERP no avisa:
+  // la factura ya aparece en Mis facturas
+  if (e.area === 'sistema' && !/^Factura cargada desde el Excel/.test(e.texto)) {
+    const clase = /gerencia general/i.test(e.texto) ? ('gerencia_general' as const) : /sin legajo completo/.test(e.texto) ? ('plazo' as const) : undefined
+    lista.push({ ...base(), para: c.sucursal, tema: 'documentacion', ...(clase ? { clase } : {}), texto: `${numero}: ${e.texto}` })
+  }
   if (e.area === 'sistema' && /gerencia general/i.test(e.texto)) {
     lista.push({ ...base(), para: 'gerencia', clase: 'critica', sucursal: c.sucursal, texto: `Documentación crítica · ${c.sucursal} · ${numero}` })
   }

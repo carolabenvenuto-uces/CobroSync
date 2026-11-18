@@ -40,8 +40,9 @@ import { esPdf, prepararArchivo } from '../lib/imagenes'
 import { numeroParaNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
+import { esMipyme, plazoSucursal } from '../domain/plazos'
 import { formatoComprobante, formatoFecha, formatoPesos } from '../lib/formato'
-import { AYUDA_ETAPA, BadgeEtapa, quienEtapa } from './ui/Badges'
+import { BadgeEtapa, quienEtapa } from './ui/Badges'
 import { claseSelect } from './ui/Estados'
 
 export const MOTIVOS_DEMORA = [
@@ -235,6 +236,15 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       setSubiendo(false)
     }
   }
+  // Lo que pasa con la factura, sin repetir lo que ya dice Documentación: si falta algo, solo el plazo
+  const resumenEstado = (() => {
+    if (semaforo.etapa !== 'doc_pendiente' && semaforo.etapa !== 'doc_atrasada') return semaforo.detalle
+    const quedan = plazoSucursal(c) - diffDias(c.fecha, hoy)
+    const mipyme = esMipyme(c) ? ' · MiPyME' : ''
+    if (quedan < 0) return [`Plazo vencido hace ${-quedan} ${-quedan === 1 ? 'día' : 'días'} (${plazoSucursal(c)} días${mipyme})`]
+    if (quedan === 0) return [`El plazo vence hoy (${plazoSucursal(c)} días${mipyme})`]
+    return [`Quedan ${quedan} ${quedan === 1 ? 'día' : 'días'} de plazo (${plazoSucursal(c)} días${mipyme})`]
+  })()
   const pendientesDeSubir = documentos.filter((d) => d.estado === 'faltante' || d.estado === 'observado').map((d) => d.tipo)
 
   function avisarDemora() {
@@ -394,7 +404,6 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-slate-500">{AYUDA_ETAPA[semaforo.etapa]}</p>
           </div>
           <button type="button" onClick={onCerrar} className="rounded-lg p-1.5 hover:bg-slate-100" aria-label="Cerrar">
             <X className="h-5 w-5" />
@@ -431,13 +440,13 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               }
             />
             <Dato titulo="Siniestro / patente" valor={[c.siniestro || (c.tipo === 'FC' ? 'se informa con la orden' : ''), c.patente].filter(Boolean).join(' · ')} />
-            <Dato titulo="Factura emitida" valor={`${formatoFecha(c.fecha)} · hace ${diffDias(c.fecha, hoy)} ${diffDias(c.fecha, hoy) === 1 ? 'día' : 'días'}`} />
+            <Dato titulo="Factura emitida" valor={formatoFecha(c.fecha)} />
           </dl>
 
           {/* Qué pasa con la factura */}
           <section className="rounded-lg bg-fondo p-3">
             <ul className="space-y-1">
-              {semaforo.detalle.map((d) => (
+              {resumenEstado.map((d) => (
                 <li key={d} className="flex items-start gap-2">
                   {semaforo.color === 'rojo' ? (
                     <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-sem-rojo" />

@@ -16,6 +16,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 - La columna "Días" pasa a **Plazo**: "Quedan 5 días", "Vence hoy", "Vencida hace 3 días" (rojo si está vencida o vence en 2 días o menos).
 - En la factura, la casilla para usar la misma orden firmada en otras facturas del siniestro aparece solo si a alguna le falta, y dice a cuál.
 - En la factura: "Subir factura y orden firmada en un solo PDF" y sin la aclaración de abajo (los errores ya dicen qué corregir).
+- En la factura, el atraso se dice una sola vez: "Plazo vencido hace 205 días (10 días)". Sin la explicación del estado debajo del título, sin "hace X días" en la fecha y sin repetir lo que falta (ya está en Documentación).
 - Notificaciones: las actualizaciones automáticas desde la planilla de control ya no le llegan a la sucursal.
 - "Qué hay que hacer" en una línea de texto, sin recuadros: "Falta factura y orden firmada", "Orden firmada observada", "Factura aprobada · Orden firmada en revisión".
 

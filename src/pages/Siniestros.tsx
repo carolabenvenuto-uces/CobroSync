@@ -142,8 +142,8 @@ export default function Siniestros() {
         if (f.anulacionInformada && f.estado !== 'anulada') {
           g.info.push(
             f.anulacionInformada.parcial
-              ? `Se avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Cobranzas espera que aparezca en el ERP`
-              : `Se avisó que ${numero} se anula: Cobranzas espera la nota de crédito del ERP`,
+              ? `Se avisó una nota de crédito parcial de ${numero} por ${formatoPesos(f.anulacionInformada.importe ?? 0)}: Cobranzas espera que aparezca en Quiter`
+              : `Se avisó que ${numero} se anula: Cobranzas espera la nota de crédito de Quiter`,
           )
         }
       }

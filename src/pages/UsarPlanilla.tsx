@@ -191,7 +191,7 @@ export default function UsarPlanilla() {
           <CardTitulo>Durante la prueba: la planilla se sigue llenando sola</CardTitulo>
           <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
             <li>
-              Al cargar el Excel del ERP en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
+              Al cargar el Excel de Quiter en <strong>Control diario</strong>, las filas nuevas se agregan al final de la pestaña{' '}
               <strong>Quiter</strong> de la planilla, tal cual y de todas las sucursales. La hoja Diario las toma como siempre, en el mismo orden.
             </li>
             <li>
@@ -351,7 +351,7 @@ function ConexionPlanilla({ onCompletar, mensajeCompletar }: { onCompletar: () =
           cobro y anulación. No toca lo que se hizo en la plataforma.
         </li>
         <li>
-          <strong>Y le completa lo hecho en CobroSync:</strong> Drive, Presentación, Cobro y la X de Anula, y las filas del ERP en Quiter.
+          <strong>Y le completa lo hecho en CobroSync:</strong> Drive, Presentación, Cobro y la X de Anula, y las filas de Quiter en Quiter.
           No borra nada ni pisa fórmulas.
         </li>
       </ul>

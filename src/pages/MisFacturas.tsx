@@ -232,7 +232,8 @@ export default function MisFacturas() {
         const quedan = plazoSucursal(x.c) - diasDeEspera(x.c, hoy)
         if (quedan < 0) return <span className="text-sm font-bold tabular-nums text-sem-rojo">{-quedan}</span>
         if (abierta === 'subir') return <span className="text-sm tabular-nums text-slate-700">{quedan}</span>
-        return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">{quedan === 0 ? 'Vence hoy' : `Vence en ${quedan}`}</span>
+        // por vencer: todavía sin atraso
+        return <span className="text-sm tabular-nums text-slate-700">0</span>
       },
     },
     { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
@@ -272,7 +273,6 @@ export default function MisFacturas() {
       movil: 'ancha',
       celda: (x) => (
         <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 text-xs">
-          {x.c.tipo === 'NC' && <span className="text-slate-600">Nota de crédito: falta responder el pedido</span>}
           {x.c.tipo === 'FC' && <QueFalta c={x.c} />}
           {x.c.compromiso && (
             x.c.compromiso.fecha >= hoy ? (
@@ -337,7 +337,8 @@ export default function MisFacturas() {
         )
       },
     },
-    ...columnas,
+    // sin plazo: los rechazos y pedidos no cuentan días de atraso
+    ...columnas.filter((c) => c.clave !== 'dias'),
   ]
   const columnasTodas: Columna<Fila>[] = [
     ...columnas.filter((c) => c.clave !== 'que' && c.clave !== 'dias'),
@@ -415,7 +416,7 @@ export default function MisFacturas() {
         </button>
       </div>
 
-      {/* PDF de facturas de hoy, hasta que Cobranzas cargue el ERP */}
+      {/* PDF de facturas de hoy, hasta que Cobranzas cargue el Excel de Quiter */}
       <div className="mb-3">
         <EnEsperaSucursal />
       </div>

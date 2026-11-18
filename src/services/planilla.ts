@@ -188,7 +188,7 @@ export function importarPlanilla(texto: string, hoy: string): ResultadoImportaci
     const [pv, nro] = (f[COL.numero] ?? '').split('-').map((x) => Number(x.replace(/\D/g, '')) || 0)
 
     if (!aseguradoras.has(compania)) {
-      // Razón social y CUIT de la pestaña CP: así la carga del ERP reconoce la compañía
+      // Razón social y CUIT de la pestaña CP: así la carga de Quiter reconoce la compañía
       const cp = datosCompania(compania)
       aseguradoras.set(compania, {
         id: slug(compania) || 'sin-compania',

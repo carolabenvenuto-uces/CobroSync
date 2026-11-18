@@ -6,7 +6,7 @@
  * Nombres que se reconocen (cualquiera sirve, en cualquier orden):
  *  - número de factura: punto de venta y número, con o sin ceros adelante y separados por guion, espacio,
  *    punto, barra o nada: "21-00011032", "21-11032", "0021 11032", "21.11032", "2100011032"; o solo "11032"
- *  - siniestro, patente o referencia del ERP
+ *  - siniestro, patente o referencia de Quiter
  *  - qué es: "factura"/"FC" u "orden"/"OR"/"repuestos"/"firma" (la orden firmada); si no dice, son las dos juntas
  */
 import type { Comprobante, TipoDocumento } from './tipos'
@@ -73,7 +73,7 @@ export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugeren
   const r1 = elegir(facturasEnNombre(nombre, facturas), 'número')
   if (r1) return r1
 
-  // 2) Referencia del ERP, siniestro o patente dentro del nombre
+  // 2) Referencia de Quiter, siniestro o patente dentro del nombre
   const porRef = facturas.filter((c) => c.ref && c.ref.length >= 6 && plano.includes(alfanumerico(c.ref)))
   const r2 = elegir(porRef, 'referencia')
   if (r2) return r2

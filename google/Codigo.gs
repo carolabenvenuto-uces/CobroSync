@@ -83,8 +83,8 @@ var CONFIG_INICIAL = [
   ['textoAvisoApoyo', '', 'Notificación a Gerencia cuando una compañía no responde 3 reclamos (vacío = texto original). Se cambia en Ajustes'],
   ['textoAvisoCritica', '', 'Notificación a Gerencia por facturas críticas (vacío = texto original). Se cambia en Ajustes'],
   ['urlAplicacion', '', 'Link de la aplicación publicada, para incluirlo en los mails'],
-  ['planillaControlId', '', 'Id de la planilla de control de Cobranzas: CobroSync le agrega el ERP en Quiter y completa Diario'],
-  ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel del ERP'],
+  ['planillaControlId', '', 'Id de la planilla de control de Cobranzas: CobroSync le agrega las filas del Excel de Quiter y completa Diario'],
+  ['pestanaQuiter', 'Quiter', 'Pestaña de la planilla de control donde se pega el Excel de Quiter'],
   ['pestanaDiario', 'Diario', 'Pestaña de la planilla de control con Drive (I), Presentación (K), Cobro (N) y Anula (P)'],
 ];
 
@@ -760,7 +760,7 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
 /** Al cargar el ERP: los PDF en espera que ya se unieron a su factura. Solo Cobranzas. */
 function marcarEsperaAsociada(pares) {
   var usuario = usuarioActual_();
-  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas carga el ERP.');
+  if (usuario.rol !== 'auditoria') throw new Error('Solo Cobranzas carga el Excel de Quiter.');
   return conBloqueo_(function () {
     var hoja = hojaEspera_();
     var n = 0;
@@ -1101,7 +1101,7 @@ function planillaDeControl_() {
 
 /** Botón de la aplicación al cargar el ERP: agrega a la pestaña Quiter las filas que no estén. Solo Cobranzas. */
 function agregarAQuiter(filas) {
-  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el ERP.');
+  if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el Excel de Quiter.');
   var libro = planillaDeControl_();
   if (!libro) return { configurada: false, agregadas: 0 };
   try {

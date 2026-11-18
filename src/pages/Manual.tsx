@@ -268,7 +268,7 @@ const SECCIONES: Seccion[] = [
           <Paso n={2}>
             Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}
             <code className="rounded bg-slate-100 px-1">35-11032 siniestro 22365.pdf</code> (si se quiere, <code className="rounded bg-slate-100 px-1">fc</code> u{' '}
-            <code className="rounded bg-slate-100 px-1">or</code> para decir qué es). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el ERP se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el ERP.
+            <code className="rounded bg-slate-100 px-1">or</code> para decir qué es). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el Excel de Quiter se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.
           </Paso>
           <Paso n={3}>
             Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y
@@ -420,7 +420,7 @@ const SECCIONES: Seccion[] = [
             <Pantalla>Inicio</Pantalla>: lo que hay que hacer hoy, separado por quién tiene que actuar. Cada aviso abre sus facturas.
           </li>
           <li>
-            <Pantalla>Control diario</Pantalla>: la carga del Excel del ERP (las filas van solas a la pestaña Quiter de la planilla) y la
+            <Pantalla>Control diario</Pantalla>: la carga del Excel de Quiter (las filas van solas a la pestaña Quiter de la planilla) y la
             revisión de documentos: aprobar u observar cada uno. Arriba se elige ver <strong>por factura</strong> o{' '}
             <strong>por siniestro</strong> (todas las facturas, documentos y notas de crédito de un siniestro juntos).
           </li>

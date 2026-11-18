@@ -3,7 +3,7 @@
  * crédito y errores de facturación). Cada pedido queda en la factura, le aparece a la sucursal hasta
  * que responde, y Cobranzas ve cuántos días lleva cada uno.
  *
- * Una nota de crédito que entra del ERP sin que la sucursal la haya avisado genera su pedido sola
+ * Una nota de crédito que entra de Quiter sin que la sucursal la haya avisado genera su pedido sola
  * (no hace falta crearlo): se resuelve cuando la sucursal confirma el motivo.
  */
 import { diffDias } from '../lib/fechas'
@@ -27,7 +27,7 @@ export interface PedidoAbierto {
   dias: number
 }
 
-/** La NC llegó del ERP y la sucursal no la avisó (ni Cobranzas la dio por revisada). */
+/** La NC llegó de Quiter y la sucursal no la avisó (ni Cobranzas la dio por revisada). */
 export function ncSinAviso(c: Comprobante): boolean {
   return c.tipo === 'NC' && c.ncInformada === false
 }
@@ -44,7 +44,7 @@ export function pedidosAbiertos(comprobantes: Comprobante[], hoy: string): Pedid
         id: `nc-${c.id}`,
         fecha: c.fecha,
         tipo: 'aviso_nc',
-        detalle: 'Entró sin aviso de la sucursal: falta que confirme el motivo.',
+        detalle: 'Entró sin aviso de la sucursal.',
         autor: 'CobroSync',
       }
       lista.push({ c, pedido, automatico: true, estado: 'esperando', dias: diffDias(c.fecha, hoy) })

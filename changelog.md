@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.18] - 2026-11-18
+- Nota de crédito que entró sin aviso: la sucursal la responde con **Informar la nota de crédito** (el mismo formulario de siempre, con la factura, el motivo y si se refactura), en vez de escribir un texto libre.
+- En la nota de crédito: "Emitida" en vez de "Factura emitida", sin repetir "Nota de crédito" y sin la sección de reclamos.
+- **Quiter** en vez de "ERP" en todos los textos. La carga dice "Nota de crédito cargada desde Quiter" o "Factura cargada desde Quiter".
+- Mis facturas: Rechazos y pedidos sin la columna de días; en Vencidas o por vencer, las que todavía no vencieron dicen 0.
+
 ## [0.17.17] - 2026-11-18
 - Mis facturas: columna **Fecha** aparte (ya no va debajo del número) y sin el comentario sobre la lista.
 - Columnas: Fecha, Días (de atraso, o restantes en "En plazo", solo el número), Ref., Factura, Patente, Siniestro, Total y Documentación.

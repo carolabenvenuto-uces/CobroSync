@@ -188,7 +188,7 @@ export interface Compromiso {
 
 export interface Comprobante {
   id: string
-  /** referencia interna del ERP (columna "Ref." de la planilla) */
+  /** referencia interna de Quiter (columna "Ref." de la planilla) */
   ref: string
   tipo: TipoComprobante
   fecha: string
@@ -217,7 +217,7 @@ export interface Comprobante {
   ncInformada: boolean | null
   compromiso: Compromiso | null
   /**
-   * la sucursal avisó una nota de crédito para esta factura (la NC llega después con el ERP):
+   * la sucursal avisó una nota de crédito para esta factura (la NC llega después con Quiter):
    * total (anula la factura) o parcial por un importe
    */
   anulacionInformada?: { fecha: string; motivo: string; parcial?: boolean; importe?: number } | null
@@ -229,7 +229,7 @@ export interface Comprobante {
   montoOrden?: number | null
   /** lo que efectivamente cobró (si no se indica, el saldo) */
   importeCobrado?: number | null
-  /** percepciones de IIBB de la factura (vienen del ERP): no se acreditan en la nota de crédito */
+  /** percepciones de IIBB de la factura (vienen de Quiter): no se acreditan en la nota de crédito */
   percepciones?: number | null
   /** reclamos a la compañía (facturas vencidas) */
   reclamos: Reclamo[]
@@ -272,7 +272,7 @@ export interface MetaDemo {
 
 /**
  * PDF de una factura que todavía no está en la plataforma: la sucursal escanea el mismo día que
- * factura y el ERP se carga al día siguiente. Al cargarlo, se une al legajo nuevo.
+ * factura y el Excel de Quiter se carga al día siguiente. Al cargarlo, se une al legajo nuevo.
  */
 export interface DocumentoEnEspera {
   id: string
@@ -294,7 +294,7 @@ export interface DocumentoEnEspera {
 export interface DatosApp {
   aseguradoras: Aseguradora[]
   comprobantes: Comprobante[]
-  /** PDF de facturas de hoy que esperan la carga del ERP */
+  /** PDF de facturas de hoy que esperan la carga de Quiter */
   enEspera?: DocumentoEnEspera[]
   cobrosPrevistos: CobroPrevisto[]
   meta: MetaDemo

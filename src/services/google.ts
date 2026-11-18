@@ -238,7 +238,7 @@ export function guardarAjustesEnGoogle(ajustes: Ajustes): Promise<boolean> {
   return llamar('guardarAjustes', ajustes)
 }
 
-/** Agrega al final de la pestaña Quiter de la planilla de control las filas del ERP que no estén. */
+/** Agrega al final de la pestaña Quiter de la planilla de control las filas de Quiter que no estén. */
 export function agregarAQuiterEnGoogle(filas: string[][]): Promise<{ configurada: boolean; agregadas: number; completadas?: number }> {
   return llamar('agregarAQuiter', filas)
 }
@@ -260,7 +260,7 @@ export async function subirAGoogle(comprobanteId: string, tipo: TipoDocumento | 
   return llamar<{ archivo: string; url: string }>('subirArchivo', comprobanteId, tipo, archivo.name, archivo.type || 'application/pdf', base64)
 }
 
-/** PDF de una factura de hoy (todavía no cargada): queda en espera hasta que se cargue el ERP. */
+/** PDF de una factura de hoy (todavía no cargada): queda en espera hasta que se cargue el Excel de Quiter. */
 export async function subirEnEsperaEnGoogle(puntoVenta: number, numero: number, tipo: string, siniestro: string, archivo: File) {
   const base64 = await new Promise<string>((resolver, rechazar) => {
     const lector = new FileReader()

@@ -155,6 +155,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   // Otras facturas del mismo siniestro (facturación parcial de repuestos): comparten la orden firmada
   const hermanas = c.tipo === 'FC' ? facturasDelSiniestro(c, datos?.comprobantes ?? []) : []
   const [compartirConHermanas, setCompartirConHermanas] = useState(true)
+  // Las otras facturas del siniestro a las que les falta la orden firmada (las cobradas o anuladas, no)
+  const sinOrden = hermanas.filter((h) => h.estado !== 'cobrada' && h.estado !== 'anulada' && ['faltante', 'observado'].includes(h.documentos.find((d) => d.tipo === 'orden')?.estado ?? 'faltante'))
 
   async function subir(tipos: TipoDocumento[], lista: FileList | File[] | null | undefined) {
     const archivos = lista ? [...lista] : []
@@ -695,10 +697,12 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   </li>
                 ))}
               </ul>
-              {rol === 'sucursal' && (
+              {rol === 'sucursal' && sinOrden.length > 0 && (
                 <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
                   <input type="checkbox" checked={compartirConHermanas} onChange={(e) => setCompartirConHermanas(e.target.checked)} />
-                  Al subir la orden firmada, usarla también para estas facturas (si les falta)
+                  {sinOrden.length === 1
+                    ? `Usar la misma orden firmada para la ${formatoComprobante(sinOrden[0])}, que todavía no la tiene`
+                    : `Usar la misma orden firmada para las otras ${sinOrden.length} facturas, que todavía no la tienen`}
                 </label>
               )}
             </section>

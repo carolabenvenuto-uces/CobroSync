@@ -14,6 +14,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 ## [0.17.12] - 2026-11-18
 - Mis facturas: "Para subir" y "Por vencer o vencidas" ya no se repiten. Ahora son **Vencidas o por vencer** (rojo, se abre primero) y **En plazo**: a las dos les falta documentación y ninguna factura aparece en las dos.
 - La columna "Días" pasa a **Plazo**: "Quedan 5 días", "Vence hoy", "Vencida hace 3 días" (rojo si está vencida o vence en 2 días o menos).
+- En la factura, la casilla para usar la misma orden firmada en otras facturas del siniestro aparece solo si a alguna le falta, y dice a cuál.
 - Notificaciones: las actualizaciones automáticas desde la planilla de control ya no le llegan a la sucursal.
 - "Qué hay que hacer" en una línea de texto, sin recuadros: "Falta factura y orden firmada", "Orden firmada observada", "Factura aprobada · Orden firmada en revisión".
 

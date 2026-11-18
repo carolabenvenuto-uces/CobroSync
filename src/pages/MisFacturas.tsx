@@ -195,6 +195,8 @@ export default function MisFacturas() {
         </div>
       ),
     },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref}</span> },
+    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     {
       clave: 'dias',
       titulo: 'Días',
@@ -226,7 +228,6 @@ export default function MisFacturas() {
         )
       },
     },
-    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
       clave: 'que',
@@ -420,13 +421,13 @@ export default function MisFacturas() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar cualquier factura por número, siniestro o patente"
+          placeholder="Buscar cualquier factura por número, ref., siniestro o patente"
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
       {busqueda.trim().length >= 3 && (
         <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, siniestro o patente.</li>}
+          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, ref., siniestro o patente.</li>}
           {encontradas.map((c) => (
             <li key={c.id}>
               <button

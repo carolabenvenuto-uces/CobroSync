@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.19] - 2026-11-18
+- En una nota de crédito no aparece el Recorrido (factura, documentación, presentación, cobro), que no le corresponde.
+
 ## [0.17.18] - 2026-11-18
 - Nota de crédito que entró sin aviso: la sucursal la responde con **Informar la nota de crédito** (el mismo formulario de siempre, con la factura, el motivo y si se refactura), en vez de escribir un texto libre.
 - En la nota de crédito: "Emitida" en vez de "Factura emitida", sin repetir "Nota de crédito" y sin la sección de reclamos.

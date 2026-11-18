@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EnEsperaSucursal } from '../components/EnEspera'
-import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, PencilLine, Receipt, Search, Upload, X, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CircleCheck, Clock, FileUp, Info, List, PencilLine, Receipt, Search, Upload, X, ExternalLink } from 'lucide-react'
 import { NotaCreditoModal } from '../components/NotaCreditoModal'
 import { CargaMasiva } from '../components/CargaMasiva'
-import { Chip, EtiquetaMipyme } from '../components/ui/Badges'
+import { BadgeEtapa, Chip, EtiquetaMipyme, nombreEtapa } from '../components/ui/Badges'
 import { Tabla, type Columna } from '../components/ui/Tabla'
 import { useApp, useComprobantes } from '../context/AppContext'
 import { calcularSemaforo } from '../domain/semaforo'
@@ -28,7 +28,7 @@ const ESTADO_DOC = {
 const CLAVE_AVISO = 'cobrosync-aviso-plazos'
 
 /** Los cuatro estados de las facturas de la sucursal, en el orden en que se ven (de arriba hacia abajo). */
-type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision'
+type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision' | 'todas'
 
 const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentType<{ className?: string }>; color: string; acento: string }[] = [
   {
@@ -64,6 +64,16 @@ const LISTAS: { clave: Lista; titulo: string; ayuda: string; icono: ComponentTyp
     acento: 'text-red-800',
   },
 ]
+
+/** Todas las facturas de la sucursal, en cualquier estado (también las ya presentadas y cobradas). */
+const TODAS = {
+  clave: 'todas' as const,
+  titulo: 'Todas mis facturas',
+  ayuda: 'En cualquier estado, también las presentadas y cobradas',
+  icono: List,
+  color: 'border-slate-300 bg-white',
+  acento: 'text-slate-700',
+}
 
 const ETAPAS: Record<'subir' | 'revision', Etapa[]> = { subir: ['doc_pendiente', 'doc_atrasada'], revision: ['en_revision'] }
 
@@ -161,7 +171,10 @@ export default function MisFacturas() {
   const pedidos = useMemo(() => pedidosParaSucursal(comprobantes, hoy), [comprobantes, hoy])
   const pedidoDe = new Map(pedidos.map((p) => [p.c.id, p]))
 
+  const todas = useMemo(() => comprobantes.filter((c) => c.tipo === 'FC').map((c) => ({ c, s: calcularSemaforo(c, hoy) })), [comprobantes, hoy])
+
   const listaDe = (l: Lista) => {
+    if (l === 'todas') return todas
     if (l === 'rechazos') {
       const rechazos = urgentes.filter((u) => u.p.tema === 'rechazo').map((u) => u.x)
       const ya = new Set(rechazos.map((x) => x.c.id))
@@ -195,6 +208,8 @@ export default function MisFacturas() {
         </div>
       ),
     },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref}</span> },
+    { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     {
       clave: 'dias',
       titulo: 'Días',
@@ -226,7 +241,6 @@ export default function MisFacturas() {
         )
       },
     },
-    { clave: 'patente', titulo: 'Patente', oculta: true, celda: (x) => <span className="whitespace-nowrap">{x.c.patente}</span> },
     { clave: 'total', titulo: 'Total', derecha: true, orden: (x) => x.c.total, celda: (x) => <span className="whitespace-nowrap">{formatoPesos(x.c.total)}</span> },
     {
       clave: 'que',
@@ -326,9 +340,21 @@ export default function MisFacturas() {
     },
     ...columnas,
   ]
+  const columnasTodas: Columna<Fila>[] = [
+    ...columnas.filter((c) => c.clave !== 'que'),
+    {
+      clave: 'estado',
+      titulo: 'Estado',
+      movil: 'accion',
+      filtro: (x) => nombreEtapa(x.s.etapa),
+      orden: (x) => nombreEtapa(x.s.etapa),
+      celda: (x) => <BadgeEtapa etapa={x.s.etapa} />,
+    },
+    ...columnas.filter((c) => c.clave === 'que'),
+  ]
 
   const p = plazosActuales()
-  const actual = abierta ? LISTAS.find((l) => l.clave === abierta)! : null
+  const actual = abierta === 'todas' ? TODAS : abierta ? LISTAS.find((l) => l.clave === abierta)! : null
   const conPrioridad = abierta === 'rechazos' || abierta === 'vencer'
   const filasAbiertas = abierta ? listaDe(abierta).filter((x) => !soloMipyme || esMipyme(x.c)) : []
 
@@ -406,6 +432,25 @@ export default function MisFacturas() {
             </button>
           )
         })}
+        <button
+          type="button"
+          onClick={() => {
+            setSoloMipyme(false)
+            setAbierta('todas')
+          }}
+          className={`group flex w-full items-center gap-3 rounded-xl border border-l-[6px] px-4 py-3 text-left shadow-sm transition hover:shadow-md ${TODAS.color}`}
+        >
+          <List className={`h-5 w-5 shrink-0 ${TODAS.acento}`} />
+          <span className="w-12 shrink-0 text-2xl font-extrabold tabular-nums">{todas.length}</span>
+          <span className="min-w-0 flex-1">
+            <span className={`block font-bold ${TODAS.acento}`}>{TODAS.titulo}</span>
+            <span className="block text-xs text-slate-600">{TODAS.ayuda}</span>
+          </span>
+          <span className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-marca group-hover:underline sm:inline-flex">
+            Ver listado <ChevronRight className="h-4 w-4" />
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-marca sm:hidden" />
+        </button>
       </div>
 
       {/* PDF de facturas de hoy, hasta que Cobranzas cargue el ERP */}
@@ -420,13 +465,13 @@ export default function MisFacturas() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar cualquier factura por número, siniestro o patente"
+          placeholder="Buscar cualquier factura por número, ref., siniestro o patente"
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20"
         />
       </div>
       {busqueda.trim().length >= 3 && (
         <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, siniestro o patente.</li>}
+          {encontradas.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">Sin facturas con ese número, ref., siniestro o patente.</li>}
           {encontradas.map((c) => (
             <li key={c.id}>
               <button
@@ -474,16 +519,16 @@ export default function MisFacturas() {
             <div className="flex-1 overflow-y-auto p-3 sm:p-6">
               {conPrioridad && <p className="mb-2 text-xs text-slate-500">Orden de prioridad: primero las MiPyME, después lo más atrasado.</p>}
               <Tabla
-                id={conPrioridad ? 'para-resolver' : 'mis-facturas'}
+                id={conPrioridad ? 'para-resolver-2' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-2'}
                 key={`${abierta}-${soloMipyme}`}
                 filas={filasAbiertas}
-                columnas={conPrioridad ? columnasResolver : columnas}
+                columnas={conPrioridad ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
                 clave={(x) => x.c.id}
                 onFila={(x) => abrirLegajo(x.c.id)}
-                ordenInicial={conPrioridad ? undefined : { clave: 'dias', dir: 'desc' }}
+                ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'desc' }}
                 porPagina={20}
                 resumen={(l) => `${l.length} ${l.length === 1 ? 'factura' : 'facturas'}`}
-                vacio={abierta === 'revision' ? 'Sin facturas en revisión.' : 'Sin facturas en esta lista. Todo al día.'}
+                vacio={abierta === 'todas' ? 'Sin facturas.' : abierta === 'revision' ? 'Sin facturas en revisión.' : 'Sin facturas en esta lista. Todo al día.'}
               />
             </div>
           </div>

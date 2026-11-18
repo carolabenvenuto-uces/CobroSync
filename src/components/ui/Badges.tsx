@@ -10,7 +10,7 @@ import type { ColorSemaforo, EstadoComprobante, Etapa } from '../../domain/tipos
  */
 const ESTILO_ETAPA: Record<Etapa, { punto: string; fondo: string; texto: string; quien: string }> = {
   doc_atrasada: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Doc. atrasada', quien: 'Sucursal' },
-  doc_observada: { punto: 'bg-sem-rojo', fondo: 'bg-sem-rojo/10 text-red-800', texto: 'Doc. observada', quien: 'Sucursal' },
+  doc_observada: { punto: 'bg-orange-500', fondo: 'bg-orange-100 text-orange-800', texto: 'Doc. observada', quien: 'Sucursal' },
   doc_pendiente: {
     punto: 'bg-sem-amarillo',
     fondo: 'bg-sem-amarillo/15 text-amber-900',

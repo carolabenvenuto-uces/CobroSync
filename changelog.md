@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.15] - 2026-11-18
+- Naranja = hay que corregir algo: la solapa **Rechazos y pedidos**, los documentos observados y el estado "Doc. observada" pasan a naranja. El rojo queda para lo vencido.
+
 ## [0.17.14] - 2026-11-18
 - Mis facturas: la columna "Qué hay que hacer" pasa a **Documentación** ("Faltante", "Falta orden", "Falta factura", "Orden observada").
 - **Plazo** es la primera columna, y **Tipo de factura** va al lado de Factura.

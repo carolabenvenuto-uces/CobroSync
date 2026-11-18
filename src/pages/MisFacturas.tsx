@@ -235,25 +235,24 @@ export default function MisFacturas() {
         return <span className={`whitespace-nowrap text-sm ${quedan <= 2 ? 'font-bold text-sem-rojo' : 'text-slate-700'}`}>Quedan {quedan} {quedan === 1 ? 'día' : 'días'}</span>
       },
     },
+    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
     {
       clave: 'factura',
       titulo: 'Factura',
       movil: 'titulo',
       orden: (x) => x.c.fecha,
+      // el tipo (MiPyME o común) se filtra desde el título de Factura
+      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
       celda: (x) => (
         <div className="whitespace-nowrap">
-          <div className="font-medium">{formatoComprobante(x.c)}</div>
+          <div className="flex items-center gap-1.5 font-medium">
+            {formatoComprobante(x.c)}
+            {esMipyme(x.c) && <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} chica />}
+          </div>
           <div className="text-xs text-slate-500">{formatoFecha(x.c.fecha)}</div>
         </div>
       ),
     },
-    {
-      clave: 'mipyme',
-      titulo: 'Tipo de factura',
-      filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
-      celda: (x) => (esMipyme(x.c) ? <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} /> : <span className="text-xs text-slate-500">Común</span>),
-    },
-    { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
     { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
     {
       clave: 'siniestro',

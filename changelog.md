@@ -12,6 +12,7 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
 ## [0.17.16] - 2026-11-18
+- Mis facturas: columnas Plazo, Ref., Factura, Patente, Siniestro, Total y Documentación. MiPyME se marca junto al número y se filtra desde el título Factura.
 - Mis facturas: las columnas quedan juntas; el espacio que sobra lo toma Documentación y el botón queda a la derecha.
 - Tablas: el filtro de cada columna se abre desde el título (una flechita al lado, o el título mismo si la columna no se ordena), en vez de un desplegable fijo debajo. El encabezado queda en una sola línea y cuando hay un filtro puesto se ve en el título.
 

@@ -11,6 +11,14 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.21] - 2026-11-18
+- Al traer los cambios de la planilla de control, el **siniestro** que figura en la planilla completa el de CobroSync si todavía no lo tiene (no pisa uno cargado).
+- Planilla → CobroSync: una NC con la referencia de la factura en la **columna Q** queda vinculada sola (anula la factura o, si es por menos, le descuenta el importe). Los reclamos anotados en Observaciones se suman si son más nuevos que el último de CobroSync.
+- CobroSync → planilla: además de Drive, Presentación, Cobro y la X de Anula, completa el **siniestro** (G), en las NC la **referencia de la factura que anulan** (Q) y en **Observaciones** (R) el motivo de la nota de crédito que informó la sucursal. Solo en celdas vacías: nunca pisa lo que ya está.
+- La consulta de cada minuto compara la hora de cada cambio igual que el ingreso (si la planilla la guardó como fecha, ya no trae todas las filas).
+- El aviso diario de plazos no se corta si una factura es de una sucursal que no está en la pestaña Sucursales.
+- Los cambios ya aplicados se anotan de una vez (más rápido al subir muchos PDF juntos).
+
 ## [0.17.20] - 2026-11-18
 - Arreglo: si la página reintentaba un envío que sí había llegado (por un corte o una demora de Google), se repetía. Volvían a aparecer los mensajes ("Subió la documentación", "Quitó…") y el documento volvía a "en revisión" aunque ya estuviera aprobado. Ahora cada cambio tiene su identificador y el servidor no lo aplica dos veces.
 - Nombres de PDF: "FC 35-5749" es el número de la factura, no quiere decir que el PDF sea solo la factura (se toma como factura y orden juntas; para un solo documento, "fc" u "or" al final). El punto de venta tiene que ir **separado** del número (guion, espacio, punto o barra): pegado ("302333") no se toma, porque podría ser un siniestro. Un siniestro con guiones ("104-4-102868") no se toma como punto de venta. Si la factura es de otra sucursal, el aviso dice de cuál.

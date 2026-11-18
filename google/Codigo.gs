@@ -352,8 +352,11 @@ function aplicarCambios(cambios) {
     // Cambios ya aplicados (por su identificador): si la página reintenta un envío que sí había
     // llegado, no se repite (ni el mensaje ni el documento, que pisaría lo que hizo otra persona)
     var cache = CacheService.getScriptCache();
+    var claves = cambios.filter(function (op) { return op.opId; }).map(function (op) { return 'op-' + op.opId; });
+    var yaAplicados = claves.length ? cache.getAll(claves) : {};
+    var aplicados = {};
     cambios.forEach(function (op) {
-      if (op.opId && cache.get('op-' + op.opId)) {
+      if (op.opId && (yaAplicados['op-' + op.opId] || aplicados['op-' + op.opId])) {
         var ya = buscarFila_(hoja, op.id);
         if (ya) tocadas[op.id] = ya;
         return;
@@ -361,14 +364,17 @@ function aplicarCambios(cambios) {
       // Cada cambio se aplica por separado: si uno no se puede guardar, los demás sí
       try {
         aplicarUno_(hoja, usuario, op, tocadas);
-        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
+        if (op.opId) aplicados['op-' + op.opId] = '1';
       } catch (e) {
-        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
+        if (op.opId) aplicados['op-' + op.opId] = '1';
         errores.push({ id: op.id, mensaje: e.message });
         var f = buscarFila_(hoja, op.id);
         if (f) tocadas[op.id] = f; // se devuelve como está guardada, para que la pantalla vuelva atrás
       }
     });
+    if (Object.keys(aplicados).length) {
+      try { cache.putAll(aplicados, 21600); } catch (e) { console.warn('No se pudieron anotar los cambios aplicados: ' + e); }
+    }
     var actualizadas = Object.keys(tocadas).map(function (id) { return leerFila_(hoja, tocadas[id]); });
     return { comprobantes: actualizadas, ahora: ahora_(), errores: errores };
   });
@@ -475,13 +481,8 @@ function obtenerCambios(desde) {
   var usuario = usuarioActual_();
   var hoja = hoja_(HOJAS.comprobantes);
   var ahora = ahora_();
-  if (hoja.getLastRow() < 2) return { comprobantes: [], ahora: ahora };
-  var col = HOJAS.comprobantes.columnas.indexOf('actualizado') + 1;
-  var marcas = hoja.getRange(2, col, hoja.getLastRow() - 1, 1).getValues();
-  var lista = [];
-  for (var i = 0; i < marcas.length; i++) {
-    if (String(marcas[i][0]) > String(desde)) lista.push(leerFila_(hoja, i + 2));
-  }
+  // la misma comparación que el ingreso (también si la planilla guardó la marca como fecha)
+  var lista = filasCambiadas_(hoja, String(desde));
   if (usuario.rol === 'sucursal') lista = lista.filter(function (c) { return mismaSucursal_(c.sucursal, usuario.sucursal); });
   return { comprobantes: lista, ahora: ahora };
 }
@@ -577,6 +578,11 @@ function sincronizarLista_(lista, autor) {
         c.siniestro = p.siniestro;
         cambio = true;
       }
+      // El siniestro anotado en la planilla, si CobroSync todavía no lo tiene
+      if (!c.siniestro && p.siniestro) {
+        c.siniestro = p.siniestro;
+        cambio = true;
+      }
       if (!c.fechaPresentacion && p.fechaPresentacion) {
         c.fechaPresentacion = p.fechaPresentacion;
         c.vencimiento = p.vencimiento;
@@ -606,19 +612,42 @@ function sincronizarLista_(lista, autor) {
         c.estado = 'anulada';
         cambio = true;
       }
-      // Los reclamos anotados en Observaciones ("Reclamado 05/08"): si CobroSync no tiene ninguno, se toma el último
-      if (!(c.reclamos || []).length) {
-        var reclamo = reclamoDePlanilla_(p.observaciones);
-        if (reclamo) {
-          c.reclamos = [reclamo];
-          cambio = true;
-        }
+      // Los reclamos anotados en Observaciones ("Reclamado 05/08"): se suma el último si es más nuevo que
+      // los que tiene CobroSync (mientras se usan la planilla y CobroSync en paralelo)
+      var reclamo = reclamoDePlanilla_(p.observaciones);
+      var ultimoReclamo = (c.reclamos || []).reduce(function (m, x) { return x.fecha > m ? x.fecha : m; }, '');
+      if (reclamo && reclamo.fecha > ultimoReclamo) {
+        c.reclamos = (c.reclamos || []).concat([reclamo]);
+        cambio = true;
       }
       if (cambio) {
         (c.eventos = c.eventos || []).push({ fecha: hoy_(), autor: autor, area: 'auditoria', tipo: 'mensaje', texto: 'Actualizado desde la planilla de control' });
         escribirFila_(hoja, HOJAS.comprobantes, existente.fila, c);
         resultado.actualizadas++;
       }
+    });
+    // Las NC con la referencia de la factura que anulan (columna Q): se vinculan como lo hace Cobranzas
+    lista.forEach(function (p) {
+      if (p.tipo !== 'NC' || !p._refAnulada) return;
+      var nc = filaPorRef[p.ref ? 'ref:' + p.ref : 'id:' + p.id];
+      var fa = filaPorRef['ref:' + p._refAnulada];
+      if (!nc || !fa || nc.c.ncReferencia || fa.c.tipo !== 'FC') return;
+      var f = fa.c;
+      var importe = Math.abs(Number(nc.c.total) || 0);
+      var saldo = (Number(f.total) || 0) - (Number(f.acreditado) || 0);
+      var total = f.estado === 'anulada' || importe >= saldo * 0.98;
+      nc.c.ncReferencia = f.id;
+      nc.c.ncInformada = true;
+      (nc.c.eventos = nc.c.eventos || []).push({ fecha: hoy_(), autor: autor, area: 'auditoria', tipo: 'nota_credito', texto: 'Vinculada con ' + f.tipo + ' ' + f.puntoVenta + '-' + f.numero + ' (de la planilla de control)' });
+      escribirFila_(hoja, HOJAS.comprobantes, nc.fila, nc.c);
+      if (f.estado !== 'anulada' && f.estado !== 'cobrada') {
+        if (total) f.estado = 'anulada';
+        else f.acreditado = (Number(f.acreditado) || 0) + importe;
+        f.anulacionInformada = null;
+        (f.eventos = f.eventos || []).push({ fecha: hoy_(), autor: autor, area: 'auditoria', tipo: 'nota_credito', texto: (total ? 'Anulada con la nota de crédito ' : 'Nota de crédito parcial ') + nc.c.puntoVenta + '-' + nc.c.numero + ' (de la planilla de control)' });
+        escribirFila_(hoja, HOJAS.comprobantes, fa.fila, f);
+      }
+      resultado.actualizadas++;
     });
     return resultado;
   });
@@ -855,7 +884,7 @@ function avisosDiarios() {
       var cambio = false;
       if (dias > plazo && !yaAvisado('se avisó a') && !yaAvisado('resumen del lunes')) {
         var suc = sucursales[c.sucursal] || buscarSucursal_(sucursales, c.sucursal);
-        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + (suc.gerente || 'el gerente de la sucursal') });
+        eventos.push({ fecha: hoy, autor: 'CobroSync', area: 'sistema', tipo: 'aviso', texto: 'Pasaron ' + plazo + ' días sin legajo completo' + (esMipyme_(c, p, sinFce) ? ' (factura MiPyME)' : '') + ': se incluye en el resumen del lunes para ' + ((suc && suc.gerente) || 'el gerente de la sucursal') });
         cambio = true;
       }
       if (dias > critica && !yaAvisado('gerencia general')) {
@@ -1113,7 +1142,7 @@ function guardarAjustes(a) {
  *    El Estado (columna O) no se toca: lo calcula la planilla con esas fechas.
  * Nunca se borra un dato, nunca se pisa una fórmula y no se mueve ninguna fila.
  */
-var COLUMNAS_DIARIO = { ref: 2, drive: 9, presentacion: 11, cobro: 14, anula: 16 }; // B, I, K, N, P
+var COLUMNAS_DIARIO = { ref: 2, siniestro: 7, drive: 9, presentacion: 11, cobro: 14, anula: 16, refAnulada: 17, observaciones: 18 }; // B, G, I, K, N, P, Q, R
 
 function planillaDeControl_() {
   var id = config_('planillaControlId');
@@ -1277,6 +1306,8 @@ function leerDiario_(libro) {
       eventos: [],
       // Para la comparación: el nombre de la compañía y el estado como se ven en la planilla
       _compania: compania,
+      // En una NC, la columna Q: la referencia de la factura que anula (así la vinculan en Cobranzas)
+      _refAnulada: tipo === 'NC' ? refTexto_(f[16]) : '',
     });
   });
   return { lista: lista, nuevasCompanias: nuevasCompanias };
@@ -1409,34 +1440,57 @@ function completarDiario_(libro) {
   var hoja = libro.getSheetByName(config_('pestanaDiario') || 'Diario');
   if (!hoja || hoja.getLastRow() < 2) return 0;
   var ultima = hoja.getLastRow();
+  var primera = COLUMNAS_DIARIO.siniestro;
   var refs = hoja.getRange(1, COLUMNAS_DIARIO.ref, ultima, 1).getValues();
-  var bloque = hoja.getRange(1, COLUMNAS_DIARIO.drive, ultima, COLUMNAS_DIARIO.anula - COLUMNAS_DIARIO.drive + 1);
+  var bloque = hoja.getRange(1, primera, ultima, COLUMNAS_DIARIO.observaciones - primera + 1);
   var valores = bloque.getValues();
   var formulas = bloque.getFormulas();
   var filaDeRef = {};
   refs.forEach(function (f, i) { var r = refTexto_(f[0]); if (/^\d+$/.test(r) && !filaDeRef[r]) filaDeRef[r] = i; });
 
+  var comprobantes = leerHoja_(HOJAS.comprobantes);
+  var porId = {};
+  comprobantes.forEach(function (c) { porId[c.id] = c; });
   var cambios = 0;
-  leerHoja_(HOJAS.comprobantes).forEach(function (c) {
-    if (c.tipo !== 'FC') return;
+  comprobantes.forEach(function (c) {
     var i = filaDeRef[refTexto_(c.ref)];
     if (i === undefined) return;
-    var poner = function (columna, valor, esFecha) {
+    // tipo: 'fecha', 'texto' (se escribe como texto, para que no lo cambie la planilla) o 'marca'
+    var poner = function (columna, valor, tipo, soloSiVacia) {
       if (!valor) return; // nunca se borra lo que ya está
-      var j = columna - COLUMNAS_DIARIO.drive;
+      var j = columna - primera;
       if (formulas[i][j]) return; // nunca se pisa una fórmula
       var actual = valores[i][j];
-      var igual = esFecha ? fechaDeCelda_(actual) === valor : String(actual).trim().toUpperCase() === valor;
+      if (soloSiVacia && String(actual).trim() !== '') return;
+      var igual = tipo === 'fecha' ? fechaDeCelda_(actual) === valor : String(actual).trim().toUpperCase() === String(valor).toUpperCase();
       if (igual) return;
-      hoja.getRange(i + 1, columna).setValue(esFecha ? fechaParaCelda_(valor) : valor);
+      hoja.getRange(i + 1, columna).setValue(tipo === 'fecha' ? fechaParaCelda_(valor) : tipo === 'texto' ? "'" + valor : valor);
       cambios++;
     };
-    poner(COLUMNAS_DIARIO.drive, c.fechaAprobacion, true);
-    poner(COLUMNAS_DIARIO.presentacion, c.fechaPresentacion, true);
-    poner(COLUMNAS_DIARIO.cobro, c.fechaCobro, true);
-    poner(COLUMNAS_DIARIO.anula, c.estado === 'anulada' ? 'X' : null, false);
+    poner(COLUMNAS_DIARIO.siniestro, c.siniestro, 'texto', true);
+    if (c.tipo === 'FC') {
+      poner(COLUMNAS_DIARIO.drive, c.fechaAprobacion, 'fecha');
+      poner(COLUMNAS_DIARIO.presentacion, c.fechaPresentacion, 'fecha');
+      poner(COLUMNAS_DIARIO.cobro, c.fechaCobro, 'fecha');
+      poner(COLUMNAS_DIARIO.anula, c.estado === 'anulada' ? 'X' : null, 'marca');
+      // Lo que informó la sucursal sobre una nota de crédito para esta factura
+      if (c.anulacionInformada && c.anulacionInformada.motivo) poner(COLUMNAS_DIARIO.observaciones, 'NC informada: ' + c.anulacionInformada.motivo, 'texto', true);
+    } else if (c.tipo === 'NC') {
+      var f = c.ncReferencia ? porId[c.ncReferencia] : null;
+      if (f && f.ref) poner(COLUMNAS_DIARIO.refAnulada, refTexto_(f.ref), 'texto', true);
+      poner(COLUMNAS_DIARIO.observaciones, motivoNc_(c, f), 'texto', true);
+    }
   });
   return cambios;
+}
+
+/** El motivo de una NC que informó la sucursal (en la NC o en la factura que anula), para Observaciones. */
+function motivoNc_(nc, factura) {
+  var ev = (nc.eventos || []).filter(function (e) { return /^Motivo de la nota de crédito: /.test(e.texto); }).pop();
+  if (ev) return ev.texto.replace(/^Motivo de la nota de crédito: /, '').split('. ')[0];
+  if (factura && factura.anulacionInformada && factura.anulacionInformada.motivo) return factura.anulacionInformada.motivo;
+  var ev2 = (factura ? factura.eventos || [] : []).filter(function (e) { return e.tipo === 'nota_credito' && e.area === 'sucursal'; }).pop();
+  return ev2 ? ev2.texto : '';
 }
 
 function refTexto_(v) {

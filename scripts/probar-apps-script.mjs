@@ -231,6 +231,18 @@ prueba('si la documentación se anotó en la planilla, al pasarla otra vez queda
   const leida = gs('obtenerDatos').datos.comprobantes.find((x) => x.id === c.id)
   esperar(leida.documentos.every((d) => d.estado === 'ok') && leida.fechaAprobacion === '2026-11-10', 'no quedó aprobada')
 })
+prueba('el siniestro de la planilla completa el que CobroSync no tiene (y no pisa el que tiene)', () => {
+  como('auditoria@svaauto.com.ar')
+  const datos = gs('obtenerDatos').datos.comprobantes.filter((x) => x.tipo === 'FC' && lote.some((o) => o.id === x.id))
+  const sin = datos[0]
+  gs('aplicarCambios', [{ id: sin.id, campos: { siniestro: '' } }])
+  const con = { ...datos[1], siniestro: '555555' }
+  gs('aplicarCambios', [{ id: con.id, campos: { siniestro: '555555' } }])
+  gs('sincronizarDesdePlanilla', [{ ...lote.find((o) => o.id === sin.id), siniestro: '029-9-506622' }, { ...lote.find((o) => o.id === con.id), siniestro: '111111' }])
+  const leidas = gs('obtenerDatos').datos.comprobantes
+  esperar(leidas.find((x) => x.id === sin.id).siniestro === '029-9-506622', 'no completó el siniestro')
+  esperar(leidas.find((x) => x.id === con.id).siniestro === con.siniestro, 'pisó el siniestro que ya tenía')
+})
 prueba('una factura sin referencia no se duplica al pasar la planilla otra vez', () => {
   const base = lote.find((c) => c.tipo === 'FC')
   const sinRef = { ...base, ref: '', numero: 99999, id: `pl-FC-${base.puntoVenta}-99999` }
@@ -680,6 +692,20 @@ prueba('CobroSync trae solo las facturas nuevas que se anotaron en la planilla (
   esperar(gs('traerDeMiPlanilla').nuevas === 0, 'la duplicó al leer otra vez')
   como('rocamora@svaauto.com.ar')
   falla(() => gs('traerDeMiPlanilla'), 'solo la administradora')
+})
+prueba('una NC con la referencia de la factura en la columna Q queda vinculada; el siniestro vuelve a la columna G', () => {
+  como('auditoria@svaauto.com.ar')
+  diario.appendRow(['12-11-26', '7777770', 'Rocamora', 'FC E', '35 - 00000556', 'Compañía Nueva', '', '2.000,00', '', '', '', '', '', '', 'Anulada', 'X', '', ''])
+  diario.appendRow(['12-11-26', '7777771', 'Rocamora', 'NC E', '35 - 00000557', 'Compañía Nueva', '', '-2.000,00', '', '', '', '', '', '', '', '', '7777770', ''])
+  gs('traerDeMiPlanilla')
+  let d = gs('obtenerDatos').datos.comprobantes
+  const nc = d.find((x) => x.ref === '7777771')
+  const fc = d.find((x) => x.ref === '7777770')
+  esperar(nc && fc && nc.ncReferencia === fc.id && nc.ncInformada === true, 'no vinculó la NC')
+  gs('aplicarCambios', [{ id: fc.id, campos: { siniestro: '029-9-556' } }])
+  gs('actualizarPlanillaDeControl')
+  const filaFc = diario.filas.find((f) => String(f[1]) === '7777770')
+  esperar(String(filaFc[6]).replace(/^'/, '') === '029-9-556', `siniestro en G: ${filaFc[6]}`)
 })
 prueba('comparar con la planilla: campo por campo, sin cambiar nada', () => {
   como('auditoria@svaauto.com.ar')

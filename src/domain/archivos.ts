@@ -11,6 +11,7 @@
  */
 import type { Comprobante, TipoDocumento } from './tipos'
 import { limpiarSiniestro } from './siniestros'
+import { numerosDelNombre } from './espera'
 
 export type TipoArchivo = TipoDocumento | 'documentacion'
 
@@ -30,7 +31,8 @@ export function tipoPorNombre(nombre: string): TipoArchivo {
   const n = ` ${nombre.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[_\-.]+/g, ' ')} `
   // La firma del cliente va en la orden: "orden firmada", "firma" o "conformidad" son la orden
   const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto|firma|conformidad|conforme/.test(n)
-  const esFactura = /factura|\bfc\b|\bfce\b/.test(n)
+  // "FC 35-5749" o "factura 35-5749" es el número de la factura, no dice qué documento es
+  const esFactura = /factura(?!\s*(n[º°o]?\s*)?\d)|\bfce?\b(?!\s*\d)/.test(n)
   if (esOrden === esFactura) return 'documentacion'
   return esOrden ? 'orden' : 'factura'
 }
@@ -130,11 +132,13 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
     return { ok: false, tipo, error: `El nombre coincide con más de una factura (${halladas.map(numeroParaNombre).join(', ')}): dejar solo el número de una.` }
   }
   const pares = [...base.matchAll(/(\d{1,5})\s*[-_ ./]\s*(\d{1,8})/g)]
-  if (pares.length === 0) {
+  if (pares.length === 0 && !/\d{6,}/.test(base)) {
     return { ok: false, tipo, error: `El nombre no tiene el número de factura (punto de venta y número). Por ejemplo: ${EJEMPLO}` }
   }
-  const dicho = `${Number(pares[0][1])}-${Number(pares[0][2])}`
-  return { ok: false, tipo, error: `No hay ninguna factura ${dicho} pendiente en la sucursal: conviene revisar el número.` }
+  // el número que más parece de factura (no un siniestro con guiones)
+  const n = numerosDelNombre(base)[0]
+  const dicho = n ? ` ${n.puntoVenta}-${n.numero}` : ' con ese número'
+  return { ok: false, tipo, error: `No hay ninguna factura${dicho} pendiente en la sucursal: conviene revisar el número.` }
 }
 
 /** Las facturas a las que todavía se les puede subir documentación. */

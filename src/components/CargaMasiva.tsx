@@ -98,13 +98,18 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           const n = escanea && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
           if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
           // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
-          const num = numerosDelNombre(archivo.name)[0]
+          const sucursales = datos?.meta.sucursales ?? []
+          const num = numerosDelNombre(archivo.name, sucursales.flatMap(puntosDeVenta))[0]
           let error = r.error
           if (num && esPdf(archivo) && corto && escanea && miSucursal) {
             const existe = comprobantes.find((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)
             if (existe) error = `La factura ${num.puntoVenta}-${num.numero} está ${existe.estado === 'anulada' ? 'anulada' : 'cobrada'}: no recibe documentos.`
-            else if (!puntosDeVenta(miSucursal).includes(num.puntoVenta))
-              error = `El punto de venta ${num.puntoVenta} no es de ${miSucursal.nombre} (sus puntos de venta: ${puntosDeVenta(miSucursal).join(', ')}). Revisar el número o la sucursal elegida.`
+            else if (!puntosDeVenta(miSucursal).includes(num.puntoVenta)) {
+              const otra = sucursales.find((s) => puntosDeVenta(s).includes(num.puntoVenta))
+              error = otra
+                ? `La factura ${num.puntoVenta}-${num.numero} es de ${otra.nombre}, no de ${miSucursal.nombre}.`
+                : `El punto de venta ${num.puntoVenta} no es de ${miSucursal.nombre} (sus puntos de venta: ${puntosDeVenta(miSucursal).join(', ')}). Revisar el número.`
+            }
           }
           return { archivo, facturaId: '', tipo: r.tipo, error, pideSiniestro: false, siniestro: '' }
         }
@@ -284,7 +289,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 <li>
                   Solo <strong>PDF</strong>. En el nombre, el <strong>número de factura</strong> y el <strong>siniestro</strong>:{' '}
                   <code>35-11032 siniestro 22365.pdf</code>. Con o sin ceros (<code>0035-00011032</code>) y con guion, espacio o punto. La
-                  palabra siniestro puede ir abreviada o no ir. Si se quiere, <code>fc</code> u <code>or</code> para decir qué es.
+                  palabra siniestro puede ir abreviada o no ir. Si es un solo documento, al final <code>fc</code> u <code>or</code>.
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
                 <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>

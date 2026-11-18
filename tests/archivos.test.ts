@@ -41,7 +41,9 @@ describe('carga de varios archivos', () => {
     expect(tipoPorNombre('Orden 11032.pdf')).toBe('orden')
     expect(tipoPorNombre('firma_cliente.jpg')).toBe('orden')
     expect(tipoPorNombre('orden firmada 11032.pdf')).toBe('orden')
-    expect(tipoPorNombre('FC 35-11032.pdf')).toBe('factura')
+    expect(tipoPorNombre('35-11032 fc.pdf')).toBe('factura')
+    // "FC 35-11032" es el número de la factura: no dice qué documento es
+    expect(tipoPorNombre('FC 35-11032.pdf')).toBe('documentacion')
     expect(tipoPorNombre('scan0001.pdf')).toBe('documentacion')
     expect(tipoPorNombre('FC y orden 11032.pdf')).toBe('documentacion')
   })

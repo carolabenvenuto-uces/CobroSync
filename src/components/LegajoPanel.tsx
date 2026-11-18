@@ -75,7 +75,7 @@ const ESTILO_DOC: Record<Documento['estado'], string> = {
   faltante: 'text-red-700',
   en_revision: 'text-sky-700',
   ok: 'text-teal-700',
-  observado: 'text-red-700',
+  observado: 'text-orange-700',
 }
 
 const botonPrincipal =
@@ -562,7 +562,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                               )}
                             </div>
                           )}
-                          {d.estado === 'observado' && d.motivo && <div className="text-xs font-semibold text-red-700">{d.motivo}</div>}
+                          {d.estado === 'observado' && d.motivo && <div className="text-xs font-semibold text-orange-700">{d.motivo}</div>}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">

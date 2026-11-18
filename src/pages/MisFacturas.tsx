@@ -39,7 +39,7 @@ function QueFalta({ c }: { c: Comprobante }) {
   for (const { tipo, d } of resto) {
     const estado = d!.estado as Exclude<keyof typeof ESTADO_DOC, 'faltante'>
     const texto = `${NOMBRE_DOC[tipo]} ${ESTADO_DOC[estado].texto}`
-    const clase = estado === 'observado' ? 'font-semibold text-red-800' : 'text-slate-500'
+    const clase = estado === 'observado' ? 'font-semibold text-orange-700' : 'text-slate-500'
     const ayuda = estado === 'observado' && d!.motivo ? `${NOMBRE_DOC[tipo]}: ${d!.motivo}` : estado === 'ok' && !d!.url && !d!.archivo ? `Guardado en Drive de ${c.sucursal} · gestión anterior` : undefined
     const url = d!.url ?? d!.adjuntos?.find((a) => a.url)?.url
     partes.push(
@@ -77,7 +77,7 @@ type Lista = 'rechazos' | 'vencer' | 'subir' | 'revision' | 'todas'
 const LISTAS: { clave: Lista; titulo: string; punto: string; vacio: string }[] = [
   { clave: 'vencer', titulo: 'Vencidas o por vencer', punto: 'bg-sem-rojo', vacio: 'Nada vencido ni por vencer.' },
   { clave: 'subir', titulo: 'En plazo', punto: 'bg-sem-amarillo', vacio: 'Nada pendiente en plazo.' },
-  { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-violet-500', vacio: 'Sin rechazos ni pedidos.' },
+  { clave: 'rechazos', titulo: 'Rechazos y pedidos', punto: 'bg-orange-500', vacio: 'Sin rechazos ni pedidos.' },
   { clave: 'revision', titulo: 'En revisión', punto: 'bg-sky-400', vacio: 'Sin facturas en revisión.' },
   { clave: 'todas', titulo: 'Todas', punto: 'bg-slate-400', vacio: 'Sin facturas.' },
 ]
@@ -330,9 +330,9 @@ export default function MisFacturas() {
         const pedido = pedidoDe.get(x.c.id)
         return (
           <span className="flex min-w-[14rem] flex-col gap-0.5">
-            {p && <span className={`text-xs font-semibold ${p.orden >= 2 ? 'text-sem-rojo' : 'text-amber-800'}`}>{p.motivo}</span>}
+            {p && <span className="text-xs font-semibold text-orange-700">{p.motivo}</span>}
             {pedido && (
-              <span className="text-xs font-semibold text-red-800">
+              <span className="text-xs font-semibold text-orange-700">
                 {NOMBRE_PEDIDO[pedido.pedido.tipo]}: {pedido.pedido.detalle}
               </span>
             )}

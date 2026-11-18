@@ -222,17 +222,17 @@ export default function MisFacturas() {
 
   type Fila = (typeof filas)[number]
   const columnas: Columna<Fila>[] = [
+    { clave: 'fecha', titulo: 'Fecha', orden: (x) => x.c.fecha, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span> },
     {
       clave: 'dias',
-      titulo: 'Plazo',
-      // días que quedan para subir la documentación (negativo: vencida)
+      // En plazo: los días que quedan; en las demás, los días de atraso (solo el número)
+      titulo: abierta === 'subir' ? 'Días restantes' : 'Días de atraso',
       orden: (x) => plazoSucursal(x.c) - diasDeEspera(x.c, hoy),
       celda: (x) => {
-        if (x.s.etapa === 'en_revision') return <span className="text-xs text-slate-500">Enviada</span>
         const quedan = plazoSucursal(x.c) - diasDeEspera(x.c, hoy)
-        if (quedan < 0) return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">Vencida hace {-quedan} {-quedan === 1 ? 'día' : 'días'}</span>
-        if (quedan === 0) return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">Vence hoy</span>
-        return <span className={`whitespace-nowrap text-sm ${quedan <= 2 ? 'font-bold text-sem-rojo' : 'text-slate-700'}`}>Quedan {quedan} {quedan === 1 ? 'día' : 'días'}</span>
+        if (quedan < 0) return <span className="text-sm font-bold tabular-nums text-sem-rojo">{-quedan}</span>
+        if (abierta === 'subir') return <span className="text-sm tabular-nums text-slate-700">{quedan}</span>
+        return <span className="whitespace-nowrap text-sm font-bold text-sem-rojo">{quedan === 0 ? 'Vence hoy' : `Vence en ${quedan}`}</span>
       },
     },
     { clave: 'ref', titulo: 'Ref.', orden: (x) => x.c.ref, celda: (x) => <span className="whitespace-nowrap">{x.c.ref || <SinDato />}</span> },
@@ -246,12 +246,11 @@ export default function MisFacturas() {
         <div className="whitespace-nowrap">
           <div className="flex items-center justify-center gap-1.5 font-medium">
             {formatoComprobante(x.c)}
-            {esMipyme(x.c) && <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} chica />}
+            {esMipyme(x.c) && <EtiquetaMipyme chica />}
           </div>
         </div>
       ),
     },
-    { clave: 'fecha', titulo: 'Fecha', orden: (x) => x.c.fecha, celda: (x) => <span className="whitespace-nowrap">{formatoFecha(x.c.fecha)}</span> },
     { clave: 'patente', titulo: 'Patente', orden: (x) => x.c.patente, celda: (x) => <span className="whitespace-nowrap">{x.c.patente || <SinDato />}</span> },
     {
       clave: 'siniestro',
@@ -450,7 +449,7 @@ export default function MisFacturas() {
         id={conPrioridad ? 'mis-facturas-prioridad' : abierta === 'todas' ? 'mis-facturas-todas' : 'mis-facturas-lista'}
         key={abierta}
         filas={listaDe(abierta)}
-        columnas={abierta === 'rechazos' ? columnasResolver : abierta === 'todas' ? columnasTodas : columnas}
+        columnas={abierta === 'rechazos' ? columnasResolver : abierta === 'todas' ? columnasTodas : abierta === 'revision' ? columnas.filter((c) => c.clave !== 'dias') : columnas}
         clave={(x) => x.c.id}
         onFila={(x) => abrirLegajo(x.c.id)}
         buscar={(x) => [formatoComprobante(x.c), x.c.ref, x.c.siniestro, x.c.patente].join(' ')}

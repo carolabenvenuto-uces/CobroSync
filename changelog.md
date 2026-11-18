@@ -13,6 +13,8 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.17] - 2026-11-18
 - Mis facturas: columna **Fecha** aparte (ya no va debajo del número) y sin el comentario sobre la lista.
+- Columnas: Fecha, Días (de atraso, o restantes en "En plazo", solo el número), Ref., Factura, Patente, Siniestro, Total y Documentación.
+- La etiqueta MiPyME dice solo "MiPyME".
 - **Ordenar** en Mis facturas: Más urgentes primero, Más viejas primero o Más nuevas primero.
 
 ## [0.17.16] - 2026-11-18

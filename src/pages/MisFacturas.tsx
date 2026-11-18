@@ -245,7 +245,7 @@ export default function MisFacturas() {
       filtro: (x) => (esMipyme(x.c) ? 'MiPyME' : 'Común'),
       celda: (x) => (
         <div className="whitespace-nowrap">
-          <div className="flex items-center gap-1.5 font-medium">
+          <div className="flex items-center justify-center gap-1.5 font-medium">
             {formatoComprobante(x.c)}
             {esMipyme(x.c) && <EtiquetaMipyme texto={`MiPyME · ${plazoSucursal(x.c)} d`} chica />}
           </div>
@@ -272,10 +272,8 @@ export default function MisFacturas() {
       clave: 'que',
       titulo: 'Documentación',
       movil: 'ancha',
-      // se lleva el espacio que sobra, así las demás columnas quedan juntas y el botón a la derecha
-      clase: 'w-full',
       celda: (x) => (
-        <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
+        <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 text-xs">
           {x.c.tipo === 'NC' && <span className="text-slate-600">Nota de crédito: falta responder el pedido</span>}
           {x.c.tipo === 'FC' && <QueFalta c={x.c} />}
           {x.c.compromiso && (
@@ -467,6 +465,7 @@ export default function MisFacturas() {
         ordenInicial={conPrioridad ? undefined : abierta === 'todas' ? { clave: 'factura', dir: 'desc' } : { clave: 'dias', dir: 'asc' }}
         porPagina={25}
         resumen={() => null}
+        centrada
         vacio={actual.vacio}
       />
 

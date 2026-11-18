@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
 import { BotonExportar } from './Card'
 
 /**
@@ -65,6 +65,8 @@ interface Props<T> {
   resumen?: (filas: T[]) => ReactNode
   /** fila de totales al pie */
   pie?: (filas: T[]) => ReactNode
+  /** títulos y celdas centrados */
+  centrada?: boolean
   /** con esto aparece una casilla por fila (y una para elegir todas las filtradas) */
   seleccion?: { elegidas: Set<string>; alCambiar: (elegidas: Set<string>) => void }
 }
@@ -101,6 +103,7 @@ export function Tabla<T>({
   resumen,
   pie,
   seleccion,
+  centrada = false,
 }: Props<T>) {
   const [busqueda, setBusqueda] = useState('')
   const [filtros, setFiltros] = useState<Record<string, string>>(filtrosIniciales)
@@ -209,17 +212,6 @@ export function Tabla<T>({
   }, [busqueda, buscar, visibles.length, filas])
   const hayFiltros = busqueda !== '' || Object.values(filtros).some((v) => v && v !== TODOS)
 
-  function ordenar(col: Columna<T>) {
-    if (!col.orden) return
-    // Mayor primero → menor primero → como venía (tercer toque, para volver al orden original)
-    setOrden((o) => {
-      if (o?.clave !== col.clave) return { clave: col.clave, dir: 'desc' }
-      if (o.dir === 'desc') return { clave: col.clave, dir: 'asc' }
-      return ordenInicial && ordenInicial.clave !== col.clave ? ordenInicial : null
-    })
-    setPagina(1)
-  }
-
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Barra: lupa, resumen y exportar */}
@@ -254,6 +246,32 @@ export function Tabla<T>({
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {todasLasColumnas.some((c) => c.orden) && (
+            <label className="hidden items-center gap-2 text-sm text-slate-600 sm:flex">
+              Ordenar
+              <select
+                value={orden ? `${orden.clave}|${orden.dir}` : ''}
+                onChange={(e) => {
+                  const [c, d] = e.target.value.split('|')
+                  setOrden(c ? { clave: c, dir: d as 'asc' | 'desc' } : null)
+                  setPagina(1)
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-semibold text-noche shadow-sm"
+              >
+                {!ordenInicial && <option value="">Orden sugerido</option>}
+                {todasLasColumnas
+                  .filter((c) => c.orden && !ocultas.has(c.clave))
+                  .flatMap((c) => [
+                    <option key={`${c.clave}-a`} value={`${c.clave}|asc`}>
+                      {c.titulo}: de menor a mayor
+                    </option>,
+                    <option key={`${c.clave}-d`} value={`${c.clave}|desc`}>
+                      {c.titulo}: de mayor a menor
+                    </option>,
+                  ])}
+              </select>
+            </label>
+          )}
           {todasLasColumnas.length > 6 && !pie && (
             <details className="relative hidden sm:block">
               <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-noche shadow-sm hover:bg-fondo">
@@ -417,34 +435,14 @@ export function Tabla<T>({
               {columnas.map((col, i) => (
                 <th
                   key={col.clave}
-                  className={`px-2 py-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                  className={`px-2 py-2.5 align-bottom font-semibold leading-tight ${centrada ? 'text-center' : col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
                 >
-                  <span className="inline-flex items-end gap-1">
-                  {col.orden ? (
-                      <button
-                        type="button"
-                        onClick={() => ordenar(col)}
-                        className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
-                        title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Ordenar de menor a mayor' : 'Volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
-                      >
-                        {col.titulo}
-                        {orden?.clave === col.clave ? (
-                          orden.dir === 'asc' ? (
-                            <ArrowUp className="h-3 w-3" />
-                          ) : (
-                            <ArrowDown className="h-3 w-3" />
-                          )
-                        ) : (
-                          <ArrowUpDown className="h-3 w-3 opacity-40" />
-                        )}
-                      </button>
-                    ) : conFiltro(col) ? null : (
-                      col.titulo
-                    )}
+                  <span className={`inline-flex items-end gap-1 ${centrada ? 'justify-center' : ''}`}>
+                    {conFiltro(col) ? null : col.titulo}
                     {conFiltro(col) && (
                       <FiltroDeColumna
                         titulo={col.titulo}
-                        conTitulo={!col.orden}
+                        conTitulo
                         valor={filtros[col.clave] ?? TODOS}
                         opciones={opciones[col.clave] ?? []}
                         alElegir={(v) => {
@@ -483,7 +481,7 @@ export function Tabla<T>({
                 {columnas.map((col, i) => (
                   <td
                     key={col.clave}
-                    className={`px-2 py-2 ${col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${tonoDe(col)?.celda ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
+                    className={`px-2 py-2 ${centrada ? 'text-center tabular-nums' : col.derecha ? 'text-right tabular-nums' : ''} ${col.clase ?? ''} ${tonoDe(col)?.celda ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-white group-even:bg-slate-50 group-hover:bg-indigo-50' : ''}`}
                   >
                     {col.celda(f)}
                   </td>

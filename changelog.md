@@ -13,8 +13,9 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.16] - 2026-11-18
 - Mis facturas: columnas Plazo, Ref., Factura, Patente, Siniestro, Total y Documentación. MiPyME se marca junto al número y se filtra desde el título Factura.
-- Mis facturas: las columnas quedan juntas; el espacio que sobra lo toma Documentación y el botón queda a la derecha.
-- Tablas: el filtro de cada columna se abre desde el título (una flechita al lado, o el título mismo si la columna no se ordena), en vez de un desplegable fijo debajo. El encabezado queda en una sola línea y cuando hay un filtro puesto se ve en el título.
+- Mis facturas: títulos y datos centrados.
+- Tablas: el orden se elige en **Ordenar**, al lado de Columnas (cada columna de menor a mayor o de mayor a menor), en vez de tocando cada título.
+- Tablas: el filtro de cada columna se abre desde el título (se toca el título), en vez de un desplegable fijo debajo. El encabezado queda en una sola línea y cuando hay un filtro puesto se ve en el título.
 
 ## [0.17.15] - 2026-11-18
 - Naranja = hay que corregir algo: la solapa **Rechazos y pedidos**, los documentos observados y el estado "Doc. observada" pasan a naranja. El rojo queda para lo vencido.

@@ -41,11 +41,12 @@ describe('PDF de facturas de hoy', () => {
 })
 
 describe('número de factura en el nombre', () => {
-  it('no toma un siniestro con guiones como punto de venta y parte los números pegados', () => {
-    const puntos = [21, 30, 35, 37]
-    expect(numerosDelNombre('FED PAT 104-4-102868 fc 302333.pdf', puntos)[0]).toEqual({ puntoVenta: 30, numero: 2333 })
-    expect(numerosDelNombre('302333 FED PAT 104-4-102868.pdf', puntos)[0]).toEqual({ puntoVenta: 30, numero: 2333 })
-    expect(numerosDelNombre('FED PAT 104-4-141690 FC 35-5749.pdf', puntos)[0]).toEqual({ puntoVenta: 35, numero: 5749 })
+  it('no toma un siniestro como factura y pide el punto de venta separado', () => {
+    expect(numerosDelNombre('FED PAT 104-4-141690 FC 35-5749.pdf')[0]).toEqual({ puntoVenta: 35, numero: 5749 })
+    expect(numerosDelNombre('FED PAT 104-4-102868 fc 30-2333.pdf')[0]).toEqual({ puntoVenta: 30, numero: 2333 })
     expect(numerosDelNombre('0035-00011032 siniestro 22365.pdf')[0]).toEqual({ puntoVenta: 35, numero: 11032 })
+    // pegado no vale: podría ser un siniestro que empieza con 30
+    expect(numerosDelNombre('FED PAT 104-4-102868 fc 302333.pdf')).toEqual([])
+    expect(numerosDelNombre('302333 siniestro.pdf')).toEqual([])
   })
 })

@@ -13,7 +13,7 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.20] - 2026-11-18
 - Arreglo: si la página reintentaba un envío que sí había llegado (por un corte o una demora de Google), se repetía. Volvían a aparecer los mensajes ("Subió la documentación", "Quitó…") y el documento volvía a "en revisión" aunque ya estuviera aprobado. Ahora cada cambio tiene su identificador y el servidor no lo aplica dos veces.
-- Nombres de PDF: "FC 35-5749" o "fc 302333" es el número de la factura, no quiere decir que el PDF sea solo la factura (se toma como factura y orden juntas; para un solo documento, "fc" u "or" al final). Un siniestro con guiones ("104-4-102868") ya no se toma como punto de venta, y el número pegado ("302333") se parte con los puntos de venta de las sucursales. Si la factura es de otra sucursal, el aviso dice de cuál.
+- Nombres de PDF: "FC 35-5749" es el número de la factura, no quiere decir que el PDF sea solo la factura (se toma como factura y orden juntas; para un solo documento, "fc" u "or" al final). El punto de venta tiene que ir **separado** del número (guion, espacio, punto o barra): pegado ("302333") no se toma, porque podría ser un siniestro. Un siniestro con guiones ("104-4-102868") no se toma como punto de venta. Si la factura es de otra sucursal, el aviso dice de cuál.
 - Además, un documento no se pisa si mientras tanto otra persona lo aprobó, lo observó o lo cambió: se avisa y se muestra como está.
 
 ## [0.17.19] - 2026-11-18

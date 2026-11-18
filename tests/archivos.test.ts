@@ -83,7 +83,7 @@ describe('nombres obligatorios', () => {
     const foto = revisarNombre('35-00011032 orden.jpg', facturas)
     expect(!foto.ok && foto.error).toContain('PDF')
     const sinNumero = revisarNombre('scan0001.pdf', facturas)
-    expect(!sinNumero.ok && sinNumero.error).toContain('no tiene el número')
+    expect(!sinNumero.ok && sinNumero.error).toContain('Falta el número de factura')
     const mal = revisarNombre('35-00011099 orden.pdf', facturas)
     expect(!mal.ok && mal.error).toContain('35-11099')
   })
@@ -91,9 +91,10 @@ describe('nombres obligatorios', () => {
 
 describe('nombres flexibles', () => {
   const lista = [factura('x', 21, 20755, '', '', '8457091'), factura('y', 35, 11032, '', '', '6977700')]
-  it('la factura con o sin ceros, con cualquier separador o todo junto', () => {
-    for (const n of ['21-20755.pdf', '0021-00020755.pdf', '21 20755 orden.pdf', '21.20755.pdf', '21_00020755.pdf', '2100020755.pdf', 'FC E 21-20755.pdf'])
+  it('la factura con o sin ceros y con cualquier separador; pegada no (podría ser un siniestro)', () => {
+    for (const n of ['21-20755.pdf', '0021-00020755.pdf', '21 20755 orden.pdf', '21.20755.pdf', '21_00020755.pdf', 'FC E 21-20755.pdf'])
       expect(revisarNombre(n, lista).ok, n).toBe(true)
+    expect(revisarNombre('2100020755.pdf', lista).ok).toBe(false)
   })
   it('un siniestro no se toma por factura', () => {
     const r = revisarNombre('21-20755 20 02 92907.pdf', lista)

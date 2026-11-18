@@ -5,7 +5,7 @@
  *
  * Nombres que se reconocen (cualquiera sirve, en cualquier orden):
  *  - número de factura: punto de venta y número, con o sin ceros adelante y separados por guion, espacio,
- *    punto, barra o nada: "21-00011032", "21-11032", "0021 11032", "21.11032", "2100011032"; o solo "11032"
+ *    punto o barra: "21-00011032", "21-11032", "0021 11032", "21.11032" (pegado no: podría ser un siniestro)
  *  - siniestro, patente o referencia de Quiter
  *  - qué es: "factura"/"FC" u "orden"/"OR"/"repuestos"/"firma" (la orden firmada); si no dice, son las dos juntas
  */
@@ -38,24 +38,11 @@ export function tipoPorNombre(nombre: string): TipoArchivo {
 }
 
 /**
- * Las facturas cuyo punto de venta y número aparecen en el nombre. Se prueba con cada par de números
- * seguidos ("21-11032", "0021 00011032") y con cada número largo partido en punto de venta + número
- * ("2100011032"). Como solo vale si existe esa factura, un siniestro no se confunde con una factura.
+ * Las facturas cuyo punto de venta y número aparecen en el nombre, separados ("21-11032",
+ * "0021 00011032"). Un número pegado no vale: podría ser un siniestro.
  */
 export function facturasEnNombre(nombre: string, facturas: Comprobante[]): Comprobante[] {
-  const base = nombre.replace(/\.[a-z0-9]+$/i, '')
-  const runs = base.match(/\d+/g) ?? []
-  const halladas: Comprobante[] = []
-  for (let i = 0; i < runs.length; i++) {
-    if (i + 1 < runs.length) {
-      const pv = Number(runs[i])
-      const numero = Number(runs[i + 1])
-      halladas.push(...facturas.filter((c) => c.puntoVenta === pv && c.numero === numero))
-    }
-    if (runs[i].length >= 6) {
-      halladas.push(...facturas.filter((c) => new RegExp(`^0*${c.puntoVenta}0*${c.numero}$`).test(runs[i])))
-    }
-  }
+  const halladas = numerosDelNombre(nombre).flatMap((n) => facturas.filter((c) => c.puntoVenta === n.puntoVenta && c.numero === n.numero))
   return [...new Map(halladas.map((c) => [c.id, c])).values()]
 }
 
@@ -71,7 +58,7 @@ export function sugerirFactura(nombre: string, facturas: Comprobante[]): Sugeren
     return null
   }
 
-  // 1) Punto de venta y número: "21-00011032", "21 11032", "FC21-11032", "2100011032"
+  // 1) Punto de venta y número: "21-00011032", "21 11032", "FC21-11032"
   const r1 = elegir(facturasEnNombre(nombre, facturas), 'número')
   if (r1) return r1
 
@@ -131,14 +118,12 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   if (halladas.length > 1) {
     return { ok: false, tipo, error: `El nombre coincide con más de una factura (${halladas.map(numeroParaNombre).join(', ')}): dejar solo el número de una.` }
   }
-  const pares = [...base.matchAll(/(\d{1,5})\s*[-_ ./]\s*(\d{1,8})/g)]
-  if (pares.length === 0 && !/\d{6,}/.test(base)) {
-    return { ok: false, tipo, error: `El nombre no tiene el número de factura (punto de venta y número). Por ejemplo: ${EJEMPLO}` }
-  }
   // el número que más parece de factura (no un siniestro con guiones)
   const n = numerosDelNombre(base)[0]
-  const dicho = n ? ` ${n.puntoVenta}-${n.numero}` : ' con ese número'
-  return { ok: false, tipo, error: `No hay ninguna factura${dicho} pendiente en la sucursal: conviene revisar el número.` }
+  if (!n) {
+    return { ok: false, tipo, error: `Falta el número de factura con el punto de venta separado por un guion. Por ejemplo: ${EJEMPLO}` }
+  }
+  return { ok: false, tipo, error: `No hay ninguna factura ${n.puntoVenta}-${n.numero} pendiente en la sucursal: conviene revisar el número.` }
 }
 
 /** Las facturas a las que todavía se les puede subir documentación. */

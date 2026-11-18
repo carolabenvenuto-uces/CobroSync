@@ -1,37 +1,22 @@
 import type { Comprobante, Documento, DocumentoEnEspera, Sucursal, TipoDocumento } from './tipos'
 
 /**
- * Puntos de venta y números de factura que aparecen en el nombre de un archivo ("35-11032"), los más
- * probables primero:
- *  1) lo que sigue a "FC" o "factura" ("fc 35-11032", "FC 3511032");
- *  2) un par suelto "35-11032" que no sea parte de un número más largo con guiones (un siniestro como
- *     "104-4-102868" no es el punto de venta 104);
- *  3) un número largo pegado ("3511032"), partido donde el comienzo es un punto de venta conocido.
- * Con `puntos` (los puntos de venta de todas las sucursales) se pueden partir los números pegados.
+ * Puntos de venta y números de factura que aparecen en el nombre de un archivo ("35-11032"). El punto
+ * de venta tiene que ir separado del número (guion, espacio, punto o barra): un número pegado puede ser
+ * un siniestro. Primero lo que sigue a "FC" o "factura"; después los pares sueltos que no sean parte de
+ * un número más largo con guiones (un siniestro como "104-4-102868" no es el punto de venta 104).
  */
-export function numerosDelNombre(nombre: string, puntos: number[] = []): { puntoVenta: number; numero: number }[] {
+export function numerosDelNombre(nombre: string): { puntoVenta: number; numero: number }[] {
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
   const lista: { puntoVenta: number; numero: number }[] = []
   const agregar = (pv: number, numero: number) => {
     if (numero > 0 && !lista.some((x) => x.puntoVenta === pv && x.numero === numero)) lista.push({ puntoVenta: pv, numero })
   }
-  const partir = (corrido: string) => {
-    for (let i = 1; i < corrido.length && i <= 5; i++) {
-      const pv = Number(corrido.slice(0, i))
-      if (puntos.includes(pv)) agregar(pv, Number(corrido.slice(i)))
-    }
-  }
-  const leer = (texto: string) => {
-    const par = texto.match(/^(\d{1,5})\s*[-_ ./]\s*0*(\d{1,8})$/)
-    if (par) agregar(Number(par[1]), Number(par[2]))
-    else partir(texto.replace(/\D/g, ''))
-  }
+  const PAR = /(?<!\d\s*[-_./]\s*)(?<!\d)(\d{1,5})\s*[-_ ./]\s*0*(\d{1,8})(?!\d)(?!\s*[-_./]\s*\d)/
   // 1) después de FC o factura
-  for (const m of base.matchAll(/(?:\bfce?\b|factura)\s*[:#nº°.]*\s*(\d+(?:\s*[-_ ./]\s*\d+)?)/gi)) leer(m[1])
-  // 2) pares sueltos, que no sean parte de un número más largo con guiones (un siniestro)
-  for (const m of base.matchAll(/(?<!\d\s*[-_./]\s*)(?<!\d)(\d{1,5})\s*[-_ ]\s*0*(\d{1,8})(?!\d)(?!\s*[-_./]\s*\d)/g)) agregar(Number(m[1]), Number(m[2]))
-  // 3) números largos pegados
-  for (const m of base.matchAll(/(?<![\d\-_./])\d{6,13}(?![\d\-_./])/g)) partir(m[0])
+  for (const m of base.matchAll(new RegExp(`(?:\\bfce?\\b|factura)\\s*[:#nº°.]*\\s*${PAR.source}`, 'gi'))) agregar(Number(m[1]), Number(m[2]))
+  // 2) pares sueltos
+  for (const m of base.matchAll(new RegExp(PAR.source, 'g'))) agregar(Number(m[1]), Number(m[2]))
   return lista
 }
 
@@ -47,7 +32,7 @@ export function puntosDeVenta(s: Pick<Sucursal, 'puntoVenta' | 'puntosVenta'>): 
 export function facturaDeHoy(nombre: string, sucursal: Sucursal | undefined, todas: Comprobante[]): { puntoVenta: number; numero: number } | null {
   if (!sucursal) return null
   const pvs = puntosDeVenta(sucursal)
-  for (const n of numerosDelNombre(nombre, pvs)) {
+  for (const n of numerosDelNombre(nombre)) {
     if (!pvs.includes(n.puntoVenta)) continue
     if (todas.some((c) => c.puntoVenta === n.puntoVenta && c.numero === n.numero)) return null
     return n

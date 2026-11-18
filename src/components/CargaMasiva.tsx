@@ -99,7 +99,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
           // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
           const sucursales = datos?.meta.sucursales ?? []
-          const num = numerosDelNombre(archivo.name, sucursales.flatMap(puntosDeVenta))[0]
+          const num = numerosDelNombre(archivo.name)[0]
           let error = r.error
           if (num && esPdf(archivo) && corto && escanea && miSucursal) {
             const existe = comprobantes.find((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)

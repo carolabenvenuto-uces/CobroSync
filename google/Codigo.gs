@@ -1467,15 +1467,14 @@ function nombreDeArchivo_(nombre, reserva) {
 
 /**
  * ¿El nombre del archivo tiene el punto de venta y el número de esta factura? Con o sin ceros adelante,
- * separados por guion, espacio, punto, barra o nada: "21-20755", "0021 00020755", "21.20755", "2100020755".
- * (La misma regla que src/domain/archivos.ts.)
+ * separados por guion, espacio, punto o barra: "21-20755", "0021 00020755", "21.20755". Pegados no:
+ * podría ser un siniestro. (La misma regla que src/domain/archivos.ts.)
  */
 function nombreTieneFactura_(nombre, pv, numero) {
   var base = String(nombre).replace(/\.[a-z0-9]+$/i, '');
   var runs = base.match(/\d+/g) || [];
   for (var i = 0; i < runs.length; i++) {
     if (i + 1 < runs.length && Number(runs[i]) === Number(pv) && Number(runs[i + 1]) === Number(numero)) return true;
-    if (new RegExp('^0*' + Number(pv) + '0*' + Number(numero) + '$').test(runs[i]) && runs[i].length >= 6) return true;
   }
   return false;
 }

@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.16] - 2026-11-18
+- Tablas: el filtro de cada columna se abre desde el título (una flechita al lado, o el título mismo si la columna no se ordena), en vez de un desplegable fijo debajo. El encabezado queda en una sola línea y cuando hay un filtro puesto se ve en el título.
+
 ## [0.17.15] - 2026-11-18
 - Naranja = hay que corregir algo: la solapa **Rechazos y pedidos**, los documentos observados y el estado "Doc. observada" pasan a naranja. El rojo queda para lo vencido.
 

@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Search } from 'lucide-react'
 import { BotonExportar } from './Card'
 
 /**
@@ -398,7 +398,7 @@ export function Tabla<T>({
             )}
             <tr className="text-[11px] uppercase tracking-wide text-slate-500">
               {seleccion && (
-                <th rowSpan={2} className="w-8 px-2 align-middle">
+                <th className="w-8 px-2 align-middle">
                   <input
                     type="checkbox"
                     aria-label="Elegir todas las filas filtradas"
@@ -417,60 +417,43 @@ export function Tabla<T>({
               {columnas.map((col, i) => (
                 <th
                   key={col.clave}
-                  className={`px-2 pb-1 pt-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
+                  className={`px-2 py-2.5 align-bottom font-semibold leading-tight ${col.derecha ? 'text-right' : ''} ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
                 >
+                  <span className="inline-flex items-end gap-1">
                   {col.orden ? (
-                    <button
-                      type="button"
-                      onClick={() => ordenar(col)}
-                      className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
-                      title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Ordenar de menor a mayor' : 'Volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
-                    >
-                      {col.titulo}
-                      {orden?.clave === col.clave ? (
-                        orden.dir === 'asc' ? (
-                          <ArrowUp className="h-3 w-3" />
+                      <button
+                        type="button"
+                        onClick={() => ordenar(col)}
+                        className={`inline-flex items-end gap-1 text-left uppercase hover:text-noche ${orden?.clave === col.clave ? 'text-noche' : ''}`}
+                        title={orden?.clave === col.clave ? (orden.dir === 'desc' ? 'Ordenar de menor a mayor' : 'Volver al orden original') : 'Ordenar (las que no tienen dato quedan al final)'}
+                      >
+                        {col.titulo}
+                        {orden?.clave === col.clave ? (
+                          orden.dir === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
                         ) : (
-                          <ArrowDown className="h-3 w-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-40" />
-                      )}
-                    </button>
-                  ) : (
-                    col.titulo
-                  )}
-                </th>
-              ))}
-            </tr>
-            <tr>
-              {columnas.map((col, i) => (
-                <th
-                  key={col.clave}
-                  className={`px-2 pb-2 font-normal ${tonoDe(col)?.cabecera ?? ''} ${empiezaGrupo(i) ? `border-l ${tonoDe(col)?.borde ?? 'border-slate-200'}` : ''} ${i === 0 && !seleccion ? FIJA + ' bg-fondo' : ''}`}
-                >
-                  {conFiltro(col) && (
-                    <select
-                      value={filtros[col.clave] ?? TODOS}
-                      onChange={(e) => {
-                        setFiltros((f) => ({ ...f, [col.clave]: e.target.value }))
-                        setPagina(1)
-                      }}
-                      className={`w-full min-w-[4.5rem] max-w-40 rounded-md border px-1 py-1 text-xs ${
-                        filtros[col.clave] && filtros[col.clave] !== TODOS
-                          ? 'border-marca bg-marca/5 font-semibold text-marca'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                      aria-label={`Filtrar ${col.titulo}`}
-                    >
-                      <option value={TODOS}>Todos</option>
-                      {(opciones[col.clave] ?? []).map((o) => (
-                        <option key={o.valor} value={o.valor}>
-                          {o.valor} ({o.cantidad.toLocaleString('es-AR')})
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
+                    ) : conFiltro(col) ? null : (
+                      col.titulo
+                    )}
+                    {conFiltro(col) && (
+                      <FiltroDeColumna
+                        titulo={col.titulo}
+                        conTitulo={!col.orden}
+                        valor={filtros[col.clave] ?? TODOS}
+                        opciones={opciones[col.clave] ?? []}
+                        alElegir={(v) => {
+                          setFiltros((f) => ({ ...f, [col.clave]: v }))
+                          setPagina(1)
+                        }}
+                      />
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -564,5 +547,99 @@ export function Tabla<T>({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Filtro en el título de la columna: un botón chico al lado del nombre que despliega las opciones.
+ * Así el encabezado no se agranda con un desplegable fijo debajo de cada título.
+ */
+function FiltroDeColumna({
+  titulo,
+  conTitulo,
+  valor,
+  opciones,
+  alElegir,
+}: {
+  titulo: string
+  /** la columna no se ordena: el mismo título abre el filtro */
+  conTitulo?: boolean
+  valor: string
+  opciones: { valor: string; cantidad: number }[]
+  alElegir: (valor: string) => void
+}) {
+  const [abierto, setAbierto] = useState<{ x: number; y: number } | null>(null)
+  const boton = useRef<HTMLButtonElement>(null)
+  const caja = useRef<HTMLDivElement>(null)
+  const puesto = valor !== TODOS
+  useEffect(() => {
+    if (!abierto) return
+    const cerrar = (e: Event) => {
+      if (e.type === 'mousedown' && (caja.current?.contains(e.target as Node) || boton.current?.contains(e.target as Node))) return
+      setAbierto(null)
+    }
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && setAbierto(null)
+    document.addEventListener('mousedown', cerrar)
+    window.addEventListener('scroll', cerrar, true)
+    window.addEventListener('resize', cerrar)
+    window.addEventListener('keydown', tecla)
+    return () => {
+      document.removeEventListener('mousedown', cerrar)
+      window.removeEventListener('scroll', cerrar, true)
+      window.removeEventListener('resize', cerrar)
+      window.removeEventListener('keydown', tecla)
+    }
+  }, [abierto])
+  const elegir = (v: string) => {
+    alElegir(v)
+    setAbierto(null)
+  }
+  return (
+    <>
+      <button
+        ref={boton}
+        type="button"
+        onClick={() => {
+          const r = boton.current?.getBoundingClientRect()
+          setAbierto(abierto || !r ? null : { x: Math.min(r.left, window.innerWidth - 230), y: r.bottom + 4 })
+        }}
+        aria-label={`Filtrar ${titulo}`}
+        aria-expanded={!!abierto}
+        title={puesto ? `Filtrado: ${valor}` : `Filtrar ${titulo}`}
+        className={`inline-flex items-center gap-0.5 rounded ${conTitulo ? 'uppercase' : 'px-1 normal-case tracking-normal'} ${
+          puesto ? 'bg-marca/10 px-1 font-semibold text-marca' : conTitulo ? 'hover:text-noche' : 'text-slate-400 hover:bg-slate-200/70 hover:text-noche'
+        }`}
+      >
+        {conTitulo && <span>{titulo}</span>}
+        {puesto && <span className="max-w-24 truncate normal-case tracking-normal text-[11px]">{conTitulo ? `· ${valor}` : valor}</span>}
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {abierto && (
+        <div
+          ref={caja}
+          role="listbox"
+          style={{ left: abierto.x, top: abierto.y }}
+          className="fixed z-50 max-h-72 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-left text-sm font-normal normal-case tracking-normal text-noche shadow-lg"
+        >
+          {[{ valor: TODOS, cantidad: -1 }, ...opciones].map((o) => {
+            const elegida = o.valor === valor
+            return (
+              <button
+                key={o.valor}
+                type="button"
+                role="option"
+                aria-selected={elegida}
+                onClick={() => elegir(o.valor)}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-fondo ${elegida ? 'font-semibold text-marca' : ''}`}
+              >
+                <Check className={`h-3.5 w-3.5 shrink-0 ${elegida ? '' : 'invisible'}`} />
+                <span className="min-w-0 flex-1 truncate">{o.valor === TODOS ? 'Todos' : o.valor}</span>
+                {o.cantidad >= 0 && <span className="text-xs tabular-nums text-slate-400">{o.cantidad.toLocaleString('es-AR')}</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }

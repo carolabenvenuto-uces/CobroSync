@@ -11,6 +11,10 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.20] - 2026-11-18
+- Arreglo: si la página reintentaba un envío que sí había llegado (por un corte o una demora de Google), se repetía. Volvían a aparecer los mensajes ("Subió la documentación", "Quitó…") y el documento volvía a "en revisión" aunque ya estuviera aprobado. Ahora cada cambio tiene su identificador y el servidor no lo aplica dos veces.
+- Además, un documento no se pisa si mientras tanto otra persona lo aprobó, lo observó o lo cambió: se avisa y se muestra como está.
+
 ## [0.17.19] - 2026-11-18
 - En una nota de crédito no aparece el Recorrido (factura, documentación, presentación, cobro), que no le corresponde.
 

@@ -133,9 +133,11 @@ export async function cargarDesdeGoogle(): Promise<DatosIniciales> {
  */
 export interface Cambio {
   id: string
+  /** identificador de este envío: si se reintenta, el servidor no lo aplica dos veces */
+  opId?: string
   campos?: Partial<Comprobante>
-  /** solo los documentos que cambiaron */
-  documentos?: Documento[]
+  /** solo los documentos que cambiaron, con el estado que tenían en pantalla (antes) */
+  documentos?: (Documento & { antes?: Documento['estado'] })[]
   /** mensaje nuevo para la conversación (lo firma el servidor) */
   evento?: Pick<Evento, 'tipo' | 'texto'>
   /** factura nueva completa (solo Cobranzas) */

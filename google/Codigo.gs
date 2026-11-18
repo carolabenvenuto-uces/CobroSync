@@ -349,9 +349,21 @@ function aplicarCambios(cambios) {
     agregarColumnasNuevas_(hoja, HOJAS.comprobantes);
     var tocadas = {};
     var errores = [];
+    // Cambios ya aplicados (por su identificador): si la página reintenta un envío que sí había
+    // llegado, no se repite (ni el mensaje ni el documento, que pisaría lo que hizo otra persona)
+    var cache = CacheService.getScriptCache();
     cambios.forEach(function (op) {
+      if (op.opId && cache.get('op-' + op.opId)) {
+        var ya = buscarFila_(hoja, op.id);
+        if (ya) tocadas[op.id] = ya;
+        return;
+      }
       // Cada cambio se aplica por separado: si uno no se puede guardar, los demás sí
-      try { aplicarUno_(hoja, usuario, op, tocadas); } catch (e) {
+      try {
+        aplicarUno_(hoja, usuario, op, tocadas);
+        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
+      } catch (e) {
+        if (op.opId) cache.put('op-' + op.opId, '1', 21600);
         errores.push({ id: op.id, mensaje: e.message });
         var f = buscarFila_(hoja, op.id);
         if (f) tocadas[op.id] = f; // se devuelve como está guardada, para que la pantalla vuelva atrás
@@ -419,8 +431,14 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
       }
       if (op.documentos) {
         var docs = c.documentos || [];
+        var cambiadosPorOtro = [];
         op.documentos.forEach(function (d) {
           var i = docs.map(function (x) { return x.tipo; }).indexOf(d.tipo);
+          // Si el documento ya no está como se veía en pantalla (otra persona lo aprobó, observó o
+          // cambió), no se pisa
+          var antes = d.antes;
+          delete d.antes;
+          if (antes !== undefined && (i >= 0 ? docs[i].estado : 'faltante') !== antes) { cambiadosPorOtro.push(d.tipo); return; }
           // La sucursal sube para revisar: aprobar u observar es de Cobranzas. Sí puede quitar lo que
           // subió por error mientras Cobranzas no lo revisó (vuelve a "falta")
           var quita = d.estado === 'faltante' && i >= 0 && docs[i].estado === 'en_revision';
@@ -447,6 +465,9 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
       }
       escribirFila_(hoja, HOJAS.comprobantes, fila, c);
       tocadas[op.id] = fila;
+      if (cambiadosPorOtro && cambiadosPorOtro.length) {
+        throw new Error('No se guardó: ' + (cambiadosPorOtro.length > 1 ? 'los documentos ya habían cambiado' : 'el documento ya había cambiado') + ' (otra persona lo revisó o lo cambió). Se muestra como está ahora.');
+      }
 }
 
 /** Lo que cambió desde la última consulta (la aplicación pregunta cada minuto). */

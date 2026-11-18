@@ -13,6 +13,8 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.21] - 2026-11-18
 - Al traer los cambios de la planilla de control, el **siniestro** que figura en la planilla completa el de CobroSync si todavía no lo tiene (no pisa uno cargado).
+- Planilla → CobroSync: una NC con la referencia de la factura en la **columna Q** queda vinculada sola (anula la factura o, si es por menos, le descuenta el importe). Los reclamos anotados en Observaciones se suman si son más nuevos que el último de CobroSync.
+- CobroSync → planilla: además de Drive, Presentación, Cobro y la X de Anula, completa el **siniestro** (G), en las NC la **referencia de la factura que anulan** (Q) y en **Observaciones** (R) el motivo de la nota de crédito que informó la sucursal. Solo en celdas vacías: nunca pisa lo que ya está.
 - La consulta de cada minuto compara la hora de cada cambio igual que el ingreso (si la planilla la guardó como fecha, ya no trae todas las filas).
 - El aviso diario de plazos no se corta si una factura es de una sucursal que no está en la pestaña Sucursales.
 - Los cambios ya aplicados se anotan de una vez (más rápido al subir muchos PDF juntos).

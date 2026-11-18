@@ -624,7 +624,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               </ul>
               {subeDocs && abierta && pendientesDeSubir.length > 1 && (
                 <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-marca/50 px-4 py-2.5 text-sm font-semibold text-marca hover:bg-marca/5">
-                  <FileUp className="h-4 w-4" /> Subir un PDF con todo lo que falta
+                  <FileUp className="h-4 w-4" /> Subir factura y orden firmada en un solo PDF
                   <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subir(pendientesDeSubir, e.target.files)} />
                 </label>
               )}
@@ -635,11 +635,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               )}
               {rol === 'sucursal' && leTocaALaSucursal && (
                 <>
-                <p className="mt-1 text-xs text-slate-500">
-                  {subiendo
-                    ? 'Subiendo el archivo…'
-                    : 'Solo PDF, con el número de la factura en el nombre. Desde el celular, el botón Foto saca la foto y la sube como PDF.'}
-                </p>
+                {subiendo && <p className="mt-1 text-xs text-slate-500">Subiendo el archivo…</p>}
                 {errorSubida && <p className="mt-1 text-xs font-semibold text-sem-rojo">{errorSubida}</p>}
                 </>
               )}

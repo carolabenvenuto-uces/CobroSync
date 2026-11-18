@@ -339,7 +339,7 @@ function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
  * - nuevo: una factura nueva completa (por ejemplo, desde el ERP). Solo Cobranzas.
  */
 // siniestro: lo informa la sucursal al subir la orden (antes no se conoce)
-var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro', 'refacturacion'];
+var CAMPOS_SUCURSAL = ['fechaDrive', 'subidoPor', 'compromiso', 'ncInformada', 'estado', 'anulacionInformada', 'siniestro', 'patente', 'refacturacion'];
 
 function aplicarCambios(cambios) {
   var usuario = usuarioActual_();

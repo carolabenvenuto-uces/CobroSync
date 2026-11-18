@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.14] - 2026-11-18
+- Mis facturas: la columna "Qué hay que hacer" pasa a **Documentación** ("Faltante", "Falta orden", "Falta factura", "Orden observada").
+- **Plazo** es la primera columna, y **Tipo de factura** va al lado de Factura.
+- Sin el filtro de siniestro (casi todas las pendientes todavía no lo tienen).
+- Al avisar una fecha estimada de entrega, se puede cargar el **siniestro** y la **patente** si ya se saben (opcional), para buscar la orden que falta.
+
 ## [0.17.13] - 2026-11-18
 - Mis facturas: "Vencidas o por vencer" sin la columna "Por qué", que repetía el plazo.
 - "Rechazos y pedidos" pasa a violeta (lo pide Cobranzas), para no confundirse con el rojo de lo vencido.

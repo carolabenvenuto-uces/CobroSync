@@ -685,6 +685,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [agregarComprobante, hoy, fuente.tipo, soloMirar],
   )
 
+  // PDF en espera cuya factura ya existe (por ejemplo, entró desde la planilla de control y no desde el
+  // Excel de Quiter): se unen con la factura. Si a la factura ya no le faltaba ese documento, el PDF solo
+  // deja de estar en espera. Lo hace Cobranzas al abrir CobroSync.
+  useEffect(() => {
+    if (rolPropio !== 'auditoria' || vista || !datos?.enEspera?.length) return
+    const libres = datos.enEspera.filter((e) => !e.asociado)
+    const unidos: { id: string; comprobanteId: string }[] = []
+    datos.comprobantes.forEach((c) => {
+      if (c.tipo !== 'FC') return
+      const { comprobantes: [unida], unidos: deEsta } = unirEnEspera([c], libres, hoy)
+      if (!deEsta.length) return
+      unidos.push(...deEsta)
+      // Solo los documentos que todavía faltaban (o estaban observados): nunca se pisa uno aprobado o en revisión
+      const documentos = c.documentos.length
+        ? c.documentos.map((d) => (d.estado === 'faltante' || d.estado === 'observado' ? unida.documentos.find((x) => x.tipo === d.tipo) ?? d : d))
+        : unida.documentos
+      const cambio = JSON.stringify(documentos) !== JSON.stringify(c.documentos)
+      if (cambio) {
+        actualizarComprobante(c.id, {
+          documentos,
+          ...(c.siniestro ? {} : { siniestro: unida.siniestro }),
+          ...(c.fechaDrive ? {} : { fechaDrive: unida.fechaDrive, subidoPor: unida.subidoPor }),
+          ...(c.estado === 'pendiente_drive' ? { estado: 'en_gestion' as const } : {}),
+        })
+        registrarEvento(c.id, 'subida', `Se unió el PDF que la sucursal había subido antes de que se cargara la factura`)
+      }
+    })
+    if (!unidos.length) return
+    const ids = new Set(unidos.map((u) => u.id))
+    setDatos((actual) => (actual ? { ...actual, enEspera: (actual.enEspera ?? []).filter((e) => !ids.has(e.id)) } : actual))
+    if (fuente.tipo === 'google') marcarEsperaAsociadaEnGoogle(unidos).catch(() => {})
+  }, [datos?.enEspera, datos?.comprobantes, rolPropio, vista, hoy, fuente.tipo, actualizarComprobante, registrarEvento])
+
   const subirDocumento = useCallback(
     async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => {
       if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)

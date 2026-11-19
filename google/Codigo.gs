@@ -322,6 +322,7 @@ function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
         // A quién le llegan los avisos de Soporte técnico (solo el nombre; el correo no se muestra)
         soporte: { nombre: String(config_('nombreSoporte') || '') },
         planilla: usuario.rol === 'auditoria' ? { conectada: !!config_('planillaControlId'), ultimaLectura: PropertiesService.getScriptProperties().getProperty('ultimaLecturaPlanilla') || '' } : undefined,
+        ultimaCargaQuiter: usuario.rol === 'auditoria' ? PropertiesService.getScriptProperties().getProperty('ultimaCargaQuiter') || '' : undefined,
       },
     },
   };
@@ -1152,6 +1153,8 @@ function planillaDeControl_() {
 /** Botón de la aplicación al cargar el ERP: agrega a la pestaña Quiter las filas que no estén. Solo Cobranzas. */
 function agregarAQuiter(filas) {
   if (usuarioActual_().rol !== 'auditoria') throw new Error('Solo Cobranzas puede cargar el Excel de Quiter.');
+  // Cuándo se cargó por última vez (aunque no traiga facturas nuevas): para "Cargado hoy"
+  PropertiesService.getScriptProperties().setProperty('ultimaCargaQuiter', hoy_());
   var libro = planillaDeControl_();
   if (!libro) return { configurada: false, agregadas: 0 };
   try {

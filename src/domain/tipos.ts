@@ -266,6 +266,8 @@ export interface MetaDemo {
   soporte?: { nombre: string }
   /** solo Cobranzas: si la planilla de control está conectada y cuándo se leyó por última vez */
   planilla?: { conectada: boolean; ultimaLectura: string }
+  /** día de la última carga del Excel de Quiter (aunque no trajera facturas nuevas) */
+  ultimaCargaQuiter?: string
   /** textos de las notificaciones a Gerencia (Ajustes) */
   textos?: Partial<TextosAvisos>
 }

@@ -77,9 +77,15 @@ export default function ControlDiario() {
   // Cuándo se cargó el Excel de Quiter por última vez (para la franja de arriba)
   // el texto viejo y el nuevo de la carga del Excel de Quiter
   const ERP = /cargada desde (el Excel del ERP|Quiter)$/
+  // la última carga: la que guarda el servidor (aunque no trajera facturas nuevas) o la de las facturas cargadas
+  const [cargadoAhora, setCargadoAhora] = useState(false)
   const ultimaCarga = useMemo(
-    () => comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (ERP.test(e.texto) && e.fecha > n ? e.fecha : n), m), ''),
-    [comprobantes],
+    () =>
+      [cargadoAhora ? hoy : '', meta.ultimaCargaQuiter ?? '', comprobantes.reduce((m, c) => c.eventos.reduce((n, e) => (ERP.test(e.texto) && e.fecha > n ? e.fecha : n), m), '')].reduce(
+        (a, b) => (b > a ? b : a),
+        '',
+      ),
+    [comprobantes, meta.ultimaCargaQuiter, cargadoAhora, hoy],
   )
 
   const filtrosIniciales =
@@ -97,6 +103,7 @@ export default function ControlDiario() {
       const r = importarErp(texto, datos!.comprobantes, aseguradoras, meta.sucursales, hoy)
       // Las facturas que la sucursal ya escaneó (PDF en espera) entran con sus documentos
       const unidas = agregarDelErp(r.nuevas)
+      setCargadoAhora(true)
       // Notas de crédito que la sucursal había avisado: total → anula; parcial → resta del saldo
       r.vinculadas.forEach(({ facturaId, ncId, tipo, importe }) => {
         const nc = r.nuevas.find((x) => x.id === ncId)

@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.22] - 2026-11-19
+- Control diario: "Cargado hoy" también cuando el Excel de Quiter no trae facturas nuevas (antes seguía diciendo "Todavía no se cargó hoy" y parecía que no lo había tomado).
+- PDF en espera cuya factura ya está en CobroSync (por ejemplo, porque entró desde la planilla de control): se unen solos con la factura. Si a la factura ya no le faltaba ese documento, solo dejan de figurar en espera.
+- Al cargar el Excel se ve enseguida "Leyendo…" y el resultado, mientras se agregan las filas a la planilla.
+- Completar la planilla de control (siniestros, notas de crédito, observaciones) escribe de a tramos en vez de celda por celda: la primera vez son miles de celdas.
+
 ## [0.17.21] - 2026-11-18
 - Al traer los cambios de la planilla de control, el **siniestro** que figura en la planilla completa el de CobroSync si todavía no lo tiene (no pisa uno cargado).
 - Planilla → CobroSync: una NC con la referencia de la factura en la **columna Q** queda vinculada sola (anula la factura o, si es por menos, le descuenta el importe). Los reclamos anotados en Observaciones se suman si son más nuevos que el último de CobroSync.

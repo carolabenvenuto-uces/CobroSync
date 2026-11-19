@@ -748,15 +748,44 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   if (!nombreTieneFactura_(nombre, c.puntoVenta, c.numero)) {
     throw new Error('El nombre del archivo tiene que tener el número de la factura (' + c.puntoVenta + '-' + c.numero + ').');
   }
-  var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
-  var carpeta = subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)),
-    c.tipo + ' ' + c.puntoVenta + '-' + c.numero);
+  var carpeta = carpetaDeComprobante_(c);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   // El archivo queda en Drive con el nombre que le puso la sucursal
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, tipoDocumento + '_' + hoy_() + extension)));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
   compartirEnLaEmpresa_(archivo);
   return { archivo: archivo.getName(), url: archivo.getUrl() };
+}
+
+/** La carpeta de Drive de cada factura: sucursal / mes / "FC 35-5743". */
+function carpetaDeComprobante_(c) {
+  var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
+  return subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)), c.tipo + ' ' + c.puntoVenta + '-' + c.numero);
+}
+
+/**
+ * Los PDF en espera que ya se unieron con su factura pasan de la carpeta "En espera" a la de la
+ * factura (el link no cambia). También los que se unieron antes de que existiera esto.
+ */
+function moverEsperaAsociada_() {
+  var porId = {};
+  leerHoja_(HOJAS.comprobantes).forEach(function (c) { porId[c.id] = c; });
+  var movidos = 0;
+  leerEspera_().forEach(function (e) {
+    if (!e.asociado || !porId[e.asociado]) return;
+    var id = (String(e.url || '').match(/[-\w]{25,}/) || [])[0];
+    if (!id) return;
+    try {
+      var archivo = DriveApp.getFileById(id);
+      var padres = archivo.getParents();
+      if (!padres.hasNext() || padres.next().getName() !== 'En espera') return;
+      archivo.moveTo(carpetaDeComprobante_(porId[e.asociado]));
+      movidos++;
+    } catch (err) {
+      console.warn('No se pudo mover ' + e.archivo + ': ' + err);
+    }
+  });
+  return movidos;
 }
 
 /**
@@ -821,6 +850,8 @@ function marcarEsperaAsociada(pares) {
       hoja.getRange(fila, HOJAS.espera.columnas.indexOf('asociado') + 1).setValue(p.comprobanteId);
       n++;
     });
+    // Y los archivos pasan a la carpeta de su factura
+    try { moverEsperaAsociada_(); } catch (e) { console.warn('Drive: ' + e); }
     return n;
   });
 }
@@ -1225,6 +1256,8 @@ function actualizarPlanillaDeControl() {
   var completadas = completarDiario_(libro);
   // De paso, se deja lista la foto de las facturas para que el próximo ingreso sea rápido
   try { prepararIngreso(); } catch (e) { console.warn('No se pudo preparar el ingreso: ' + e); }
+  // Y los PDF en espera que ya tienen factura pasan a su carpeta en Drive
+  try { moverEsperaAsociada_(); } catch (e) { console.warn('Drive: ' + e); }
   return completadas;
 }
 

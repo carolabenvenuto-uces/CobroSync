@@ -91,6 +91,7 @@ export default function ControlDiario() {
 
   async function cargarErp(archivo: File | undefined) {
     if (!archivo) return
+    setMensajeErp({ texto: `Leyendo ${archivo.name}…` })
     try {
       const texto = await leerArchivo(archivo, /quiter|erp|factur/i)
       const r = importarErp(texto, datos!.comprobantes, aseguradoras, meta.sucursales, hoy)
@@ -109,9 +110,11 @@ export default function ControlDiario() {
           registrarEvento(facturaId, 'nota_credito', `Nota de crédito parcial ${numero} por ${formatoPesos(importe)} (vinculada al cargar el Excel de Quiter)`)
         }
       })
+      const resumen = `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${unidas ? `${unidas} ya tenían sus PDF subidos por la sucursal y quedan "En revisión". ` : ''}${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.`
       // Con Google, las mismas filas van también al final de la pestaña Quiter de la planilla de control
       let enPlanilla = ''
       if (conectadoAGoogle()) {
+        setMensajeErp({ texto: `${resumen} Agregando las filas a la pestaña Quiter de la planilla…` })
         try {
           // Solo las filas de compañías de seguros, como cuando se filtraba el Excel a mano
           const q = await agregarAQuiterEnGoogle(filasDeDatosErp(texto, aseguradoras))
@@ -120,9 +123,7 @@ export default function ControlDiario() {
           enPlanilla = ` No se pudo agregar a la pestaña Quiter de la planilla (${e instanceof Error ? e.message : 'error'}): hay que pegarlas a mano como siempre.`
         }
       }
-      setMensajeErp({
-        texto: `Se agregaron ${r.nuevas.length} comprobantes nuevos (las facturas quedan en "Doc. pendiente"). ${unidas ? `${unidas} ya tenían sus PDF subidos por la sucursal y quedan "En revisión". ` : ''}${r.vinculadas.length ? `${r.vinculadas.length} notas de crédito se vincularon con lo que había avisado la sucursal. ` : ''}${r.repetidas} ya estaban cargados y ${r.ignoradas} filas no eran de compañías de seguros o no se pudieron leer.${enPlanilla}`,
-      })
+      setMensajeErp({ texto: `${resumen}${enPlanilla}` })
     } catch (e) {
       setMensajeErp({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', error: true })
     }

@@ -1451,6 +1451,9 @@ function completarDiario_(libro) {
   var comprobantes = leerHoja_(HOJAS.comprobantes);
   var porId = {};
   comprobantes.forEach(function (c) { porId[c.id] = c; });
+  // Lo que hay que escribir se junta y se escribe de a tramos seguidos por columna: celda por celda,
+  // la primera vez (miles de siniestros) tardaba más de lo que Google deja correr y no terminaba
+  var porEscribir = {};
   var cambios = 0;
   comprobantes.forEach(function (c) {
     var i = filaDeRef[refTexto_(c.ref)];
@@ -1464,7 +1467,8 @@ function completarDiario_(libro) {
       if (soloSiVacia && String(actual).trim() !== '') return;
       var igual = tipo === 'fecha' ? fechaDeCelda_(actual) === valor : String(actual).trim().toUpperCase() === String(valor).toUpperCase();
       if (igual) return;
-      hoja.getRange(i + 1, columna).setValue(tipo === 'fecha' ? fechaParaCelda_(valor) : tipo === 'texto' ? "'" + valor : valor);
+      (porEscribir[columna] = porEscribir[columna] || {})[i] = tipo === 'fecha' ? fechaParaCelda_(valor) : tipo === 'texto' ? "'" + valor : valor;
+      valores[i][j] = valor;
       cambios++;
     };
     poner(COLUMNAS_DIARIO.siniestro, c.siniestro, 'texto', true);
@@ -1479,6 +1483,16 @@ function completarDiario_(libro) {
       var f = c.ncReferencia ? porId[c.ncReferencia] : null;
       if (f && f.ref) poner(COLUMNAS_DIARIO.refAnulada, refTexto_(f.ref), 'texto', true);
       poner(COLUMNAS_DIARIO.observaciones, motivoNc_(c, f), 'texto', true);
+    }
+  });
+  Object.keys(porEscribir).forEach(function (columna) {
+    var filas = Object.keys(porEscribir[columna]).map(Number).sort(function (a, b) { return a - b; });
+    var desde = 0;
+    for (var k = 1; k <= filas.length; k++) {
+      if (k < filas.length && filas[k] === filas[k - 1] + 1) continue;
+      var tramo = filas.slice(desde, k).map(function (i) { return [porEscribir[columna][i]]; });
+      hoja.getRange(filas[desde] + 1, Number(columna), tramo.length, 1).setValues(tramo);
+      desde = k;
     }
   });
   return cambios;

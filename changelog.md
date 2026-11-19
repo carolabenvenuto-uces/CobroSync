@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.23] - 2026-11-19
+- Drive: los PDF en espera que ya se unieron con su factura pasan de la carpeta "En espera" a la carpeta de la factura (sucursal / mes / FC). El link no cambia. Los que ya estaban unidos se mueven en la próxima actualización de cada hora.
+
 ## [0.17.22] - 2026-11-19
 - Control diario: "Cargado hoy" también cuando el Excel de Quiter no trae facturas nuevas (antes seguía diciendo "Todavía no se cargó hoy" y parecía que no lo había tomado).
 - PDF en espera cuya factura ya está en CobroSync (por ejemplo, porque entró desde la planilla de control): se unen solos con la factura. Si a la factura ya no le faltaba ese documento, solo dejan de figurar en espera.

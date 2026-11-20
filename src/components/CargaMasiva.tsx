@@ -2,7 +2,7 @@ import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre, aclaraQueEs } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre, aclaraQueEs, formatosDeSiniestro } from '../domain/archivos'
 import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
@@ -86,13 +86,16 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   leidasRef.current = leidas
   const agregarRef = useRef(agregar)
   agregarRef.current = agregar
+  // Cómo son los siniestros de cada compañía, para leer bien uno escrito con espacios
+  const formatos = useMemo(() => formatosDeSiniestro(comprobantes), [comprobantes])
+
   function agregar(lista: FileList | File[] | null) {
     const nuevos = lista ? [...lista] : []
     if (!nuevos.length) return
     setFilas((actuales) => [
       ...actuales,
       ...nuevos.map((archivo): Fila => {
-        const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
+        const r = revisarNombre(archivo.name, facturas, esPdf(archivo), true, formatos)
         if (!r.ok) {
           // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en Quiter
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE

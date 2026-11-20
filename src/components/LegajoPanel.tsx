@@ -37,7 +37,7 @@ import { importeCobrado, saldoSinCobro } from '../domain/importes'
 import { facturasDelSiniestro } from '../domain/siniestros'
 import { esNotaTotal } from '../services/erp'
 import { esPdf, prepararArchivo } from '../lib/imagenes'
-import { numeroParaNombre, patenteDelNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
+import { formatosDeSiniestro, numeroParaNombre, patenteDelNombre, revisarNombre, siniestroDelNombre } from '../domain/archivos'
 import type { AreaEvento, Comprobante, Documento, Evento, Reclamo, RespuestaReclamo, TipoDocumento } from '../domain/tipos'
 import { diffDias, sumarDias } from '../lib/fechas'
 import { esMipyme, plazoSucursal } from '../domain/plazos'
@@ -200,7 +200,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     // (si viene en el nombre del PDF o escrito, se toma con cualquier documento; con la orden es obligatorio)
     let siniestro: string | null = null
     if (!c.siniestro) {
-      siniestro = archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
+      const formas = formatosDeSiniestro(datos!.comprobantes.filter((x) => x.aseguradoraId === c.aseguradoraId)).get(c.aseguradoraId)
+      siniestro = archivos.map((a) => siniestroDelNombre(a.name, c, formas)).find(Boolean) || null
       if (!siniestro && tipos.includes('orden')) {
         setErrorSubida(`Falta el siniestro en el nombre del archivo. Por ejemplo: ${numeroParaNombre(c)} 104-4-137055 OR.pdf`)
         return

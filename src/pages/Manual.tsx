@@ -488,7 +488,7 @@ const SECCIONES: Seccion[] = [
         </div>
         <div>
           <dt className="font-bold">¿Por qué no se puede subir un archivo?</dt>
-          <dd>Tiene que ser PDF, con el número de la factura en el nombre y, si es la orden, el siniestro (por ejemplo, 21-20834 104-4-137055 OR), y no más de 40 caracteres.</dd>
+          <dd>Tiene que ser PDF, con el número de la factura en el nombre y, si es la orden, el siniestro (por ejemplo, 21-20834 104-4-137055 OR), y no más de 50 caracteres.</dd>
         </div>
         <div>
           <dt className="font-bold">¿Se puede usar desde el celular?</dt>

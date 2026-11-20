@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { esNotaDeCreditoPorNombre, patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { esNotaDeCreditoPorNombre, formatosDeSiniestro, patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import { limpiarSiniestro } from '../src/domain/siniestros'
 import type { Comprobante } from '../src/domain/tipos'
 
@@ -210,5 +210,18 @@ describe('variantes de escritura', () => {
       const r = revisarNombre(n, [f, nc])
       expect(r.ok && r.factura.id, n).toBe('n')
     }
+  })
+})
+
+describe('siniestro escrito con espacios', () => {
+  it('se arma con la forma de los siniestros de la compañía', () => {
+    const conocidos = [{ aseguradoraId: 'fed', siniestro: '104-4-128195' }, { aseguradoraId: 'fed', siniestro: '104-4-54203' }] as Comprobante[]
+    const formas = formatosDeSiniestro(conocidos).get('fed')
+    const c = { puntoVenta: 21, numero: 20834 }
+    expect(siniestroDelNombre('21-20834 104 4 137055 OR.pdf', c, formas)).toBe('104-4-137055')
+    // sin conocer la forma, toma el número largo
+    expect(siniestroDelNombre('21-20834 104 4 137055 OR.pdf', c)).toBe('137055')
+    // uno de una sola parte no se toca
+    expect(siniestroDelNombre('21-20834 4500546 OR.pdf', c, formas)).toBe('4500546')
   })
 })

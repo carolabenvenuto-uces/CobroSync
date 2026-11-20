@@ -351,16 +351,18 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           {condiciones && (
             <div className="mt-3 rounded-lg border border-sem-amarillo/50 bg-amber-50 p-3 text-xs text-amber-950">
               <ul className="list-disc space-y-1 pl-4">
-                <li>Solo PDF.</li>
+                <li>
+                  Solo <strong>PDF</strong>.
+                </li>
                 <li>
                   Todo PDF lleva el <strong>número de factura</strong>: sin él no se puede unir a su legajo.
                 </li>
                 <li>
-                  <strong>Documentos separados:</strong> <strong>FC</strong> factura (sin siniestro) · <strong>OR</strong> orden (con siniestro) ·{' '}
+                  <strong>Documentos separados:</strong> <strong>FC</strong> factura (sin siniestro) · <strong>OR</strong> orden (<strong>con siniestro</strong>) ·{' '}
                   <strong>NC</strong> nota de crédito.
                 </li>
                 <li>
-                  <strong>Documentos juntos:</strong> <strong>FC OR</strong> (con siniestro).
+                  <strong>Documentos juntos:</strong> <strong>FC OR</strong> (<strong>con siniestro</strong>).
                 </li>
                 <li>Patente o compañía: se pueden agregar, no son necesarias.</li>
               </ul>

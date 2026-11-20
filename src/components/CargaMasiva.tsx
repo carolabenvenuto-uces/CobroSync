@@ -364,6 +364,9 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 <li>
                   <strong>Documentos juntos:</strong> <strong>FC OR</strong> (<strong>con siniestro</strong>).
                 </li>
+                <li>
+                  La FC <strong>no se sube sola</strong>: va con su orden, en otro PDF o junta.
+                </li>
                 <li>Patente o compañía: se pueden agregar, no son necesarias.</li>
               </ul>
               <p className="mt-2">

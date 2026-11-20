@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.29] - 2026-11-20
+- Condiciones de Subir varios: la FC no se sube sola, va con su orden (en otro PDF o junta).
+
 ## [0.17.28] - 2026-11-20
 - Condiciones de Subir varios: la aclaración del siniestro solo donde hace falta (OR y FC OR).
 

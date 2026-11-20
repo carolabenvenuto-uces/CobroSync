@@ -191,7 +191,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       const trabajar = async () => {
         for (let f = pendientes.shift(); f; f = pendientes.shift()) {
           try {
-            subidosPorArchivo.set(f, await subirDocumento(f.facturaId, f.tipo, await prepararArchivo(f.archivo)))
+            // el siniestro de la factura (o el escrito en cualquiera de sus PDF), para el nombre en Drive
+            const c = comprobantes.find((x) => x.id === f.facturaId)
+            const siniestro = c?.siniestro || limpiarSiniestro(asignadas.find((x) => x.facturaId === f.facturaId && x.siniestro.trim())?.siniestro ?? '')
+            subidosPorArchivo.set(f, await subirDocumento(f.facturaId, f.tipo, await prepararArchivo(f.archivo), siniestro))
           } catch (e) {
             fallos.set(f, e instanceof Error ? e.message : String(e))
           }

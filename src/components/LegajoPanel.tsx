@@ -215,7 +215,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
       const adjuntos: { archivo: string; url?: string }[] = []
       for (const a of archivos) {
         const listo = await prepararArchivo(a)
-        adjuntos.push(await subirDocumento(c.id, tipos.length > 1 ? 'documentacion' : tipos[0], listo))
+        adjuntos.push(await subirDocumento(c.id, tipos.length > 1 ? 'documentacion' : tipos[0], listo, c.siniestro || siniestro || ''))
       }
       const documento = (tipo: TipoDocumento): Documento => ({
         tipo,

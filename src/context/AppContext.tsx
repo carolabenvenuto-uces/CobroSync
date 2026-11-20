@@ -270,7 +270,8 @@ interface EstadoApp {
   /** con Google: si los últimos cambios ya se guardaron */
   guardado: { estado: 'ok' | 'guardando' | 'error'; mensaje?: string }
   /** sube un archivo de la factura: a Drive con Google; en la demo solo registra el nombre */
-  subirDocumento: (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => Promise<{ archivo: string; url?: string }>
+  /** siniestro: el que se conoce al subir (aunque no esté en este PDF), para el nombre del archivo en Drive */
+  subirDocumento: (id: string, tipo: TipoDocumento | 'documentacion', archivo: File, siniestro?: string) => Promise<{ archivo: string; url?: string }>
   usarPlanilla: (resultado: ResultadoImportacion, archivo: string) => void
   usarDemo: () => void
   /** demo: si ya se eligió con qué usuario entrar (con Google siempre es true) */
@@ -719,10 +720,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [datos?.enEspera, datos?.comprobantes, rolPropio, vista, hoy, fuente.tipo, actualizarComprobante, registrarEvento])
 
   const subirDocumento = useCallback(
-    async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File) => {
+    async (id: string, tipo: TipoDocumento | 'documentacion', archivo: File, siniestro?: string) => {
       if (vistaRef.current) throw new Error(TEXTO_SOLO_MIRAR)
       // En la demo el archivo queda en el navegador, para poder abrirlo y revisarlo
-      return fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo) : { archivo: archivo.name, url: URL.createObjectURL(archivo) }
+      return fuente.tipo === 'google' ? subirAGoogle(id, tipo, archivo, siniestro ?? '') : { archivo: archivo.name, url: URL.createObjectURL(archivo) }
     },
     [fuente.tipo],
   )

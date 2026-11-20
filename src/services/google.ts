@@ -252,14 +252,14 @@ export function guardarAseguradorasEnGoogle(lista: Aseguradora[], completarExist
 }
 
 /** Sube un PDF o una foto al Drive de la empresa, en la carpeta de la factura. */
-export async function subirAGoogle(comprobanteId: string, tipo: TipoDocumento | 'documentacion', archivo: File) {
+export async function subirAGoogle(comprobanteId: string, tipo: TipoDocumento | 'documentacion', archivo: File, siniestro = '') {
   const base64 = await new Promise<string>((resolver, rechazar) => {
     const lector = new FileReader()
     lector.onload = () => resolver(String(lector.result).split(',')[1] ?? '')
     lector.onerror = () => rechazar(lector.error)
     lector.readAsDataURL(archivo)
   })
-  return llamar<{ archivo: string; url: string }>('subirArchivo', comprobanteId, tipo, archivo.name, archivo.type || 'application/pdf', base64)
+  return llamar<{ archivo: string; url: string }>('subirArchivo', comprobanteId, tipo, archivo.name, archivo.type || 'application/pdf', base64, siniestro)
 }
 
 /** PDF de una factura de hoy (todavía no cargada): queda en espera hasta que se cargue el Excel de Quiter. */

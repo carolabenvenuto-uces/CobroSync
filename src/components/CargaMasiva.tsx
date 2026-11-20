@@ -2,7 +2,7 @@ import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre } from '../domain/archivos'
 import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
@@ -24,6 +24,8 @@ interface Fila {
   tipo: TipoArchivo
   /** por qué no se puede subir: no es PDF, el nombre no tiene el número o el número no existe */
   error: string | null
+  /** PDF de una nota de crédito (por el nombre: "NC 21-803") */
+  nc?: boolean
   /** la factura todavía no tiene siniestro: se toma del nombre o se escribe en la fila */
   pideSiniestro: boolean
   siniestro: string
@@ -96,7 +98,11 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en Quiter
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
           const n = escanea && esPdf(archivo) && corto ? facturaDeHoy(archivo.name, miSucursal, comprobantes) : null
-          if (n) return { archivo, facturaId: '', tipo: r.tipo, error: null, pideSiniestro: true, siniestro: siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
+          if (n) {
+            // Una NC de hoy: queda en espera igual que las facturas, y se une a la NC cuando entra de Quiter
+            const nc = esNotaDeCreditoPorNombre(archivo.name)
+            return { archivo, facturaId: '', tipo: r.tipo, nc, error: null, pideSiniestro: !nc, siniestro: nc ? '' : siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
+          }
           // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
           const sucursales = datos?.meta.sucursales ?? []
           const num = numerosDelNombre(archivo.name)[0]
@@ -114,7 +120,8 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           return { archivo, facturaId: '', tipo: r.tipo, error, pideSiniestro: false, siniestro: '' }
         }
         // El siniestro llega con la documentación: si la factura no lo tiene, sale del nombre o se escribe en la fila
-        const pide = !r.factura.siniestro
+        // (una nota de crédito no lleva siniestro)
+        const pide = r.factura.tipo !== 'NC' && !r.factura.siniestro
         return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, pideSiniestro: pide, siniestro: pide ? siniestroDelNombre(archivo.name, r.factura) ?? '' : '' }
       }),
     ])
@@ -161,7 +168,11 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   const asignadas = filas.filter((f) => f.facturaId)
   const deHoy = filas.filter((f) => f.deHoy && !f.error)
   const listas = asignadas.length + deHoy.length
-  const sinSiniestro = [...asignadas, ...deHoy].filter((f) => f.pideSiniestro && !f.siniestro.trim()).length
+  // El siniestro alcanza con que esté en uno de los PDF de cada factura (por ejemplo, en el de la orden)
+  const claveFactura = (f: Fila) => f.facturaId || (f.deHoy ? `hoy-${f.deHoy.puntoVenta}-${f.deHoy.numero}` : '')
+  const conSiniestro = new Set([...asignadas, ...deHoy].filter((f) => f.siniestro.trim()).map(claveFactura))
+  const faltaSiniestro = (f: Fila) => f.pideSiniestro && !f.siniestro.trim() && !conSiniestro.has(claveFactura(f))
+  const sinSiniestro = [...asignadas, ...deHoy].filter(faltaSiniestro).length
   const sinAsignar = filas.length - asignadas.length - deHoy.length
 
   async function subirTodo() {
@@ -180,7 +191,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       const trabajar = async () => {
         for (let f = pendientes.shift(); f; f = pendientes.shift()) {
           try {
-            subidosPorArchivo.set(f, await subirDocumento(f.facturaId, f.tipo, await prepararArchivo(f.archivo)))
+            // el siniestro de la factura (o el escrito en cualquiera de sus PDF), para el nombre en Drive
+            const c = comprobantes.find((x) => x.id === f.facturaId)
+            const siniestro = c?.siniestro || limpiarSiniestro(asignadas.find((x) => x.facturaId === f.facturaId && x.siniestro.trim())?.siniestro ?? '')
+            subidosPorArchivo.set(f, await subirDocumento(f.facturaId, f.tipo, await prepararArchivo(f.archivo), siniestro))
           } catch (e) {
             fallos.set(f, e instanceof Error ? e.message : String(e))
           }
@@ -196,13 +210,23 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       for (const [id, lista] of porFactura) {
         const c = comprobantes.find((x) => x.id === id)
         if (!c || lista.some((f) => fallos.has(f))) continue
-        let documentos: Documento[] = c.documentos.length ? c.documentos : TODOS.map((t) => ({ tipo: t, estado: 'faltante' }))
+        // La NC tiene un solo documento: su PDF (tipo "factura")
+        let documentos: Documento[] =
+          c.tipo === 'NC'
+            ? [c.documentos.find((d) => d.tipo === 'factura') ?? { tipo: 'factura', estado: 'faltante' }]
+            : c.documentos.length
+              ? c.documentos
+              : TODOS.map((t) => ({ tipo: t, estado: 'faltante' }))
         const porTipo = new Map<TipoArchivo, Fila[]>()
-        for (const f of lista) porTipo.set(f.tipo, [...(porTipo.get(f.tipo) ?? []), f])
+        // En una NC todo va junto como su PDF (la NC y, si tiene, la orden)
+        for (const f of lista) {
+          const t: TipoArchivo = c.tipo === 'NC' ? 'factura' : f.tipo
+          porTipo.set(t, [...(porTipo.get(t) ?? []), f])
+        }
         const subidos: string[] = []
         for (const [tipo, archivos] of porTipo) {
           const adjuntos = archivos.map((f) => subidosPorArchivo.get(f)!)
-          const tipos = tipo === 'documentacion' ? TODOS : [tipo]
+          const tipos = c.tipo === 'NC' ? (['factura'] as TipoDocumento[]) : tipo === 'documentacion' ? TODOS : [tipo]
           documentos = documentos.map((d): Documento =>
             tipos.includes(d.tipo)
               ? {
@@ -219,12 +243,12 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 }
               : d,
           )
-          subidos.push(tipo === 'documentacion' ? 'la documentación' : NOMBRE_DOCUMENTO[tipo].toLowerCase())
+          subidos.push(c.tipo === 'NC' ? 'el PDF de la nota de crédito' : tipo === 'documentacion' ? 'la documentación' : NOMBRE_DOCUMENTO[tipo].toLowerCase())
           hechas += archivos.length
         }
-        const siniestro = c.siniestro ? null : lista.map((f) => limpiarSiniestro(f.siniestro)).find(Boolean) ?? null
+        const siniestro = c.tipo === 'NC' || c.siniestro ? null : lista.map((f) => limpiarSiniestro(f.siniestro)).find(Boolean) ?? null
         // La patente, si viene en el nombre de algún archivo (opcional)
-        const patente = c.patente ? null : lista.map((f) => patenteDelNombre(f.archivo.name)).find(Boolean) ?? null
+        const patente = c.tipo === 'NC' || c.patente ? null : lista.map((f) => patenteDelNombre(f.archivo.name)).find(Boolean) ?? null
         actualizarComprobante(id, {
           ...(siniestro ? { siniestro } : {}),
           ...(patente ? { patente } : {}),
@@ -238,7 +262,9 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       // Facturas de hoy: quedan en espera hasta que Cobranzas cargue el Excel de Quiter, y ahí se unen a su legajo
       for (const f of deHoy) {
         setEstado({ texto: `Subiendo ${f.archivo.name}…` })
-        await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, limpiarSiniestro(f.siniestro), await prepararArchivo(f.archivo))
+        // el siniestro escrito en cualquiera de los PDF de esa factura
+        const siniestro = f.siniestro.trim() || deHoy.find((x) => claveFactura(x) === claveFactura(f) && x.siniestro.trim())?.siniestro || ''
+        await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.nc ? 'nc' : f.tipo, limpiarSiniestro(siniestro), await prepararArchivo(f.archivo))
       }
       const conFallo = new Set([...fallos.keys()].map((f) => f.facturaId))
       setFilas((l) =>
@@ -315,10 +341,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 <li>
                   Solo <strong>PDF</strong>. En el nombre, el <strong>número de factura</strong> y el <strong>siniestro</strong>:{' '}
                   <code>35-11032 siniestro 22365.pdf</code>. Con o sin ceros (<code>0035-00011032</code>) y con guion, espacio o punto. La
-                  palabra siniestro puede ir abreviada o no ir. Si es un solo documento, al final <code>fc</code> u <code>or</code>.
+                  palabra siniestro puede ir abreviada o no ir. Si es un solo documento, al final <code>fc</code> u <code>or</code>; una nota de crédito, <code>nc</code>.
                 </li>
                 <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
-                <li>Si un archivo no tiene el siniestro, se escribe en su fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
+                <li>El siniestro alcanza con que esté en uno de los PDF de cada factura (por ejemplo, el de la orden); si no está en ninguno, se escribe en la fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
                 <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Cobranzas cargue el Excel de Quiter.</li>
               </ul>
               {!leidas && (
@@ -358,7 +384,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                                 onChange={(e) => cambiar(i, { siniestro: e.target.value })}
                                 placeholder="N.º de siniestro"
                                 aria-label="Número de siniestro"
-                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${f.siniestro.trim() ? '' : 'border-sem-amarillo'}`}
+                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
                               />
                             )}
                           </span>
@@ -366,14 +392,14 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                           f.deHoy ? (
                             <span className="whitespace-nowrap">
                               {f.deHoy.puntoVenta}-{f.deHoy.numero}
-                              <span className="block text-[11px] font-semibold text-marca">Factura de hoy: se une al cargar el Excel de Quiter</span>
-                              <input
+                              <span className="block text-[11px] font-semibold text-marca">{f.nc ? 'Nota de crédito de hoy' : 'Factura de hoy'}: se une al cargar el Excel de Quiter</span>
+                              {!f.nc && <input
                                 value={f.siniestro}
                                 onChange={(e) => cambiar(i, { siniestro: e.target.value })}
                                 placeholder="N.º de siniestro"
                                 aria-label="Número de siniestro"
-                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${f.siniestro.trim() ? '' : 'border-sem-amarillo'}`}
-                              />
+                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
+                              />}
                             </span>
                           ) : (
                             <span className="text-xs font-semibold text-red-800">{f.error}</span>
@@ -381,7 +407,9 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                         )}
                       </td>
                       <td className="px-2 py-2">
-                        {!f.error && (
+                        {!f.error && (factura?.tipo === 'NC' || f.nc) ? (
+                          <span className="text-xs font-semibold text-slate-600">Nota de crédito</span>
+                        ) : !f.error && (
                           <select value={f.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoArchivo })} className={claseSelect}>
                             {(Object.keys(NOMBRE_TIPO) as TipoArchivo[]).map((t) => (
                               <option key={t} value={t}>

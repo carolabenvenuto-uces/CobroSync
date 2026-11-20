@@ -50,3 +50,13 @@ describe('número de factura en el nombre', () => {
     expect(numerosDelNombre('302333 siniestro.pdf')).toEqual([])
   })
 })
+
+describe('PDF de una NC en espera', () => {
+  it('se une a la NC y no a la factura con el mismo número', () => {
+    const e = { id: 'e1', sucursal: 'Rocamora', puntoVenta: 21, numero: 803, tipo: 'nc' as const, siniestro: '', archivo: 'nc.pdf', url: 'u', subidoPor: 'X', fecha: '2026-11-20', nombreOriginal: 'nc.pdf', asociado: '' }
+    const base = { sucursal: 'Rocamora', puntoVenta: 21, numero: 803, documentos: [], eventos: [], siniestro: '', estado: 'en_gestion' }
+    const r = unirEnEspera([{ ...base, id: 'f', tipo: 'FC' } as never, { ...base, id: 'n', tipo: 'NC' } as never], [e], '2026-11-20')
+    expect(r.unidos).toEqual([{ id: 'e1', comprobanteId: 'n' }])
+    expect(r.comprobantes[1].documentos[0].estado).toBe('en_revision')
+  })
+})

@@ -6,7 +6,7 @@ import type { DocumentoEnEspera, Sucursal } from '../domain/tipos'
 import { diffDias } from '../lib/fechas'
 import { formatoFecha } from '../lib/formato'
 
-const NOMBRE_TIPO: Record<DocumentoEnEspera['tipo'], string> = { factura: 'Factura', orden: 'Orden firmada', documentacion: 'Factura y orden' }
+const NOMBRE_TIPO: Record<DocumentoEnEspera['tipo'], string> = { factura: 'Factura', orden: 'Orden firmada', documentacion: 'Factura y orden', nc: 'Nota de crédito' }
 
 function Lista({ lista, conSucursal }: { lista: DocumentoEnEspera[]; conSucursal: boolean }) {
   const { hoy, descartarEspera } = useApp()

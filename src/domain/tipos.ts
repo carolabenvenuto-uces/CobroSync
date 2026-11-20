@@ -282,7 +282,7 @@ export interface DocumentoEnEspera {
   puntoVenta: number
   numero: number
   /** factura, orden o las dos juntas */
-  tipo: 'factura' | 'orden' | 'documentacion'
+  tipo: 'factura' | 'orden' | 'documentacion' | 'nc'
   siniestro: string
   archivo: string
   url?: string

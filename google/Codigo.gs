@@ -736,7 +736,7 @@ function guardarAseguradoras(lista, completarExistentes, exacto) {
  * Guarda un PDF o una foto en Drive: carpeta de la sucursal → mes → factura.
  * Devuelve el nombre y el link del archivo.
  */
-function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
+function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64, siniestro) {
   var usuario = usuarioActual_();
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
   // Solo la fila de esta factura (leer toda la hoja tardaba segundos por cada PDF)
@@ -757,7 +757,25 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, tipoDocumento + '_' + hoy_() + extension)));
   archivo.setDescription('Subido por ' + usuario.email + ' (' + nombre + ')');
   compartirEnLaEmpresa_(archivo);
+  // Todos los PDF de la factura con el siniestro en el nombre (aunque se haya escrito en uno solo):
+  // así, buscando el siniestro en Drive, aparecen todos sus documentos
+  var sin = limpiarSiniestro_(siniestro || c.siniestro || '');
+  if (sin) { try { nombresConSiniestro_(carpeta, sin); } catch (e) { console.warn('Drive: ' + e); } }
   return { archivo: archivo.getName(), url: archivo.getUrl() };
+}
+
+/** Agrega " siniestro X" al nombre de los archivos de la carpeta de una factura que no lo tienen. */
+function nombresConSiniestro_(carpeta, siniestro) {
+  var digitos = String(siniestro).replace(/\D/g, '');
+  if (!digitos) return;
+  var archivos = carpeta.getFiles();
+  while (archivos.hasNext()) {
+    var a = archivos.next();
+    var nombre = a.getName();
+    if (nombre.replace(/\D/g, '').indexOf(digitos) >= 0) continue;
+    var ext = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
+    a.setName(nombre.slice(0, nombre.length - ext.length) + ' siniestro ' + siniestro + ext);
+  }
 }
 
 /** La carpeta de Drive de cada factura: sucursal / mes / "FC 35-5743". */
@@ -798,7 +816,10 @@ function moverEsperaAsociada_() {
       var archivo = DriveApp.getFileById(id);
       var padres = archivo.getParents();
       if (!padres.hasNext() || padres.next().getName() !== 'En espera') return;
-      archivo.moveTo(carpetaDeComprobante_(porId[e.asociado]));
+      var destino = carpetaDeComprobante_(porId[e.asociado]);
+      archivo.moveTo(destino);
+      var sin = limpiarSiniestro_(porId[e.asociado].siniestro || e.siniestro || '');
+      if (sin) nombresConSiniestro_(destino, sin);
       movidos++;
     } catch (err) {
       console.warn('No se pudo mover ' + e.archivo + ': ' + err);
@@ -841,11 +862,14 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   if (pvs.indexOf(puntoVenta) < 0) throw new Error('El punto de venta ' + puntoVenta + ' no es de la sucursal.');
   // Solo las columnas de punto de venta y número (leer toda la hoja tardaba segundos por cada PDF)
   var hojaC = SpreadsheetApp.getActive().getSheetByName(HOJAS.comprobantes.nombre);
+  // (una NC se busca entre las NC: puede tener el mismo número que una factura)
+  var colTipo = HOJAS.comprobantes.columnas.indexOf('tipo');
   var colPv = HOJAS.comprobantes.columnas.indexOf('puntoVenta');
   var colNum = HOJAS.comprobantes.columnas.indexOf('numero');
-  var yaEsta = hojaC.getLastRow() >= 2 && hojaC.getRange(2, colPv + 1, hojaC.getLastRow() - 1, colNum - colPv + 1).getValues()
-    .some(function (f) { return Number(f[0]) === puntoVenta && Number(f[colNum - colPv]) === numero; });
-  if (yaEsta) throw new Error('La factura ' + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
+  var tipoBuscado = tipo === 'nc' ? 'NC' : 'FC';
+  var yaEsta = hojaC.getLastRow() >= 2 && hojaC.getRange(2, colTipo + 1, hojaC.getLastRow() - 1, colNum - colTipo + 1).getValues()
+    .some(function (f) { return String(f[0]) === tipoBuscado && Number(f[colPv - colTipo]) === puntoVenta && Number(f[colNum - colTipo]) === numero; });
+  if (yaEsta) throw new Error((tipo === 'nc' ? 'La nota de crédito ' : 'La factura ') + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
   var carpeta = carpetaPorRuta_([deQuien, 'En espera']);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension)));

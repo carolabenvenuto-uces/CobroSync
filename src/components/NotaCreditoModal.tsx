@@ -5,7 +5,8 @@ import { diffDias } from '../lib/fechas'
 import { formatoComprobante, formatoPesos } from '../lib/formato'
 import { claseSelect } from './ui/Estados'
 import { MOTIVOS_NO_REFACTURA, textoRefacturacion } from '../domain/refacturacion'
-import type { Comprobante, Refacturacion } from '../domain/tipos'
+import type { Comprobante, Documento, Refacturacion } from '../domain/tipos'
+import { numerosDelNombre } from '../domain/espera'
 
 const MOTIVOS_NC = [
   'Factura emitida a la compañía equivocada',
@@ -21,7 +22,7 @@ const MOTIVOS_NC = [
  * Hoy Cobranzas se entera tarde (o nunca); acá queda registrado y avisado.
  */
 export function NotaCreditoModal({ onCerrar, nc }: { onCerrar: () => void; /** NC que entró de Quiter sin aviso: se informa por ella */ nc?: Comprobante }) {
-  const { datos, hoy, actualizarComprobante, registrarEvento } = useApp()
+  const { datos, hoy, usuario, actualizarComprobante, registrarEvento, subirDocumento, subirEnEspera } = useApp()
   const comprobantes = useComprobantes()
   const facturas = useMemo(
     () =>
@@ -42,6 +43,13 @@ export function NotaCreditoModal({ onCerrar, nc }: { onCerrar: () => void; /** N
   const [importeNuevoTexto, setImporteNuevoTexto] = useState('')
   const [motivoNo, setMotivoNo] = useState('')
   const [listo, setListo] = useState(false)
+  // El PDF de la NC (opcional): va a la NC si ya entró de Quiter, o queda en espera hasta que entre
+  const [archivoNc, setArchivoNc] = useState<File | null>(null)
+  const [numeroNcTexto, setNumeroNcTexto] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState('')
+  const numeroNc = nc ? { puntoVenta: nc.puntoVenta, numero: nc.numero } : numerosDelNombre(numeroNcTexto)[0]
+  const archivoValido = !archivoNc || !!numeroNc
   const nombreCompania = (id: string) => datos!.aseguradoras.find((a) => a.id === id)?.nombre ?? id
 
   /**
@@ -54,9 +62,39 @@ export function NotaCreditoModal({ onCerrar, nc }: { onCerrar: () => void; /** N
   const importeNuevo = Number(importeNuevoTexto.replace(/\./g, '').replace(',', '.')) || 0
   const refacturaValida = refactura === 'si' || (refactura === 'no' && !!motivoNo)
 
-  function informar() {
+  /** Sube el PDF de la NC: a la NC si está en CobroSync; si no, en espera hasta que entre con Quiter. */
+  async function subirPdfNc(archivo: File) {
+    if (!numeroNc) return
+    const { puntoVenta, numero } = numeroNc
+    // El número de la NC en el nombre (el servidor lo pide)
+    const nombre = numerosDelNombre(archivo.name).some((n) => n.puntoVenta === puntoVenta && n.numero === numero) ? archivo.name : `${puntoVenta}-${numero} nc ${archivo.name}`
+    const conNumero = nombre === archivo.name ? archivo : new File([archivo], nombre, { type: archivo.type || 'application/pdf' })
+    const destino = nc ?? comprobantes.find((c) => c.tipo === 'NC' && c.puntoVenta === puntoVenta && c.numero === numero)
+    if (!destino) {
+      await subirEnEspera(puntoVenta, numero, 'nc', '', conNumero)
+      return
+    }
+    const adj = await subirDocumento(destino.id, 'factura', conNumero)
+    const pdf: Documento = { tipo: 'factura', estado: 'en_revision', archivo: adj.archivo, url: adj.url, subidoPor: usuario, fecha: hoy }
+    actualizarComprobante(destino.id, { documentos: [...destino.documentos.filter((d) => d.tipo !== 'factura'), pdf] })
+    registrarEvento(destino.id, 'subida', `Subió el PDF de la nota de crédito (${adj.archivo})`)
+  }
+
+  async function informar() {
     const factura = facturas.find((f) => f.id === facturaId)
     if (!factura) return
+    if (archivoNc) {
+      setEnviando(true)
+      setError('')
+      try {
+        await subirPdfNc(archivoNc)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e))
+        setEnviando(false)
+        return
+      }
+      setEnviando(false)
+    }
     const texto = `${motivo}${comentario ? `: ${comentario}` : ''}`
     const refacturacion: Refacturacion = {
       decision: refactura === 'no' ? 'no' : 'si',
@@ -202,13 +240,29 @@ export function NotaCreditoModal({ onCerrar, nc }: { onCerrar: () => void; /** N
                 placeholder="Ej.: se refactura con la FC 35-6901"
               />
             </label>
+            <div className="block text-xs font-semibold text-slate-500">
+              PDF de la nota de crédito (opcional)
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => setArchivoNc(e.target.files?.[0] ?? null)}
+                className="mt-1 block w-full text-sm font-normal text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-marca/10 file:px-3 file:py-1.5 file:font-semibold file:text-marca"
+              />
+              {archivoNc && !nc && (
+                <label className="mt-2 block">
+                  Número de la nota de crédito
+                  <input value={numeroNcTexto} onChange={(e) => setNumeroNcTexto(e.target.value)} placeholder="Ej.: 21-803" className={`${claseSelect} mt-1 w-full font-normal`} />
+                </label>
+              )}
+            </div>
+            {error && <p className="text-xs font-semibold text-red-800">{error}</p>}
             <button
               type="button"
-              onClick={informar}
-              disabled={!facturaId || !motivo || !parcialValido || !refacturaValida}
+              onClick={() => void informar()}
+              disabled={enviando || !facturaId || !motivo || !parcialValido || !refacturaValida || !archivoValido}
               className="w-full rounded-lg bg-marca px-4 py-2.5 font-semibold text-white hover:bg-marca-oscuro disabled:bg-slate-200"
             >
-              Informar a cobranzas
+              {enviando ? 'Subiendo el PDF…' : 'Informar a cobranzas'}
             </button>
           </div>
         )}

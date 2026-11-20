@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { esNotaDeCreditoPorNombre, patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import { limpiarSiniestro } from '../src/domain/siniestros'
 import type { Comprobante } from '../src/domain/tipos'
 
@@ -139,5 +139,23 @@ describe('patente en el nombre del archivo', () => {
     expect(patenteDelNombre('21-17226 sin 223.pdf')).toBe(null)
     expect(patenteDelNombre('21-17226 siniestro 22365.pdf')).toBe(null)
     expect(patenteDelNombre('0021-00017226 fc.pdf')).toBe(null)
+  })
+})
+
+describe('PDF de notas de crédito', () => {
+  const fc = { id: 'f', tipo: 'FC', puntoVenta: 21, numero: 803, documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  const nc = { id: 'n', tipo: 'NC', puntoVenta: 21, numero: 803, documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  it('"NC", "N-C" o "N/C" en el nombre va a la nota de crédito; sin eso, a la factura', () => {
+    for (const n of ['21-803 104-4-54203 nc.pdf', 'N-C 21-803 104-4-54203.pdf', 'N/C 21-803.pdf', 'NC 21-803.pdf']) {
+      const r = revisarNombre(n, [fc, nc])
+      expect(r.ok && r.factura.id, n).toBe('n')
+    }
+    const r = revisarNombre('21-803 fc.pdf', [fc, nc])
+    expect(r.ok && r.factura.id).toBe('f')
+    expect(esNotaDeCreditoPorNombre('21-20845 NACION 770356 or.pdf')).toBe(false)
+  })
+  it('desde la misma NC no hace falta escribir NC', () => {
+    const r = revisarNombre('21-803.pdf', [nc])
+    expect(r.ok && r.factura.id).toBe('n')
   })
 })

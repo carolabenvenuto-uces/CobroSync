@@ -184,8 +184,9 @@ export default function MisFacturas() {
   const filas = useMemo(
     () =>
       comprobantes
-        .filter((c) => c.tipo === 'FC')
+        .filter((c) => c.tipo === 'FC' || c.tipo === 'NC')
         .map((c) => ({ c, s: calcularSemaforo(c, hoy) }))
+        // (una NC solo aparece si su PDF está en revisión u observado)
         .filter((x) => ['doc_pendiente', 'doc_atrasada', 'doc_observada', 'en_revision'].includes(x.s.etapa)),
     [comprobantes, hoy],
   )
@@ -209,7 +210,10 @@ export default function MisFacturas() {
       const rechazos = urgentes.filter((u) => u.p.tema === 'rechazo').map((u) => u.x)
       const ya = new Set(rechazos.map((x) => x.c.id))
       const conPedido = [...pedidoDe.values()].filter((p) => !ya.has(p.c.id)).map((p) => ({ c: p.c, s: calcularSemaforo(p.c, hoy) }))
-      return [...rechazos, ...conPedido]
+      conPedido.forEach((x) => ya.add(x.c.id))
+      // El PDF de una NC observado por Cobranzas
+      const ncObservadas = filas.filter((x) => x.c.tipo === 'NC' && x.s.etapa === 'doc_observada' && !ya.has(x.c.id))
+      return [...rechazos, ...conPedido, ...ncObservadas]
     }
     if (l === 'vencer') return urgentes.filter((u) => u.p.tema === 'documentacion').map((u) => u.x)
     if (l === 'subir') {

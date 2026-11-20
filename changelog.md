@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.25] - 2026-11-20
+- **PDF de las notas de crédito**: se suben con "Subir varios PDF de una vez" (con "nc", "N-C" o "N/C" en el nombre, por ejemplo `21-803 104-4-54203 nc.pdf`) o al informar la nota de crédito (campo opcional). Si la NC todavía no entró de Quiter, queda en espera y se une cuando entra. Si tiene orden (una anulación), va junto con la NC.
+- Cobranzas aprueba u observa el PDF de la NC como el de una factura: aparece en "Le toca a Cobranzas" y, si se observa, la sucursal lo ve en Rechazos y pedidos.
+- Siniestro: alcanza con que esté en uno de los PDF de cada factura (por ejemplo, en el de la orden); el otro ya no lo pide.
+- En Drive, todos los PDF de la factura quedan con el siniestro en el nombre (se le agrega " siniestro X" al que no lo tenía), así buscando el siniestro aparecen todos sus documentos. También los que llegan desde la espera.
+
 ## [0.17.24] - 2026-11-20
 - Excel de Quiter: a la pestaña Quiter de la planilla van las mismas filas que toma CobroSync (compañías de seguros **y** puntos de venta de las sucursales). Antes iban también las de otros puntos de venta.
 - Subida de escaneos más rápida: los PDF se suben de a 4 a la vez; el servidor ya no lee toda la hoja de facturas por cada PDF (solo la fila de esa factura) y recuerda las carpetas de Drive en vez de buscarlas cada vez.

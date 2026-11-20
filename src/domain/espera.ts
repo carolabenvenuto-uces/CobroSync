@@ -54,12 +54,20 @@ export function unirEnEspera(
   const unidos: { id: string; comprobanteId: string }[] = []
   const libres = espera.filter((e) => !e.asociado)
   const comprobantes = nuevas.map((c) => {
-    if (c.tipo !== 'FC') return c
-    const suyos = libres.filter((e) => e.puntoVenta === c.puntoVenta && e.numero === c.numero && normal(e.sucursal) === normal(c.sucursal))
+    if (c.tipo !== 'FC' && c.tipo !== 'NC') return c
+    // El PDF de una NC va a la NC; los de las facturas, a la factura
+    const suyos = libres.filter(
+      (e) => e.puntoVenta === c.puntoVenta && e.numero === c.numero && normal(e.sucursal) === normal(c.sucursal) && (e.tipo === 'nc') === (c.tipo === 'NC'),
+    )
     if (!suyos.length) return c
-    const base: Documento[] = c.documentos.length ? c.documentos : (['factura', 'orden'] as TipoDocumento[]).map((t) => ({ tipo: t, estado: 'faltante' }))
+    const base: Documento[] =
+      c.tipo === 'NC'
+        ? [c.documentos.find((d) => d.tipo === 'factura') ?? { tipo: 'factura', estado: 'faltante' }]
+        : c.documentos.length
+          ? c.documentos
+          : (['factura', 'orden'] as TipoDocumento[]).map((t) => ({ tipo: t, estado: 'faltante' }))
     const documentos = base.map((d): Documento => {
-      const deEste = suyos.filter((e) => e.tipo === d.tipo || e.tipo === 'documentacion')
+      const deEste = suyos.filter((e) => e.tipo === d.tipo || e.tipo === 'documentacion' || e.tipo === 'nc')
       if (!deEste.length) return d
       return {
         tipo: d.tipo,

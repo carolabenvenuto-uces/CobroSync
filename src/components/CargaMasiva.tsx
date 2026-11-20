@@ -389,10 +389,22 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 </li>
                 <li>Patente o compañía: se pueden agregar, no son necesarias.</li>
               </ul>
-              <p className="mt-2">
-                Por ejemplo: <code>21-20834 FC</code> · <code>21-20834 104-4-137055 OR</code> · <code>21-20827 4500546 FC OR</code> ·{' '}
-                <code>21-803 NC</code>
-              </p>
+              <p className="mt-2 font-semibold">Ejemplos</p>
+              <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                {[
+                  ['21-20834 FC', 'factura'],
+                  ['21-20834 104-4-137055 OR', 'orden'],
+                  ['21-20827 4500546 FC OR', 'factura y orden juntas'],
+                  ['21-803 NC', 'nota de crédito'],
+                ].map(([nombre, que]) => (
+                  <div key={nombre} className="contents">
+                    <dt>
+                      <code className="rounded bg-white px-1.5 py-0.5">{nombre}</code>
+                    </dt>
+                    <dd className="self-center">{que}</dd>
+                  </div>
+                ))}
+              </dl>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
                   Entendido

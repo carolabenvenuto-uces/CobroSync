@@ -268,7 +268,7 @@ const SECCIONES: Seccion[] = [
           <Paso n={2}>
             Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}
             <code className="rounded bg-slate-100 px-1">35-11032 siniestro 22365.pdf</code> (si se quiere, <code className="rounded bg-slate-100 px-1">fc</code> u{' '}
-            <code className="rounded bg-slate-100 px-1">or</code> al final si es un solo documento). Nombres cortos, hasta 40 caracteres, sin la compañía. Si falta el siniestro, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el Excel de Quiter se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.
+            <code className="rounded bg-slate-100 px-1">or</code> al final si es un solo documento; <code className="rounded bg-slate-100 px-1">nc</code> si es una nota de crédito). Nombres cortos, hasta 40 caracteres, sin la compañía. El siniestro alcanza con que esté en uno de los PDF de la factura; si no está en ninguno, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el Excel de Quiter se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.
           </Paso>
           <Paso n={3}>
             Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y

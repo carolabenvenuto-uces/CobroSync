@@ -113,8 +113,13 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   if (base.length > LARGO_MAXIMO_NOMBRE) {
     return { ok: false, tipo, error: `El nombre es muy largo (más de ${LARGO_MAXIMO_NOMBRE} caracteres). Alcanza con el número de factura y el siniestro: ${EJEMPLO}` }
   }
-  const halladas = facturasEnNombre(nombre, facturas)
-  if (halladas.length === 1) return { ok: true, factura: halladas[0], tipo }
+  // "NC", "N-C" o "N/C" en el nombre: es el PDF de una nota de crédito (si no, el de una factura)
+  const nc = esNotaDeCreditoPorNombre(nombre)
+  // (sin "NC" en el nombre se prefiere la factura; si solo hay una NC con ese número, por ejemplo al subir
+  // desde la misma NC, va a la NC)
+  const todas = facturasEnNombre(nombre, facturas)
+  const halladas = nc ? todas.filter((c) => c.tipo === 'NC') : todas.some((c) => c.tipo !== 'NC') ? todas.filter((c) => c.tipo !== 'NC') : todas
+  if (halladas.length === 1) return { ok: true, factura: halladas[0], tipo: halladas[0].tipo === 'NC' ? 'factura' : tipo }
   if (halladas.length > 1) {
     return { ok: false, tipo, error: `El nombre coincide con más de una factura (${halladas.map(numeroParaNombre).join(', ')}): dejar solo el número de una.` }
   }
@@ -123,12 +128,19 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   if (!n) {
     return { ok: false, tipo, error: `Falta el número de factura con el punto de venta separado por un guion. Por ejemplo: ${EJEMPLO}` }
   }
-  return { ok: false, tipo, error: `No hay ninguna factura ${n.puntoVenta}-${n.numero} pendiente en la sucursal: conviene revisar el número.` }
+  return { ok: false, tipo, error: `No hay ninguna ${nc ? 'nota de crédito' : 'factura'} ${n.puntoVenta}-${n.numero} pendiente en la sucursal: conviene revisar el número.` }
 }
 
-/** Las facturas a las que todavía se les puede subir documentación. */
+/** ¿El nombre del archivo dice que es una nota de crédito? "NC 21-803", "N-C 21-803", "N/C", "nota de crédito". */
+export function esNotaDeCreditoPorNombre(nombre: string): boolean {
+  return /(^|[^a-z0-9])n\s*[-/.]?\s*c([^a-z0-9]|$)|nota\s+de\s+cr/i.test(nombre.replace(/\.[a-z0-9]+$/i, ''))
+}
+
+/** Las facturas a las que todavía se les puede subir documentación, y las NC sin su PDF aprobado. */
 export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
-  return comprobantes.filter((c) => c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada')
+  return comprobantes.filter((c) =>
+    c.tipo === 'NC' ? !c.documentos.some((d) => d.estado === 'ok' || d.estado === 'en_revision') : c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada',
+  )
 }
 
 /**

@@ -70,7 +70,13 @@ function textoProblema(d: Documento): string {
 }
 
 export function calcularSemaforo(c: Comprobante, fechaCorte: string): ResultadoSemaforo {
-  if (c.tipo === 'NC') return { color: 'neutro', etapa: 'nota_credito', responsable: null, detalle: ['Nota de crédito'] }
+  if (c.tipo === 'NC') {
+    // El PDF de la NC: si está subido, lo revisa Cobranzas; si se observó, lo vuelve a subir la sucursal
+    const pdf = c.documentos.find((d) => d.tipo === 'factura')
+    if (pdf?.estado === 'en_revision') return { color: 'amarillo', etapa: 'en_revision', responsable: 'auditoria', detalle: ['Para revisar: PDF de la nota de crédito'] }
+    if (pdf?.estado === 'observado') return { color: 'rojo', etapa: 'doc_observada', responsable: 'sucursal', detalle: [`PDF de la nota de crédito: ${(pdf.motivo ?? 'observado').toLowerCase()}`] }
+    return { color: 'neutro', etapa: 'nota_credito', responsable: null, detalle: ['Nota de crédito'] }
+  }
   if (c.estado === 'anulada') {
     return { color: 'neutro', etapa: 'no_aplica', responsable: null, detalle: ['Factura anulada con nota de crédito'] }
   }

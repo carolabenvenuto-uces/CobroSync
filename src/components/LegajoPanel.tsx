@@ -28,7 +28,7 @@ import {
   documentosDelLegajo,
   DOCUMENTOS_REQUERIDOS,
   MOTIVOS_OBSERVACION,
-  NOMBRE_DOCUMENTO,
+  NOMBRE_DOCUMENTO as NOMBRE_DOC_FACTURA,
   NOMBRE_ESTADO_DOCUMENTO,
   puedePresentarse,
 } from '../domain/semaforo'
@@ -93,7 +93,10 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   const { datos, rol, usuario, hoy, actualizarComprobante, registrarEvento, subirDocumento, abrirLegajo, sucursalPropia, administradora } = useApp()
   const aseguradora = datos!.aseguradoras.find((a) => a.id === c.aseguradoraId)
   const semaforo = calcularSemaforo(c, hoy)
-  const documentos = documentosDelLegajo(c.documentos)
+  // Una nota de crédito tiene un solo documento: el PDF de la NC (se guarda como tipo "factura")
+  const esNc = c.tipo === 'NC'
+  const documentos: Documento[] = esNc ? [c.documentos.find((d) => d.tipo === 'factura') ?? { tipo: 'factura', estado: 'faltante' }] : documentosDelLegajo(c.documentos)
+  const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = esNc ? { factura: 'Nota de crédito', orden: 'Orden firmada' } : NOMBRE_DOC_FACTURA
   const leTocaALaSucursal = semaforo.responsable === 'sucursal'
   const reclamo = estadoReclamo(c, hoy)
   // Revisión en serie: las otras facturas que esperan la revisión de Cobranzas, de la más vieja a la más nueva
@@ -348,7 +351,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     registrarEvento(
       c.id,
       'mensaje',
-      todos ? 'Documentación revisada y aprobada: lista para presentar' : `Aprobado: ${tipos.map((t) => NOMBRE_DOCUMENTO[t].toLowerCase()).join(', ')}`,
+      esNc ? 'PDF de la nota de crédito aprobado' : todos ? 'Documentación revisada y aprobada: lista para presentar' : `Aprobado: ${tipos.map((t) => NOMBRE_DOCUMENTO[t].toLowerCase()).join(', ')}`,
     )
   }
   function observar(tipo: TipoDocumento) {
@@ -411,6 +414,8 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     { etiqueta: 'Cobro', fecha: c.fechaCobro, desde: c.fecha },
   ]
   const abierta = c.tipo === 'FC' && c.estado !== 'anulada' && c.estado !== 'cobrada'
+  // La NC: se puede subir y revisar su PDF
+  const docsAbiertos = abierta || esNc
 
   return (
     <>
@@ -543,11 +548,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
           <PedidosLegajo c={c} />
 
           {/* Documentación: tres cosas para tildar */}
-          {c.tipo === 'FC' && (
+          {(c.tipo === 'FC' || esNc) && (
             <section>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold">Documentación</h3>
+                  <h3 className="font-bold">{esNc ? 'PDF de la nota de crédito' : 'Documentación'}</h3>
                   {subeDocs && abierta && (
                     <p className="text-[11px] text-slate-500">
                       PDF con el número de factura y el siniestro:{' '}
@@ -639,7 +644,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        {subeDocs && abierta && (d.estado === 'faltante' || d.estado === 'observado') ? (
+                        {subeDocs && docsAbiertos && (d.estado === 'faltante' || d.estado === 'observado') ? (
                           <>
                           <label className={`${botonChico} cursor-pointer bg-marca text-white hover:bg-marca-oscuro`}>
                             <FileUp className="h-3.5 w-3.5" />
@@ -650,7 +655,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             <Camera className="h-3.5 w-3.5" /> Foto
                           </button>
                           </>
-                        ) : rol === 'sucursal' && abierta && d.estado === 'en_revision' ? (
+                        ) : rol === 'sucursal' && docsAbiertos && d.estado === 'en_revision' ? (
                           <>
                             <span className={`text-xs font-semibold ${ESTILO_DOC[d.estado]}`}>{NOMBRE_ESTADO_DOCUMENTO[d.estado]}</span>
                             <button
@@ -667,7 +672,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             <span className="text-xs text-slate-500" title="Lo que escaneó una persona de Cobranzas lo aprueba otra">
                               Lo aprueba otra persona de Cobranzas
                             </span>
-                            {abierta && (
+                            {docsAbiertos && (
                               <button
                                 type="button"
                                 onClick={() => quitar(d.tipo)}

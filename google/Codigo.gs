@@ -841,11 +841,14 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   if (pvs.indexOf(puntoVenta) < 0) throw new Error('El punto de venta ' + puntoVenta + ' no es de la sucursal.');
   // Solo las columnas de punto de venta y número (leer toda la hoja tardaba segundos por cada PDF)
   var hojaC = SpreadsheetApp.getActive().getSheetByName(HOJAS.comprobantes.nombre);
+  // (una NC se busca entre las NC: puede tener el mismo número que una factura)
+  var colTipo = HOJAS.comprobantes.columnas.indexOf('tipo');
   var colPv = HOJAS.comprobantes.columnas.indexOf('puntoVenta');
   var colNum = HOJAS.comprobantes.columnas.indexOf('numero');
-  var yaEsta = hojaC.getLastRow() >= 2 && hojaC.getRange(2, colPv + 1, hojaC.getLastRow() - 1, colNum - colPv + 1).getValues()
-    .some(function (f) { return Number(f[0]) === puntoVenta && Number(f[colNum - colPv]) === numero; });
-  if (yaEsta) throw new Error('La factura ' + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
+  var tipoBuscado = tipo === 'nc' ? 'NC' : 'FC';
+  var yaEsta = hojaC.getLastRow() >= 2 && hojaC.getRange(2, colTipo + 1, hojaC.getLastRow() - 1, colNum - colTipo + 1).getValues()
+    .some(function (f) { return String(f[0]) === tipoBuscado && Number(f[colPv - colTipo]) === puntoVenta && Number(f[colNum - colTipo]) === numero; });
+  if (yaEsta) throw new Error((tipo === 'nc' ? 'La nota de crédito ' : 'La factura ') + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
   var carpeta = carpetaPorRuta_([deQuien, 'En espera']);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension)));

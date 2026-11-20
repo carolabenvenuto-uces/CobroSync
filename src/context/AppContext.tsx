@@ -693,7 +693,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const libres = datos.enEspera.filter((e) => !e.asociado)
     const unidos: { id: string; comprobanteId: string }[] = []
     datos.comprobantes.forEach((c) => {
-      if (c.tipo !== 'FC') return
+      if (c.tipo !== 'FC' && c.tipo !== 'NC') return
       const { comprobantes: [unida], unidos: deEsta } = unirEnEspera([c], libres, hoy)
       if (!deEsta.length) return
       unidos.push(...deEsta)

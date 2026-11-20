@@ -55,7 +55,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   // agregar archivos. Después quedan en el botón Condiciones, para abrirlas y cerrarlas.
   const [leidas, setLeidas] = useState(() => {
     try {
-      return !!localStorage.getItem('cobrosync-condiciones-varios-2')
+      return !!localStorage.getItem('cobrosync-condiciones-varios-3')
     } catch {
       return false
     }
@@ -69,7 +69,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       pendientes.current = []
     }
     try {
-      localStorage.setItem('cobrosync-condiciones-varios-2', '1')
+      localStorage.setItem('cobrosync-condiciones-varios-3', '1')
     } catch {
       // sin almacenamiento: se vuelven a mostrar la próxima vez
     }
@@ -350,15 +350,24 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           {/* La regla de los nombres: se exige, para que ningún archivo quede sin saber de qué factura es */}
           {condiciones && (
             <div className="mt-3 rounded-lg border border-sem-amarillo/50 bg-amber-50 p-3 text-xs text-amber-950">
-              <ul className="list-disc space-y-0.5 pl-4">
-                <li>Solo PDF, con el número de factura en el nombre.</li>
+              <ul className="list-disc space-y-1 pl-4">
+                <li>Solo PDF.</li>
                 <li>
-                  Al final, qué es: <strong>FC</strong> factura, <strong>OR</strong> orden, <strong>FC OR</strong> las dos juntas, <strong>NC</strong> nota de crédito.
+                  Todo PDF lleva el <strong>número de factura</strong>: sin él no se puede unir a su legajo.
                 </li>
                 <li>
-                  La orden y el archivo con todo junto llevan el siniestro: <code>21-20834 104-4-137055 OR</code>.
+                  <strong>Documentos separados:</strong> <strong>FC</strong> factura (sin siniestro) · <strong>OR</strong> orden (con siniestro) ·{' '}
+                  <strong>NC</strong> nota de crédito.
                 </li>
+                <li>
+                  <strong>Documentos juntos:</strong> <strong>FC OR</strong> (con siniestro).
+                </li>
+                <li>Patente o compañía: se pueden agregar, no son necesarias.</li>
               </ul>
+              <p className="mt-2">
+                Por ejemplo: <code>21-20834 FC</code> · <code>21-20834 104-4-137055 OR</code> · <code>21-20827 4500546 FC OR</code> ·{' '}
+                <code>21-803 NC</code>
+              </p>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
                   Entendido

@@ -382,7 +382,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                               <input
                                 value={f.siniestro}
                                 onChange={(e) => cambiar(i, { siniestro: e.target.value })}
-                                placeholder={conSiniestro.has(claveFactura(f)) && !f.siniestro.trim() ? 'Ya está en otro PDF' : 'N.º de siniestro'}
+                                placeholder="N.º de siniestro"
                                 aria-label="Número de siniestro"
                                 className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
                               />
@@ -396,7 +396,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                               {!f.nc && <input
                                 value={f.siniestro}
                                 onChange={(e) => cambiar(i, { siniestro: e.target.value })}
-                                placeholder={conSiniestro.has(claveFactura(f)) && !f.siniestro.trim() ? 'Ya está en otro PDF' : 'N.º de siniestro'}
+                                placeholder="N.º de siniestro"
                                 aria-label="Número de siniestro"
                                 className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
                               />}

@@ -11,6 +11,12 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.30] - 2026-11-20
+- Condiciones de Subir varios: los ejemplos, uno por línea con qué es cada uno.
+- Presentar: solo las facturas que tienen sus PDF en CobroSync (sin fecha de corte). Las de la gestión anterior, aprobadas en la planilla y sin archivo acá, se presentan como siempre.
+- Dentro de una factura de la gestión anterior, Cobranzas puede **subir el PDF** de cada documento: queda aprobado con su archivo y la factura pasa a Presentar.
+- Subir varios: un documento de la gestión anterior (aprobado sin PDF) sí se puede subir; solo se frena lo que ya está aprobado con su PDF.
+
 ## [0.17.29] - 2026-11-20
 - Condiciones de Subir varios: la FC no se sube sola, va con su orden (en otro PDF o junta).
 - Nombres: también valen las siglas pegadas o con puntos ("21-20834FC", "F.C.", "O.R.", "21-803NC") y los guiones bajos ("21-20834_104-4-137055_OR").

@@ -38,7 +38,7 @@ interface Fila {
  * Cada factura sigue teniendo su legajo, como siempre.
  */
 export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /** PDF soltados antes de abrir la ventana */ iniciales?: File[] }) {
-  const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento, sucursalPropia } = useApp()
+  const { datos, rol, sucursal, hoy, usuario, subirDocumento, subirEnEspera, actualizarComprobante, registrarEvento, sucursalPropia, vista } = useApp()
   // La sucursal, o Cobranzas escaneando lo de su propia sucursal
   const escanea = rol === 'sucursal' || (rol === 'auditoria' && !!sucursalPropia && sucursal === sucursalPropia)
   const miSucursal = datos?.meta.sucursales.find((s) => s.nombre === sucursal)
@@ -307,7 +307,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       )
       const facturasOk = [...porFactura.keys()].filter((id) => !conFallo.has(id)).length
       setEstado({
-        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${facturasOk} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el Excel de Quiter` : ''}. Cobranzas los revisa.${fallos.size ? ` ${fallos.size} no se pudieron subir: quedan en la lista para volver a intentar.` : ''}`,
+        texto:
+          hechas || deHoy.length
+            ? `Listo: ${hechas ? `se subieron ${hechas} archivos a ${facturasOk} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el Excel de Quiter` : ''}. Cobranzas los revisa.${fallos.size ? ` ${fallos.size} no se pudieron subir: quedan en la lista para volver a intentar.` : ''}`
+            : `No se pudo subir ningún archivo: ${[...fallos.values()][0] ?? 'error al subir'}`,
         error: fallos.size > 0,
       })
     } catch (e) {
@@ -436,6 +439,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                           <span className="whitespace-nowrap">
                             {formatoComprobante(factura)}
                             {faltaOrden(f) && <span className="block whitespace-normal text-xs font-semibold text-red-800">{textoFaltaOrden}</span>}
+                            {f.error && <span className="block whitespace-normal text-xs font-semibold text-red-800">{f.error}</span>}
                             {factura.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {factura.siniestro}</span>}
                             {!factura.siniestro && f.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {f.siniestro}</span>}
                           </span>
@@ -483,13 +487,16 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
           <span className="text-sm text-slate-600">
-            {filas.length === 0
+            {vista
+              ? 'Estás viendo como otro usuario: solo para mirar, no se sube nada.'
+              : filas.length === 0
               ? 'Todavía no hay archivos.'
               : `${listas} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"
-            disabled={subiendo || listas === 0}
+            disabled={subiendo || listas === 0 || !!vista}
+            title={vista ? 'Estás viendo como otro usuario: solo para mirar' : undefined}
             onClick={() => void subirTodo()}
             className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
           >

@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.28] - 2026-11-20
+- Condiciones de Subir varios: la aclaración del siniestro solo donde hace falta (OR y FC OR).
+
 ## [0.17.27] - 2026-11-20
 - Condiciones de Subir varios ordenadas: número de factura siempre; documentos separados (FC sin siniestro, OR con siniestro, NC) y juntos (FC OR con siniestro); patente o compañía opcionales; ejemplos. Se vuelven a mostrar una vez.
 

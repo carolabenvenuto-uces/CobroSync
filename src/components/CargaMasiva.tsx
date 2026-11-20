@@ -358,7 +358,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                   Todo PDF lleva el <strong>número de factura</strong>: sin él no se puede unir a su legajo.
                 </li>
                 <li>
-                  <strong>Documentos separados:</strong> <strong>FC</strong> factura (sin siniestro) · <strong>OR</strong> orden (<strong>con siniestro</strong>) ·{' '}
+                  <strong>Documentos separados:</strong> <strong>FC</strong> factura · <strong>OR</strong> orden (<strong>con siniestro</strong>) ·{' '}
                   <strong>NC</strong> nota de crédito.
                 </li>
                 <li>

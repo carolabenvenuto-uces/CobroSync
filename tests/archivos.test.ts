@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { esNotaDeCreditoPorNombre, patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
+import { esNotaDeCreditoPorNombre, formatosDeSiniestro, patenteDelNombre, revisarNombre, siniestroDelNombre, sugerirFactura, tipoPorNombre } from '../src/domain/archivos'
 import { limpiarSiniestro } from '../src/domain/siniestros'
 import type { Comprobante } from '../src/domain/tipos'
 
@@ -188,5 +188,40 @@ describe('formato: número, siniestro y al final FC / OR / NC', () => {
   })
   it('la compañía o la patente no molestan', () => {
     expect(revisarNombre('21-20834 NACION AB123CD 104-4-137055 OR.pdf', [f]).ok).toBe(true)
+  })
+})
+
+describe('variantes de escritura', () => {
+  const f = { id: 'f', tipo: 'FC', puntoVenta: 21, numero: 20834, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  const nc = { id: 'n', tipo: 'NC', puntoVenta: 21, numero: 803, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  it('siglas pegadas o con puntos, guiones bajos y copias', () => {
+    for (const [n, tipo] of [
+      ['21-20834FC.pdf', 'factura'],
+      ['21-20834 F.C.pdf', 'factura'],
+      ['21-20834 104-4-137055 O.R.pdf', 'orden'],
+      ['21-20834_104-4-137055_OR.pdf', 'orden'],
+      ['21-20834 104-4-137055 OR (1).pdf', 'orden'],
+      ['21-20834 104-4-137055 FC+OR.pdf', 'documentacion'],
+    ] as const) {
+      const r = revisarNombre(n, [f])
+      expect(r.ok && r.tipo, n).toBe(tipo)
+    }
+    for (const n of ['21-803NC.pdf', '21-803 N.C.pdf', '21-803 n/c.pdf']) {
+      const r = revisarNombre(n, [f, nc])
+      expect(r.ok && r.factura.id, n).toBe('n')
+    }
+  })
+})
+
+describe('siniestro escrito con espacios', () => {
+  it('se arma con la forma de los siniestros de la compañía', () => {
+    const conocidos = [{ aseguradoraId: 'fed', siniestro: '104-4-128195' }, { aseguradoraId: 'fed', siniestro: '104-4-54203' }] as Comprobante[]
+    const formas = formatosDeSiniestro(conocidos).get('fed')
+    const c = { puntoVenta: 21, numero: 20834 }
+    expect(siniestroDelNombre('21-20834 104 4 137055 OR.pdf', c, formas)).toBe('104-4-137055')
+    // sin conocer la forma, toma el número largo
+    expect(siniestroDelNombre('21-20834 104 4 137055 OR.pdf', c)).toBe('137055')
+    // uno de una sola parte no se toca
+    expect(siniestroDelNombre('21-20834 4500546 OR.pdf', c, formas)).toBe('4500546')
   })
 })

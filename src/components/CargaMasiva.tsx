@@ -2,7 +2,7 @@ import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre, aclaraQueEs } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre, aclaraQueEs, formatosDeSiniestro } from '../domain/archivos'
 import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
@@ -86,13 +86,16 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   leidasRef.current = leidas
   const agregarRef = useRef(agregar)
   agregarRef.current = agregar
+  // Cómo son los siniestros de cada compañía, para leer bien uno escrito con espacios
+  const formatos = useMemo(() => formatosDeSiniestro(comprobantes), [comprobantes])
+
   function agregar(lista: FileList | File[] | null) {
     const nuevos = lista ? [...lista] : []
     if (!nuevos.length) return
     setFilas((actuales) => [
       ...actuales,
       ...nuevos.map((archivo): Fila => {
-        const r = revisarNombre(archivo.name, facturas, esPdf(archivo))
+        const r = revisarNombre(archivo.name, facturas, esPdf(archivo), true, formatos)
         if (!r.ok) {
           // ¿Factura de hoy? El número es de un punto de venta de la sucursal pero todavía no está en Quiter
           const corto = archivo.name.replace(/\.[a-z0-9]+$/i, '').length <= LARGO_MAXIMO_NOMBRE
@@ -124,6 +127,13 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
             }
           }
           return { archivo, facturaId: '', tipo: r.tipo, error, siniestro: '' }
+        }
+        // Lo ya aprobado no se vuelve a subir (pisaría la aprobación)
+        const c = r.factura
+        const objetivo: TipoDocumento[] = c.tipo === 'NC' ? ['factura'] : r.tipo === 'documentacion' ? TODOS : [r.tipo]
+        if (objetivo.every((t) => c.documentos.find((d) => d.tipo === t)?.estado === 'ok')) {
+          const que = c.tipo === 'NC' ? 'La nota de crédito ya está aprobada' : objetivo.length > 1 ? 'La factura y la orden ya están aprobadas' : objetivo[0] === 'orden' ? 'La orden ya está aprobada' : 'La factura ya está aprobada'
+          return { archivo, facturaId: '', tipo: r.tipo, error: `${que}: no hace falta subirla.`, siniestro: '' }
         }
         // El siniestro sale del nombre (revisarNombre ya pidió que esté en la orden y en el archivo con todo junto)
         return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, siniestro: r.siniestro }
@@ -238,7 +248,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
         const subidos: string[] = []
         for (const [tipo, archivos] of porTipo) {
           const adjuntos = archivos.map((f) => subidosPorArchivo.get(f)!)
-          const tipos = c.tipo === 'NC' ? (['factura'] as TipoDocumento[]) : tipo === 'documentacion' ? TODOS : [tipo]
+          // (un documento ya aprobado no se toca, aunque venga en el mismo PDF)
+          const tipos = (c.tipo === 'NC' ? (['factura'] as TipoDocumento[]) : tipo === 'documentacion' ? TODOS : [tipo]).filter(
+            (t) => c.documentos.find((d) => d.tipo === t)?.estado !== 'ok',
+          )
           documentos = documentos.map((d): Documento =>
             tipos.includes(d.tipo)
               ? {
@@ -363,6 +376,9 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 </li>
                 <li>
                   <strong>Documentos juntos:</strong> <strong>FC OR</strong> (<strong>con siniestro</strong>).
+                </li>
+                <li>
+                  La FC <strong>no se sube sola</strong>: va con su orden, en otro PDF o junta.
                 </li>
                 <li>Patente o compañía: se pueden agregar, no son necesarias.</li>
               </ul>

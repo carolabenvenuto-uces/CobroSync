@@ -27,7 +27,14 @@ export interface Sugerencia {
 const alfanumerico = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
 function marcas(nombre: string) {
-  const n = ` ${nombre.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[_\-.]+/g, ' ')} `
+  // "20834FC" o "F.C." también valen: se separan los números de las letras y se juntan las siglas
+  const n = ` ${nombre
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/, '')
+    .replace(/\b([fo])\.\s?([cr])\.?(?=\s|$|[^a-z])/g, '$1$2')
+    .replace(/(\d)([a-z])/g, '$1 $2')
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/[_\-.+]+/g, ' ')} `
   // La firma del cliente va en la orden: "orden firmada", "firma" o "conformidad" son la orden
   const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto|firma|conformidad|conforme/.test(n)
   // "FC 35-5749" o "factura 35-5749" es el número de la factura, no dice qué documento es
@@ -111,7 +118,8 @@ export type RevisionNombre =
 const EJEMPLO = '21-20834 104-4-137055 OR.pdf'
 const SIN_ACLARAR = 'Falta aclarar al final qué es: FC, OR o FC OR (las dos juntas). Por ejemplo: 21-20827 4500546 FC OR.pdf'
 /** Nombres cortos: las plataformas de las compañías rechazan los nombres largos. */
-export const LARGO_MAXIMO_NOMBRE = 40
+// Lo obligatorio más largo entra: "0021-00020834 C0042601693117-0042601893777 FC OR" (48)
+export const LARGO_MAXIMO_NOMBRE = 50
 
 /**
  * La regla que se exige (no solo se pide): PDF y, en el nombre, el punto de venta y el número de una
@@ -126,7 +134,14 @@ export const LARGO_MAXIMO_NOMBRE = 40
  * La orden y el archivo con todo junto necesitan el siniestro en el nombre, salvo que la factura ya lo
  * tenga. `pedirSiniestro: false` cuando el documento se elige con un botón (desde la factura).
  */
-export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /\.pdf$/i.test(nombre), pedirSiniestro = true): RevisionNombre {
+export function revisarNombre(
+  nombre: string,
+  facturas: Comprobante[],
+  esPdf = /\.pdf$/i.test(nombre),
+  pedirSiniestro = true,
+  /** las formas de siniestro de cada compañía (ver formatosDeSiniestro) */
+  formatos?: Map<string, Set<string>>,
+): RevisionNombre {
   const tipo = tipoPorNombre(nombre)
   if (!esPdf) return { ok: false, tipo, error: 'No es un PDF: solo se aceptan PDF.' }
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
@@ -151,7 +166,7 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
     if (pedirSiniestro && !aclaraQueEs(nombre)) return { ok: false, tipo, error: SIN_ACLARAR }
     // La orden (sola o con la FC) lleva siniestro; "21-803 NC" no
     const llevaSiniestro = f.tipo === 'NC' ? tipo === 'orden' || (tipo === 'documentacion' && marcas(nombre).esOrden) : tipo === 'orden' || tipo === 'documentacion'
-    const siniestro = siniestroDelNombre(nombre, f) ?? ''
+    const siniestro = siniestroDelNombre(nombre, f, formatos?.get(f.aseguradoraId)) ?? ''
     if (pedirSiniestro && llevaSiniestro && !siniestro && !f.siniestro) {
       return { ok: false, tipo, error: `Falta el siniestro en el nombre. Por ejemplo: ${EJEMPLO}` }
     }
@@ -170,7 +185,8 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
 
 /** ¿El nombre del archivo dice que es una nota de crédito? "NC 21-803", "N-C 21-803", "N/C", "nota de crédito". */
 export function esNotaDeCreditoPorNombre(nombre: string): boolean {
-  return /(^|[^a-z0-9])n\s*[-/.]?\s*c([^a-z0-9]|$)|nota\s+de\s+cr/i.test(nombre.replace(/\.[a-z0-9]+$/i, ''))
+  const n = nombre.replace(/\.[a-z0-9]+$/i, '').replace(/(\d)([a-z])/gi, '$1 $2').replace(/([a-z])(\d)/gi, '$1 $2')
+  return /(^|[^a-z0-9])n\s*[-/.]?\s*c\.?([^a-z0-9]|$)|nota\s+de\s+cr/i.test(n)
 }
 
 /** Las facturas a las que todavía se les puede subir documentación, y las NC sin su PDF aprobado. */
@@ -185,7 +201,7 @@ export function facturasParaCargar(comprobantes: Comprobante[]): Comprobante[] {
  * "35-11032 siniestro 22365.pdf" → "22365"; "35-11032 or 029-9-506622.pdf" → "029-9-506622". Se usa para completar el siniestro del
  * legajo, que no se conoce hasta tener la orden. Devuelve null si no hay uno (6 dígitos o más).
  */
-export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVenta' | 'numero'>): string | null {
+export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVenta' | 'numero'>, formatos?: Set<string>): string | null {
   let base = nombre.replace(/\.[a-z0-9]+$/i, '')
   // se saca el número de factura (con o sin ceros, con cualquier separador o todo junto)
   base = base.replace(new RegExp(`(^|\\D)0*${c.puntoVenta}\\s*[-_ ./]?\\s*0*${c.numero}(?=\\D|$)`), '$1 ')
@@ -197,6 +213,17 @@ export function siniestroDelNombre(nombre: string, c: Pick<Comprobante, 'puntoVe
   }
   // 2) sin la palabra: un número largo aparte del de la factura (no una fecha)
   base = base.replace(/[a-záéíóúñ]+/gi, ' ')
+  // Escrito con espacios ("104 4 137055"): si juntando los pedazos con guiones queda con la forma de los
+  // siniestros de esa compañía ("104-4-137055"), se toma entero
+  if (formatos?.size) {
+    const pedazos = base.trim().split(/\s+/).filter((x) => /^\d+$/.test(x))
+    for (let largo = Math.min(4, pedazos.length); largo >= 2; largo--) {
+      for (let i = 0; i + largo <= pedazos.length; i++) {
+        const junto = pedazos.slice(i, i + largo).join('-')
+        if (formatos.has(formaDeSiniestro(junto))) return limpiarSiniestro(junto)
+      }
+    }
+  }
   const candidatos = (base.match(/\d[\d\-/.]*\d/g) ?? []).filter((x) => !/^\d{1,2}[-/.]\d{1,2}[-/.](\d{2}|\d{4})$/.test(x))
   const hallado = candidatos.find((x) => x.replace(/\D/g, '').length >= 5)
   return hallado ? limpiarSiniestro(hallado) : null
@@ -229,4 +256,22 @@ export function patenteDelNombre(nombre: string): string | null {
     return m[1].replace(/\s/g, '').toUpperCase()
   }
   return null
+}
+
+/** La forma de un siniestro, sin los números: "104-4-137055" → "9-9-9"; "C0042601693117-0042601893777" → "A9-9". */
+export function formaDeSiniestro(siniestro: string): string {
+  return siniestro.trim().replace(/\d+/g, '9').replace(/[a-z]+/gi, 'A').replace(/\s+/g, ' ')
+}
+
+/** Las formas de siniestro de cada compañía, de los que ya están cargados (las de más de una parte). */
+export function formatosDeSiniestro(comprobantes: Comprobante[]): Map<string, Set<string>> {
+  const formatos = new Map<string, Set<string>>()
+  for (const c of comprobantes) {
+    if (!c.siniestro) continue
+    const forma = formaDeSiniestro(c.siniestro)
+    if (!/9.*[^9A].*9/.test(forma)) continue
+    if (!formatos.has(c.aseguradoraId)) formatos.set(c.aseguradoraId, new Set())
+    formatos.get(c.aseguradoraId)!.add(forma)
+  }
+  return formatos
 }

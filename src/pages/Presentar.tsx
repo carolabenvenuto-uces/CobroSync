@@ -38,7 +38,12 @@ export default function Presentar() {
   const [descargando, setDescargando] = useState<string | null>(null)
 
   const filas = useMemo(
-    () => comprobantes.filter((c) => c.tipo === 'FC' && (c.reenviar || calcularSemaforo(c, hoy).etapa === 'pres_pendiente')),
+    // Solo las que tienen sus PDF en CobroSync: las de la gestión anterior (aprobadas en la planilla, sin
+    // archivo acá) se presentan como siempre, salvo que se les suba el PDF desde la factura
+    () =>
+      comprobantes.filter(
+        (c) => c.tipo === 'FC' && (c.reenviar || (calcularSemaforo(c, hoy).etapa === 'pres_pendiente' && c.documentos.length > 0 && c.documentos.every((d) => d.url || d.archivo))),
+      ),
     [comprobantes, hoy],
   )
   const texto = buscar.trim().toLowerCase()

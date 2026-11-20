@@ -179,6 +179,41 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
   // Las otras facturas del siniestro a las que les falta la orden firmada (las cobradas o anuladas, no)
   const sinOrden = hermanas.filter((h) => h.estado !== 'cobrada' && h.estado !== 'anulada' && ['faltante', 'observado'].includes(h.documentos.find((d) => d.tipo === 'orden')?.estado ?? 'faltante'))
 
+  /**
+   * Cobranzas sube el PDF de un documento de la gestión anterior (aprobado en la planilla, sin archivo en
+   * CobroSync): queda aprobado, ahora con su PDF, y la factura puede presentarse desde CobroSync.
+   */
+  async function subirAnterior(tipo: TipoDocumento, lista: FileList | null) {
+    const archivos = lista ? [...lista] : []
+    if (!archivos.length) return
+    setErrorSubida('')
+    setSubiendo(true)
+    try {
+      const adjuntos: { archivo: string; url?: string }[] = []
+      for (const a of archivos) adjuntos.push(await subirDocumento(c.id, tipo, await prepararArchivo(a), c.siniestro))
+      guardarDocumentos(
+        documentos.map((d): Documento =>
+          d.tipo === tipo
+            ? {
+                ...d,
+                estado: 'ok',
+                archivo: adjuntos.length > 1 ? `${adjuntos[0].archivo} (+${adjuntos.length - 1})` : adjuntos[0].archivo,
+                url: adjuntos[0].url,
+                adjuntos: adjuntos.length > 1 ? adjuntos : undefined,
+                subidoPor: usuario,
+                fecha: hoy,
+              }
+            : d,
+        ),
+      )
+      registrarEvento(c.id, 'subida', `Subió el PDF de ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} de la gestión anterior (${adjuntos.map((a) => a.archivo).join(', ')})`)
+    } catch (e) {
+      setErrorSubida(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
   async function subir(tipos: TipoDocumento[], lista: FileList | File[] | null | undefined) {
     const archivos = lista ? [...lista] : []
     if (archivos.length === 0) return
@@ -645,6 +680,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                             <Camera className="h-3.5 w-3.5" /> Foto
                           </button>
                           </>
+                        ) : rol === 'auditoria' && d.estado === 'ok' && !d.archivo && !d.url ? (
+                          <label className={`${botonChico} cursor-pointer border border-marca/40 bg-white text-marca hover:bg-marca/5`} title="Subir el PDF a CobroSync para presentarla desde acá">
+                            <FileUp className="h-3.5 w-3.5" /> Subir el PDF
+                            <input type="file" multiple accept=".pdf,application/pdf" className="sr-only" onChange={(e) => void subirAnterior(d.tipo, e.target.files)} />
+                          </label>
                         ) : rol === 'sucursal' && docsAbiertos && d.estado === 'en_revision' ? (
                           <>
                             <span className={`text-xs font-semibold ${ESTILO_DOC[d.estado]}`}>{NOMBRE_ESTADO_DOCUMENTO[d.estado]}</span>

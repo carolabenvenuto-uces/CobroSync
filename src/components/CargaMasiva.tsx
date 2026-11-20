@@ -131,7 +131,11 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
         // Lo ya aprobado no se vuelve a subir (pisaría la aprobación)
         const c = r.factura
         const objetivo: TipoDocumento[] = c.tipo === 'NC' ? ['factura'] : r.tipo === 'documentacion' ? TODOS : [r.tipo]
-        if (objetivo.every((t) => c.documentos.find((d) => d.tipo === t)?.estado === 'ok')) {
+        const aprobadoConPdf = (t: TipoDocumento) => {
+          const d = c.documentos.find((x) => x.tipo === t)
+          return d?.estado === 'ok' && !!(d.url || d.archivo)
+        }
+        if (objetivo.every(aprobadoConPdf)) {
           const que = c.tipo === 'NC' ? 'La nota de crédito ya está aprobada' : objetivo.length > 1 ? 'La factura y la orden ya están aprobadas' : objetivo[0] === 'orden' ? 'La orden ya está aprobada' : 'La factura ya está aprobada'
           return { archivo, facturaId: '', tipo: r.tipo, error: `${que}: no hace falta subirla.`, siniestro: '' }
         }
@@ -250,7 +254,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           const adjuntos = archivos.map((f) => subidosPorArchivo.get(f)!)
           // (un documento ya aprobado no se toca, aunque venga en el mismo PDF)
           const tipos = (c.tipo === 'NC' ? (['factura'] as TipoDocumento[]) : tipo === 'documentacion' ? TODOS : [tipo]).filter(
-            (t) => c.documentos.find((d) => d.tipo === t)?.estado !== 'ok',
+            (t) => {
+              const d = c.documentos.find((x) => x.tipo === t)
+              return !(d?.estado === 'ok' && (d.url || d.archivo))
+            },
           )
           documentos = documentos.map((d): Documento =>
             tipos.includes(d.tipo)

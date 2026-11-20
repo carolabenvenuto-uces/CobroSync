@@ -93,8 +93,8 @@ describe('nombres flexibles', () => {
   const lista = [factura('x', 21, 20755, '', '', '8457091'), factura('y', 35, 11032, '', '', '6977700')]
   it('la factura con o sin ceros y con cualquier separador; pegada no (podría ser un siniestro)', () => {
     for (const n of ['21-20755.pdf', '0021-00020755.pdf', '21 20755 orden.pdf', '21.20755.pdf', '21_00020755.pdf', 'FC E 21-20755.pdf'])
-      expect(revisarNombre(n, lista).ok, n).toBe(true)
-    expect(revisarNombre('2100020755.pdf', lista).ok).toBe(false)
+      expect(revisarNombre(n, lista, true, false).ok, n).toBe(true)
+    expect(revisarNombre('2100020755.pdf', lista, true, false).ok).toBe(false)
   })
   it('un siniestro no se toma por factura', () => {
     const r = revisarNombre('21-20755 20 02 92907.pdf', lista)
@@ -146,7 +146,7 @@ describe('PDF de notas de crédito', () => {
   const fc = { id: 'f', tipo: 'FC', puntoVenta: 21, numero: 803, documentos: [], estado: 'en_gestion' } as unknown as Comprobante
   const nc = { id: 'n', tipo: 'NC', puntoVenta: 21, numero: 803, documentos: [], estado: 'en_gestion' } as unknown as Comprobante
   it('"NC", "N-C" o "N/C" en el nombre va a la nota de crédito; sin eso, a la factura', () => {
-    for (const n of ['21-803 104-4-54203 nc.pdf', 'N-C 21-803 104-4-54203.pdf', 'N/C 21-803.pdf', 'NC 21-803.pdf']) {
+    for (const n of ['21-803 NC.pdf', '21-803 104-4-54203 nc.pdf', 'N-C 21-803 104-4-54203.pdf', 'N/C 21-803.pdf']) {
       const r = revisarNombre(n, [fc, nc])
       expect(r.ok && r.factura.id, n).toBe('n')
     }
@@ -155,7 +155,35 @@ describe('PDF de notas de crédito', () => {
     expect(esNotaDeCreditoPorNombre('21-20845 NACION 770356 or.pdf')).toBe(false)
   })
   it('desde la misma NC no hace falta escribir NC', () => {
-    const r = revisarNombre('21-803.pdf', [nc])
+    const r = revisarNombre('21-803 104-4-54203.pdf', [nc])
     expect(r.ok && r.factura.id).toBe('n')
+  })
+})
+
+describe('formato: número, siniestro y al final FC / OR / NC', () => {
+  const f = { id: 'f', tipo: 'FC', puntoVenta: 21, numero: 20834, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  const nc = { id: 'n', tipo: 'NC', puntoVenta: 21, numero: 803, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  it('la FC sola no pide siniestro; la orden y el archivo con todo junto sí', () => {
+    const fc = revisarNombre('21-20834 FC.pdf', [f])
+    expect(fc.ok && fc.tipo).toBe('factura')
+    const or = revisarNombre('21-20834 104-4-137055 OR.pdf', [f])
+    expect(or.ok && or.tipo).toBe('orden')
+    expect(or.ok && or.siniestro).toBe('104-4-137055')
+    const todo = revisarNombre('21-20827 holando 4500546.pdf', [{ ...f, numero: 20827 } as Comprobante])
+    expect(todo.ok && todo.tipo).toBe('documentacion')
+    expect(todo.ok && todo.siniestro).toBe('4500546')
+    const sinSiniestro = revisarNombre('21-20834 OR.pdf', [f])
+    expect(!sinSiniestro.ok && sinSiniestro.error).toContain('Falta el siniestro')
+    expect(revisarNombre('21-20834.pdf', [f]).ok).toBe(false)
+    // si la factura ya lo tiene, no se pide
+    expect(revisarNombre('21-20834 OR.pdf', [{ ...f, siniestro: '999999' } as Comprobante]).ok).toBe(true)
+  })
+  it('la NC sola no pide siniestro; su orden sí', () => {
+    expect(revisarNombre('21-803 NC.pdf', [nc]).ok).toBe(true)
+    expect(revisarNombre('21-803 OR.pdf', [nc]).ok).toBe(false)
+    expect(revisarNombre('21-803 104-4-54203 OR.pdf', [nc]).ok).toBe(true)
+  })
+  it('la compañía o la patente no molestan', () => {
+    expect(revisarNombre('21-20834 NACION AB123CD 104-4-137055 OR.pdf', [f]).ok).toBe(true)
   })
 })

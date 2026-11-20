@@ -94,10 +94,10 @@ export function numeroParaNombre(c: Pick<Comprobante, 'puntoVenta' | 'numero'>):
 }
 
 export type RevisionNombre =
-  | { ok: true; factura: Comprobante; tipo: TipoArchivo }
+  | { ok: true; factura: Comprobante; tipo: TipoArchivo; /** el siniestro escrito en el nombre ('' si no hay) */ siniestro: string }
   | { ok: false; error: string; tipo: TipoArchivo }
 
-const EJEMPLO = '35-11032 siniestro 029-9-506622.pdf'
+const EJEMPLO = '21-20834 104-4-137055 OR.pdf'
 /** Nombres cortos: las plataformas de las compañías rechazan los nombres largos. */
 export const LARGO_MAXIMO_NOMBRE = 40
 
@@ -106,7 +106,15 @@ export const LARGO_MAXIMO_NOMBRE = 40
  * factura de la sucursal, como figura en la factura ("35-11032"; también se acepta con ceros, "35-00011032"). Así no
  * entra un archivo mal tipeado que después nadie sabe de qué factura es.
  */
-export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /\.pdf$/i.test(nombre)): RevisionNombre {
+/**
+ * Formato de los nombres: número de factura, siniestro y al final qué es.
+ *   "21-20834 FC" solo la factura (sin siniestro) · "21-20834 104-4-137055 OR" la orden (con siniestro)
+ *   "21-20827 4500546" factura y orden juntas (con siniestro) · "21-803 NC" la nota de crédito
+ *   "21-803 104-4-54203 OR" la orden de esa NC. La compañía o la patente pueden ir, no molestan.
+ * La orden y el archivo con todo junto necesitan el siniestro en el nombre, salvo que la factura ya lo
+ * tenga. `pedirSiniestro: false` cuando el documento se elige con un botón (desde la factura).
+ */
+export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /\.pdf$/i.test(nombre), pedirSiniestro = true): RevisionNombre {
   const tipo = tipoPorNombre(nombre)
   if (!esPdf) return { ok: false, tipo, error: 'No es un PDF: solo se aceptan PDF.' }
   const base = nombre.replace(/\.[a-z0-9]+$/i, '')
@@ -118,8 +126,23 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   // (sin "NC" en el nombre se prefiere la factura; si solo hay una NC con ese número, por ejemplo al subir
   // desde la misma NC, va a la NC)
   const todas = facturasEnNombre(nombre, facturas)
-  const halladas = nc ? todas.filter((c) => c.tipo === 'NC') : todas.some((c) => c.tipo !== 'NC') ? todas.filter((c) => c.tipo !== 'NC') : todas
-  if (halladas.length === 1) return { ok: true, factura: halladas[0], tipo: halladas[0].tipo === 'NC' ? 'factura' : tipo }
+  const fcs = todas.filter((c) => c.tipo !== 'NC')
+  const ncs = todas.filter((c) => c.tipo === 'NC')
+  // con FC al final es la factura; si no dice ni FC ni NC y hay las dos con ese número, hay que aclarar
+  if (!nc && tipo !== 'factura' && fcs.length && ncs.length) {
+    return { ok: false, tipo, error: `Hay una factura y una nota de crédito con ese número: si es de la nota de crédito, agregar NC al nombre.` }
+  }
+  const halladas = nc ? ncs : fcs.length ? fcs : ncs
+  if (halladas.length === 1) {
+    const f = halladas[0]
+    // En una NC: con OR, o sin nada al final (NC y orden juntas), lleva siniestro; "21-803 NC" no
+    const llevaSiniestro = f.tipo === 'NC' ? tipo === 'orden' || (tipo === 'documentacion' && !nc) : tipo === 'orden' || tipo === 'documentacion'
+    const siniestro = siniestroDelNombre(nombre, f) ?? ''
+    if (pedirSiniestro && llevaSiniestro && !siniestro && !f.siniestro) {
+      return { ok: false, tipo, error: `Falta el siniestro en el nombre. Por ejemplo: ${EJEMPLO}` }
+    }
+    return { ok: true, factura: f, tipo: f.tipo === 'NC' ? 'factura' : tipo, siniestro }
+  }
   if (halladas.length > 1) {
     return { ok: false, tipo, error: `El nombre coincide con más de una factura (${halladas.map(numeroParaNombre).join(', ')}): dejar solo el número de una.` }
   }

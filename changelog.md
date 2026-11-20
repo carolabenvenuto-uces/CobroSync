@@ -11,6 +11,13 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.26] - 2026-11-20
+- **Nombres de los PDF, formato único**: número de factura, siniestro y al final qué es. `21-20834 FC` (solo la factura), `21-20834 104-4-137055 OR` (la orden), `21-20827 4500546` (las dos juntas), `21-803 NC` (nota de crédito), `21-803 104-4-54203 OR` (la orden de la NC). La compañía o la patente pueden ir.
+- El siniestro se toma solo del nombre: la orden y el archivo con todo junto lo tienen que traer (salvo que la factura ya lo tenga). Se sacan los casilleros para escribirlo, en Subir varios y en la factura.
+- Subir varios: una FC sola, sin su orden en la lista ni ya subida, queda en rojo y no se sube. Lo que queda en rojo no frena al resto.
+- Si hay una factura y una NC con el mismo número y el nombre no dice FC ni NC, pide aclararlo.
+- Condiciones de Subir varios más cortas (se vuelven a mostrar una vez).
+
 ## [0.17.25] - 2026-11-20
 - **PDF de las notas de crédito**: se suben con "Subir varios PDF de una vez" (con "nc", "N-C" o "N/C" en el nombre, por ejemplo `21-803 104-4-54203 nc.pdf`) o al informar la nota de crédito (campo opcional). Si la NC todavía no entró de Quiter, queda en espera y se une cuando entra. Si tiene orden (una anulación), va junto con la NC.
 - Cobranzas aprueba u observa el PDF de la NC como el de una factura: aparece en "Le toca a Cobranzas" y, si se observa, la sucursal lo ve en Rechazos y pedidos.

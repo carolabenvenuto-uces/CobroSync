@@ -26,8 +26,7 @@ interface Fila {
   error: string | null
   /** PDF de una nota de crédito (por el nombre: "NC 21-803") */
   nc?: boolean
-  /** la factura todavía no tiene siniestro: se toma del nombre o se escribe en la fila */
-  pideSiniestro: boolean
+  /** el siniestro del nombre del archivo ('' si no tiene) */
   siniestro: string
   /** factura de hoy, todavía no cargada: el PDF queda en espera hasta que se cargue el Excel de Quiter */
   deHoy?: { puntoVenta: number; numero: number }
@@ -56,7 +55,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   // agregar archivos. Después quedan en el botón Condiciones, para abrirlas y cerrarlas.
   const [leidas, setLeidas] = useState(() => {
     try {
-      return !!localStorage.getItem('cobrosync-condiciones-varios')
+      return !!localStorage.getItem('cobrosync-condiciones-varios-2')
     } catch {
       return false
     }
@@ -70,7 +69,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       pendientes.current = []
     }
     try {
-      localStorage.setItem('cobrosync-condiciones-varios', '1')
+      localStorage.setItem('cobrosync-condiciones-varios-2', '1')
     } catch {
       // sin almacenamiento: se vuelven a mostrar la próxima vez
     }
@@ -101,13 +100,19 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           if (n) {
             // Una NC de hoy: queda en espera igual que las facturas, y se une a la NC cuando entra de Quiter
             const nc = esNotaDeCreditoPorNombre(archivo.name)
-            return { archivo, facturaId: '', tipo: r.tipo, nc, error: null, pideSiniestro: !nc, siniestro: nc ? '' : siniestroDelNombre(archivo.name, n) ?? '', deHoy: n }
+            const siniestro = siniestroDelNombre(archivo.name, n) ?? ''
+            // la orden o el archivo con todo junto llevan el siniestro en el nombre ("21-803 NC" no)
+            const llevaSiniestro = r.tipo === 'orden' || (r.tipo === 'documentacion' && !nc)
+            if (llevaSiniestro && !siniestro) return { archivo, facturaId: '', tipo: r.tipo, error: 'Falta el siniestro en el nombre. Por ejemplo: 21-20834 104-4-137055 OR.pdf', siniestro: '' }
+            return { archivo, facturaId: '', tipo: r.tipo, nc, error: null, siniestro, deHoy: n }
           }
           // Un mensaje que diga por qué: otro punto de venta, o una factura que ya no recibe documentos
           const sucursales = datos?.meta.sucursales ?? []
           const num = numerosDelNombre(archivo.name)[0]
           let error = r.error
-          if (num && esPdf(archivo) && corto && escanea && miSucursal) {
+          // (si la factura está pendiente, el motivo es el del nombre: por ejemplo, que falta el siniestro)
+          const pendiente = num && facturas.some((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)
+          if (num && !pendiente && esPdf(archivo) && corto && escanea && miSucursal) {
             const existe = comprobantes.find((c) => c.puntoVenta === num.puntoVenta && c.numero === num.numero)
             if (existe) error = `La factura ${num.puntoVenta}-${num.numero} está ${existe.estado === 'anulada' ? 'anulada' : 'cobrada'}: no recibe documentos.`
             else if (!puntosDeVenta(miSucursal).includes(num.puntoVenta)) {
@@ -117,12 +122,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 : `El punto de venta ${num.puntoVenta} no es de ${miSucursal.nombre} (sus puntos de venta: ${puntosDeVenta(miSucursal).join(', ')}). Revisar el número.`
             }
           }
-          return { archivo, facturaId: '', tipo: r.tipo, error, pideSiniestro: false, siniestro: '' }
+          return { archivo, facturaId: '', tipo: r.tipo, error, siniestro: '' }
         }
-        // El siniestro llega con la documentación: si la factura no lo tiene, sale del nombre o se escribe en la fila
-        // (una nota de crédito no lleva siniestro)
-        const pide = r.factura.tipo !== 'NC' && !r.factura.siniestro
-        return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, pideSiniestro: pide, siniestro: pide ? siniestroDelNombre(archivo.name, r.factura) ?? '' : '' }
+        // El siniestro sale del nombre (revisarNombre ya pidió que esté en la orden y en el archivo con todo junto)
+        return { archivo, facturaId: r.factura.id, tipo: r.tipo, error: null, siniestro: r.siniestro }
       }),
     ])
     setEstado(null)
@@ -165,17 +168,25 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
   }, [])
   const cambiar = (i: number, cambios: Partial<Fila>) => setFilas((l) => l.map((f, j) => (j === i ? { ...f, ...cambios } : f)))
 
-  const asignadas = filas.filter((f) => f.facturaId)
-  const deHoy = filas.filter((f) => f.deHoy && !f.error)
+  // Una FC sola, sin su orden (ni en la lista ni ya subida), no se sube: la factura sola no sirve
+  const claveDe = (f: Fila) => f.facturaId || (f.deHoy ? `hoy-${f.deHoy.puntoVenta}-${f.deHoy.numero}` : '')
+  const faltaOrden = (f: Fila) => {
+    if (f.tipo !== 'factura' || f.nc || (!f.facturaId && !f.deHoy) || (f.error && !f.facturaId)) return false
+    const c = comprobantes.find((x) => x.id === f.facturaId)
+    if (c?.tipo === 'NC') return false
+    const orden = c?.documentos.find((d) => d.tipo === 'orden')
+    if (orden && (orden.estado === 'ok' || orden.estado === 'en_revision')) return false
+    return !filas.some((x) => claveDe(x) === claveDe(f) && (x.tipo === 'orden' || x.tipo === 'documentacion'))
+  }
+  const textoFaltaOrden = 'Falta la orden de esta factura: subirla junto con la FC (por ejemplo 21-20834 104-4-137055 OR).'
+  const asignadas = filas.filter((f) => f.facturaId && !faltaOrden(f))
+  const deHoy = filas.filter((f) => f.deHoy && !f.error && !faltaOrden(f))
   const listas = asignadas.length + deHoy.length
-  // El siniestro alcanza con que esté en uno de los PDF de cada factura (por ejemplo, en el de la orden)
-  const claveFactura = (f: Fila) => f.facturaId || (f.deHoy ? `hoy-${f.deHoy.puntoVenta}-${f.deHoy.numero}` : '')
-  const conSiniestro = new Set([...asignadas, ...deHoy].filter((f) => f.siniestro.trim()).map(claveFactura))
-  const faltaSiniestro = (f: Fila) => f.pideSiniestro && !f.siniestro.trim() && !conSiniestro.has(claveFactura(f))
-  const sinSiniestro = [...asignadas, ...deHoy].filter(faltaSiniestro).length
+  const claveFactura = claveDe
   const sinAsignar = filas.length - asignadas.length - deHoy.length
 
   async function subirTodo() {
+    const retenidas = new Set(filas.filter(faltaOrden))
     setSubiendo(true)
     setEstado(null)
     let hechas = 0
@@ -269,7 +280,8 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
       const conFallo = new Set([...fallos.keys()].map((f) => f.facturaId))
       setFilas((l) =>
         l
-          .filter((f) => (f.facturaId ? conFallo.has(f.facturaId) : !(f.deHoy && !f.error)))
+          // quedan las que no se subieron: con error, con un fallo o una FC sin su orden
+          .filter((f) => retenidas.has(f) || (f.facturaId ? conFallo.has(f.facturaId) : !(f.deHoy && !f.error)))
           .map((f) => (fallos.has(f) ? { ...f, error: `No se pudo subir: ${fallos.get(f)}` } : f)),
       )
       const facturasOk = [...porFactura.keys()].filter((id) => !conFallo.has(id)).length
@@ -338,14 +350,13 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           {condiciones && (
             <div className="mt-3 rounded-lg border border-sem-amarillo/50 bg-amber-50 p-3 text-xs text-amber-950">
               <ul className="list-disc space-y-0.5 pl-4">
+                <li>Solo PDF, con el número de factura en el nombre.</li>
                 <li>
-                  Solo <strong>PDF</strong>. En el nombre, el <strong>número de factura</strong> y el <strong>siniestro</strong>:{' '}
-                  <code>35-11032 siniestro 22365.pdf</code>. Con o sin ceros (<code>0035-00011032</code>) y con guion, espacio o punto. La
-                  palabra siniestro puede ir abreviada o no ir. Si es un solo documento, al final <code>fc</code> u <code>or</code>; una nota de crédito, <code>nc</code>.
+                  Al final, qué es: <strong>FC</strong> factura, <strong>OR</strong> orden, <strong>NC</strong> nota de crédito. Sin nada: factura y orden juntas.
                 </li>
-                <li>Nombres cortos (hasta 40 caracteres): sin la compañía ni otras palabras, porque las plataformas los rechazan.</li>
-                <li>El siniestro alcanza con que esté en uno de los PDF de cada factura (por ejemplo, el de la orden); si no está en ninguno, se escribe en la fila. Lo que queda en rojo no se sube: corregir el nombre y volver a soltarlo.</li>
-                <li>Facturas de hoy que todavía no aparecen: se suben igual y se unen a su legajo cuando Cobranzas cargue el Excel de Quiter.</li>
+                <li>
+                  La orden y el archivo con todo junto llevan el siniestro: <code>21-20834 104-4-137055 OR</code>.
+                </li>
               </ul>
               {!leidas && (
                 <button type="button" onClick={cerrarCondiciones} className="mt-2 rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-950">
@@ -369,7 +380,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                 {filas.map((f, i) => {
                   const factura = facturas.find((c) => c.id === f.facturaId)
                   return (
-                    <tr key={`${f.archivo.name}-${i}`} className={f.error ? 'bg-red-50' : ''}>
+                    <tr key={`${f.archivo.name}-${i}`} className={f.error || faltaOrden(f) ? 'bg-red-50' : ''}>
                       <td className="max-w-56 truncate px-2 py-2 font-medium" title={f.archivo.name}>
                         {f.archivo.name}
                       </td>
@@ -377,29 +388,17 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
                         {factura ? (
                           <span className="whitespace-nowrap">
                             {formatoComprobante(factura)}
+                            {faltaOrden(f) && <span className="block whitespace-normal text-xs font-semibold text-red-800">{textoFaltaOrden}</span>}
                             {factura.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {factura.siniestro}</span>}
-                            {f.pideSiniestro && (
-                              <input
-                                value={f.siniestro}
-                                onChange={(e) => cambiar(i, { siniestro: e.target.value })}
-                                placeholder="N.º de siniestro"
-                                aria-label="Número de siniestro"
-                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
-                              />
-                            )}
+                            {!factura.siniestro && f.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {f.siniestro}</span>}
                           </span>
                         ) : (
                           f.deHoy ? (
                             <span className="whitespace-nowrap">
                               {f.deHoy.puntoVenta}-{f.deHoy.numero}
+                              {faltaOrden(f) && <span className="block whitespace-normal text-xs font-semibold text-red-800">{textoFaltaOrden}</span>}
                               <span className="block text-[11px] font-semibold text-marca">{f.nc ? 'Nota de crédito de hoy' : 'Factura de hoy'}: se une al cargar el Excel de Quiter</span>
-                              {!f.nc && <input
-                                value={f.siniestro}
-                                onChange={(e) => cambiar(i, { siniestro: e.target.value })}
-                                placeholder="N.º de siniestro"
-                                aria-label="Número de siniestro"
-                                className={`${claseSelect} mt-1 block w-36 py-1 text-xs ${faltaSiniestro(f) ? 'border-sem-amarillo' : ''}`}
-                              />}
+                              {f.siniestro && <span className="block text-[11px] text-slate-500">Siniestro {f.siniestro}</span>}
                             </span>
                           ) : (
                             <span className="text-xs font-semibold text-red-800">{f.error}</span>
@@ -439,11 +438,11 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           <span className="text-sm text-slate-600">
             {filas.length === 0
               ? 'Todavía no hay archivos.'
-              : `${listas} listos para subir${sinSiniestro ? ` · ${sinSiniestro} sin número de siniestro (escribirlo en la fila)` : ''}${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
+              : `${listas} listos para subir${sinAsignar ? ` · ${sinAsignar} con el nombre mal o que no son PDF (no se suben)` : ''}`}
           </span>
           <button
             type="button"
-            disabled={subiendo || listas === 0 || sinSiniestro > 0}
+            disabled={subiendo || listas === 0}
             onClick={() => void subirTodo()}
             className="inline-flex items-center gap-2 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-white hover:bg-marca-oscuro disabled:opacity-50"
           >

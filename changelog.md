@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.24] - 2026-11-20
+- Excel de Quiter: a la pestaña Quiter de la planilla van las mismas filas que toma CobroSync (compañías de seguros **y** puntos de venta de las sucursales). Antes iban también las de otros puntos de venta.
+- Subida de escaneos más rápida: los PDF se suben de a 4 a la vez; el servidor ya no lee toda la hoja de facturas por cada PDF (solo la fila de esa factura) y recuerda las carpetas de Drive en vez de buscarlas cada vez.
+- Si un PDF no se puede subir, los demás siguen; ese queda en la lista con el motivo, para volver a intentar.
+
 ## [0.17.23] - 2026-11-19
 - Drive: los PDF en espera que ya se unieron con su factura pasan de la carpeta "En espera" a la carpeta de la factura (sucursal / mes / FC). El link no cambia. Los que ya estaban unidos se mueven en la próxima actualización de cada hora.
 

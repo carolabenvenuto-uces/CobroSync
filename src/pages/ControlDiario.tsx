@@ -124,7 +124,7 @@ export default function ControlDiario() {
         setMensajeErp({ texto: `${resumen} Agregando las filas a la pestaña Quiter de la planilla…` })
         try {
           // Solo las filas de compañías de seguros, como cuando se filtraba el Excel a mano
-          const q = await agregarAQuiterEnGoogle(filasDeDatosErp(texto, aseguradoras))
+          const q = await agregarAQuiterEnGoogle(filasDeDatosErp(texto, aseguradoras, meta.sucursales))
           if (q.configurada) enPlanilla = ` En la planilla: ${q.agregadas} filas nuevas en Quiter (solo de compañías de seguros).`
         } catch (e) {
           enPlanilla = ` No se pudo agregar a la pestaña Quiter de la planilla (${e instanceof Error ? e.message : 'error'}): hay que pegarlas a mano como siempre.`

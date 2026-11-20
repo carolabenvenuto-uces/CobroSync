@@ -169,20 +169,39 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
     setEstado(null)
     let hechas = 0
     try {
+      // Primero se suben todos los PDF a Drive, de a varios a la vez (de a uno tardaba mucho)
+      const subidosPorArchivo = new Map<Fila, { archivo: string; url?: string }>()
+      // Si un PDF no se pudo subir, su factura queda sin tocar (y el archivo queda en la lista para reintentar)
+      const fallos = new Map<Fila, string>()
+      let listos = 0
+      const pendientes = [...asignadas]
+      const total = pendientes.length
+      setEstado({ texto: `Subiendo 0 de ${total}…` })
+      const trabajar = async () => {
+        for (let f = pendientes.shift(); f; f = pendientes.shift()) {
+          try {
+            subidosPorArchivo.set(f, await subirDocumento(f.facturaId, f.tipo, await prepararArchivo(f.archivo)))
+          } catch (e) {
+            fallos.set(f, e instanceof Error ? e.message : String(e))
+          }
+          listos++
+          setEstado({ texto: `Subiendo ${listos} de ${total}…` })
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(4, total) }, trabajar))
+
       // Se agrupan por factura y por documento: varias fotos del mismo documento van juntas
       const porFactura = new Map<string, Fila[]>()
       for (const f of asignadas) porFactura.set(f.facturaId, [...(porFactura.get(f.facturaId) ?? []), f])
       for (const [id, lista] of porFactura) {
         const c = comprobantes.find((x) => x.id === id)
-        if (!c) continue
+        if (!c || lista.some((f) => fallos.has(f))) continue
         let documentos: Documento[] = c.documentos.length ? c.documentos : TODOS.map((t) => ({ tipo: t, estado: 'faltante' }))
         const porTipo = new Map<TipoArchivo, Fila[]>()
         for (const f of lista) porTipo.set(f.tipo, [...(porTipo.get(f.tipo) ?? []), f])
         const subidos: string[] = []
         for (const [tipo, archivos] of porTipo) {
-          setEstado({ texto: `Subiendo ${formatoComprobante(c)}…` })
-          const adjuntos: { archivo: string; url?: string }[] = []
-          for (const f of archivos) adjuntos.push(await subirDocumento(id, tipo, await prepararArchivo(f.archivo)))
+          const adjuntos = archivos.map((f) => subidosPorArchivo.get(f)!)
           const tipos = tipo === 'documentacion' ? TODOS : [tipo]
           documentos = documentos.map((d): Documento =>
             tipos.includes(d.tipo)
@@ -221,9 +240,16 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
         setEstado({ texto: `Subiendo ${f.archivo.name}…` })
         await subirEnEspera(f.deHoy!.puntoVenta, f.deHoy!.numero, f.tipo, limpiarSiniestro(f.siniestro), await prepararArchivo(f.archivo))
       }
-      setFilas((l) => l.filter((f) => !f.facturaId && !(f.deHoy && !f.error)))
+      const conFallo = new Set([...fallos.keys()].map((f) => f.facturaId))
+      setFilas((l) =>
+        l
+          .filter((f) => (f.facturaId ? conFallo.has(f.facturaId) : !(f.deHoy && !f.error)))
+          .map((f) => (fallos.has(f) ? { ...f, error: `No se pudo subir: ${fallos.get(f)}` } : f)),
+      )
+      const facturasOk = [...porFactura.keys()].filter((id) => !conFallo.has(id)).length
       setEstado({
-        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${porFactura.size} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el Excel de Quiter` : ''}. Cobranzas los revisa.`,
+        texto: `Listo: ${hechas ? `se subieron ${hechas} archivos a ${facturasOk} facturas` : ''}${hechas && deHoy.length ? ' y ' : ''}${deHoy.length ? `${deHoy.length} de facturas de hoy quedan en espera hasta que se cargue el Excel de Quiter` : ''}. Cobranzas los revisa.${fallos.size ? ` ${fallos.size} no se pudieron subir: quedan en la lista para volver a intentar.` : ''}`,
+        error: fallos.size > 0,
       })
     } catch (e) {
       setEstado({ texto: e instanceof Error ? e.message : String(e), error: true })

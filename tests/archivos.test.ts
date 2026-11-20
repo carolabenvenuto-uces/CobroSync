@@ -190,3 +190,25 @@ describe('formato: número, siniestro y al final FC / OR / NC', () => {
     expect(revisarNombre('21-20834 NACION AB123CD 104-4-137055 OR.pdf', [f]).ok).toBe(true)
   })
 })
+
+describe('variantes de escritura', () => {
+  const f = { id: 'f', tipo: 'FC', puntoVenta: 21, numero: 20834, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  const nc = { id: 'n', tipo: 'NC', puntoVenta: 21, numero: 803, siniestro: '', documentos: [], estado: 'en_gestion' } as unknown as Comprobante
+  it('siglas pegadas o con puntos, guiones bajos y copias', () => {
+    for (const [n, tipo] of [
+      ['21-20834FC.pdf', 'factura'],
+      ['21-20834 F.C.pdf', 'factura'],
+      ['21-20834 104-4-137055 O.R.pdf', 'orden'],
+      ['21-20834_104-4-137055_OR.pdf', 'orden'],
+      ['21-20834 104-4-137055 OR (1).pdf', 'orden'],
+      ['21-20834 104-4-137055 FC+OR.pdf', 'documentacion'],
+    ] as const) {
+      const r = revisarNombre(n, [f])
+      expect(r.ok && r.tipo, n).toBe(tipo)
+    }
+    for (const n of ['21-803NC.pdf', '21-803 N.C.pdf', '21-803 n/c.pdf']) {
+      const r = revisarNombre(n, [f, nc])
+      expect(r.ok && r.factura.id, n).toBe('n')
+    }
+  })
+})

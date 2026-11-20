@@ -27,7 +27,14 @@ export interface Sugerencia {
 const alfanumerico = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
 function marcas(nombre: string) {
-  const n = ` ${nombre.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[_\-.]+/g, ' ')} `
+  // "20834FC" o "F.C." también valen: se separan los números de las letras y se juntan las siglas
+  const n = ` ${nombre
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/, '')
+    .replace(/\b([fo])\.\s?([cr])\.?(?=\s|$|[^a-z])/g, '$1$2')
+    .replace(/(\d)([a-z])/g, '$1 $2')
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/[_\-.+]+/g, ' ')} `
   // La firma del cliente va en la orden: "orden firmada", "firma" o "conformidad" son la orden
   const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto|firma|conformidad|conforme/.test(n)
   // "FC 35-5749" o "factura 35-5749" es el número de la factura, no dice qué documento es
@@ -170,7 +177,8 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
 
 /** ¿El nombre del archivo dice que es una nota de crédito? "NC 21-803", "N-C 21-803", "N/C", "nota de crédito". */
 export function esNotaDeCreditoPorNombre(nombre: string): boolean {
-  return /(^|[^a-z0-9])n\s*[-/.]?\s*c([^a-z0-9]|$)|nota\s+de\s+cr/i.test(nombre.replace(/\.[a-z0-9]+$/i, ''))
+  const n = nombre.replace(/\.[a-z0-9]+$/i, '').replace(/(\d)([a-z])/gi, '$1 $2').replace(/([a-z])(\d)/gi, '$1 $2')
+  return /(^|[^a-z0-9])n\s*[-/.]?\s*c\.?([^a-z0-9]|$)|nota\s+de\s+cr/i.test(n)
 }
 
 /** Las facturas a las que todavía se les puede subir documentación, y las NC sin su PDF aprobado. */

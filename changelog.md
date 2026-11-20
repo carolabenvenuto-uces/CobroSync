@@ -13,6 +13,8 @@ Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts
 
 ## [0.17.29] - 2026-11-20
 - Condiciones de Subir varios: la FC no se sube sola, va con su orden (en otro PDF o junta).
+- Nombres: también valen las siglas pegadas o con puntos ("21-20834FC", "F.C.", "O.R.", "21-803NC") y los guiones bajos ("21-20834_104-4-137055_OR").
+- Un documento ya aprobado no se puede volver a subir (pisaría la aprobación): queda en rojo "ya está aprobada". En un PDF con todo junto, solo se toma lo que falta.
 
 ## [0.17.28] - 2026-11-20
 - Condiciones de Subir varios: la aclaración del siniestro solo donde hace falta (OR y FC OR).

@@ -7,12 +7,13 @@ import type { Comprobante, Documento, DocumentoEnEspera, Sucursal, TipoDocumento
  * un número más largo con guiones (un siniestro como "104-4-102868" no es el punto de venta 104).
  */
 export function numerosDelNombre(nombre: string): { puntoVenta: number; numero: number }[] {
-  const base = nombre.replace(/\.[a-z0-9]+$/i, '')
+  // el guion bajo separa palabras como un espacio ("21-20834_104-4-137055_OR")
+  const base = nombre.replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' ')
   const lista: { puntoVenta: number; numero: number }[] = []
   const agregar = (pv: number, numero: number) => {
     if (numero > 0 && !lista.some((x) => x.puntoVenta === pv && x.numero === numero)) lista.push({ puntoVenta: pv, numero })
   }
-  const PAR = /(?<!\d\s*[-_./]\s*)(?<!\d)(\d{1,5})\s*[-_ ./]\s*0*(\d{1,8})(?!\d)(?!\s*[-_./]\s*\d)/
+  const PAR = /(?<!\d\s*[-./]\s*)(?<!\d)(\d{1,5})\s*[- ./]\s*0*(\d{1,8})(?!\d)(?!\s*[-./]\s*\d)/
   // 1) después de FC o factura
   for (const m of base.matchAll(new RegExp(`(?:\\bfce?\\b|factura)\\s*[:#nº°.]*\\s*${PAR.source}`, 'gi'))) agregar(Number(m[1]), Number(m[2]))
   // 2) pares sueltos

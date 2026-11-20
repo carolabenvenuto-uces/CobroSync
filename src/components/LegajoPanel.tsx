@@ -186,7 +186,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     // Se exige lo mismo que en la carga de varios archivos: PDF y el número de ESTA factura en el
     // nombre, para que no entre un archivo de otra factura por error
     for (const a of archivos) {
-      const r = revisarNombre(a.name, [c], esPdf(a))
+      const r = revisarNombre(a.name, [c], esPdf(a), false)
       if (!r.ok) {
         setErrorSubida(
           r.error.startsWith('No es un PDF')
@@ -200,9 +200,9 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
     // (si viene en el nombre del PDF o escrito, se toma con cualquier documento; con la orden es obligatorio)
     let siniestro: string | null = null
     if (!c.siniestro) {
-      siniestro = limpiarSiniestro(siniestroNuevo) || archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
+      siniestro = archivos.map((a) => siniestroDelNombre(a.name, c)).find(Boolean) || null
       if (!siniestro && tipos.includes('orden')) {
-        setErrorSubida('Falta el número de siniestro: escribirlo en "Número de siniestro", arriba de los documentos, o agregarlo al nombre del archivo (por ejemplo "' + numeroParaNombre(c) + ' siniestro 22365.pdf").')
+        setErrorSubida(`Falta el siniestro en el nombre del archivo. Por ejemplo: ${numeroParaNombre(c)} 104-4-137055 OR.pdf`)
         return
       }
     }
@@ -556,22 +556,11 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                   {subeDocs && abierta && (
                     <p className="text-[11px] text-slate-500">
                       PDF con el número de factura y el siniestro:{' '}
-                      <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} siniestro {c.siniestro || '22365'}.pdf</code>
+                      <code className="rounded bg-fondo px-1">{numeroParaNombre(c)} {c.siniestro || '104-4-137055'} OR.pdf</code>
                     </p>
                   )}
-                  {subeDocs && abierta && (!c.siniestro || !c.patente) && (
+                  {subeDocs && abierta && !c.patente && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      {!c.siniestro && (
-                        <label className="block text-[11px] font-semibold text-slate-600">
-                          Siniestro
-                          <input
-                            value={siniestroNuevo}
-                            onChange={(e) => setSiniestroNuevo(e.target.value)}
-                            placeholder="Por ejemplo 029-9-506622"
-                            className={`${claseSelect} mt-1 w-full font-normal`}
-                          />
-                        </label>
-                      )}
                       {!c.patente && (
                         <label className="block text-[11px] font-semibold text-slate-600">
                           Patente (opcional)

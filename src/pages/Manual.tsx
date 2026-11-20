@@ -266,9 +266,13 @@ const SECCIONES: Seccion[] = [
             <strong>Subir varios PDF de una vez</strong>, arriba. También se pueden soltar los PDF en cualquier lugar de Mis facturas.
           </Paso>
           <Paso n={2}>
-            Todos los PDF juntos. En el nombre, el número de factura y el siniestro, por ejemplo{' '}
-            <code className="rounded bg-slate-100 px-1">35-11032 siniestro 22365.pdf</code> (si se quiere, <code className="rounded bg-slate-100 px-1">fc</code> u{' '}
-            <code className="rounded bg-slate-100 px-1">or</code> al final si es un solo documento; <code className="rounded bg-slate-100 px-1">nc</code> si es una nota de crédito). Nombres cortos, hasta 40 caracteres, sin la compañía. El siniestro alcanza con que esté en uno de los PDF de la factura; si no está en ninguno, se escribe en la fila. Las facturas de hoy, que todavía no aparecen porque el Excel de Quiter se carga al día siguiente, se suben igual: quedan en espera y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.
+            Todos los PDF juntos. En el nombre, el número de factura, el siniestro y al final qué es:{' '}
+            <code className="rounded bg-slate-100 px-1">21-20834 FC</code> (la factura),{' '}
+            <code className="rounded bg-slate-100 px-1">21-20834 104-4-137055 OR</code> (la orden),{' '}
+            <code className="rounded bg-slate-100 px-1">21-20827 4500546 FC OR</code> (las dos juntas),{' '}
+            <code className="rounded bg-slate-100 px-1">21-803 NC</code> (nota de crédito). La orden y el archivo con todo junto llevan el
+            siniestro; una FC sola, sin su orden, no se sube. Lo que queda en rojo no se sube y no frena al resto: se puede quitar de la lista.
+            Las facturas de hoy, que todavía no aparecen, se suben igual y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.
           </Paso>
           <Paso n={3}>
             Lo que queda en rojo no se sube (no es PDF, o el número no es de una factura pendiente de la sucursal): hay que cambiarle el nombre y
@@ -484,7 +488,7 @@ const SECCIONES: Seccion[] = [
         </div>
         <div>
           <dt className="font-bold">¿Por qué no se puede subir un archivo?</dt>
-          <dd>Tiene que ser PDF, con el número de la factura en el nombre (por ejemplo, 35-11032 siniestro 22365) y no más de 40 caracteres.</dd>
+          <dd>Tiene que ser PDF, con el número de la factura en el nombre y, si es la orden, el siniestro (por ejemplo, 21-20834 104-4-137055 OR), y no más de 40 caracteres.</dd>
         </div>
         <div>
           <dt className="font-bold">¿Se puede usar desde el celular?</dt>

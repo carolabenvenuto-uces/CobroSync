@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.27] - 2026-11-20
+- Condiciones de Subir varios ordenadas: número de factura siempre; documentos separados (FC sin siniestro, OR con siniestro, NC) y juntos (FC OR con siniestro); patente o compañía opcionales; ejemplos. Se vuelven a mostrar una vez.
+
 ## [0.17.26] - 2026-11-20
 - **Nombres de los PDF, formato único**: número de factura, siniestro y al final qué es. `21-20834 FC` (solo la factura), `21-20834 104-4-137055 OR` (la orden), `21-20827 4500546 FC OR` (las dos juntas), `21-803 NC` (nota de crédito), `21-803 104-4-54203 OR` (la orden de la NC). La compañía o la patente pueden ir. Sin aclarar qué es, queda en rojo.
 - El siniestro se toma solo del nombre: la orden y el archivo con todo junto lo tienen que traer (salvo que la factura ya lo tenga). Se sacan los casilleros para escribirlo, en Subir varios y en la factura.

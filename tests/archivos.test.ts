@@ -74,10 +74,10 @@ describe('carga de varios archivos', () => {
 
 describe('nombres obligatorios', () => {
   it('acepta un PDF con el número de una factura de la sucursal', () => {
-    const r = revisarNombre('35-00011032 orden.pdf', facturas)
+    const r = revisarNombre('35-00011032 orden.pdf', facturas, true, false)
     expect(r.ok && r.factura.id).toBe('a')
     expect(r.tipo).toBe('orden')
-    expect(revisarNombre('FC 35-11033.pdf', facturas).ok).toBe(true)
+    expect(revisarNombre('FC 35-11033.pdf', facturas, true, false).ok).toBe(true)
   })
   it('rechaza lo que no es PDF, lo que no tiene número y los números que no existen', () => {
     const foto = revisarNombre('35-00011032 orden.jpg', facturas)
@@ -97,7 +97,7 @@ describe('nombres flexibles', () => {
     expect(revisarNombre('2100020755.pdf', lista, true, false).ok).toBe(false)
   })
   it('un siniestro no se toma por factura', () => {
-    const r = revisarNombre('21-20755 20 02 92907.pdf', lista)
+    const r = revisarNombre('21-20755 20 02 92907 FC OR.pdf', lista)
     expect(r.ok && r.factura.id).toBe('x')
     expect(revisarNombre('20 02 92907.pdf', lista).ok).toBe(false)
   })
@@ -155,7 +155,7 @@ describe('PDF de notas de crédito', () => {
     expect(esNotaDeCreditoPorNombre('21-20845 NACION 770356 or.pdf')).toBe(false)
   })
   it('desde la misma NC no hace falta escribir NC', () => {
-    const r = revisarNombre('21-803 104-4-54203.pdf', [nc])
+    const r = revisarNombre('21-803.pdf', [nc], true, false)
     expect(r.ok && r.factura.id).toBe('n')
   })
 })
@@ -169,12 +169,15 @@ describe('formato: número, siniestro y al final FC / OR / NC', () => {
     const or = revisarNombre('21-20834 104-4-137055 OR.pdf', [f])
     expect(or.ok && or.tipo).toBe('orden')
     expect(or.ok && or.siniestro).toBe('104-4-137055')
-    const todo = revisarNombre('21-20827 holando 4500546.pdf', [{ ...f, numero: 20827 } as Comprobante])
+    const todo = revisarNombre('21-20827 holando 4500546 FC OR.pdf', [{ ...f, numero: 20827 } as Comprobante])
     expect(todo.ok && todo.tipo).toBe('documentacion')
     expect(todo.ok && todo.siniestro).toBe('4500546')
     const sinSiniestro = revisarNombre('21-20834 OR.pdf', [f])
     expect(!sinSiniestro.ok && sinSiniestro.error).toContain('Falta el siniestro')
     expect(revisarNombre('21-20834.pdf', [f]).ok).toBe(false)
+    // sin aclarar qué es, aunque tenga el siniestro
+    const sinAclarar = revisarNombre('21-20834 104-4-137055.pdf', [f])
+    expect(!sinAclarar.ok && sinAclarar.error).toContain('Falta aclarar')
     // si la factura ya lo tiene, no se pide
     expect(revisarNombre('21-20834 OR.pdf', [{ ...f, siniestro: '999999' } as Comprobante]).ok).toBe(true)
   })

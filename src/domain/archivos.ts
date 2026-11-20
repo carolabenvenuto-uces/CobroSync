@@ -26,15 +26,26 @@ export interface Sugerencia {
 
 const alfanumerico = (s: string) => s.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 
-/** Qué documento es, por el nombre. */
-export function tipoPorNombre(nombre: string): TipoArchivo {
+function marcas(nombre: string) {
   const n = ` ${nombre.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[_\-.]+/g, ' ')} `
   // La firma del cliente va en la orden: "orden firmada", "firma" o "conformidad" son la orden
   const esOrden = /orden|\bor\b|\bot\b|repuesto|presupuesto|firma|conformidad|conforme/.test(n)
   // "FC 35-5749" o "factura 35-5749" es el número de la factura, no dice qué documento es
   const esFactura = /factura(?!\s*(n[º°o]?\s*)?\d)|\bfce?\b(?!\s*\d)/.test(n)
+  return { esOrden, esFactura }
+}
+
+/** Qué documento es, por el nombre ("FC OR" o sin nada: las dos juntas). */
+export function tipoPorNombre(nombre: string): TipoArchivo {
+  const { esOrden, esFactura } = marcas(nombre)
   if (esOrden === esFactura) return 'documentacion'
   return esOrden ? 'orden' : 'factura'
+}
+
+/** ¿El nombre aclara qué es? FC, OR, "FC OR" (las dos) o NC. */
+export function aclaraQueEs(nombre: string): boolean {
+  const { esOrden, esFactura } = marcas(nombre)
+  return esOrden || esFactura || esNotaDeCreditoPorNombre(nombre)
 }
 
 /**
@@ -98,6 +109,7 @@ export type RevisionNombre =
   | { ok: false; error: string; tipo: TipoArchivo }
 
 const EJEMPLO = '21-20834 104-4-137055 OR.pdf'
+const SIN_ACLARAR = 'Falta aclarar al final qué es: FC, OR o FC OR (las dos juntas). Por ejemplo: 21-20827 4500546 FC OR.pdf'
 /** Nombres cortos: las plataformas de las compañías rechazan los nombres largos. */
 export const LARGO_MAXIMO_NOMBRE = 40
 
@@ -135,8 +147,10 @@ export function revisarNombre(nombre: string, facturas: Comprobante[], esPdf = /
   const halladas = nc ? ncs : fcs.length ? fcs : ncs
   if (halladas.length === 1) {
     const f = halladas[0]
-    // En una NC: con OR, o sin nada al final (NC y orden juntas), lleva siniestro; "21-803 NC" no
-    const llevaSiniestro = f.tipo === 'NC' ? tipo === 'orden' || (tipo === 'documentacion' && !nc) : tipo === 'orden' || tipo === 'documentacion'
+    // Tiene que decir qué es (desde la factura no: el documento se elige con el botón)
+    if (pedirSiniestro && !aclaraQueEs(nombre)) return { ok: false, tipo, error: SIN_ACLARAR }
+    // La orden (sola o con la FC) lleva siniestro; "21-803 NC" no
+    const llevaSiniestro = f.tipo === 'NC' ? tipo === 'orden' || (tipo === 'documentacion' && marcas(nombre).esOrden) : tipo === 'orden' || tipo === 'documentacion'
     const siniestro = siniestroDelNombre(nombre, f) ?? ''
     if (pedirSiniestro && llevaSiniestro && !siniestro && !f.siniestro) {
       return { ok: false, tipo, error: `Falta el siniestro en el nombre. Por ejemplo: ${EJEMPLO}` }

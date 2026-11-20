@@ -2,7 +2,7 @@ import { limpiarSiniestro } from '../domain/siniestros'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { FileUp, Info, Upload, X } from 'lucide-react'
 import { useApp, useComprobantes } from '../context/AppContext'
-import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre } from '../domain/archivos'
+import { facturasParaCargar, LARGO_MAXIMO_NOMBRE, patenteDelNombre, revisarNombre, siniestroDelNombre, type TipoArchivo, esNotaDeCreditoPorNombre, aclaraQueEs } from '../domain/archivos'
 import { facturaDeHoy, numerosDelNombre, puntosDeVenta } from '../domain/espera'
 import { DOCUMENTOS_REQUERIDOS, NOMBRE_DOCUMENTO } from '../domain/semaforo'
 import type { Documento, TipoDocumento } from '../domain/tipos'
@@ -100,9 +100,10 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
           if (n) {
             // Una NC de hoy: queda en espera igual que las facturas, y se une a la NC cuando entra de Quiter
             const nc = esNotaDeCreditoPorNombre(archivo.name)
+            if (!aclaraQueEs(archivo.name)) return { archivo, facturaId: '', tipo: r.tipo, error: 'Falta aclarar al final qué es: FC, OR o FC OR (las dos juntas). Por ejemplo: 21-20827 4500546 FC OR.pdf', siniestro: '' }
             const siniestro = siniestroDelNombre(archivo.name, n) ?? ''
             // la orden o el archivo con todo junto llevan el siniestro en el nombre ("21-803 NC" no)
-            const llevaSiniestro = r.tipo === 'orden' || (r.tipo === 'documentacion' && !nc)
+            const llevaSiniestro = nc ? /\bor\b|orden/i.test(archivo.name) : r.tipo === 'orden' || r.tipo === 'documentacion'
             if (llevaSiniestro && !siniestro) return { archivo, facturaId: '', tipo: r.tipo, error: 'Falta el siniestro en el nombre. Por ejemplo: 21-20834 104-4-137055 OR.pdf', siniestro: '' }
             return { archivo, facturaId: '', tipo: r.tipo, nc, error: null, siniestro, deHoy: n }
           }
@@ -352,7 +353,7 @@ export function CargaMasiva({ onCerrar, iniciales }: { onCerrar: () => void; /**
               <ul className="list-disc space-y-0.5 pl-4">
                 <li>Solo PDF, con el número de factura en el nombre.</li>
                 <li>
-                  Al final, qué es: <strong>FC</strong> factura, <strong>OR</strong> orden, <strong>NC</strong> nota de crédito. Sin nada: factura y orden juntas.
+                  Al final, qué es: <strong>FC</strong> factura, <strong>OR</strong> orden, <strong>FC OR</strong> las dos juntas, <strong>NC</strong> nota de crédito.
                 </li>
                 <li>
                   La orden y el archivo con todo junto llevan el siniestro: <code>21-20834 104-4-137055 OR</code>.

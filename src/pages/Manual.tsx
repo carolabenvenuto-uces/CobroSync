@@ -269,7 +269,7 @@ const SECCIONES: Seccion[] = [
             Todos los PDF juntos. En el nombre, el número de factura, el siniestro y al final qué es:{' '}
             <code className="rounded bg-slate-100 px-1">21-20834 FC</code> (la factura),{' '}
             <code className="rounded bg-slate-100 px-1">21-20834 104-4-137055 OR</code> (la orden),{' '}
-            <code className="rounded bg-slate-100 px-1">21-20827 4500546</code> (las dos juntas),{' '}
+            <code className="rounded bg-slate-100 px-1">21-20827 4500546 FC OR</code> (las dos juntas),{' '}
             <code className="rounded bg-slate-100 px-1">21-803 NC</code> (nota de crédito). La orden y el archivo con todo junto llevan el
             siniestro; una FC sola, sin su orden, no se sube. Lo que queda en rojo no se sube y no frena al resto: se puede quitar de la lista.
             Las facturas de hoy, que todavía no aparecen, se suben igual y se unen a su legajo cuando Cobranzas carga el Excel de Quiter.

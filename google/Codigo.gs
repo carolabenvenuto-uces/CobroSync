@@ -739,7 +739,10 @@ function guardarAseguradoras(lista, completarExistentes, exacto) {
 function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
   var usuario = usuarioActual_();
   if (usuario.rol === 'gerencia') throw new Error('Gerencia solo puede consultar.');
-  var c = leerHoja_(HOJAS.comprobantes).filter(function (x) { return x.id === comprobanteId; })[0];
+  // Solo la fila de esta factura (leer toda la hoja tardaba segundos por cada PDF)
+  var hojaC = SpreadsheetApp.getActive().getSheetByName(HOJAS.comprobantes.nombre);
+  var filaC = buscarFila_(hojaC, comprobanteId);
+  var c = filaC ? leerFila_(hojaC, filaC) : null;
   if (!c) throw new Error('La factura no existe.');
   if (usuario.rol === 'sucursal' && !mismaSucursal_(c.sucursal, usuario.sucursal)) throw new Error('Esta factura es de otra sucursal.');
 
@@ -759,8 +762,24 @@ function subirArchivo(comprobanteId, tipoDocumento, nombre, mime, base64) {
 
 /** La carpeta de Drive de cada factura: sucursal / mes / "FC 35-5743". */
 function carpetaDeComprobante_(c) {
-  var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
-  return subcarpeta_(subcarpeta_(subcarpeta_(raiz, c.sucursal), String(c.fecha).slice(0, 7)), c.tipo + ' ' + c.puntoVenta + '-' + c.numero);
+  return carpetaPorRuta_([c.sucursal, String(c.fecha).slice(0, 7), c.tipo + ' ' + c.puntoVenta + '-' + c.numero]);
+}
+
+/**
+ * Una carpeta dentro de la de CobroSync (se crea si no está). Las carpetas ya encontradas se recuerdan
+ * 6 horas: buscarlas por nombre, nivel por nivel, era lo más lento de cada subida.
+ */
+function carpetaPorRuta_(partes) {
+  var cache = CacheService.getScriptCache();
+  var clave = 'carpeta:' + config_('carpetaDriveId') + ':' + partes.join('/');
+  var id = cache.get(clave);
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (e) { /* la borraron o la movieron: se busca de nuevo */ }
+  }
+  var carpeta = DriveApp.getFolderById(config_('carpetaDriveId'));
+  partes.forEach(function (p) { carpeta = subcarpeta_(carpeta, p); });
+  try { cache.put(clave, carpeta.getId(), 21600); } catch (e) { /* sin cache, igual funciona */ }
+  return carpeta;
 }
 
 /**
@@ -820,10 +839,14 @@ function subirEnEspera(puntoVenta, numero, tipo, siniestro, nombre, mime, base64
   var suc = leerHoja_(HOJAS.sucursales).filter(function (s) { return mismaSucursal_(s.nombre, deQuien); })[0];
   var pvs = suc ? String(suc.puntosVenta || '').split(/[^0-9]+/).filter(String).map(Number) : [];
   if (pvs.indexOf(puntoVenta) < 0) throw new Error('El punto de venta ' + puntoVenta + ' no es de la sucursal.');
-  var yaEsta = leerHoja_(HOJAS.comprobantes).some(function (c) { return Number(c.puntoVenta) === puntoVenta && Number(c.numero) === numero; });
+  // Solo las columnas de punto de venta y número (leer toda la hoja tardaba segundos por cada PDF)
+  var hojaC = SpreadsheetApp.getActive().getSheetByName(HOJAS.comprobantes.nombre);
+  var colPv = HOJAS.comprobantes.columnas.indexOf('puntoVenta');
+  var colNum = HOJAS.comprobantes.columnas.indexOf('numero');
+  var yaEsta = hojaC.getLastRow() >= 2 && hojaC.getRange(2, colPv + 1, hojaC.getLastRow() - 1, colNum - colPv + 1).getValues()
+    .some(function (f) { return Number(f[0]) === puntoVenta && Number(f[colNum - colPv]) === numero; });
   if (yaEsta) throw new Error('La factura ' + puntoVenta + '-' + numero + ' ya está cargada: el PDF se sube desde su legajo.');
-  var raiz = DriveApp.getFolderById(config_('carpetaDriveId'));
-  var carpeta = subcarpeta_(subcarpeta_(raiz, deQuien), 'En espera');
+  var carpeta = carpetaPorRuta_([deQuien, 'En espera']);
   var extension = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0];
   var archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(base64), mime, nombreDeArchivo_(nombre, puntoVenta + '-' + numero + ' ' + tipo + '_' + hoy_() + extension)));
   archivo.setDescription('Subido por ' + usuario.email + ' antes de cargar la factura (' + nombre + ')');

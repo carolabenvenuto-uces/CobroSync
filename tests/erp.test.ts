@@ -98,6 +98,13 @@ describe('filasDeDatosErp con las compañías', () => {
     const filas = filasDeDatosErp(CSV, aseguradoras)
     expect(filas.map((f) => f[0])).toEqual(['7990001', '7990002', '7990004'])
   })
+  it('y solo las de los puntos de venta de las sucursales: lo mismo que toma CobroSync', () => {
+    const otraSucursal = CSV.split('\n').map((l) => (l.startsWith('7990004') ? l.replace(';A;21;', ';A;99;') : l)).join('\n')
+    const filas = filasDeDatosErp(otraSucursal, aseguradoras, sucursales)
+    const r = importarErp(otraSucursal, [], aseguradoras, sucursales, '2026-10-31')
+    expect(filas.some((f) => f[0] === '7990004')).toBe(false)
+    expect(filas.map((f) => f[0]).sort()).toEqual(r.nuevas.map((c) => c.ref).sort())
+  })
 })
 
 describe('importarCompanias', () => {

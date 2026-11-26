@@ -11,6 +11,9 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.17.32] - 2026-11-26
+- Arreglo: al aprobar (o hacer cualquier cambio) la factura podía mostrar por un momento un estado viejo y después volver al correcto. La consulta de cada minuto traía la factura como estaba antes del cambio y lo pisaba en pantalla mientras se guardaba; ahora no pisa lo que se está guardando ni lo que cambió después de pedirla.
+
 ## [0.17.31] - 2026-11-20
 - Subir varios en "Ver como": el botón queda desactivado y lo aclara (antes intentaba subir y decía que no se habían podido subir todos).
 - Si no se sube ningún archivo, el aviso dice por qué; y cada archivo que falló muestra su motivo en la fila.

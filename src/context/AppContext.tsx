@@ -347,6 +347,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [guardado, setGuardado] = useState<EstadoApp['guardado']>({ estado: 'ok' })
   // Con Google: cambios que falta guardar, la última consulta al servidor y las notificaciones leídas
   const cola = useRef<Cambio[]>([])
+  // Lo que se está mandando ahora y cuándo cambió cada factura en esta pantalla: una consulta que salió
+  // antes trae la factura como estaba y no tiene que pisar lo que se acaba de hacer (por ejemplo, aprobar)
+  const enVuelo = useRef(new Set<string>())
+  const ultimoCambioLocal = useRef(new Map<string, number>())
   const enviando = useRef(false)
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
   const marcaServidor = useRef('')
@@ -454,9 +458,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // servidor lo aplica sobre lo que hay guardado en ese momento: dos personas no se pisan.
 
   /** Reemplaza facturas con la versión del servidor (salvo las que tienen cambios sin guardar). */
-  const aplicarDelServidor = useCallback((lista: Comprobante[], avisar: boolean) => {
+  const aplicarDelServidor = useCallback((lista: Comprobante[], avisar: boolean, pedidoEn?: number) => {
     const previas = new Map((datosRef.current?.comprobantes ?? []).map((c) => [c.id, c]))
     const pendientes = new Set(cola.current.map((op) => op.id))
+    // (la consulta de cada minuto tampoco pisa lo que se está mandando ni lo que cambió después de pedirla)
+    if (pedidoEn !== undefined) {
+      enVuelo.current.forEach((id) => pendientes.add(id))
+      ultimoCambioLocal.current.forEach((t, id) => t >= pedidoEn && pendientes.add(id))
+    }
     const vigentes = lista.filter((c) => !pendientes.has(c.id))
     if (vigentes.length === 0) return
     if (avisar) {
@@ -490,6 +499,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (enviando.current || cola.current.length === 0) return
     const lote = cola.current.splice(0)
     enviando.current = true
+    enVuelo.current = new Set(lote.map((op) => op.id))
     setGuardado({ estado: 'guardando' })
     aplicarCambiosEnGoogle(lote)
       .then((r) => {
@@ -506,6 +516,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         enviando.current = false
+        enVuelo.current = new Set()
         if (cola.current.length) temporizador.current = setTimeout(enviarCambios, 300)
       })
   }, [aplicarDelServidor])
@@ -515,6 +526,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!usuarioGoogle) return
       // Cada cambio con su identificador: si el envío se reintenta, el servidor no lo repite
       cola.current.push({ ...op, opId: op.opId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` })
+      ultimoCambioLocal.current.set(op.id, Date.now())
       if (temporizador.current) clearTimeout(temporizador.current)
       temporizador.current = setTimeout(enviarCambios, 300)
     },
@@ -618,10 +630,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!usuarioGoogle) return
     const consultar = () => {
       if (!marcaServidor.current) return
+      const pedidoEn = Date.now()
       obtenerCambiosDeGoogle(marcaServidor.current)
         .then((r) => {
           marcaServidor.current = r.ahora
-          aplicarDelServidor(r.comprobantes, true)
+          aplicarDelServidor(r.comprobantes, true, pedidoEn)
           // Si la página quedó abierta de un día para otro, los días se cuentan desde hoy
           const hoyServidor = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(r.ahora))
           setDatos((d) => (d && d.meta.fechaCorte !== hoyServidor ? { ...d, meta: { ...d.meta, fechaCorte: hoyServidor } } : d))

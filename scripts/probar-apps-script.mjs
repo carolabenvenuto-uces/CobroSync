@@ -190,6 +190,8 @@ fila('Usuarios', ['Rocamora@SVAAUTO.com.ar', 'Facturación Rocamora', 'Sucursal'
 fila('Usuarios', ['gerencia.general@svaauto.com.ar', 'Gerencia General', 'Gerencia', ''])
 // Cobranzas que además escanea lo de su propia sucursal
 fila('Usuarios', ['escaneo@svaauto.com.ar', 'Cobranzas de Rocamora', 'Cobranzas', 'Rocamora'])
+// Sucursal que además ve los totales de las compañías del grupo
+fila('Usuarios', ['warnes@svaauto.com.ar', 'Facturación Warnes', 'Sucursal + compañías', 'Warnes'])
 fila('Sucursales', ['Rocamora', '35, 37', 'Gerente de Rocamora', 'gerente.rocamora@svaauto.com.ar'])
 fila('Sucursales', ['Warnes', '16, 14', 'Gerente de Warnes', 'gerente.warnes@svaauto.com.ar'])
 
@@ -944,6 +946,24 @@ prueba('un envío reintentado no se repite y no pisa lo que aprobó otra persona
   esperar(leido.eventos.filter((e) => e.texto === 'Subió la documentación (doc.pdf)').length === 1, 'el mensaje se repitió')
   esperar(r.errores.length === 1 && r.errores[0].mensaje.includes('ya había cambiado'), 'no avisó que el documento había cambiado')
   esperar(!leido.documentos.some((d) => 'antes' in d), 'se guardó el estado anterior en el documento')
+})
+
+prueba('"Sucursal + compañías" ve los totales del grupo sin el detalle de las facturas', () => {
+  como('warnes@svaauto.com.ar')
+  const u = gs('obtenerDatos')
+  esperar(u.usuario.rol === 'sucursal' && u.usuario.veCompanias === true, 'no quedó como sucursal que ve compañías')
+  esperar(u.datos.comprobantes.every((c) => c.sucursal === 'Warnes'), 'le llegaron facturas de otra sucursal')
+  const texto = zlib.gunzipSync(Buffer.from(gs('totalesDeCompanias'), 'base64')).toString('utf8')
+  const lista = JSON.parse(texto)
+  esperar(lista.length > u.datos.comprobantes.length, 'no trajo las facturas de todo el grupo')
+  esperar(lista.every((c) => !c.sucursal && !c.numero && !c.siniestro && !c.patente && !c.ref && c.eventos.length === 0), 'viajó el detalle de una factura')
+  esperar(!texto.includes('Rocamora'), 'aparece el nombre de otra sucursal')
+  como('rocamora@svaauto.com.ar')
+  let fallo = false
+  try { gs('totalesDeCompanias') } catch { fallo = true }
+  esperar(fallo, 'una sucursal común pudo ver los totales del grupo')
+  como('auditoria@svaauto.com.ar')
+  esperar((gs('obtenerDatos').datos.meta.conCompanias || []).includes('Warnes'), 'Ver como no sabe qué sucursal ve compañías')
 })
 
 if (fallas) process.exit(1)

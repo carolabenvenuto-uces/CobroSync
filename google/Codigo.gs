@@ -323,6 +323,7 @@ function obtenerDatosSinControl_(usuarioYa, sinComprobantes) {
         soporte: { nombre: String(config_('nombreSoporte') || '') },
         planilla: usuario.rol === 'auditoria' ? { conectada: !!config_('planillaControlId'), ultimaLectura: PropertiesService.getScriptProperties().getProperty('ultimaLecturaPlanilla') || '' } : undefined,
         ultimaCargaQuiter: usuario.rol === 'auditoria' ? PropertiesService.getScriptProperties().getProperty('ultimaCargaQuiter') || '' : undefined,
+        conCompanias: usuario.rol === 'auditoria' ? sucursalesConCompanias_() : undefined,
       },
     },
   };
@@ -478,6 +479,51 @@ function aplicarUno_(hoja, usuario, op, tocadas) {
 }
 
 /** Lo que cambió desde la última consulta (la aplicación pregunta cada minuto). */
+/**
+ * Totales por compañía de todo el grupo, para una sucursal "Sucursal + compañías" (y la oficina).
+ * Viajan solo los importes, fechas y estados: sin sucursal, número, siniestro, patente ni conversación.
+ */
+function totalesDeCompanias() {
+  var usuario = usuarioActual_();
+  if (usuario.rol === 'sucursal' && !usuario.veCompanias) throw new Error('Esta cuenta no ve los totales de las compañías.');
+  var foto = leerFoto_('todas');
+  var todas = null;
+  if (foto) {
+    try { todas = JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(foto.b64), 'application/x-gzip', 't.gz')).getDataAsString('UTF-8')); } catch (e) { todas = null; }
+  }
+  if (!todas) todas = leerHoja_(HOJAS.comprobantes);
+  var lista = todas.map(sinDetalle_);
+  return Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(lista), 'application/json', 'g.json')).getBytes());
+}
+
+/** Una factura sin nada que diga de quién es: lo justo para calcular etapas y saldos. */
+function sinDetalle_(c, i) {
+  var json = function (v, vacio) {
+    if (typeof v !== 'string') return v || vacio;
+    try { return JSON.parse(v); } catch (e) { return vacio; }
+  };
+  var reclamos = json(c.reclamos, []) || [];
+  var documentos = json(c.documentos, []) || [];
+  var pedidos = json(c.pedidos, []) || [];
+  var anulacion = json(c.anulacionInformada, null);
+  return {
+    id: 'g' + i, ref: '', tipo: c.tipo, fecha: c.fecha, sucursal: '', puntoVenta: 0, numero: 0,
+    aseguradoraId: c.aseguradoraId, siniestro: '', patente: '', total: Number(c.total) || 0,
+    fechaDrive: c.fechaDrive || null, subidoPor: null, fechaAprobacion: c.fechaAprobacion || null,
+    fechaPresentacion: c.fechaPresentacion || null, vencimiento: c.vencimiento || null, fechaCobro: c.fechaCobro || null,
+    estado: c.estado, ncReferencia: null, ncInformada: c.ncInformada === '' ? null : c.ncInformada, compromiso: null,
+    anulacionInformada: anulacion ? { fecha: anulacion.fecha, motivo: '', parcial: anulacion.parcial, importe: anulacion.importe } : null,
+    acreditado: c.acreditado === '' ? null : c.acreditado, importeCobrado: c.importeCobrado === '' ? null : c.importeCobrado,
+    percepciones: c.percepciones === '' ? null : c.percepciones, reenviar: !!c.reenviar,
+    reclamos: reclamos.filter(Boolean).map(function (r) {
+      return { fecha: r.fecha || '', medio: 'mail', autor: '', nota: '', respuesta: r.respuesta ? { fecha: r.respuesta.fecha, tipo: r.respuesta.tipo, resuelto: r.respuesta.resuelto } : null };
+    }),
+    documentos: documentos.filter(Boolean).map(function (d) { return { tipo: d.tipo, estado: d.estado }; }),
+    pedidos: pedidos.filter(Boolean).map(function (p) { return { id: '', fecha: p.fecha, tipo: p.tipo, detalle: '', autor: '', cerrado: p.cerrado ? { fecha: p.cerrado.fecha, autor: '' } : null }; }),
+    observaciones: '', eventos: [],
+  };
+}
+
 function obtenerCambios(desde) {
   var usuario = usuarioActual_();
   var hoja = hoja_(HOJAS.comprobantes);
@@ -1782,7 +1828,17 @@ function usuarioActual_() {
     email: email, nombre: u.nombre || email, rol: rol, sucursal: rol === 'sucursal' ? nombreSucursal_(u.sucursal) : null,
     sucursalPropia: rol === 'auditoria' && u.sucursal ? nombreSucursal_(u.sucursal) : null,
     administradora: rol === 'auditoria' && (admin || sinAdministradora_(email)),
+    // Sucursal que además ve los totales de las compañías de todo el grupo (rol "Sucursal + compañías")
+    veCompanias: rol === 'sucursal' && /compa/.test(textoRol),
   };
+}
+
+/** Sucursales con un usuario "Sucursal + compañías" (para el Ver como de la administradora). */
+function sucursalesConCompanias_() {
+  return usuarios_().filter(function (x) {
+    var t = String(x.rol).toLowerCase();
+    return x.sucursal && !/^(admin|desarroll|audit|cobran|geren)/.test(t) && /compa/.test(t);
+  }).map(function (x) { return nombreSucursal_(x.sucursal); });
 }
 
 /**

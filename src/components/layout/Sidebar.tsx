@@ -44,6 +44,8 @@ interface ItemMenu {
   soloAdministradora?: boolean
   /** solo si la persona de Cobranzas tiene una sucursal propia (Mi sucursal) */
   soloConSucursalPropia?: boolean
+  /** solo la sucursal "Sucursal + compañías" */
+  soloConCompanias?: boolean
 }
 
 /**
@@ -88,11 +90,12 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
       ],
     },
+    { titulo: 'Grupo', items: [{ ruta: '/app/totales-companias', etiqueta: 'Compañías', icono: Building2, soloConCompanias: true }] },
   ],
 }
 
 export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, sucursalPropia, administradora, esCuentaAdministradora, vista } = useApp()
+  const { datos, rol, setRol, usuario, sucursal, setSucursal, hoy, fuente, usarDemo, cerrarSesion, sucursalPropia, administradora, esCuentaAdministradora, vista, veCompanias } = useApp()
   const navigate = useNavigate()
   const comprobantes = useComprobantes()
 
@@ -162,7 +165,7 @@ export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () 
           <Campana onCerrar={onCerrar} />
           {MENUS[rol].map((seccion, n) => {
             // Ajustes va abajo de todo, junto a "Ver como" (en el pie del menú)
-            const items = seccion.items.filter((it) => it.ruta !== '/app/ajustes' && (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia))
+            const items = seccion.items.filter((it) => it.ruta !== '/app/ajustes' && (!it.soloAdministradora || administradora) && (!it.soloConSucursalPropia || !!sucursalPropia) && (!it.soloConCompanias || veCompanias))
             if (!items.length) return null
             return (
               <div key={seccion.titulo || n}>
@@ -322,9 +325,15 @@ function VerComo({ onElegir }: { onElegir: () => void }) {
     { clave: '', texto: 'Mi vista', vista: null },
     { clave: 'auditoria|', texto: 'Cobranzas', vista: { rol: 'auditoria' } },
     { clave: 'gerencia|', texto: 'Gerencia', vista: { rol: 'gerencia' } },
-    ...(datos?.meta.sucursales ?? []).map((s) => ({ clave: `sucursal|${s.nombre}`, texto: `Sucursal · ${s.nombre}`, vista: { rol: 'sucursal' as Rol, sucursal: s.nombre } })),
+    ...(datos?.meta.sucursales ?? []).flatMap((s) => [
+      { clave: `sucursal|${s.nombre}`, texto: `Sucursal · ${s.nombre}`, vista: { rol: 'sucursal' as Rol, sucursal: s.nombre } },
+      // La sucursal que además ve los totales de las compañías ("Sucursal + compañías" en Usuarios)
+      ...((datos?.meta.conCompanias ?? []).includes(s.nombre)
+        ? [{ clave: `sucursal+|${s.nombre}`, texto: `Sucursal · ${s.nombre} + compañías`, vista: { rol: 'sucursal' as Rol, sucursal: s.nombre, veCompanias: true } }]
+        : []),
+    ]),
   ]
-  const actual = vista ? `${vista.rol}|${vista.sucursal ?? ''}` : ''
+  const actual = vista ? `${vista.rol}${vista.veCompanias ? '+' : ''}|${vista.sucursal ?? ''}` : ''
   const elegida = opciones.find((o) => o.clave === actual)
 
   return (

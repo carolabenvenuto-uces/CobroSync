@@ -47,7 +47,7 @@ export function AppLayout() {
           <div className="no-imprimir sticky top-16 z-20 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950 sm:px-6 lg:top-0 lg:px-8">
             <Eye className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1">
-              Viendo como <strong>{vista.rol === 'sucursal' ? `Sucursal · ${vista.sucursal}` : NOMBRE_ROL[vista.rol]}</strong> · solo para mirar, no se guarda nada
+              Viendo como <strong>{vista.rol === 'sucursal' ? `Sucursal · ${vista.sucursal}${vista.veCompanias ? ' + compañías' : ''}` : NOMBRE_ROL[vista.rol]}</strong> · solo para mirar, no se guarda nada
             </span>
             <button type="button" onClick={() => verComo(null)} className="rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs font-semibold hover:bg-amber-100">
               Volver a mi vista

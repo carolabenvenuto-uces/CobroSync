@@ -289,6 +289,8 @@ interface EstadoApp {
   administradora: boolean
   /** la cuenta es de la administradora, aunque esté mirando como otro */
   esCuentaAdministradora: boolean
+  /** sucursal que además ve los totales de las compañías de todo el grupo (o la vista que lo simula) */
+  veCompanias: boolean
   /** la administradora mirando la plataforma como otro rol o sucursal (solo para mirar); null si es su vista */
   vista: Vista | null
   verComo: (vista: Vista | null) => void
@@ -298,6 +300,8 @@ interface EstadoApp {
 export interface Vista {
   rol: Rol
   sucursal?: string
+  /** la sucursal con los totales de las compañías ("Sucursal + compañías") */
+  veCompanias?: boolean
 }
 
 /** Mientras la administradora mira como otro, no se guarda nada. */
@@ -744,6 +748,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // La administradora: la cuenta marcada así en Usuarios (con Google); en la demo, Cobranzas
   const esCuentaAdministradora = usuarioGoogle ? !!usuarioGoogle.administradora : rolPropio === 'auditoria'
   const administradora = esCuentaAdministradora && !vista
+  const veCompanias = rol === 'sucursal' && (vista ? !!vista.veCompanias : !!usuarioGoogle?.veCompanias)
 
   /** La administradora mira como otro rol o sucursal (o vuelve a su vista con null). */
   const verComo = useCallback(
@@ -846,6 +851,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sucursalPropia,
       administradora,
       esCuentaAdministradora,
+      veCompanias,
       vista,
       verComo,
       legajoAbierto,
@@ -883,6 +889,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sucursalPropia,
       administradora,
       esCuentaAdministradora,
+      veCompanias,
       vista,
       verComo,
       iniciarSesion,

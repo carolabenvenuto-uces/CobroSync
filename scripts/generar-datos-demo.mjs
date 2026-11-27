@@ -604,6 +604,8 @@ const meta = {
     gerente,
     personas,
   })),
+  // Para ver con "Ver como" la sucursal con rol "Sucursal + compañías"
+  conCompanias: ['Alvarez Thomas'],
 }
 
 const carpeta = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'datos-demo')

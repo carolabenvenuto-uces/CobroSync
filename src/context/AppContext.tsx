@@ -289,7 +289,7 @@ interface EstadoApp {
   administradora: boolean
   /** la cuenta es de la administradora, aunque esté mirando como otro */
   esCuentaAdministradora: boolean
-  /** sucursal que además ve los totales de las compañías de todo el grupo (o la vista que lo simula) */
+  /** sucursal que además ve el control de las compañías de todo el grupo (o la vista que lo simula) */
   veCompanias: boolean
   /** la administradora mirando la plataforma como otro rol o sucursal (solo para mirar); null si es su vista */
   vista: Vista | null
@@ -300,7 +300,7 @@ interface EstadoApp {
 export interface Vista {
   rol: Rol
   sucursal?: string
-  /** la sucursal con los totales de las compañías ("Sucursal + compañías") */
+  /** la sucursal con el control de las compañías ("Sucursal + compañías") */
   veCompanias?: boolean
 }
 
@@ -914,6 +914,20 @@ export function useApp(): EstadoApp {
 }
 
 /** Comprobantes filtrados por la sucursal elegida en el encabezado. */
+/**
+ * Pantallas de Gerencia para la sucursal "Sucursal + compañías" (y el legajo de una factura de otra
+ * sucursal): adentro se ve todo el grupo como Gerencia, solo para mirar. El servidor igual rechaza
+ * cualquier cambio en una factura que no es de su sucursal.
+ */
+export function SoloParaMirar({ children, activa = true }: { children: ReactNode; activa?: boolean }) {
+  const app = useApp()
+  const valor = useMemo<EstadoApp>(
+    () => ({ ...app, rol: 'gerencia', sucursal: TODAS_LAS_SUCURSALES, setSucursal: () => {} }),
+    [app],
+  )
+  return activa ? <AppContext.Provider value={valor}>{children}</AppContext.Provider> : <>{children}</>
+}
+
 export function useComprobantes(): Comprobante[] {
   const { datos, sucursal } = useApp()
   return useMemo(() => {

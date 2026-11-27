@@ -2,7 +2,7 @@ import BandejaNotificaciones from './components/Notificaciones'
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
-import { INICIO_ROL, useApp } from './context/AppContext'
+import { INICIO_ROL, SoloParaMirar, useApp } from './context/AppContext'
 import type { Rol } from './domain/tipos'
 import Ajustes from './pages/Ajustes'
 import Avisos from './pages/Avisos'
@@ -21,7 +21,6 @@ import Reclamos from './pages/Reclamos'
 import Resumen from './pages/Resumen'
 import Saldos from './pages/Saldos'
 import Siniestros from './pages/Siniestros'
-import TotalesCompanias from './pages/TotalesCompanias'
 import UsarPlanilla from './pages/UsarPlanilla'
 
 /** Si el rol activo no tiene acceso a una pantalla, lo lleva a su inicio. */
@@ -40,11 +39,16 @@ function SoloAdministradora({ children }: { children: ReactNode }) {
   return administradora ? children : <Navigate to={INICIO_ROL[rol]} replace />
 }
 
-/** Totales de las compañías: la oficina y la sucursal "Sucursal + compañías". */
-function SoloConCompanias({ children }: { children: ReactNode }) {
+/**
+ * Resumen, Saldos y Detalle de facturas: la oficina y la sucursal "Sucursal + compañías"
+ * (para esa sucursal, todo el grupo y solo para mirar).
+ */
+function ControlCompanias({ children }: { children: ReactNode }) {
   const { rol, veCompanias } = useApp()
-  return rol !== 'sucursal' || veCompanias ? children : <Navigate to={INICIO_ROL[rol]} replace />
+  if (rol === 'sucursal') return veCompanias ? <SoloParaMirar>{children}</SoloParaMirar> : <Navigate to={INICIO_ROL[rol]} replace />
+  return OFICINA.includes(rol) ? children : <Navigate to={INICIO_ROL[rol]} replace />
 }
+const companias = (pagina: ReactNode) => <ControlCompanias>{pagina}</ControlCompanias>
 
 /** Cada rol entra a su propia pantalla de inicio. */
 function Inicio() {
@@ -64,14 +68,13 @@ export default function App() {
       <Route path="/presentacion" element={<Navigate to="/manual" replace />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<Inicio />} />
-        <Route path="resumen" element={oficina(<Resumen />)} />
+        <Route path="resumen" element={companias(<Resumen />)} />
         <Route path="pendientes" element={oficina(<Pendientes />)} />
         <Route path="reclamos" element={oficina(<Reclamos />)} />
-        <Route path="control-diario" element={oficina(<ControlDiario />)} />
+        <Route path="control-diario" element={companias(<ControlDiario />)} />
         <Route path="sucursales" element={oficina(<RankingSucursales />)} />
         <Route path="impacto" element={oficina(<Impacto />)} />
-        <Route path="saldos" element={oficina(<Saldos />)} />
-        <Route path="totales-companias" element={<SoloConCompanias><TotalesCompanias /></SoloConCompanias>} />
+        <Route path="saldos" element={companias(<Saldos />)} />
         <Route path="companias" element={<SoloAdministradora><Companias /></SoloAdministradora>} />
         <Route path="planilla" element={<SoloAdministradora><UsarPlanilla /></SoloAdministradora>} />
         <Route path="ajustes" element={<SoloAdministradora><Ajustes /></SoloAdministradora>} />

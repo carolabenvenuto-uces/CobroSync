@@ -44,7 +44,7 @@ interface ItemMenu {
   soloAdministradora?: boolean
   /** solo si la persona de Cobranzas tiene una sucursal propia (Mi sucursal) */
   soloConSucursalPropia?: boolean
-  /** solo la sucursal "Sucursal + compañías" */
+  /** solo la sucursal "Sucursal + compañías" (Control compañías) */
   soloConCompanias?: boolean
 }
 
@@ -90,7 +90,15 @@ const MENUS: Record<Rol, { titulo: string; items: ItemMenu[] }[]> = {
         { ruta: '/app/siniestros', etiqueta: 'Mis siniestros', icono: FolderOpen },
       ],
     },
-    { titulo: 'Grupo', items: [{ ruta: '/app/totales-companias', etiqueta: 'Compañías', icono: Building2, soloConCompanias: true }] },
+    // "Sucursal + compañías": lo de Gerencia, sin Control por sucursal ni Impacto económico
+    {
+      titulo: 'Control compañías',
+      items: [
+        { ruta: '/app/resumen', etiqueta: 'Resumen', icono: LayoutDashboard, soloConCompanias: true },
+        { ruta: '/app/saldos', etiqueta: 'Saldos por compañía', icono: Building2, soloConCompanias: true },
+        { ruta: '/app/control-diario', etiqueta: 'Detalle de facturas', icono: FileText, soloConCompanias: true },
+      ],
+    },
   ],
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { Eye, Menu } from 'lucide-react'
-import { NOMBRE_ROL, useApp } from '../../context/AppContext'
+import { NOMBRE_ROL, SoloParaMirar, useApp } from '../../context/AppContext'
 import { LegajoPanel } from '../LegajoPanel'
 import { AvisoNotificacion } from '../Notificaciones'
 import { AvisoCarga } from '../AvisoCarga'
@@ -14,7 +14,7 @@ import { Sidebar } from './Sidebar'
 
 /** Estructura de la demo: sidebar a la izquierda, filtros arriba y la pantalla activa (<Outlet />). */
 export function AppLayout() {
-  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada, vista, verComo, salio } = useApp()
+  const { datos, error, fuente, guardado, legajoAbierto, abrirLegajo, sesionIniciada, vista, verComo, salio, rol, sucursal } = useApp()
   const legajo = legajoAbierto ? datos?.comprobantes.find((c) => c.id === legajoAbierto) : undefined
   const [menuAbierto, setMenuAbierto] = useState(false)
 
@@ -84,7 +84,12 @@ export function AppLayout() {
       {/* El legajo se abre desde cualquier pantalla (tablas, avisos, notificaciones) */}
       {datos && <AvisoNotificacion />}
       <AvisoCarga />
-      {legajo && <LegajoPanel key={legajo.id} comprobante={legajo} onCerrar={() => abrirLegajo(null)} />}
+      {legajo && (
+        // Una factura de otra sucursal (desde Control compañías): solo para mirar
+        <SoloParaMirar activa={rol === 'sucursal' && legajo.sucursal !== sucursal}>
+          <LegajoPanel key={legajo.id} comprobante={legajo} onCerrar={() => abrirLegajo(null)} />
+        </SoloParaMirar>
+      )}
     </div>
   )
 }

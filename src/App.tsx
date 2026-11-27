@@ -21,6 +21,7 @@ import Reclamos from './pages/Reclamos'
 import Resumen from './pages/Resumen'
 import Saldos from './pages/Saldos'
 import Siniestros from './pages/Siniestros'
+import TotalesCompanias from './pages/TotalesCompanias'
 import UsarPlanilla from './pages/UsarPlanilla'
 
 /** Si el rol activo no tiene acceso a una pantalla, lo lleva a su inicio. */
@@ -37,6 +38,12 @@ const auditoria = (pagina: ReactNode) => <SoloPara roles={['auditoria']}>{pagina
 function SoloAdministradora({ children }: { children: ReactNode }) {
   const { rol, administradora } = useApp()
   return administradora ? children : <Navigate to={INICIO_ROL[rol]} replace />
+}
+
+/** Totales de las compañías: la oficina y la sucursal "Sucursal + compañías". */
+function SoloConCompanias({ children }: { children: ReactNode }) {
+  const { rol, veCompanias } = useApp()
+  return rol !== 'sucursal' || veCompanias ? children : <Navigate to={INICIO_ROL[rol]} replace />
 }
 
 /** Cada rol entra a su propia pantalla de inicio. */
@@ -64,6 +71,7 @@ export default function App() {
         <Route path="sucursales" element={oficina(<RankingSucursales />)} />
         <Route path="impacto" element={oficina(<Impacto />)} />
         <Route path="saldos" element={oficina(<Saldos />)} />
+        <Route path="totales-companias" element={<SoloConCompanias><TotalesCompanias /></SoloConCompanias>} />
         <Route path="companias" element={<SoloAdministradora><Companias /></SoloAdministradora>} />
         <Route path="planilla" element={<SoloAdministradora><UsarPlanilla /></SoloAdministradora>} />
         <Route path="ajustes" element={<SoloAdministradora><Ajustes /></SoloAdministradora>} />

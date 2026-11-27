@@ -20,6 +20,8 @@ export interface UsuarioGoogle {
   sucursalPropia?: string | null
   /** la administradora: Ajustes (plazos, compañías, planilla) y ver como los demás */
   administradora?: boolean
+  /** sucursal que además ve los totales de las compañías de todo el grupo */
+  veCompanias?: boolean
 }
 
 type Corredor = Record<string, (...args: unknown[]) => void> & {
@@ -37,7 +39,7 @@ export const conectadoAGoogle = (): boolean => corredor() !== null
 
 /** Llama a una función de google/Codigo.gs y espera la respuesta. */
 /** Lo que se puede pedir al servidor mientras la administradora mira como otro usuario (nada que guarde). */
-const SOLO_LECTURA = new Set(['obtenerDatosRapidos', 'compararConPlanilla', 'obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'descargarDocumentos', 'reportarProblema'])
+const SOLO_LECTURA = new Set(['obtenerDatosRapidos', 'compararConPlanilla', 'obtenerDatos', 'obtenerDatosComprimidos', 'obtenerCambios', 'totalesDeCompanias', 'descargarDocumentos', 'reportarProblema'])
 let textoSoloMirar: string | null = null
 /** Con un texto, el servidor solo se consulta: todo lo que guarda se rechaza con ese texto. */
 export function fijarSoloMirar(texto: string | null) {
@@ -148,6 +150,12 @@ export function aplicarCambiosEnGoogle(
   cambios: Cambio[],
 ): Promise<{ comprobantes: Comprobante[]; ahora: string; errores?: { id: string; mensaje: string }[] }> {
   return llamar('aplicarCambios', cambios)
+}
+
+/** Las facturas de todo el grupo, solo con importes, fechas y estados (sin sucursal ni números). */
+export async function totalesDeCompaniasDeGoogle(): Promise<Comprobante[]> {
+  const b64 = await llamar<string>('totalesDeCompanias')
+  return (await descomprimirJson<Comprobante[]>(b64)).map(completarComprobante)
 }
 
 /** Lo que cambiaron los demás desde la última consulta. */

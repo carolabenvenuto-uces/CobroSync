@@ -268,6 +268,8 @@ export interface MetaDemo {
   planilla?: { conectada: boolean; ultimaLectura: string }
   /** día de la última carga del Excel de Quiter (aunque no trajera facturas nuevas) */
   ultimaCargaQuiter?: string
+  /** solo Cobranzas: sucursales con un usuario "Sucursal + compañías" (para Ver como) */
+  conCompanias?: string[]
   /** textos de las notificaciones a Gerencia (Ajustes) */
   textos?: Partial<TextosAvisos>
 }

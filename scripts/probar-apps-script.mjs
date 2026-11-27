@@ -948,20 +948,19 @@ prueba('un envío reintentado no se repite y no pisa lo que aprobó otra persona
   esperar(!leido.documentos.some((d) => 'antes' in d), 'se guardó el estado anterior en el documento')
 })
 
-prueba('"Sucursal + compañías" ve los totales del grupo sin el detalle de las facturas', () => {
+prueba('"Sucursal + compañías" ve las facturas de todo el grupo pero cambia solo las suyas', () => {
   como('warnes@svaauto.com.ar')
   const u = gs('obtenerDatos')
   esperar(u.usuario.rol === 'sucursal' && u.usuario.veCompanias === true, 'no quedó como sucursal que ve compañías')
-  esperar(u.datos.comprobantes.every((c) => c.sucursal === 'Warnes'), 'le llegaron facturas de otra sucursal')
-  const texto = zlib.gunzipSync(Buffer.from(gs('totalesDeCompanias'), 'base64')).toString('utf8')
-  const lista = JSON.parse(texto)
-  esperar(lista.length > u.datos.comprobantes.length, 'no trajo las facturas de todo el grupo')
-  esperar(lista.every((c) => !c.sucursal && !c.numero && !c.siniestro && !c.patente && !c.ref && c.eventos.length === 0), 'viajó el detalle de una factura')
-  esperar(!texto.includes('Rocamora'), 'aparece el nombre de otra sucursal')
+  const otra = u.datos.comprobantes.find((c) => c.sucursal !== 'Warnes')
+  esperar(!!otra, 'no le llegaron las facturas de las otras sucursales')
+  esperar(u.datos.enEspera.every((e) => e.sucursal === 'Warnes'), 'le llegaron PDF en espera de otra sucursal')
+  const antes = otra.siniestro
+  try { gs('aplicarCambios', [{ id: otra.id, campos: { siniestro: '999999' } }]) } catch { /* lo rechaza */ }
+  const guardado = gs('obtenerDatos').datos.comprobantes.find((c) => c.id === otra.id)
+  esperar(guardado.siniestro === antes, 'pudo cambiar una factura de otra sucursal')
   como('rocamora@svaauto.com.ar')
-  let fallo = false
-  try { gs('totalesDeCompanias') } catch { fallo = true }
-  esperar(fallo, 'una sucursal común pudo ver los totales del grupo')
+  esperar(gs('obtenerDatos').datos.comprobantes.every((c) => c.sucursal === 'Rocamora'), 'una sucursal común ve otras sucursales')
   como('auditoria@svaauto.com.ar')
   esperar((gs('obtenerDatos').datos.meta.conCompanias || []).includes('Warnes'), 'Ver como no sabe qué sucursal ve compañías')
 })

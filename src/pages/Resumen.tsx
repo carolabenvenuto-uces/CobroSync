@@ -23,7 +23,7 @@ import { saldoFactura } from '../domain/importes'
 const GRANDE = { fontSize: 'clamp(1.05rem, 1.4vw, 1.45rem)' }
 
 export default function Resumen() {
-  const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros, sucursal } = useApp()
+  const { datos, anio, mes: mesGlobal, setMes: setMesGlobal, hoy, parametros, sucursal, veCompanias } = useApp()
   // Cada tarjeta abre el Detalle de facturas con ese grupo (y la sucursal elegida)
   const verFacturas = (grupo: GrupoSaldo) =>
     `/app/control-diario?grupo=${grupo}${sucursal === TODAS_LAS_SUCURSALES ? '' : `&sucursal=${encodeURIComponent(sucursal)}`}`
@@ -249,7 +249,8 @@ export default function Resumen() {
 
       {/* 4. Dónde está la plata pendiente. Con una sucursal elegida, los datos de esa sucursal */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {unaSucursal ? (
+        {/* Control compañías ("Sucursal + compañías"): sin el control por sucursal */}
+        {veCompanias ? null : unaSucursal ? (
           <Card>
             <CardTitulo accion={<Link to="/app/sucursales" className="text-xs font-semibold text-marca hover:underline">Ver control por sucursal</Link>}>
               Documentación de {sucursal}

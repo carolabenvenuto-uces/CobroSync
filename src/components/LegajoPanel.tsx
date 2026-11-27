@@ -1217,7 +1217,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
                 ))}
               </ol>
             )}
-            <div className="mt-3 flex gap-2">
+            {rol !== 'gerencia' && <div className="mt-3 flex gap-2">
               <input
                 value={mensaje}
                 onChange={(e) => setMensaje(e.target.value)}
@@ -1228,7 +1228,7 @@ export function LegajoPanel({ comprobante: c, onCerrar }: { comprobante: Comprob
               <button type="button" onClick={enviarMensaje} className="rounded-lg bg-noche px-3 text-white hover:bg-noche-claro" aria-label="Enviar mensaje">
                 <Send className="h-4 w-4" />
               </button>
-            </div>
+            </div>}
           </section>
 
           {/* Recorrido de fechas, como las columnas de la planilla (una NC no se documenta, presenta ni cobra) */}

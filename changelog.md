@@ -11,6 +11,11 @@ MAYOR.MENOR.ARREGLO (por ejemplo 0.9.2):
 
 Cada cambio que se publica sube el número que corresponda (en `src/lib/marca.ts` y `package.json`) y suma su entrada acá. Las entradas marcadas 1.0.0 son anteriores a estas reglas (demo y presentación); el piloto arranca en 0.9.0.
 
+## [0.18.1] - 2026-11-27
+- **Sucursal + compañías**: en lugar de solo los totales, ahora tiene **Control compañías** con el Resumen, Saldos por compañía y Detalle de facturas de todo el grupo, como Gerencia. No ve Control por sucursal ni Impacto económico.
+- En Control compañías solo mira: las facturas de otras sucursales se abren sin acciones, y el servidor rechaza cualquier cambio que no sea de su sucursal.
+- El legajo ya no muestra el cuadro para escribir mensajes a Gerencia (solo consulta).
+
 ## [0.18.0] - 2026-11-27
 - Nuevo rol **Sucursal + compañías** (en Usuarios): trabaja como su sucursal y además tiene **Compañías**, con los totales de todo el grupo (año, pendiente de cobro hoy y saldo de cada compañía). No ve cómo está cada sucursal, el impacto económico ni el detalle de las facturas de otras sucursales: de esas facturas solo le llegan importes, fechas y estados.
 - Ver como: la sucursal con ese rol aparece también como "Sucursal · … + compañías".
